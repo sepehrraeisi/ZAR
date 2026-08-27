@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_app/data/zar_domain_backup_codec.dart';
@@ -115,11 +117,16 @@ void main() {
       ],
     );
 
-    final json = codec.encodeJson(source).replaceFirst(
-      RegExp(r',\s*"reminderPlan"\s*:\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', dotAll: true),
-      '',
+    final raw = Map<String, Object?>.from(
+      jsonDecode(codec.encodeJson(source)) as Map,
     );
-    final decoded = codec.decodeJson(json);
+    final settlements = (raw['settlements']! as List)
+        .map((item) => Map<String, Object?>.from(item as Map))
+        .toList(growable: false);
+    settlements.single.remove('reminderPlan');
+    raw['settlements'] = settlements;
+
+    final decoded = codec.decodeJson(jsonEncode(raw));
     expect(decoded.settlements.single.reminderPlan.isEmpty, isTrue);
   });
 
