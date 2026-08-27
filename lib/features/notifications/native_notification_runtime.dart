@@ -7,6 +7,7 @@ import '../reminders/record_reminder_registry.dart';
 import 'notification_center.dart';
 import 'notification_content_policy.dart';
 import 'notification_preferences_store.dart';
+import 'record_tap_buffer.dart';
 
 /// App-level native notification runtime.
 ///
@@ -25,18 +26,20 @@ class ZarNativeNotificationRuntime {
   late final FlutterLocalNotificationScheduler scheduler;
   final ZarNotificationPreferencesStore _preferencesStore =
       SharedPreferencesNotificationStore();
+  final RecordTapBuffer _recordTaps = RecordTapBuffer();
 
   ZarNotificationPreferences _preferences = const ZarNotificationPreferences();
-  ValueChanged<String>? _recordTapHandler;
 
   ZarNotificationPreferences get preferences => _preferences;
+  String? get pendingRecordId => _recordTaps.pendingRecordId;
 
   /// Installs the app-level destination for notification taps.
   ///
-  /// The shell may replace this handler after login/workspace bootstrap. Both a
-  /// live notification response and a cold-start launch can be forwarded here.
+  /// The shell may replace this handler after login/workspace bootstrap. If a
+  /// notification was tapped before the shell became ready, the latest pending
+  /// record id is delivered exactly once as soon as a handler is installed.
   void setRecordTapHandler(ValueChanged<String>? handler) {
-    _recordTapHandler = handler;
+    _recordTaps.setHandler(handler);
   }
 
   Future<void> install() async {
@@ -57,6 +60,11 @@ class ZarNativeNotificationRuntime {
     _installPrivacyPolicy();
     await scheduler.initialize();
     await _applyDeliveryPreferences();
+
+    // Capture a cold-start destination immediately. It is buffered until the
+    // authenticated/workspace shell registers a navigation handler.
+    final initial = await initialRecordId();
+    if (initial != null) _recordTaps.add(initial);
   }
 
   void updatePreferences(ZarNotificationPreferences value) {
@@ -71,11 +79,12 @@ class ZarNativeNotificationRuntime {
 
   Future<String?> initialRecordId() => scheduler.initialRecordId();
 
-  /// Delivers the cold-start notification destination once the shell has
-  /// installed a record tap handler.
+  /// Compatibility helper for callers that explicitly request cold-start
+  /// delivery. The buffer prevents the destination from being lost when no
+  /// navigation handler is ready yet.
   Future<void> deliverInitialRecordTap() async {
     final recordId = await initialRecordId();
-    if (recordId != null) _handleRecordTapped(recordId);
+    if (recordId != null) _recordTaps.add(recordId);
   }
 
   Future<void> _persistAndApplyPreferenceChange(
@@ -125,6 +134,6 @@ class ZarNativeNotificationRuntime {
   }
 
   void _handleRecordTapped(String recordId) {
-    _recordTapHandler?.call(recordId);
+    _recordTaps.add(recordId);
   }
 }
