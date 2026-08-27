@@ -10,10 +10,8 @@ class ZarAmountFormatter {
     final whole = scale == 0 ? raw : raw.substring(0, raw.length - scale);
     final fraction = scale == 0 ? '' : raw.substring(raw.length - scale);
     final groupedWhole = _group(whole);
-    final visibleFraction = fraction.replaceFirst(RegExp(r'0+$'), '');
-    final number = visibleFraction.isEmpty
-        ? groupedWhole
-        : '$groupedWhole.$visibleFraction';
+    final hasFraction = fraction.isNotEmpty && RegExp(r'[1-9]').hasMatch(fraction);
+    final number = hasFraction ? '$groupedWhole.$fraction' : groupedWhole;
 
     return switch (value.code) {
       'USD' => '\$$number',
