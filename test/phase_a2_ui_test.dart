@@ -37,7 +37,7 @@ void main() {
     expect(find.byIcon(Icons.settings), findsNothing); // Cupertino gear is used instead.
   });
 
-  testWidgets('notification settings expose core controls', (tester) async {
+  testWidgets('notification settings expose core controls and sound profile', (tester) async {
     ZarNotificationPreferences? changed;
     await tester.pumpWidget(
       _host(
@@ -51,12 +51,19 @@ void main() {
     expect(find.text('تنظیمات اعلان‌ها'), findsOneWidget);
     expect(find.text('اعلان‌ها'), findsOneWidget);
     expect(find.text('صدا'), findsOneWidget);
+    expect(find.text('نوع صدا'), findsOneWidget);
+    expect(find.text('صدای پیش‌فرض سیستم'), findsOneWidget);
     expect(find.text('ویبره'), findsOneWidget);
     expect(find.text('حریم خصوصی اعلان'), findsOneWidget);
 
-    await tester.tap(find.text('اعلان‌ها'));
-    await tester.pump();
-    expect(changed, isNotNull);
+    await tester.tap(find.text('نوع صدا'));
+    await tester.pumpAndSettle();
+    expect(find.text('ملایم'), findsOneWidget);
+    expect(find.text('بی‌صدا'), findsOneWidget);
+
+    await tester.tap(find.text('ملایم'));
+    await tester.pumpAndSettle();
+    expect(changed?.soundProfile, NotificationSoundProfile.subtle);
   });
 
   testWidgets('archived people can be restored from visible archive list', (tester) async {
