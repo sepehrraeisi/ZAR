@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/zar_domain_models.dart';
+import '../zar_domain_repository.dart';
 import 'zar_firestore_mapper.dart';
 
-class ZarFirestoreRepository {
+class ZarFirestoreRepository implements ZarDomainRepository {
   ZarFirestoreRepository({
     required FirebaseFirestore firestore,
     required this.businessId,
@@ -32,6 +33,7 @@ class ZarFirestoreRepository {
   CollectionReference<Map<String, dynamic>> get _audit =>
       _business.collection('auditLogs');
 
+  @override
   Future<List<ZarPerson>> loadActivePeople({int limit = 100}) async {
     final snapshot = await _people
         .where('archived', isEqualTo: false)
@@ -43,6 +45,7 @@ class ZarFirestoreRepository {
         .toList(growable: false);
   }
 
+  @override
   Future<List<ZarPerson>> loadArchivedPeople({int limit = 100}) async {
     final snapshot = await _people
         .where('archived', isEqualTo: true)
@@ -54,6 +57,7 @@ class ZarFirestoreRepository {
         .toList(growable: false);
   }
 
+  @override
   Future<List<ZarSettlement>> loadOpenSettlements({
     required DateTime from,
     required DateTime through,
@@ -75,6 +79,7 @@ class ZarFirestoreRepository {
         .toList(growable: false);
   }
 
+  @override
   Future<List<ZarSettlement>> loadOverdueSettlements({
     required DateTime now,
     int limit = 100,
@@ -94,6 +99,7 @@ class ZarFirestoreRepository {
         .toList(growable: false);
   }
 
+  @override
   Future<List<ZarSettlement>> loadPersonSettlements({
     required String personId,
     int limit = 100,
@@ -112,6 +118,7 @@ class ZarFirestoreRepository {
         .toList(growable: false);
   }
 
+  @override
   Future<List<ZarDeal>> loadPersonDeals({
     required String personId,
     int limit = 100,
@@ -130,6 +137,7 @@ class ZarFirestoreRepository {
         .toList(growable: false);
   }
 
+  @override
   Future<void> savePerson(ZarPerson person, {String auditAction = 'edit'}) async {
     final ref = _people.doc(person.id);
     final before = await ref.get();
@@ -146,6 +154,7 @@ class ZarFirestoreRepository {
     await batch.commit();
   }
 
+  @override
   Future<void> saveDeal(ZarDeal deal, {String auditAction = 'edit'}) async {
     final ref = _deals.doc(deal.id);
     final before = await ref.get();
@@ -163,6 +172,7 @@ class ZarFirestoreRepository {
     await batch.commit();
   }
 
+  @override
   Future<void> saveSettlement(
     ZarSettlement settlement, {
     String auditAction = 'edit',
@@ -183,6 +193,7 @@ class ZarFirestoreRepository {
     await batch.commit();
   }
 
+  @override
   Future<void> archivePerson(ZarPerson person) async {
     final updated = ZarPerson(
       id: person.id,
@@ -191,12 +202,13 @@ class ZarFirestoreRepository {
       note: person.note,
       archived: true,
       createdAt: person.createdAt,
-      updatedAt: DateTime.now(),
+      updatedAt: DateTime.now().toUtc(),
       createdBy: person.createdBy,
     );
     await savePerson(updated, auditAction: 'archive');
   }
 
+  @override
   Future<void> restorePerson(ZarPerson person) async {
     final updated = ZarPerson(
       id: person.id,
@@ -205,7 +217,7 @@ class ZarFirestoreRepository {
       note: person.note,
       archived: false,
       createdAt: person.createdAt,
-      updatedAt: DateTime.now(),
+      updatedAt: DateTime.now().toUtc(),
       createdBy: person.createdBy,
     );
     await savePerson(updated, auditAction: 'restore');
