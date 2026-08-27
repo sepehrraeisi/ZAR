@@ -1,11 +1,27 @@
 {
   "indexes": [
     {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "archived", "order": "ASCENDING"},
+        {"fieldPath": "normalizedName", "order": "ASCENDING"}
+      ]
+    },
+    {
       "collectionGroup": "settlements",
       "queryScope": "COLLECTION",
       "fields": [
         {"fieldPath": "status", "order": "ASCENDING"},
         {"fieldPath": "scheduledAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "settlements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "personId", "order": "ASCENDING"},
+        {"fieldPath": "scheduledAt", "order": "DESCENDING"}
       ]
     },
     {
