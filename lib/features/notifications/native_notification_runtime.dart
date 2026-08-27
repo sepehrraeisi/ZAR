@@ -28,6 +28,7 @@ class ZarNativeNotificationRuntime {
     NotificationSettingsScreen.defaultRequestPermission = requestPermission;
     NotificationSettingsScreen.defaultOpenSystemSettings = openSystemSettings;
     NotificationSettingsScreen.defaultPreferencesChanged = updatePreferences;
+    _applyDeliveryPreferences();
     _installPrivacyPolicy();
     // Initialization is safe because the adapter defers permission prompts.
     await scheduler.initialize();
@@ -35,6 +36,7 @@ class ZarNativeNotificationRuntime {
 
   void updatePreferences(ZarNotificationPreferences value) {
     _preferences = value;
+    _applyDeliveryPreferences();
     _installPrivacyPolicy();
   }
 
@@ -43,6 +45,16 @@ class ZarNativeNotificationRuntime {
   Future<bool> openSystemSettings() => scheduler.openSystemNotificationSettings();
 
   Future<String?> initialRecordId() => scheduler.initialRecordId();
+
+  void _applyDeliveryPreferences() {
+    final wantsSound = _preferences.enabled &&
+        _preferences.soundEnabled &&
+        _preferences.soundProfile != NotificationSoundProfile.silent;
+    scheduler.configure(
+      playSound: wantsSound,
+      enableVibration: _preferences.enabled && _preferences.vibrationEnabled,
+    );
+  }
 
   void _installPrivacyPolicy() {
     const policy = ZarNotificationContentPolicy();
