@@ -24,14 +24,16 @@ Development is continuing on `codex/phase-a2-ux` before production Firebase acti
 
 ### Repository-backed UI migration
 
-The polished Phase A.2 UI still uses the original lightweight `AppPerson` / `AppRecord` presentation types, but it now has a production migration path:
+The polished Phase A.2 UI still consumes the original lightweight `AppPerson` / `AppRecord` presentation types, but production state and persistence now have a defined migration path:
 
-- `ZarWorkspaceController` owns operational repository-backed state and mutations.
+- `ZarWorkspaceController` owns repository-backed operational state and mutations.
 - `ZarLegacyPresentationBridge` converts between the current presentation types and production `Zar*` domain models while preserving exact currency/gold values.
-- `ZarPhaseA2Store` loads people, recent deals and settlements through `ZarDomainRepository` and exposes them to the current UI shape.
-- create/edit/complete/cancel/reschedule/archive/restore operations can now pass through the repository boundary rather than directly mutating Firestore or relying on display strings.
+- `ZarPhaseA2Store` loads active/archived people plus recent deals/settlements through `ZarDomainRepository` and exposes them to the current UI shape.
+- create/edit/complete/cancel/reschedule/archive/restore operations are supported through the repository boundary.
+- `ZarDomainRepository` now includes recent history queries needed by the History tab and startup hydration.
+- `ZarFirestoreRepository` implements the same history/query contract so switching from preview data to Firestore does not require widget-level database code.
 
-This bridge is transitional. Firestore must never depend on legacy presentation models.
+This bridge is transitional. Firestore must never depend on legacy presentation models or formatted display amounts.
 
 ## Firebase safety
 
@@ -55,8 +57,9 @@ Archive means hidden from the active People list, never deleted. Archived people
 
 ### Remaining production work
 
-1. Switch the default Phase A.2 shell from direct local lists to `ZarPhaseA2Store`.
-2. Preserve current minimal UI behavior while repository mutations become authoritative.
-3. Activate Firebase Auth/Firestore only with the correct `com.zarplus.app` configuration.
-4. Implement real native scheduled notifications and real-device iOS validation.
-5. Validate backup/restore and disaster-recovery flows before production use.
+1. Make `ZarPhaseA2Store` the authoritative state source inside the default Phase A.2 shell instead of the shell's direct local lists.
+2. Preserve current minimal UI behavior while repository mutations become authoritative and async-safe.
+3. Add user-facing save/loading/error states so a failed repository write never looks successful.
+4. Activate Firebase Auth/Firestore only with the correct `com.zarplus.app` configuration.
+5. Implement real native scheduled notifications and real-device iOS validation.
+6. Validate backup/restore and disaster-recovery flows before production use.
