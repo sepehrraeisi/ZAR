@@ -8,7 +8,6 @@ enum NotificationPrivacy { full, limited, private }
 /// settings (Silent/Focus modes, system notification permissions, etc.).
 enum NotificationSoundProfile { systemDefault, subtle, silent }
 
-/// UI-level notification preferences. Native persistence/scheduling is wired later.
 class ZarNotificationPreferences {
   const ZarNotificationPreferences({
     this.enabled = true,
@@ -49,7 +48,6 @@ class ZarNotificationPreferences {
   }
 }
 
-/// Presentation model kept independent from persistence and scheduling services.
 class ZarNotificationItem {
   const ZarNotificationItem({
     required this.id,
@@ -104,7 +102,8 @@ class NotificationCenterScreen extends StatelessWidget {
         body: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           children: [
-            if (overdue.isNotEmpty) _section(context, 'عقب‌افتاده', overdue, overdueTone: true),
+            if (overdue.isNotEmpty)
+              _section(context, 'عقب‌افتاده', overdue, overdueTone: true),
             _section(context, 'امروز', today),
             _section(context, 'به‌زودی', upcoming),
             if (overdue.isEmpty && today.isEmpty && upcoming.isEmpty)
@@ -112,7 +111,11 @@ class NotificationCenterScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 72),
                 child: Column(
                   children: [
-                    Icon(CupertinoIcons.bell, size: 34, color: Theme.of(context).textTheme.bodyMedium?.color),
+                    Icon(
+                      CupertinoIcons.bell,
+                      size: 34,
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
+                    ),
                     const SizedBox(height: 12),
                     const Text('اعلان جدیدی ندارید.'),
                   ],
@@ -162,14 +165,21 @@ class NotificationCenterScreen extends StatelessWidget {
                       margin: const EdgeInsets.only(top: 8, left: 10),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: item.isUnread ? theme.colorScheme.primary : Colors.transparent,
+                        color: item.isUnread
+                            ? theme.colorScheme.primary
+                            : Colors.transparent,
                       ),
                     ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(item.title, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                          Text(
+                            item.title,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           const SizedBox(height: 2),
                           Text(item.subtitle, style: theme.textTheme.bodyMedium),
                         ],
@@ -193,25 +203,74 @@ class NotificationSettingsScreen extends StatefulWidget {
     super.key,
     required this.initial,
     required this.onChanged,
+    this.onRequestPermission,
+    this.onOpenSystemSettings,
   });
+
+  /// Native bootstrap installs these defaults so existing callers do not need
+  /// platform dependencies. Tests and web preview may leave them null.
+  static Future<bool> Function()? defaultRequestPermission;
+  static Future<bool> Function()? defaultOpenSystemSettings;
+  static ValueChanged<ZarNotificationPreferences>? defaultPreferencesChanged;
 
   final ZarNotificationPreferences initial;
   final ValueChanged<ZarNotificationPreferences> onChanged;
+  final Future<bool> Function()? onRequestPermission;
+  final Future<bool> Function()? onOpenSystemSettings;
 
   @override
-  State<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
+  State<NotificationSettingsScreen> createState() =>
+      _NotificationSettingsScreenState();
 }
 
 class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
   late ZarNotificationPreferences value = widget.initial;
+  bool _permissionBusy = false;
+  bool? _permissionGranted;
 
   void _set(ZarNotificationPreferences next) {
     setState(() => value = next);
     widget.onChanged(next);
+    NotificationSettingsScreen.defaultPreferencesChanged?.call(next);
+  }
+
+  Future<void> _requestPermission() async {
+    final callback = widget.onRequestPermission ??
+        NotificationSettingsScreen.defaultRequestPermission;
+    if (callback == null || _permissionBusy) return;
+    setState(() => _permissionBusy = true);
+    try {
+      final granted = await callback();
+      if (!mounted) return;
+      setState(() => _permissionGranted = granted);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            granted
+                ? 'اعلان‌های دستگاه فعال شد.'
+                : 'مجوز اعلان داده نشد. می‌توانید آن را از تنظیمات سیستم تغییر دهید.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _permissionBusy = false);
+    }
+  }
+
+  Future<void> _openSystemSettings() async {
+    final callback = widget.onOpenSystemSettings ??
+        NotificationSettingsScreen.defaultOpenSystemSettings;
+    if (callback == null) return;
+    await callback();
   }
 
   @override
   Widget build(BuildContext context) {
+    final canRequest = widget.onRequestPermission != null ||
+        NotificationSettingsScreen.defaultRequestPermission != null;
+    final canOpenSettings = widget.onOpenSystemSettings != null ||
+        NotificationSettingsScreen.defaultOpenSystemSettings != null;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -219,6 +278,35 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         body: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           children: [
+            if (canRequest) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(CupertinoIcons.bell_badge),
+                title: const Text('مجوز اعلان روی این دستگاه'),
+                subtitle: Text(
+                  _permissionGranted == true
+                      ? 'فعال'
+                      : _permissionGranted == false
+                          ? 'فعال نیست'
+                          : 'برای دریافت یادآوری هنگام بسته بودن برنامه، مجوز دستگاه لازم است.',
+                ),
+                trailing: _permissionBusy
+                    ? const CupertinoActivityIndicator(radius: 9)
+                    : TextButton(
+                        onPressed: _requestPermission,
+                        child: const Text('فعال‌کردن'),
+                      ),
+              ),
+              if (canOpenSettings)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('تنظیمات اعلان در سیستم'),
+                  subtitle: const Text('صدا، نمایش روی صفحه قفل و مجوزهای iPhone/Android'),
+                  trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
+                  onTap: _openSystemSettings,
+                ),
+              const Divider(),
+            ],
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: const Text('اعلان‌ها'),
@@ -229,22 +317,31 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: const Text('صدا'),
-              subtitle: const Text('کنترل نهایی صدا تابع تنظیمات و حالت‌های سیستم است.'),
+              subtitle: const Text(
+                'کنترل نهایی صدا تابع تنظیمات و حالت‌های سیستم است.',
+              ),
               value: value.soundEnabled,
-              onChanged: value.enabled ? (v) => _set(value.copyWith(soundEnabled: v)) : null,
+              onChanged: value.enabled
+                  ? (v) => _set(value.copyWith(soundEnabled: v))
+                  : null,
             ),
             if (value.enabled && value.soundEnabled)
               _soundPicker(
                 context,
                 value: value.soundProfile,
-                onChanged: (profile) => _set(value.copyWith(soundProfile: profile)),
+                onChanged: (profile) =>
+                    _set(value.copyWith(soundProfile: profile)),
               ),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: const Text('ویبره'),
-              subtitle: const Text('در دستگاه‌ها و حالت‌هایی که سیستم‌عامل پشتیبانی کند.'),
+              subtitle: const Text(
+                'در دستگاه‌ها و حالت‌هایی که سیستم‌عامل پشتیبانی کند.',
+              ),
               value: value.vibrationEnabled,
-              onChanged: value.enabled ? (v) => _set(value.copyWith(vibrationEnabled: v)) : null,
+              onChanged: value.enabled
+                  ? (v) => _set(value.copyWith(vibrationEnabled: v))
+                  : null,
             ),
             const SizedBox(height: 18),
             Text('حریم خصوصی اعلان', style: Theme.of(context).textTheme.titleMedium),
@@ -313,7 +410,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                       (profile) => ListTile(
                         title: Text(_soundLabel(profile)),
                         subtitle: Text(_soundDescription(profile)),
-                        trailing: profile == value ? const Icon(CupertinoIcons.check_mark) : null,
+                        trailing: profile == value
+                            ? const Icon(CupertinoIcons.check_mark)
+                            : null,
                         onTap: () => Navigator.pop(sheetContext, profile),
                       ),
                     )
@@ -353,7 +452,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                     .map(
                       (minutes) => ListTile(
                         title: Text(_minutesLabel(minutes)),
-                        trailing: minutes == value ? const Icon(CupertinoIcons.check_mark) : null,
+                        trailing: minutes == value
+                            ? const Icon(CupertinoIcons.check_mark)
+                            : null,
                         onTap: () => Navigator.pop(sheetContext, minutes),
                       ),
                     )
