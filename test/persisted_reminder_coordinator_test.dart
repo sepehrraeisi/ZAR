@@ -10,6 +10,7 @@ import 'package:flutter_app/data/zar_domain_repository.dart';
 import 'package:flutter_app/domain/zar_domain_models.dart';
 import 'package:flutter_app/domain/zar_reminder_plan.dart';
 import 'package:flutter_app/features/reminders/record_reminder_registry.dart';
+import 'package:flutter_app/features/reminders/reminder_model.dart';
 import 'package:flutter_app/features/reminders/reminder_scheduler.dart';
 
 void main() {
@@ -78,11 +79,12 @@ void main() {
     expect(state.store.reminderPlanFor('s1').rules, hasLength(2));
     final pending = await state.scheduler.pendingForRecord('s1');
     expect(pending, hasLength(2));
+    final dueAt = dueDateTimeFromJalali(state.record.date, state.record.time);
     expect(
       pending.map((item) => item.scheduledAt).toSet(),
       containsAll(<DateTime>{
-        DateTime(2026, 8, 27, 12),
-        DateTime(2026, 8, 27, 12, 30),
+        dueAt.subtract(const Duration(minutes: 60)),
+        dueAt.subtract(const Duration(minutes: 30)),
       }),
     );
   });
@@ -126,8 +128,8 @@ void main() {
       time: const TimeOfDay(hour: 10, minute: 0),
     );
 
-    expect(
-      () => state.coordinator.savePlan(
+    await expectLater(
+      state.coordinator.savePlan(
         record: deal,
         plan: const ZarReminderPlan(),
       ),
