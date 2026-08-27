@@ -68,4 +68,39 @@ void main() {
     expect(after.hour, 14);
     expect(after.minute, 30);
   });
+
+  test('uses injected notification content policy', () async {
+    final scheduler = InMemoryReminderScheduler();
+    final registry = RecordReminderRegistry(
+      scheduler: scheduler,
+      contentBuilder: (_, __) => const ReminderNotificationContent(
+        title: 'یادآوری ZAR+',
+        body: 'یک یادآوری کاری دارید.',
+      ),
+    );
+    final record = AppRecord(
+      id: 's3',
+      type: RecordType.settlement,
+      operationLabel: 'تحویل',
+      personId: 'p1',
+      amountDisplay: r'$25,000',
+      assetLabel: 'ارز',
+      date: Jalali(1405, 6, 7),
+      time: const TimeOfDay(hour: 12, minute: 0),
+    );
+
+    await registry.setPlan(
+      record: record,
+      plan: const ReminderPlan(
+        rules: [ReminderRule.offset(id: 'r1', minutesBefore: 60)],
+      ),
+      personName: 'رضا محمدی',
+    );
+
+    final scheduled = (await scheduler.pendingForRecord(record.id)).single;
+    expect(scheduled.title, 'یادآوری ZAR+');
+    expect(scheduled.body, 'یک یادآوری کاری دارید.');
+    expect(scheduled.title, isNot(contains('رضا محمدی')));
+    expect(scheduled.body, isNot(contains(r'$25,000')));
+  });
 }
