@@ -11,8 +11,11 @@ import 'application/zar_legacy_presentation_bridge.dart';
 import 'application/zar_phase_a2_store.dart';
 import 'application/zar_write_coordinator.dart';
 import 'data/zar_domain_repository.dart';
+import 'domain/zar_amount_formatter.dart';
+import 'domain/zar_amount_parser.dart';
 import 'domain/zar_reminder_plan.dart';
 import 'features/editors/confirmed_editors.dart';
+import 'features/editors/confirmed_quick_add_sheet.dart';
 import 'features/notifications/native_notification_runtime.dart';
 import 'features/notifications/notification_center.dart';
 import 'features/people/archived_people_screen.dart';
@@ -344,6 +347,69 @@ class _RepositoryPhaseA2ShellV2State
     }
   }
 
+  Future<void> _saveQuickAddDraftOrThrow(QuickAddDraft draft) async {
+    if (_writing) throw StateError('Write already in progress.');
+
+    final isSettlement = draft.operation == 'دریافت' || draft.operation == 'تحویل';
+    final isCurrency = draft.asset == 'ارز';
+    final currencyCode = draft.currencyCode;
+
+    if (isCurrency && currencyCode == null) {
+      throw const FormatException('Currency code is required.');
+    }
+
+    final amountDisplay = isCurrency
+        ? ZarAmountFormatter.currency(
+            ZarAmountParser.currency(draft.amount, code: currencyCode!),
+          )
+        : toPersianDigits(ZarAmountParser.gold(draft.amount).decimal);
+
+    final record = AppRecord(
+      id: 'n${DateTime.now().microsecondsSinceEpoch}',
+      type: isSettlement ? RecordType.settlement : RecordType.deal,
+      operationLabel: draft.operation,
+      personId: draft.personId,
+      amountDisplay: amountDisplay,
+      assetLabel: isCurrency ? 'ارز' : 'گرم طلا',
+      currencyCode: currencyCode,
+      date: draft.date,
+      time: draft.time,
+      note: draft.note.isEmpty ? null : draft.note,
+    );
+    final runtimePlan = isSettlement
+        ? reminderPlanFromLegacyLabel(draft.reminder)
+        : const ReminderPlan();
+
+    setState(() => _writing = true);
+    try {
+      await _store.saveRecord(
+        record,
+        auditAction: 'create',
+        reminderPlan:
+            isSettlement ? reminderPlanToDomain(runtimePlan) : null,
+      );
+      final persisted = _store.recordById(record.id);
+      if (persisted?.isObligation == true) {
+        try {
+          await _persistedReminders.reconcileRecord(persisted!);
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'اطلاعات ثبت شد، اما یادآوری دستگاه به‌روزرسانی نشد.',
+                ),
+              ),
+            );
+          }
+        }
+      }
+      if (mounted) setState(() {});
+    } finally {
+      if (mounted) setState(() => _writing = false);
+    }
+  }
+
   Future<void> _archivePerson(AppPerson person) async {
     final shouldArchive = await confirmArchiveWithOpenObligations(
       context,
@@ -388,52 +454,17 @@ class _RepositoryPhaseA2ShellV2State
   }
 
   Future<void> _openQuickAdd() async {
-    final draft = await showModalBottomSheet<QuickAddDraft>(
+    await showModalBottomSheet<QuickAddDraft>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => QuickAddSheet(people: _store.activePeople),
-    );
-    if (draft == null) return;
-
-    final isCurrency = draft.asset == 'ارز';
-    final record = AppRecord(
-      id: 'n${DateTime.now().microsecondsSinceEpoch}',
-      type: (draft.operation == 'دریافت' || draft.operation == 'تحویل')
-          ? RecordType.settlement
-          : RecordType.deal,
-      operationLabel: draft.operation,
-      personId: draft.personId,
-      amountDisplay: isCurrency && draft.currencyCode != null
-          ? formatCurrencyAmount(draft.amount, draft.currencyCode!)
-          : draft.amount,
-      assetLabel: draft.asset == 'طلا' ? 'گرم طلا' : 'ارز',
-      currencyCode: draft.currencyCode,
-      date: draft.date,
-      time: draft.time,
-      note: draft.note.isEmpty ? null : draft.note,
-    );
-
-    final runtimePlan = record.type == RecordType.settlement
-        ? reminderPlanFromLegacyLabel(draft.reminder)
-        : const ReminderPlan();
-    final saved = await _runWrite(
-      () => _store.saveRecord(
-        record,
-        auditAction: 'create',
-        reminderPlan: record.type == RecordType.settlement
-            ? reminderPlanToDomain(runtimePlan)
-            : null,
+      isDismissible: !_writing,
+      enableDrag: !_writing,
+      builder: (_) => ConfirmedQuickAddSheet(
+        people: _store.activePeople,
+        onSave: _saveQuickAddDraftOrThrow,
       ),
     );
-    if (!saved) return;
-
-    final persisted = _store.recordById(record.id);
-    if (persisted?.isObligation == true) {
-      try {
-        await _persistedReminders.reconcileRecord(persisted!);
-      } catch (_) {}
-    }
   }
 
   String _reminderSummary(AppRecord record) {
