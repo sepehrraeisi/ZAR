@@ -21,6 +21,10 @@ abstract interface class ZarDomainRepository {
     int limit = 100,
   });
 
+  Future<List<ZarSettlement>> loadRecentSettlements({int limit = 250});
+
+  Future<List<ZarDeal>> loadRecentDeals({int limit = 250});
+
   Future<List<ZarSettlement>> loadPersonSettlements({
     required String personId,
     int limit = 100,
@@ -95,6 +99,20 @@ class InMemoryZarDomainRepository implements ZarDomainRepository {
         .where((item) => item.isOpen && item.scheduledAt.isBefore(now))
         .toList(growable: false)
       ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    return result.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<List<ZarSettlement>> loadRecentSettlements({int limit = 250}) async {
+    final result = _settlements.values.toList(growable: false)
+      ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
+    return result.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<List<ZarDeal>> loadRecentDeals({int limit = 250}) async {
+    final result = _deals.values.toList(growable: false)
+      ..sort((a, b) => b.dealAt.compareTo(a.dealAt));
     return result.take(limit).toList(growable: false);
   }
 
