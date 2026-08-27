@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../domain/zar_domain_models.dart';
+import '../domain/zar_reminder_plan.dart';
 
 /// Lossless backup format for production business data.
 ///
@@ -160,6 +161,7 @@ class ZarDomainBackupCodec {
         'scheduledAt': settlement.scheduledAt.toUtc().toIso8601String(),
         'hasTime': settlement.hasTime,
         'status': settlement.status.name,
+        'reminderPlan': settlement.reminderPlan.toMap(),
         'completedAt': settlement.completedAt?.toUtc().toIso8601String(),
         'completedBy': settlement.completedBy,
         'note': settlement.note,
@@ -188,6 +190,11 @@ class ZarDomainBackupCodec {
         status: ZarSettlementStatus.values.byName(
           _requiredString(map['status'], 'settlement.status'),
         ),
+        reminderPlan: map['reminderPlan'] == null
+            ? const ZarReminderPlan()
+            : ZarReminderPlan.fromMap(
+                _requiredMap(map['reminderPlan'], 'settlement.reminderPlan'),
+              ),
         completedAt: map['completedAt'] == null
             ? null
             : _date(map['completedAt'], 'settlement.completedAt'),
