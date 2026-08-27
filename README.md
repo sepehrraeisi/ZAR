@@ -1,67 +1,128 @@
 # ZAR+
 
-ZAR+ is a private Persian-first Flutter application for operational gold and foreign-currency workflows.
+ZAR+ is a Persian-first, RTL-first Flutter application for operational gold and foreign-currency workflows.
 
-## Current development status
+## Product direction
 
-Development is continuing on `codex/phase-a2-ux` before production Firebase activation.
+- iPhone-first Flutter UX
+- Persian UI with Jalali calendar
+- strict separation between **Deal** (خرید / فروش) and **Settlement** (دریافت / تحویل)
+- Firebase/Firestore planned as the authoritative cloud source of truth
+- device-local notification preferences only for non-authoritative UX settings
+- structured reminders, auditability, archive/restore, backup/export
 
-### Implemented foundation
+## Current development branch
 
-- Persian-first RTL / Jalali operational UI
-- strict Deal vs Settlement separation
-- Home actions for complete / cancel / reschedule / snooze
-- Notification Center and notification settings foundation
-- archived people list with Restore
-- exact gold decimal model and exact currency minor-unit model
-- Persian/Arabic/Latin amount parsing without binary floating point
-- structured reminder plans and reminder lifecycle registry
-- repository boundary (`ZarDomainRepository`) independent from Firestore
-- deterministic in-memory repository for tests and previews
-- Firestore mapper/repository, audit-write foundation, security rules and indexes
-- versioned JSON backup and Persian CSV export foundation
-- Persian email/password authentication UI foundation
+Primary active branch:
 
-### Repository-backed UI migration
+`codex/phase-a2-ux`
 
-The default pre-Firebase launch path is now repository-backed.
+The `master` branch remains the preserved Genspark checkpoint until Phase A.2 is validated.
 
-- `ZarWorkspaceController` owns repository-backed operational state and mutations.
-- `ZarLegacyPresentationBridge` converts between the current presentation types and production `Zar*` domain models while preserving exact currency/gold values.
-- `ZarPhaseA2Store` loads active/archived people plus recent deals/settlements through `ZarDomainRepository` and exposes them to the current UI shape.
-- `RepositoryZarPlusApp` is now launched from `main.dart` and uses `ZarPhaseA2Store` as its data source.
-- preview seed data is represented as production domain objects inside `InMemoryZarDomainRepository`, not as widget-owned mutable records.
-- create/edit/complete/cancel/reschedule/archive/restore operations pass through the repository boundary.
-- repository write failures show a Persian error instead of silently reporting success.
-- `ZarDomainRepository` includes recent history queries needed by the History tab and startup hydration.
-- `ZarFirestoreRepository` implements the same history/query contract so switching from preview data to Firestore does not require widget-level database code.
+## Phase A.2 implemented foundation
 
-The legacy presentation bridge remains transitional. Firestore must never depend on legacy presentation models or formatted display amounts.
+Current branch includes:
 
-## Firebase safety
+- repository-backed operational app shell
+- Persian RTL/Jalali Home, Calendar, People and History flows
+- Quick Add with gold/currency separation and currency selector
+- People archive + archived-people search + restore
+- Notification Center and notification preferences
+- local iOS/Android reminder scheduling foundation
+- notification privacy modes: کامل / محدود / خصوصی
+- device-local persistence for notification preferences
+- native notification tap buffering for cold-start/bootstrap timing
+- notification tap routing into the exact Deal/Settlement once the repository workspace is ready
+- confirmed-write coordination for business mutations
+- Complete / Cancel / Reschedule / Archive only dismiss after confirmed persistence
+- failed writes remain visible and expose Persian Retry feedback
+- bounded iOS pending-notification policy that keeps the nearest reminders and preserves authoritative reminder plans for later queue refresh
+- decimal-safe gold quantities and integer minor-unit currency values
+- typed production-domain models and repository boundary
+- Firestore repository/schema/security-rule foundation (production connection still disabled)
+- versioned JSON backup foundation + Persian CSV export
+- Persian email/password auth UI foundation
 
-Firebase dependencies are present, but production activation remains intentionally opt-in until the correct Firebase application configuration for package/bundle identity `com.zarplus.app` is available.
+## Safety / data-integrity rules
 
-Do not commit service-account keys, `.env` secrets, signing keys, APNs credentials, or Firebase admin credentials.
+ZAR+ must never claim that a business record was saved unless the persistence operation completed successfully.
 
-## CI note
+Core business records must not live only in local preferences or device cache.
 
-GitHub Actions previously completed Flutter analyze, tests and web preview builds successfully on this branch. Recent hosted-runner jobs are failing before the first workflow step starts (`steps: null`) and therefore currently provide no actionable Flutter compiler/test failure. Do not merge this branch until a normal runner execution validates the latest repository/store/parser/default-app tests.
+Archived people must remain recoverable and their historical Deals/Settlements must remain intact.
+
+Completed/cancelled obligations must cancel obsolete reminder schedules.
+
+## Firebase status
+
+Production Firebase remains intentionally disabled until configuration matches the final package identity:
+
+`com.zarplus.app`
+
+Do not reuse a `google-services.json` or Apple Firebase configuration generated for another package/bundle identifier.
+
+## Validation status
+
+GitHub Actions passed Flutter analyze/tests/web build earlier in Phase A.2. Recent GitHub-hosted runner jobs are currently failing before any workflow step starts (`steps: null` / no usable job execution), so new native changes still require a healthy CI runner and real-device validation before merge.
+
+Native notifications especially require real iPhone/Android validation for:
+
+- permission flow
+- Focus / Silent mode behavior
+- lock-screen privacy
+- sound/vibration behavior
+- notification tap deep-link behavior
+- reboot/update rescheduling behavior
 
 ## Next Development Pass (Do Not Skip)
 
-### Notification Center
+### 1. Notification Center
 
-The Home bell is a real operational entry point, not decorative. The final native implementation must support scheduled reminder delivery, cancellation/rescheduling, privacy levels, sound/vibration within platform capability, notification deep-linking and later FCM/APNs multi-device support.
+The Home bell is a real operational entry point, not decoration.
 
-### Archived People
+Notification Center requirements:
 
-Archive means hidden from the active People list, never deleted. Archived people must remain searchable/openable, retain all deals/settlements/history, and support Restore. Open obligations are not silently cancelled by archiving.
+- overdue reminders
+- due-soon reminders
+- upcoming receive/deliver obligations
+- snoozed reminders returning
+- unread state / restrained badge
+- tap notification → open related record
+- settings access
 
-### Remaining production work
+Notification settings include:
 
-1. Finish removing the remaining legacy presentation types from business-state ownership while preserving the approved minimal UI.
-2. Harden async write UX so sheets close only after confirmed successful persistence and expose retry where appropriate.
-3. Activate Firebase Auth/Firestore only with the correct `com.zarplus.app` configuration.
-4. Implement real native scheduled notifications and real-device iOS validation.
-5. Validate backup/restore and disaster-recovery flows before production use.
+- enable/disable
+- sound
+- vibration where supported
+- system notification settings shortcut
+- privacy: کامل / محدود / خصوصی
+- default reminder preset
+- default snooze preset
+
+### 2. Archived People
+
+Archive means hidden from the active People list, not deleted.
+
+Archived People must support:
+
+- search
+- open person detail
+- restore
+- historical Deal/Settlement continuity
+- warning when archiving a person with open obligations
+
+### 3. Remaining pre-Firebase hardening
+
+Before enabling production Firebase:
+
+- validate current branch on a healthy Flutter CI runner
+- run real-device iOS/Android notification tests
+- verify iOS bounded pending-notification refresh with many future obligations
+- further reduce legacy `AppRecord` / presentation ownership where practical
+- finish end-to-end user-facing JSON export/import flow
+- perform final Persian RTL/Jalali visual QA
+
+## Merge policy
+
+Do not merge Phase A.2 into `master` while CI runner validation is unavailable or native notification behavior has not been exercised on real devices.
