@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
-/// A reminder rule is stored independently from UI labels so it can later be
-/// persisted in Firestore and scheduled through native notification services.
+import '../../domain/zar_reminder_plan.dart';
+
+/// Runtime reminder rule used by the delivery/scheduling layer.
 enum ReminderRuleType { offset, custom }
 
 class ReminderRule {
@@ -121,6 +122,42 @@ class ReminderPlan {
   }
 }
 
+/// Converts a persisted business reminder plan into the runtime scheduler model.
+ReminderPlan reminderPlanFromDomain(ZarReminderPlan plan) => ReminderPlan(
+      rules: plan.rules
+          .map((rule) => rule.type == ZarReminderRuleType.offset
+              ? ReminderRule.offset(
+                  id: rule.id,
+                  minutesBefore: rule.minutesBefore!,
+                  enabled: rule.enabled,
+                )
+              : ReminderRule.custom(
+                  id: rule.id,
+                  customAt: rule.customAt!.toLocal(),
+                  enabled: rule.enabled,
+                ))
+          .toList(growable: false),
+      snoozedUntil: plan.snoozedUntil?.toLocal(),
+    );
+
+/// Converts the runtime scheduler model back into persistence-safe domain data.
+ZarReminderPlan reminderPlanToDomain(ReminderPlan plan) => ZarReminderPlan(
+      rules: plan.rules
+          .map((rule) => rule.type == ReminderRuleType.offset
+              ? ZarReminderRule.offset(
+                  id: rule.id,
+                  minutesBefore: rule.minutesBefore!,
+                  enabled: rule.enabled,
+                )
+              : ZarReminderRule.custom(
+                  id: rule.id,
+                  customAt: rule.customAt!.toUtc(),
+                  enabled: rule.enabled,
+                ))
+          .toList(growable: false),
+      snoozedUntil: plan.snoozedUntil?.toUtc(),
+    );
+
 /// Converts a Jalali business date plus optional local time into a canonical
 /// local DateTime. Firestore persistence should convert this to UTC/Timestamp.
 DateTime dueDateTimeFromJalali(Jalali date, TimeOfDay? time) {
@@ -134,9 +171,8 @@ DateTime dueDateTimeFromJalali(Jalali date, TimeOfDay? time) {
   );
 }
 
-/// Transitional adapter for the existing mock-data Quick Add UI. The UI can
-/// continue displaying Persian labels while the domain layer uses structured
-/// minute offsets.
+/// Transitional adapter for the existing Quick Add UI. The UI can continue
+/// displaying Persian labels while the domain layer stores structured rules.
 ReminderPlan reminderPlanFromLegacyLabel(String label) {
   final normalized = label.trim();
   final minutes = switch (normalized) {
