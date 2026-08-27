@@ -23,14 +23,16 @@ class NativeNotificationCapacityPolicy {
   final int iosPendingLimit;
 
   List<NativeReminderCandidate<T>> earliestForIos<T>(
-    Iterable<NativeReminderCandidate<T>> candidates,
-  ) {
+    Iterable<NativeReminderCandidate<T>> candidates, {
+    DateTime? now,
+  }) {
+    final cutoff = (now ?? DateTime.now()).toUtc();
     final sorted = candidates
-        .where((candidate) => candidate.fireAt.isAfter(DateTime.now()))
+        .where((candidate) => candidate.fireAt.toUtc().isAfter(cutoff))
         .toList(growable: false)
       ..sort((a, b) => a.fireAt.compareTo(b.fireAt));
 
-    if (iosPendingLimit <= 0) return const [];
+    if (iosPendingLimit <= 0) return <NativeReminderCandidate<T>>[];
     if (sorted.length <= iosPendingLimit) return sorted;
     return sorted.take(iosPendingLimit).toList(growable: false);
   }
