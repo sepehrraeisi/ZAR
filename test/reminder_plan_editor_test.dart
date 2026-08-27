@@ -90,7 +90,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('یادآوری سفارشی'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.delete).first, warnIfMissed: false);
+    await tester.tap(find.byTooltip('حذف'));
     await tester.pump();
+    expect(find.text('یادآوری سفارشی'), findsNothing);
   });
 }
