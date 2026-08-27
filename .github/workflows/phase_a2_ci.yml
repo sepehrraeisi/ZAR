@@ -31,10 +31,10 @@ jobs:
       - name: Run tests
         run: flutter test
 
-      - name: Build Phase A2 web preview
-        run: flutter build web --debug -t lib/main_phase_a2.dart
+      - name: Build default ZAR+ web preview
+        run: flutter build web --debug
 
-      - name: Upload Phase A2 web preview
+      - name: Upload ZAR+ web preview
         uses: actions/upload-artifact@v4
         with:
           name: zar-plus-phase-a2-web
