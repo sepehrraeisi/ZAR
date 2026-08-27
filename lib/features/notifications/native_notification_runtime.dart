@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../reminders/flutter_local_notification_scheduler.dart';
@@ -28,16 +30,17 @@ class ZarNativeNotificationRuntime {
     NotificationSettingsScreen.defaultRequestPermission = requestPermission;
     NotificationSettingsScreen.defaultOpenSystemSettings = openSystemSettings;
     NotificationSettingsScreen.defaultPreferencesChanged = updatePreferences;
-    _applyDeliveryPreferences();
     _installPrivacyPolicy();
-    // Initialization is safe because the adapter defers permission prompts.
     await scheduler.initialize();
+    await _applyDeliveryPreferences();
   }
 
   void updatePreferences(ZarNotificationPreferences value) {
     _preferences = value;
-    _applyDeliveryPreferences();
     _installPrivacyPolicy();
+    // UI preference changes are synchronous; native rescheduling is serialized
+    // by the scheduler and does not block rebuilding the settings screen.
+    unawaited(_applyDeliveryPreferences());
   }
 
   Future<bool> requestPermission() => scheduler.requestPermission();
@@ -46,11 +49,12 @@ class ZarNativeNotificationRuntime {
 
   Future<String?> initialRecordId() => scheduler.initialRecordId();
 
-  void _applyDeliveryPreferences() {
+  Future<void> _applyDeliveryPreferences() async {
     final wantsSound = _preferences.enabled &&
         _preferences.soundEnabled &&
         _preferences.soundProfile != NotificationSoundProfile.silent;
-    scheduler.configure(
+    await scheduler.configure(
+      enabled: _preferences.enabled,
       playSound: wantsSound,
       enableVibration: _preferences.enabled && _preferences.vibrationEnabled,
     );
