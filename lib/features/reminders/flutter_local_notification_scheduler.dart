@@ -209,7 +209,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
       }
     }
 
-    final selected = capacityPolicy.earliestForIos(candidates);
+    final selected = capacityPolicy.earliestForIos(candidates, now: now);
     for (final candidate in selected) {
       await _scheduleSingle(
         candidate.value.spec,
