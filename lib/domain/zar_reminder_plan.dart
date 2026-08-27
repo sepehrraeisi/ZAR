@@ -78,6 +78,53 @@ class ZarReminderPlan {
         snoozedUntil: clearSnooze ? null : (snoozedUntil ?? this.snoozedUntil),
       );
 
+  /// Adds or re-enables one offset reminder without creating duplicate offsets.
+  ZarReminderPlan withOffset(int minutesBefore) {
+    if (minutesBefore <= 0) {
+      throw const FormatException('Reminder offset must be greater than zero.');
+    }
+    final retained = rules
+        .where(
+          (rule) =>
+              rule.type != ZarReminderRuleType.offset ||
+              rule.minutesBefore != minutesBefore,
+        )
+        .toList(growable: true);
+    retained.add(
+      ZarReminderRule.offset(
+        id: 'offset-$minutesBefore',
+        minutesBefore: minutesBefore,
+      ),
+    );
+    return copyWith(rules: retained);
+  }
+
+  ZarReminderPlan withoutOffset(int minutesBefore) => copyWith(
+        rules: rules
+            .where(
+              (rule) =>
+                  rule.type != ZarReminderRuleType.offset ||
+                  rule.minutesBefore != minutesBefore,
+            )
+            .toList(growable: false),
+      );
+
+  /// Adds a custom reminder with a stable unique identifier.
+  ZarReminderPlan withCustom(DateTime customAt, {String? id}) {
+    final utc = customAt.toUtc();
+    final ruleId = id ?? 'custom-${utc.microsecondsSinceEpoch}';
+    return copyWith(
+      rules: [
+        ...rules.where((rule) => rule.id != ruleId),
+        ZarReminderRule.custom(id: ruleId, customAt: utc),
+      ],
+    );
+  }
+
+  ZarReminderPlan withoutRule(String ruleId) => copyWith(
+        rules: rules.where((rule) => rule.id != ruleId).toList(growable: false),
+      );
+
   List<DateTime> resolveTimes(DateTime dueAt) {
     final times = <DateTime>{};
     for (final rule in rules) {
