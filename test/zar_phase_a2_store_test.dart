@@ -63,6 +63,32 @@ void main() {
     expect(store.records.single.amountDisplay, '۲۵۰');
   });
 
+  test('refresh preserves currency cents in presentation', () async {
+    final currencySettlement = ZarSettlement(
+      id: 's-currency',
+      businessId: 'b1',
+      personId: 'p1',
+      direction: ZarSettlementDirection.deliver,
+      amount: ZarCurrencyAssetAmount(
+        ZarCurrencyAmount(code: 'USD', minorUnits: 1000050),
+      ),
+      scheduledAt: now.add(const Duration(hours: 4)),
+      hasTime: true,
+      createdBy: 'u1',
+      createdAt: now,
+      updatedAt: now,
+    );
+    final repo = InMemoryZarDomainRepository(
+      people: [person('p1')],
+      settlements: [currencySettlement],
+    );
+    final store = ZarPhaseA2Store(repository: repo, bridge: bridge, clock: () => now);
+
+    await store.refresh();
+
+    expect(store.records.single.amountDisplay, r'$10,000.50');
+  });
+
   test('complete settlement persists through repository and updates presentation', () async {
     final repo = InMemoryZarDomainRepository(
       people: [person('p1')],
