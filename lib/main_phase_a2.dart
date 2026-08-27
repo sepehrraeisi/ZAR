@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
-import 'main.dart';
+import 'app_core.dart';
 import 'features/notifications/notification_center.dart';
 import 'features/people/archived_people_screen.dart';
+import 'features/reminders/record_reminder_registry.dart';
+import 'features/reminders/reminder_model.dart';
 
 void main() {
   runApp(const ZarPlusPhaseA2App());
@@ -93,6 +97,7 @@ class PhaseA2Shell extends StatefulWidget {
 class _PhaseA2ShellState extends State<PhaseA2Shell> {
   int _index = 0;
   ZarNotificationPreferences _notificationPreferences = const ZarNotificationPreferences();
+  final RecordReminderRegistry _reminders = RecordReminderRegistry();
 
   final List<AppPerson> _people = [
     AppPerson(id: 'p1', name: 'علی رضایی', phone: '۰۹۱۲۱۲۳۴۵۶۷', note: 'مشتری ثابت'),
@@ -130,6 +135,27 @@ class _PhaseA2ShellState extends State<PhaseA2Shell> {
     ),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    for (final record in _records.where((r) => r.isObligation && r.status == SettlementStatus.open)) {
+      unawaited(
+        _reminders.setPlan(
+          record: record,
+          plan: ReminderPlan(
+            rules: [
+              ReminderRule.offset(
+                id: 'seed-${record.id}',
+                minutesBefore: _notificationPreferences.defaultReminderMinutes,
+              ),
+            ],
+          ),
+          personName: personName(record.personId),
+        ),
+      );
+    }
+  }
+
   String personName(String id) =>
       _people.firstWhere((e) => e.id == id, orElse: () => AppPerson(id: '-', name: 'نامشخص')).name;
 
@@ -145,6 +171,7 @@ class _PhaseA2ShellState extends State<PhaseA2Shell> {
     final index = _records.indexWhere((r) => r.id == updated.id);
     if (index == -1) return;
     setState(() => _records[index] = updated);
+    unawaited(_reminders.onRecordChanged(record: updated, personName: personName(updated.personId)));
   }
 
   void _savePerson(AppPerson person) {
@@ -209,24 +236,25 @@ class _PhaseA2ShellState extends State<PhaseA2Shell> {
     );
     if (draft == null) return;
     final isCurrency = draft.asset == 'ارز';
-    setState(() {
-      _records.add(
-        AppRecord(
-          id: 'n${DateTime.now().millisecondsSinceEpoch}',
-          type: (draft.operation == 'دریافت' || draft.operation == 'تحویل') ? RecordType.settlement : RecordType.deal,
-          operationLabel: draft.operation,
-          personId: draft.personId,
-          amountDisplay: isCurrency && draft.currencyCode != null
-              ? formatCurrencyAmount(draft.amount, draft.currencyCode!)
-              : draft.amount,
-          assetLabel: draft.asset == 'طلا' ? 'گرم طلا' : 'ارز',
-          currencyCode: draft.currencyCode,
-          date: draft.date,
-          time: draft.time,
-          note: draft.note.isEmpty ? null : draft.note,
-        ),
-      );
-    });
+    final record = AppRecord(
+      id: 'n${DateTime.now().millisecondsSinceEpoch}',
+      type: (draft.operation == 'دریافت' || draft.operation == 'تحویل') ? RecordType.settlement : RecordType.deal,
+      operationLabel: draft.operation,
+      personId: draft.personId,
+      amountDisplay: isCurrency && draft.currencyCode != null
+          ? formatCurrencyAmount(draft.amount, draft.currencyCode!)
+          : draft.amount,
+      assetLabel: draft.asset == 'طلا' ? 'گرم طلا' : 'ارز',
+      currencyCode: draft.currencyCode,
+      date: draft.date,
+      time: draft.time,
+      note: draft.note.isEmpty ? null : draft.note,
+    );
+    setState(() => _records.add(record));
+    if (record.isObligation) {
+      final plan = reminderPlanFromLegacyLabel(draft.reminder);
+      unawaited(_reminders.setPlan(record: record, plan: plan, personName: personName(record.personId)));
+    }
   }
 
   Future<void> _openRecord(AppRecord record) async {
@@ -283,7 +311,11 @@ class _PhaseA2ShellState extends State<PhaseA2Shell> {
         onSnooze: () async {
           final value = await showReminderPickerBottomSheet(context, initialDate: record.date, initialTime: record.time);
           if (value == null) return;
-          _updateRecord(record.copyWith(date: value.$1, time: value.$2));
+          await _reminders.snooze(
+            record: record,
+            until: dueDateTimeFromJalali(value.$1, value.$2),
+            personName: personName(record.personId),
+          );
           if (mounted) Navigator.pop(context);
         },
       ),
