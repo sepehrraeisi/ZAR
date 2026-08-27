@@ -148,8 +148,8 @@ class ZarPerson {
   ZarPerson({
     required this.id,
     required this.displayName,
-    this.phone,
-    this.note,
+    String? phone,
+    String? note,
     this.archived = false,
     required this.createdAt,
     required this.updatedAt,
@@ -180,7 +180,7 @@ class ZarDeal {
     required this.amount,
     required this.dealAt,
     this.status = ZarDealStatus.active,
-    this.note,
+    String? note,
     required this.createdBy,
     required this.createdAt,
     required this.updatedAt,
@@ -205,7 +205,7 @@ class ZarSettlement {
   ZarSettlement({
     required this.id,
     required this.businessId,
-    this.dealId,
+    String? dealId,
     required this.personId,
     required this.direction,
     required this.amount,
@@ -213,8 +213,8 @@ class ZarSettlement {
     required this.hasTime,
     this.status = ZarSettlementStatus.open,
     this.completedAt,
-    this.completedBy,
-    this.note,
+    String? completedBy,
+    String? note,
     required this.createdBy,
     required this.createdAt,
     required this.updatedAt,
@@ -250,7 +250,7 @@ class ZarSettlement {
 }
 
 String normalizeDecimal(String input) {
-  var value = input.trim()
+  final value = input.trim()
       .replaceAll('۰', '0')
       .replaceAll('۱', '1')
       .replaceAll('۲', '2')
