@@ -25,6 +25,9 @@ class ZarNativeNotificationRuntime {
   Future<void> install() async {
     if (kIsWeb) return;
     RecordReminderRegistry.defaultScheduler = scheduler;
+    NotificationSettingsScreen.defaultRequestPermission = requestPermission;
+    NotificationSettingsScreen.defaultOpenSystemSettings = openSystemSettings;
+    NotificationSettingsScreen.defaultPreferencesChanged = updatePreferences;
     _installPrivacyPolicy();
     // Initialization is safe because the adapter defers permission prompts.
     await scheduler.initialize();
