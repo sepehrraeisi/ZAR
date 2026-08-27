@@ -16,21 +16,32 @@ void main() {
 
     expect(result.succeeded, isTrue);
     expect(result.error, isNull);
+    expect(result.canRetry, isFalse);
     expect(coordinator.inFlight, isFalse);
   });
 
-  test('reports failure and preserves the error for retry UX', () async {
+  test('reports failure and preserves the operation for retry UX', () async {
     final coordinator = ZarWriteCoordinator();
     final error = StateError('network unavailable');
+    var attempts = 0;
 
-    final result = await coordinator.run(() async => throw error);
+    final result = await coordinator.run(() async {
+      attempts += 1;
+      if (attempts == 1) throw error;
+    });
 
     expect(result.succeeded, isFalse);
     expect(result.error, same(error));
-    expect(coordinator.inFlight, isFalse);
+    expect(result.canRetry, isTrue);
+    expect(coordinator.hasRetryableFailure, isTrue);
+
+    final retried = await result.retry!.call();
+    expect(retried.succeeded, isTrue);
+    expect(attempts, 2);
+    expect(coordinator.hasRetryableFailure, isFalse);
   });
 
-  test('rejects a second concurrent write', () async {
+  test('rejects a second concurrent write without replacing retry state', () async {
     final coordinator = ZarWriteCoordinator();
     final gate = Completer<void>();
 
@@ -39,8 +50,19 @@ void main() {
 
     expect(second.succeeded, isFalse);
     expect(second.error, isA<ZarWriteAlreadyInFlight>());
+    expect(second.canRetry, isFalse);
 
     gate.complete();
     expect((await first).succeeded, isTrue);
+  });
+
+  test('retry without a previous failed write fails safely', () async {
+    final coordinator = ZarWriteCoordinator();
+
+    final result = await coordinator.retryLastFailure();
+
+    expect(result.succeeded, isFalse);
+    expect(result.error, isA<ZarNoFailedWrite>());
+    expect(result.canRetry, isFalse);
   });
 }
