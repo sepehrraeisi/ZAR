@@ -8,8 +8,10 @@ import 'package:shamsi_date/shamsi_date.dart';
 import 'app_core.dart';
 import 'application/zar_legacy_presentation_bridge.dart';
 import 'application/zar_phase_a2_store.dart';
+import 'application/zar_write_coordinator.dart';
 import 'data/zar_domain_repository.dart';
 import 'domain/zar_domain_models.dart';
+import 'features/notifications/native_notification_runtime.dart';
 import 'features/notifications/notification_center.dart';
 import 'features/people/archived_people_screen.dart';
 import 'features/reminders/record_reminder_registry.dart';
@@ -42,31 +44,66 @@ class RepositoryZarPlusApp extends StatelessWidget {
         textDirection: TextDirection.rtl,
         child: child ?? const SizedBox.shrink(),
       ),
-      home: RepositoryPhaseA2Shell(repository: repository ?? buildPhaseA2PreviewRepository()),
+      home: RepositoryPhaseA2Shell(
+        repository: repository ?? buildPhaseA2PreviewRepository(),
+      ),
     );
   }
 
   ThemeData _theme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     const accent = Color(0xFFC08A3D);
-    final surface = isDark ? const Color(0xFF151515) : const Color(0xFFFBFAF8);
+    final surface =
+        isDark ? const Color(0xFF151515) : const Color(0xFFFBFAF8);
     final card = isDark ? const Color(0xFF1D1D1D) : Colors.white;
-    final primaryText = isDark ? const Color(0xFFF4F4F4) : const Color(0xFF121212);
-    final secondaryText = isDark ? const Color(0xFFA9A9A9) : const Color(0xFF707070);
+    final primaryText =
+        isDark ? const Color(0xFFF4F4F4) : const Color(0xFF121212);
+    final secondaryText =
+        isDark ? const Color(0xFFA9A9A9) : const Color(0xFF707070);
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       scaffoldBackgroundColor: surface,
       fontFamily: 'Vazirmatn',
-      colorScheme: ColorScheme.fromSeed(seedColor: accent, brightness: brightness, surface: card),
-      dividerColor: isDark ? const Color(0xFF303030) : const Color(0xFFECEAE6),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: accent,
+        brightness: brightness,
+        surface: card,
+      ),
+      dividerColor:
+          isDark ? const Color(0xFF303030) : const Color(0xFFECEAE6),
       textTheme: TextTheme(
-        headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: primaryText, height: 1.35),
-        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: primaryText, height: 1.35),
-        titleMedium: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: primaryText, height: 1.45),
-        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: primaryText, height: 1.55),
-        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: secondaryText, height: 1.6),
+        headlineSmall: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          color: primaryText,
+          height: 1.35,
+        ),
+        titleLarge: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: primaryText,
+          height: 1.35,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          color: primaryText,
+          height: 1.45,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: primaryText,
+          height: 1.55,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: secondaryText,
+          height: 1.6,
+        ),
       ),
       appBarTheme: AppBarTheme(
         elevation: 0,
@@ -76,17 +113,24 @@ class RepositoryZarPlusApp extends StatelessWidget {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? const Color(0xFF252525) : const Color(0xFFF6F4F1),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+        fillColor:
+            isDark ? const Color(0xFF252525) : const Color(0xFFF6F4F1),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: accent, width: 1.2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: card,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
       ),
     );
   }
@@ -98,7 +142,8 @@ class RepositoryPhaseA2Shell extends StatefulWidget {
   final ZarDomainRepository repository;
 
   @override
-  State<RepositoryPhaseA2Shell> createState() => _RepositoryPhaseA2ShellState();
+  State<RepositoryPhaseA2Shell> createState() =>
+      _RepositoryPhaseA2ShellState();
 }
 
 class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
@@ -112,7 +157,9 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
     bridge: _bridge,
   );
   final RecordReminderRegistry _reminders = RecordReminderRegistry();
-  ZarNotificationPreferences _notificationPreferences = const ZarNotificationPreferences();
+  final ZarWriteCoordinator _writes = ZarWriteCoordinator();
+
+  late ZarNotificationPreferences _notificationPreferences;
   int _index = 0;
   bool _ready = false;
   Object? _loadError;
@@ -121,7 +168,14 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
   @override
   void initState() {
     super.initState();
+    _notificationPreferences = ZarNativeNotificationRuntime.instance.preferences;
     unawaited(_load());
+  }
+
+  @override
+  void dispose() {
+    ZarNativeNotificationRuntime.instance.setRecordTapHandler(null);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -132,6 +186,10 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
         _ready = true;
         _loadError = null;
       });
+
+      ZarNativeNotificationRuntime.instance
+          .setRecordTapHandler(_handleNativeRecordTap);
+
       for (final record in openObligations) {
         unawaited(
           _reminders.setPlan(
@@ -140,7 +198,8 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
               rules: [
                 ReminderRule.offset(
                   id: 'seed-${record.id}',
-                  minutesBefore: _notificationPreferences.defaultReminderMinutes,
+                  minutesBefore:
+                      _notificationPreferences.defaultReminderMinutes,
                 ),
               ],
             ),
@@ -153,31 +212,92 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
     }
   }
 
-  List<AppRecord> get records => _store.records;
-  List<AppRecord> get openObligations => records
-      .where((r) => r.type == RecordType.settlement && r.status == SettlementStatus.open)
-      .toList(growable: false);
-  List<AppRecord> get historyRecords => records
-      .where((r) => r.type == RecordType.settlement && r.status != SettlementStatus.open)
-      .toList(growable: false);
-
-  Future<void> _runWrite(Future<void> Function() action) async {
-    if (_writing) return;
-    setState(() => _writing = true);
-    try {
-      await action();
-      if (mounted) setState(() {});
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اطلاعات ثبت نشد. دوباره تلاش کنید.')),
-      );
-    } finally {
-      if (mounted) setState(() => _writing = false);
-    }
+  void _handleNativeRecordTap(String recordId) {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_ready) return;
+      final record = _store.recordById(recordId);
+      if (record == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('این یادآوری دیگر در دسترس نیست.')),
+        );
+        return;
+      }
+      unawaited(_openRecord(record));
+    });
   }
 
-  Future<void> _savePerson(AppPerson person) => _runWrite(() => _store.savePerson(person));
+  List<AppRecord> get records => _store.records;
+  List<AppRecord> get openObligations => records
+      .where(
+        (r) =>
+            r.type == RecordType.settlement &&
+            r.status == SettlementStatus.open,
+      )
+      .toList(growable: false);
+  List<AppRecord> get historyRecords => records
+      .where(
+        (r) =>
+            r.type == RecordType.settlement &&
+            r.status != SettlementStatus.open,
+      )
+      .toList(growable: false);
+
+  Future<bool> _runWrite(Future<void> Function() action) async {
+    if (_writing) return false;
+    setState(() => _writing = true);
+    final result = await _writes.run(action);
+    if (!mounted) return result.succeeded;
+
+    setState(() => _writing = false);
+    if (result.succeeded) {
+      setState(() {});
+      return true;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('اطلاعات ثبت نشد. دوباره تلاش کنید.'),
+        duration: const Duration(seconds: 6),
+        action: result.canRetry
+            ? SnackBarAction(
+                label: 'تلاش دوباره',
+                onPressed: () => unawaited(_retryLastWrite()),
+              )
+            : null,
+      ),
+    );
+    return false;
+  }
+
+  Future<bool> _retryLastWrite() async {
+    if (_writing || !_writes.hasRetryableFailure) return false;
+    setState(() => _writing = true);
+    final result = await _writes.retryLastFailure();
+    if (!mounted) return result.succeeded;
+    setState(() => _writing = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result.succeeded
+              ? 'اطلاعات با موفقیت ثبت شد.'
+              : 'ثبت اطلاعات دوباره ناموفق بود.',
+        ),
+        action: !result.succeeded && result.canRetry
+            ? SnackBarAction(
+                label: 'تلاش دوباره',
+                onPressed: () => unawaited(_retryLastWrite()),
+              )
+            : null,
+      ),
+    );
+    if (result.succeeded) setState(() {});
+    return result.succeeded;
+  }
+
+  Future<bool> _savePerson(AppPerson person) =>
+      _runWrite(() => _store.savePerson(person));
 
   Future<void> _archivePerson(AppPerson person) async {
     final shouldArchive = await confirmArchiveWithOpenObligations(
@@ -185,18 +305,24 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
       openObligations: _store.openCountFor(person.id),
     );
     if (!mounted || !shouldArchive) return;
-    await _runWrite(() => _store.archivePerson(person));
-    if (mounted) Navigator.of(context).maybePop();
+    final saved = await _runWrite(() => _store.archivePerson(person));
+    if (mounted && saved) Navigator.of(context).maybePop();
   }
 
-  Future<void> _restorePerson(String personId) async {
+  Future<bool> _restorePerson(String personId) async {
     final person = _store.personById(personId);
-    if (person == null) return;
-    await _runWrite(() => _store.restorePerson(person));
+    if (person == null) return false;
+    return _runWrite(() => _store.restorePerson(person));
   }
 
-  Future<void> _updateRecord(AppRecord updated, {String action = 'edit'}) async {
-    await _runWrite(() => _store.saveRecord(updated, auditAction: action));
+  Future<bool> _updateRecord(
+    AppRecord updated, {
+    String action = 'edit',
+  }) async {
+    final saved =
+        await _runWrite(() => _store.saveRecord(updated, auditAction: action));
+    if (!saved) return false;
+
     final persisted = _store.recordById(updated.id);
     if (persisted != null) {
       unawaited(
@@ -206,6 +332,7 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
         ),
       );
     }
+    return true;
   }
 
   Future<void> _openQuickAdd() async {
@@ -233,7 +360,10 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
       time: draft.time,
       note: draft.note.isEmpty ? null : draft.note,
     );
-    await _runWrite(() => _store.saveRecord(record, auditAction: 'create'));
+    final saved =
+        await _runWrite(() => _store.saveRecord(record, auditAction: 'create'));
+    if (!saved) return;
+
     final persisted = _store.recordById(record.id);
     if (persisted?.isObligation == true) {
       unawaited(
@@ -275,12 +405,18 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
         record: record,
         personName: _store.personName(record.personId),
         onComplete: () async {
-          await _updateRecord(record.copyWith(status: SettlementStatus.completed), action: 'complete');
-          if (mounted) Navigator.pop(context);
+          final saved = await _updateRecord(
+            record.copyWith(status: SettlementStatus.completed),
+            action: 'complete',
+          );
+          if (mounted && saved) Navigator.pop(context);
         },
         onCancel: () async {
-          await _updateRecord(record.copyWith(status: SettlementStatus.cancelled), action: 'cancel');
-          if (mounted) Navigator.pop(context);
+          final saved = await _updateRecord(
+            record.copyWith(status: SettlementStatus.cancelled),
+            action: 'cancel',
+          );
+          if (mounted && saved) Navigator.pop(context);
         },
         onEdit: () async {
           final updated = await showModalBottomSheet<AppRecord>(
@@ -299,8 +435,11 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
           if (!mounted || date == null) return;
           final time = await pickCupertinoTime(context, record.time);
           if (!mounted) return;
-          await _updateRecord(record.copyWith(date: date, time: time), action: 'reschedule');
-          if (mounted) Navigator.pop(context);
+          final saved = await _updateRecord(
+            record.copyWith(date: date, time: time),
+            action: 'reschedule',
+          );
+          if (mounted && saved) Navigator.pop(context);
         },
         onSnooze: () async {
           final value = await showReminderPickerBottomSheet(
@@ -325,12 +464,14 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
       MaterialPageRoute(
         builder: (_) => ArchivedPeopleScreen(
           people: _store.archivedPeople
-              .map((p) => ArchivedPersonViewData(
-                    id: p.id,
-                    name: p.name,
-                    phone: p.phone,
-                    openObligations: _store.openCountFor(p.id),
-                  ))
+              .map(
+                (p) => ArchivedPersonViewData(
+                  id: p.id,
+                  name: p.name,
+                  phone: p.phone,
+                  openObligations: _store.openCountFor(p.id),
+                ),
+              )
               .toList(growable: false),
           onOpenPerson: (id) {
             final person = _store.personById(id);
@@ -341,8 +482,8 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
             }
           },
           onRestore: (id) async {
-            await _restorePerson(id);
-            if (mounted) Navigator.of(context).pop();
+            final restored = await _restorePerson(id);
+            if (mounted && restored) Navigator.of(context).pop();
           },
         ),
       ),
@@ -372,18 +513,23 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
     bool overdue = false,
   }) =>
       source
-          .map((record) => ZarNotificationItem(
-                id: 'notification-${record.id}',
-                recordId: record.id,
-                title: '${record.operationLabel} • ${_store.personName(record.personId)}',
-                subtitle: _notificationPreferences.privacy == NotificationPrivacy.private
-                    ? 'یک یادآوری کاری دارید.'
-                    : _notificationPreferences.privacy == NotificationPrivacy.limited
-                        ? '${record.operationLabel} برای ${_store.personName(record.personId)}'
-                        : '${record.assetLabel} • ${record.amountDisplay}',
-                timeLabel: record.timeLabel(),
-                isOverdue: overdue,
-              ))
+          .map(
+            (record) => ZarNotificationItem(
+              id: 'notification-${record.id}',
+              recordId: record.id,
+              title:
+                  '${record.operationLabel} • ${_store.personName(record.personId)}',
+              subtitle: _notificationPreferences.privacy ==
+                      NotificationPrivacy.private
+                  ? 'یک یادآوری کاری دارید.'
+                  : _notificationPreferences.privacy ==
+                          NotificationPrivacy.limited
+                      ? '${record.operationLabel} برای ${_store.personName(record.personId)}'
+                      : '${record.assetLabel} • ${record.amountDisplay}',
+              timeLabel: record.timeLabel(),
+              isOverdue: overdue,
+            ),
+          )
           .toList(growable: false);
 
   Future<void> _openNotificationCenter() async {
@@ -402,9 +548,9 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
             openObligations.where((r) => r.date.compareTo(now) > 0),
           ),
           onOpenRecord: (recordId) {
-            final record = _store.recordById(recordId);
+            final target = _store.recordById(recordId);
             Navigator.of(context).pop();
-            if (record != null) _openRecord(record);
+            if (target != null) _openRecord(target);
           },
           onOpenSettings: _openNotificationSettings,
         ),
@@ -417,7 +563,8 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
       MaterialPageRoute(
         builder: (_) => NotificationSettingsScreen(
           initial: _notificationPreferences,
-          onChanged: (value) => setState(() => _notificationPreferences = value),
+          onChanged: (value) =>
+              setState(() => _notificationPreferences = value),
         ),
       ),
     );
@@ -435,7 +582,10 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
               children: [
                 const Text('بارگذاری اطلاعات انجام نشد.'),
                 const SizedBox(height: 12),
-                OutlinedButton(onPressed: _load, child: const Text('تلاش دوباره')),
+                OutlinedButton(
+                  onPressed: _load,
+                  child: const Text('تلاش دوباره'),
+                ),
               ],
             ),
           ),
@@ -443,7 +593,9 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
       );
     }
     if (!_ready) {
-      return const Scaffold(body: Center(child: CupertinoActivityIndicator()));
+      return const Scaffold(
+        body: Center(child: CupertinoActivityIndicator()),
+      );
     }
 
     final pages = [
@@ -478,13 +630,18 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
         ),
         onOpenArchive: _openArchive,
       ),
-      HistoryScreen(records: historyRecords, personName: _store.personName),
+      HistoryScreen(
+        records: historyRecords,
+        personName: _store.personName,
+      ),
     ];
 
     return Stack(
       children: [
         Scaffold(
-          body: SafeArea(child: IndexedStack(index: _index, children: pages)),
+          body: SafeArea(
+            child: IndexedStack(index: _index, children: pages),
+          ),
           bottomNavigationBar: ZBottomBar(
             currentIndex: _index,
             onTap: (value) {
@@ -498,7 +655,7 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
         ),
         if (_writing)
           const Positioned.fill(
-            child: IgnorePointer(
+            child: AbsorbPointer(
               child: ColoredBox(
                 color: Color(0x11000000),
                 child: Align(
@@ -530,21 +687,126 @@ ZarDomainRepository buildPhaseA2PreviewRepository() {
 
   final created = now.subtract(const Duration(days: 90)).toUtc();
   final people = [
-    ZarPerson(id: 'p1', displayName: 'علی رضایی', phone: '۰۹۱۲۱۲۳۴۵۶۷', note: 'مشتری ثابت', createdAt: created, updatedAt: created, createdBy: 'preview-user'),
-    ZarPerson(id: 'p2', displayName: 'رضا محمدی', phone: '۰۹۱۲۴۴۴۵۵۶۶', createdAt: created, updatedAt: created, createdBy: 'preview-user'),
-    ZarPerson(id: 'p3', displayName: 'حسن کریمی', phone: '۰۹۱۲۳۳۳۴۴۵۵', createdAt: created, updatedAt: created, createdBy: 'preview-user'),
-    ZarPerson(id: 'p4', displayName: 'مهدی احمدی', note: 'ترجیح تماس بعدازظهر', createdAt: created, updatedAt: created, createdBy: 'preview-user'),
-    ZarPerson(id: 'p5', displayName: 'کامران حسینی', phone: '۰۹۱۲۹۹۹۸۸۷۷', archived: true, createdAt: created, updatedAt: created, createdBy: 'preview-user'),
+    ZarPerson(
+      id: 'p1',
+      displayName: 'علی رضایی',
+      phone: '۰۹۱۲۱۲۳۴۵۶۷',
+      note: 'مشتری ثابت',
+      createdAt: created,
+      updatedAt: created,
+      createdBy: 'preview-user',
+    ),
+    ZarPerson(
+      id: 'p2',
+      displayName: 'رضا محمدی',
+      phone: '۰۹۱۲۴۴۴۵۵۶۶',
+      createdAt: created,
+      updatedAt: created,
+      createdBy: 'preview-user',
+    ),
+    ZarPerson(
+      id: 'p3',
+      displayName: 'حسن کریمی',
+      phone: '۰۹۱۲۳۳۳۴۴۵۵',
+      createdAt: created,
+      updatedAt: created,
+      createdBy: 'preview-user',
+    ),
+    ZarPerson(
+      id: 'p4',
+      displayName: 'مهدی احمدی',
+      note: 'ترجیح تماس بعدازظهر',
+      createdAt: created,
+      updatedAt: created,
+      createdBy: 'preview-user',
+    ),
+    ZarPerson(
+      id: 'p5',
+      displayName: 'کامران حسینی',
+      phone: '۰۹۱۲۹۹۹۸۸۷۷',
+      archived: true,
+      createdAt: created,
+      updatedAt: created,
+      createdBy: 'preview-user',
+    ),
   ];
+
   ZarCurrencyAssetAmount usd(String amount) => ZarCurrencyAssetAmount(
-        ZarCurrencyAmount(code: 'USD', minorUnits: int.parse(amount) * 100),
+        ZarCurrencyAmount(
+          code: 'USD',
+          minorUnits: int.parse(amount) * 100,
+        ),
       );
+
   final settlements = [
-    ZarSettlement(id: 's1', businessId: 'preview-business', personId: 'p2', direction: ZarSettlementDirection.deliver, amount: usd('10000'), scheduledAt: at(today.addDays(-1), 11), hasTime: true, createdBy: 'preview-user', createdAt: created, updatedAt: created),
-    ZarSettlement(id: 's2', businessId: 'preview-business', personId: 'p1', direction: ZarSettlementDirection.receive, amount: ZarGoldAssetAmount(ZarGoldQuantity(decimal: '250')), scheduledAt: at(today, 10, 30), hasTime: true, createdBy: 'preview-user', createdAt: created, updatedAt: created),
-    ZarSettlement(id: 's3', businessId: 'preview-business', personId: 'p3', direction: ZarSettlementDirection.deliver, amount: ZarCurrencyAssetAmount(ZarCurrencyAmount(code: 'EUR', minorUnits: 500000)), scheduledAt: at(today, 14, 45), hasTime: true, createdBy: 'preview-user', createdAt: created, updatedAt: created),
-    ZarSettlement(id: 's4', businessId: 'preview-business', personId: 'p4', direction: ZarSettlementDirection.receive, amount: ZarGoldAssetAmount(ZarGoldQuantity(decimal: '400')), scheduledAt: at(today.addDays(1), 12), hasTime: false, createdBy: 'preview-user', createdAt: created, updatedAt: created),
-    ZarSettlement(id: 's5', businessId: 'preview-business', personId: 'p2', direction: ZarSettlementDirection.deliver, amount: usd('8000'), scheduledAt: at(today.addDays(-2), 12, 20), hasTime: true, status: ZarSettlementStatus.completed, completedAt: at(today.addDays(-2), 12, 25), completedBy: 'preview-user', createdBy: 'preview-user', createdAt: created, updatedAt: created),
+    ZarSettlement(
+      id: 's1',
+      businessId: 'preview-business',
+      personId: 'p2',
+      direction: ZarSettlementDirection.deliver,
+      amount: usd('10000'),
+      scheduledAt: at(today.addDays(-1), 11),
+      hasTime: true,
+      createdBy: 'preview-user',
+      createdAt: created,
+      updatedAt: created,
+    ),
+    ZarSettlement(
+      id: 's2',
+      businessId: 'preview-business',
+      personId: 'p1',
+      direction: ZarSettlementDirection.receive,
+      amount: ZarGoldAssetAmount(ZarGoldQuantity(decimal: '250')),
+      scheduledAt: at(today, 10, 30),
+      hasTime: true,
+      createdBy: 'preview-user',
+      createdAt: created,
+      updatedAt: created,
+    ),
+    ZarSettlement(
+      id: 's3',
+      businessId: 'preview-business',
+      personId: 'p3',
+      direction: ZarSettlementDirection.deliver,
+      amount: ZarCurrencyAssetAmount(
+        ZarCurrencyAmount(code: 'EUR', minorUnits: 500000),
+      ),
+      scheduledAt: at(today, 14, 45),
+      hasTime: true,
+      createdBy: 'preview-user',
+      createdAt: created,
+      updatedAt: created,
+    ),
+    ZarSettlement(
+      id: 's4',
+      businessId: 'preview-business',
+      personId: 'p4',
+      direction: ZarSettlementDirection.receive,
+      amount: ZarGoldAssetAmount(ZarGoldQuantity(decimal: '400')),
+      scheduledAt: at(today.addDays(1), 12),
+      hasTime: false,
+      createdBy: 'preview-user',
+      createdAt: created,
+      updatedAt: created,
+    ),
+    ZarSettlement(
+      id: 's5',
+      businessId: 'preview-business',
+      personId: 'p2',
+      direction: ZarSettlementDirection.deliver,
+      amount: usd('8000'),
+      scheduledAt: at(today.addDays(-2), 12, 20),
+      hasTime: true,
+      status: ZarSettlementStatus.completed,
+      completedAt: at(today.addDays(-2), 12, 25),
+      completedBy: 'preview-user',
+      createdBy: 'preview-user',
+      createdAt: created,
+      updatedAt: created,
+    ),
   ];
-  return InMemoryZarDomainRepository(people: people, settlements: settlements);
+  return InMemoryZarDomainRepository(
+    people: people,
+    settlements: settlements,
+  );
 }
