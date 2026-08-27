@@ -98,6 +98,36 @@ void main() {
     expect(saved.reminderPlan.rules.single.minutesBefore, 30);
   });
 
+  test('new settlement persists selected reminder plan in the same save', () async {
+    final repo = InMemoryZarDomainRepository(people: [person('p1')]);
+    final store = ZarPhaseA2Store(repository: repo, bridge: bridge, clock: () => now);
+    await store.refresh();
+
+    final record = AppRecord(
+      id: 'new-reminder',
+      type: RecordType.settlement,
+      operationLabel: 'دریافت',
+      personId: 'p1',
+      amountDisplay: '۲۵۰',
+      assetLabel: 'گرم طلا',
+      date: Jalali(1405, 6, 5),
+      time: const TimeOfDay(hour: 12, minute: 30),
+    );
+    const plan = ZarReminderPlan(
+      rules: [ZarReminderRule.offset(id: '30m', minutesBefore: 30)],
+    );
+
+    await store.saveRecord(
+      record,
+      auditAction: 'create',
+      reminderPlan: plan,
+    );
+
+    final saved = (await repo.loadPersonSettlements(personId: 'p1')).single;
+    expect(saved.reminderPlan.rules.single.minutesBefore, 30);
+    expect(store.reminderPlanFor('new-reminder').rules.single.id, '30m');
+  });
+
   test('reminder plan is persisted independently of native scheduling', () async {
     final repo = InMemoryZarDomainRepository(
       people: [person('p1')],
