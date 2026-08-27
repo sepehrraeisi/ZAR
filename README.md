@@ -1,50 +1,62 @@
-# flutter_app
+# ZAR+
 
-A new Flutter project.
+ZAR+ is a private Persian-first Flutter application for operational gold and foreign-currency workflows.
 
-## Getting Started
+## Current development status
 
-This project is a starting point for a Flutter application.
+Development is continuing on `codex/phase-a2-ux` before production Firebase activation.
 
-A few resources to get you started if this is your first Flutter project:
+### Implemented foundation
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Persian-first RTL / Jalali operational UI
+- strict Deal vs Settlement separation
+- Home actions for complete / cancel / reschedule / snooze
+- Notification Center and notification settings foundation
+- archived people list with Restore
+- exact gold decimal model and exact currency minor-unit model
+- Persian/Arabic/Latin amount parsing without binary floating point
+- structured reminder plans and reminder lifecycle registry
+- repository boundary (`ZarDomainRepository`) independent from Firestore
+- deterministic in-memory repository for tests and previews
+- Firestore mapper/repository, audit-write foundation, security rules and indexes
+- versioned JSON backup and Persian CSV export foundation
+- Persian email/password authentication UI foundation
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Repository-backed UI migration
+
+The polished Phase A.2 UI still uses the original lightweight `AppPerson` / `AppRecord` presentation types, but it now has a production migration path:
+
+- `ZarWorkspaceController` owns operational repository-backed state and mutations.
+- `ZarLegacyPresentationBridge` converts between the current presentation types and production `Zar*` domain models while preserving exact currency/gold values.
+- `ZarPhaseA2Store` loads people, recent deals and settlements through `ZarDomainRepository` and exposes them to the current UI shape.
+- create/edit/complete/cancel/reschedule/archive/restore operations can now pass through the repository boundary rather than directly mutating Firestore or relying on display strings.
+
+This bridge is transitional. Firestore must never depend on legacy presentation models.
+
+## Firebase safety
+
+Firebase dependencies are present, but production activation remains intentionally opt-in until the correct Firebase application configuration for package/bundle identity `com.zarplus.app` is available.
+
+Do not commit service-account keys, `.env` secrets, signing keys, APNs credentials, or Firebase admin credentials.
+
+## CI note
+
+GitHub Actions previously completed Flutter analyze, tests and web preview builds successfully on this branch. Recent hosted-runner jobs are failing before the first workflow step starts (`steps: null`) and therefore currently provide no actionable Flutter compiler/test failure. Do not merge this branch until a normal runner execution validates the latest repository/store/parser tests.
 
 ## Next Development Pass (Do Not Skip)
 
-### 1) Notification Center is a core operational feature
-- Home bell icon must open a real Persian RTL `اعلان‌ها` screen (not decorative).
-- Must show operational reminder events: due soon, overdue, snoozed returns, upcoming deliveries/receipts.
-- Notification items must be tappable and deep-link to the relevant record/settlement.
-- Include subtle unread state + optional unread badge/count on bell.
-- Keep the UI minimal and operational (not social feed style).
+### Notification Center
 
-#### Notification settings (`تنظیمات اعلان‌ها`)
-- اعلان‌ها: on/off
-- صدا: supported app notification behavior/sound options within platform limits
-- ویبره: where OS supports it
-- نمایش روی صفحه قفل: based on permissions/platform capability
-- حریم خصوصی اعلان: `کامل` / `محدود` / `خصوصی`
-- یادآوری‌های پیش‌فرض: 15m, 30m, 1h, 3h, 1d before
-- Snooze defaults: 15m, 30m, 1h, 3h, tomorrow, custom time
+The Home bell is a real operational entry point, not decorative. The final native implementation must support scheduled reminder delivery, cancellation/rescheduling, privacy levels, sound/vibration within platform capability, notification deep-linking and later FCM/APNs multi-device support.
 
-#### Notification architecture requirement
-- Keep notification UI and scheduling as separate services.
-- Support: local scheduling, update-on-reschedule, cancel-on-complete/cancel, deep-link open.
-- Prepare architecture for future FCM/APNs and multi-device sync.
+### Archived People
 
-### 2) Archived People must never disappear
-- Archive means hidden from active People list, not deleted/inaccessible.
-- Add explicit destination/filter: `بایگانی‌شده‌ها` / `اشخاص بایگانی‌شده`.
-- Archived people must remain searchable, openable, and restorable (`بازگردانی از بایگانی`).
-- Archiving must not delete/detach deals, settlements, history, audit logs, or completed records.
-- If person has open obligations, require confirmation before archive; do not silently cancel obligations.
+Archive means hidden from the active People list, never deleted. Archived people must remain searchable/openable, retain all deals/settlements/history, and support Restore. Open obligations are not silently cancelled by archiving.
 
-### Constraints for next pass
-- Firebase integration remains paused.
-- Resume from Phase A.1 codebase after this GitHub backup.
+### Remaining production work
+
+1. Switch the default Phase A.2 shell from direct local lists to `ZarPhaseA2Store`.
+2. Preserve current minimal UI behavior while repository mutations become authoritative.
+3. Activate Firebase Auth/Firestore only with the correct `com.zarplus.app` configuration.
+4. Implement real native scheduled notifications and real-device iOS validation.
+5. Validate backup/restore and disaster-recovery flows before production use.
