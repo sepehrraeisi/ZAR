@@ -190,23 +190,10 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
       ZarNativeNotificationRuntime.instance
           .setRecordTapHandler(_handleNativeRecordTap);
 
-      for (final record in openObligations) {
-        unawaited(
-          _reminders.setPlan(
-            record: record,
-            plan: ReminderPlan(
-              rules: [
-                ReminderRule.offset(
-                  id: 'seed-${record.id}',
-                  minutesBefore:
-                      _notificationPreferences.defaultReminderMinutes,
-                ),
-              ],
-            ),
-            personName: _store.personName(record.personId),
-          ),
-        );
-      }
+      // Rebuild native delivery strictly from persisted settlement intent.
+      // No default reminder is invented during startup: an empty persisted plan
+      // means the user has no reminder configured for that settlement.
+      await _reconcileAllReminders(showFailure: false);
     } catch (error) {
       if (mounted) setState(() => _loadError = error);
     }
@@ -242,6 +229,34 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
             r.status != SettlementStatus.open,
       )
       .toList(growable: false);
+
+  Future<void> _reconcileReminderFor(
+    AppRecord record, {
+    bool showFailure = true,
+  }) async {
+    if (record.type != RecordType.settlement) return;
+    try {
+      final plan = reminderPlanFromDomain(_store.reminderPlanFor(record.id));
+      await _reminders.setPlan(
+        record: record,
+        plan: plan,
+        personName: _store.personName(record.personId),
+      );
+    } catch (_) {
+      if (!mounted || !showFailure) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('اطلاعات ثبت شد، اما یادآوری دستگاه به‌روزرسانی نشد.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _reconcileAllReminders({bool showFailure = true}) async {
+    for (final record in records.where((r) => r.type == RecordType.settlement)) {
+      await _reconcileReminderFor(record, showFailure: showFailure);
+    }
+  }
 
   Future<bool> _runWrite(Future<void> Function() action) async {
     if (_writing) return false;
@@ -292,7 +307,10 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
             : null,
       ),
     );
-    if (result.succeeded) setState(() {});
+    if (result.succeeded) {
+      setState(() {});
+      await _reconcileAllReminders();
+    }
     return result.succeeded;
   }
 
@@ -325,12 +343,7 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
 
     final persisted = _store.recordById(updated.id);
     if (persisted != null) {
-      unawaited(
-        _reminders.onRecordChanged(
-          record: persisted,
-          personName: _store.personName(persisted.personId),
-        ),
-      );
+      await _reconcileReminderFor(persisted);
     }
     return true;
   }
@@ -360,19 +373,24 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
       time: draft.time,
       note: draft.note.isEmpty ? null : draft.note,
     );
-    final saved =
-        await _runWrite(() => _store.saveRecord(record, auditAction: 'create'));
+
+    final runtimePlan = record.type == RecordType.settlement
+        ? reminderPlanFromLegacyLabel(draft.reminder)
+        : const ReminderPlan();
+    final saved = await _runWrite(
+      () => _store.saveRecord(
+        record,
+        auditAction: 'create',
+        reminderPlan: record.type == RecordType.settlement
+            ? reminderPlanToDomain(runtimePlan)
+            : null,
+      ),
+    );
     if (!saved) return;
 
     final persisted = _store.recordById(record.id);
     if (persisted?.isObligation == true) {
-      unawaited(
-        _reminders.setPlan(
-          record: persisted!,
-          plan: reminderPlanFromLegacyLabel(draft.reminder),
-          personName: _store.personName(persisted.personId),
-        ),
-      );
+      await _reconcileReminderFor(persisted!);
     }
   }
 
@@ -448,11 +466,23 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
             initialTime: record.time,
           );
           if (value == null) return;
-          await _reminders.snooze(
-            record: record,
-            until: dueDateTimeFromJalali(value.$1, value.$2),
-            personName: _store.personName(record.personId),
+
+          final until = dueDateTimeFromJalali(value.$1, value.$2);
+          final current = reminderPlanFromDomain(_store.reminderPlanFor(record.id));
+          final snoozed = current.copyWith(snoozedUntil: until);
+          final saved = await _runWrite(
+            () => _store.saveReminderPlan(
+              record.id,
+              reminderPlanToDomain(snoozed),
+              auditAction: 'snooze',
+            ),
           );
+          if (!saved) return;
+
+          final persisted = _store.recordById(record.id);
+          if (persisted != null) {
+            await _reconcileReminderFor(persisted);
+          }
           if (mounted) Navigator.pop(context);
         },
       ),
