@@ -1,3 +1,5 @@
+import 'zar_reminder_plan.dart';
+
 enum ZarAssetType { gold, currency }
 
 enum ZarDealType { buy, sell }
@@ -212,6 +214,7 @@ class ZarSettlement {
     required this.scheduledAt,
     required this.hasTime,
     this.status = ZarSettlementStatus.open,
+    this.reminderPlan = const ZarReminderPlan(),
     this.completedAt,
     String? completedBy,
     String? note,
@@ -239,6 +242,7 @@ class ZarSettlement {
   final DateTime scheduledAt;
   final bool hasTime;
   final ZarSettlementStatus status;
+  final ZarReminderPlan reminderPlan;
   final DateTime? completedAt;
   final String? completedBy;
   final String? note;
