@@ -24,3 +24,23 @@ Thumbs.db
 
 # Keep lib/ directory for source code!
 
+# Flutter platform build outputs
+**/build/
+android/.gradle/
+android/local.properties
+ios/Pods/
+macos/Pods/
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+
+# Firebase / signing / secrets
+android/app/google-services.json
+android/key.properties
+android/release-key.jks
+*.jks
+*.keystore
+*.p12
+.env
+.env.*
+*.secret
+
