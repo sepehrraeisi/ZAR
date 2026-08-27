@@ -6,6 +6,22 @@ import 'package:timezone/timezone.dart' as tz;
 import 'reminder_model.dart';
 import 'reminder_scheduler.dart';
 
+class _NativeReminderSpec {
+  const _NativeReminderSpec({
+    required this.recordId,
+    required this.dueAt,
+    required this.plan,
+    required this.title,
+    required this.body,
+  });
+
+  final String recordId;
+  final DateTime dueAt;
+  final ReminderPlan plan;
+  final String title;
+  final String body;
+}
+
 /// Native iOS/Android implementation of [ReminderScheduler].
 ///
 /// Permission prompts are intentionally deferred: [initialize] never asks for
@@ -15,10 +31,12 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   FlutterLocalNotificationScheduler({
     FlutterLocalNotificationsPlugin? plugin,
     this.timeZoneName = 'Asia/Tehran',
+    bool enabled = true,
     bool playSound = true,
     bool enableVibration = true,
     this.onRecordTapped,
   })  : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+        _enabled = enabled,
         _playSound = playSound,
         _enableVibration = enableVibration;
 
@@ -31,19 +49,43 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   final FlutterLocalNotificationsPlugin _plugin;
   final String timeZoneName;
   final ValueChanged<String>? onRecordTapped;
+  final Map<String, _NativeReminderSpec> _specs = {};
 
+  bool _enabled;
   bool _playSound;
   bool _enableVibration;
   bool _initialized = false;
   late tz.Location _location;
 
   bool get initialized => _initialized;
+  bool get enabled => _enabled;
   bool get playSound => _playSound;
   bool get enableVibration => _enableVibration;
 
-  void configure({required bool playSound, required bool enableVibration}) {
+  /// Applies app-level delivery preferences. Disabling notifications removes
+  /// native pending requests but keeps the business reminder plans in memory;
+  /// re-enabling schedules those plans again.
+  Future<void> configure({
+    required bool enabled,
+    required bool playSound,
+    required bool enableVibration,
+  }) async {
+    _enabled = enabled;
     _playSound = playSound;
     _enableVibration = enableVibration;
+    if (kIsWeb) return;
+    await initialize();
+
+    if (!_enabled) {
+      await _plugin.cancelAllPendingNotifications();
+      return;
+    }
+
+    final specs = List<_NativeReminderSpec>.from(_specs.values);
+    await _plugin.cancelAllPendingNotifications();
+    for (final spec in specs) {
+      await _scheduleSpec(spec);
+    }
   }
 
   Future<void> initialize() async {
@@ -100,8 +142,6 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     return await _plugin.openAppNotificationSettings() ?? false;
   }
 
-  /// Returns a record id if the application was launched by tapping one of our
-  /// local reminders. Call this after [initialize] during native app startup.
   Future<String?> initialRecordId() async {
     if (kIsWeb) return null;
     await initialize();
@@ -117,20 +157,31 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     required String title,
     required String body,
   }) async {
+    final spec = _NativeReminderSpec(
+      recordId: recordId,
+      dueAt: dueAt,
+      plan: plan,
+      title: title,
+      body: body,
+    );
+    _specs[recordId] = spec;
     if (kIsWeb) return;
     await initialize();
-    await cancelForRecord(recordId);
+    await _cancelNativeForRecord(recordId);
+    if (_enabled) await _scheduleSpec(spec);
+  }
 
+  Future<void> _scheduleSpec(_NativeReminderSpec spec) async {
     final now = DateTime.now().toUtc();
-    for (final fireAt in plan.resolveTimes(dueAt)) {
+    for (final fireAt in spec.plan.resolveTimes(spec.dueAt)) {
       final utc = fireAt.toUtc();
       if (!utc.isAfter(now)) continue;
 
       final channelId = _playSound ? _soundChannelId : _silentChannelId;
       await _plugin.zonedSchedule(
-        id: _stableNotificationId(recordId, utc),
-        title: title,
-        body: body,
+        id: _stableNotificationId(spec.recordId, utc),
+        title: spec.title,
+        body: spec.body,
         scheduledDate: tz.TZDateTime.from(utc, _location),
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
@@ -149,15 +200,20 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        payload: '$_payloadPrefix$recordId',
+        payload: '$_payloadPrefix${spec.recordId}',
       );
     }
   }
 
   @override
   Future<void> cancelForRecord(String recordId) async {
+    _specs.remove(recordId);
     if (kIsWeb) return;
     await initialize();
+    await _cancelNativeForRecord(recordId);
+  }
+
+  Future<void> _cancelNativeForRecord(String recordId) async {
     final payload = '$_payloadPrefix$recordId';
     final pending = await _plugin.pendingNotificationRequests();
     for (final request in pending.where((item) => item.payload == payload)) {
@@ -167,10 +223,6 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
 
   @override
   Future<List<ScheduledReminder>> pendingForRecord(String recordId) async {
-    // The native plugin exposes pending ids/title/body but not the resolved
-    // schedule timestamp consistently on every platform. Business logic should
-    // remain sourced from ReminderPlan; deterministic schedule assertions use
-    // InMemoryReminderScheduler in tests and web preview.
     return const [];
   }
 
@@ -181,7 +233,6 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   }
 
   static int _stableNotificationId(String recordId, DateTime scheduledAt) {
-    // Stable 31-bit FNV-1a. Dart String.hashCode is not a persistence contract.
     var hash = 0x811c9dc5;
     final value = '$recordId:${scheduledAt.toUtc().millisecondsSinceEpoch}';
     for (final unit in value.codeUnits) {
