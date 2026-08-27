@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/zar_domain_models.dart';
+import '../../domain/zar_reminder_plan.dart';
 
 class ZarFirestoreMapper {
   const ZarFirestoreMapper();
@@ -67,6 +68,7 @@ class ZarFirestoreMapper {
         'status': settlement.status.name,
         'scheduledAt': Timestamp.fromDate(settlement.scheduledAt.toUtc()),
         'hasTime': settlement.hasTime,
+        'reminderPlan': _reminderPlanToFirestore(settlement.reminderPlan),
         'completedAt': settlement.completedAt == null
             ? null
             : Timestamp.fromDate(settlement.completedAt!.toUtc()),
@@ -93,6 +95,7 @@ class ZarFirestoreMapper {
         scheduledAt: _date(map['scheduledAt']),
         hasTime: map['hasTime'] as bool? ?? true,
         status: ZarSettlementStatus.values.byName(map['status']! as String),
+        reminderPlan: _reminderPlanFromFirestore(map['reminderPlan']),
         completedAt: map['completedAt'] == null ? null : _date(map['completedAt']),
         completedBy: map['completedBy'] as String?,
         note: map['note'] as String?,
@@ -100,6 +103,52 @@ class ZarFirestoreMapper {
         createdAt: _date(map['createdAt']),
         updatedAt: _date(map['updatedAt']),
       );
+
+  Map<String, Object?> _reminderPlanToFirestore(ZarReminderPlan plan) => {
+        'rules': plan.rules
+            .map((rule) => <String, Object?>{
+                  'id': rule.id,
+                  'type': rule.type.name,
+                  'minutesBefore': rule.minutesBefore,
+                  'customAt': rule.customAt == null
+                      ? null
+                      : Timestamp.fromDate(rule.customAt!.toUtc()),
+                  'enabled': rule.enabled,
+                })
+            .toList(growable: false),
+        'snoozedUntil': plan.snoozedUntil == null
+            ? null
+            : Timestamp.fromDate(plan.snoozedUntil!.toUtc()),
+      };
+
+  ZarReminderPlan _reminderPlanFromFirestore(Object? value) {
+    if (value == null) return const ZarReminderPlan();
+    if (value is! Map) {
+      throw const FormatException('Invalid settlement reminderPlan.');
+    }
+    final map = Map<String, Object?>.from(value);
+    final rawRules = map['rules'] as List<Object?>? ?? const [];
+    return ZarReminderPlan(
+      rules: rawRules.map((raw) {
+        final rule = Map<String, Object?>.from(raw! as Map);
+        final type = ZarReminderRuleType.values.byName(rule['type']! as String);
+        if (type == ZarReminderRuleType.offset) {
+          return ZarReminderRule.offset(
+            id: rule['id']! as String,
+            minutesBefore: rule['minutesBefore']! as int,
+            enabled: rule['enabled'] as bool? ?? true,
+          );
+        }
+        return ZarReminderRule.custom(
+          id: rule['id']! as String,
+          customAt: _date(rule['customAt']).toUtc(),
+          enabled: rule['enabled'] as bool? ?? true,
+        );
+      }).toList(growable: false),
+      snoozedUntil:
+          map['snoozedUntil'] == null ? null : _date(map['snoozedUntil']).toUtc(),
+    );
+  }
 
   Map<String, Object?> _amountFields(ZarAssetAmount amount) {
     switch (amount) {
