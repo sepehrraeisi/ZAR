@@ -38,9 +38,7 @@ class ZarNativeNotificationRuntime {
   void updatePreferences(ZarNotificationPreferences value) {
     _preferences = value;
     _installPrivacyPolicy();
-    // UI preference changes are synchronous; native rescheduling is serialized
-    // by the scheduler and does not block rebuilding the settings screen.
-    unawaited(_applyDeliveryPreferences());
+    unawaited(_applyPreferenceChange());
   }
 
   Future<bool> requestPermission() => scheduler.requestPermission();
@@ -48,6 +46,14 @@ class ZarNativeNotificationRuntime {
   Future<bool> openSystemSettings() => scheduler.openSystemNotificationSettings();
 
   Future<String?> initialRecordId() => scheduler.initialRecordId();
+
+  Future<void> _applyPreferenceChange() async {
+    await _applyDeliveryPreferences();
+    // Rebuild already-pending title/body after a privacy change. This prevents
+    // an old Full/Limited notification from lingering after the user switches
+    // to Private mode.
+    await RecordReminderRegistry.refreshAllScheduledContent();
+  }
 
   Future<void> _applyDeliveryPreferences() async {
     final wantsSound = _preferences.enabled &&
