@@ -6,7 +6,9 @@ import 'package:flutter_app/app_core.dart';
 import 'package:flutter_app/features/editors/confirmed_editors.dart';
 
 void main() {
-  testWidgets('person editor stays open when persistence fails', (tester) async {
+  testWidgets('person editor stays open when persistence fails', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -26,8 +28,9 @@ void main() {
     expect(find.text('ذخیره'), findsOneWidget);
   });
 
-  testWidgets('person editor dismisses only after successful persistence',
-      (tester) async {
+  testWidgets('person editor dismisses only after successful persistence', (
+    tester,
+  ) async {
     var saved = false;
     await tester.pumpWidget(
       MaterialApp(
@@ -50,15 +53,18 @@ void main() {
     await tester.tap(find.text('باز کردن'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'رضا محمدی');
-    await tester.tap(find.text('ذخیره'));
+    final saveButton = find.text('ذخیره');
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
     expect(saved, isTrue);
     expect(find.text('افزودن شخص'), findsNothing);
   });
 
-  testWidgets('record editor keeps record sheet available after failed save',
-      (tester) async {
+  testWidgets('record editor keeps record sheet available after failed save', (
+    tester,
+  ) async {
     final record = AppRecord(
       id: 's1',
       type: RecordType.settlement,

@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_app/repository_phase_a2_app_v2.dart';
 
 void main() {
-  testWidgets('settlement action exposes persistent reminder management',
-      (tester) async {
+  testWidgets('settlement action exposes persistent reminder management', (
+    tester,
+  ) async {
     await tester.pumpWidget(const RepositoryZarPlusAppV2());
     await tester.pumpAndSettle();
 
@@ -23,15 +24,19 @@ void main() {
     expect(find.text('۱ ساعت قبل'), findsOneWidget);
   });
 
-  testWidgets('people add flow uses confirmed persistence editor',
-      (tester) async {
+  testWidgets('people add flow uses confirmed persistence editor', (
+    tester,
+  ) async {
     await tester.pumpWidget(const RepositoryZarPlusAppV2());
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('اشخاص').last);
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('افزودن'));
+    await tester.pumpAndSettle();
+
     final addPerson = find.text('افزودن شخص');
-    expect(addPerson, findsWidgets);
+    expect(addPerson, findsOneWidget);
   });
 }

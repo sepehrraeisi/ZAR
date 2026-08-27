@@ -61,13 +61,12 @@ class RepositoryZarPlusAppV2 extends StatelessWidget {
   ThemeData _theme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     const accent = Color(0xFFC08A3D);
-    final surface =
-        isDark ? const Color(0xFF151515) : const Color(0xFFFBFAF8);
+    final surface = isDark ? const Color(0xFF151515) : const Color(0xFFFBFAF8);
     final card = isDark ? const Color(0xFF1D1D1D) : Colors.white;
-    final primary =
-        isDark ? const Color(0xFFF4F4F4) : const Color(0xFF121212);
-    final secondary =
-        isDark ? const Color(0xFFA9A9A9) : const Color(0xFF707070);
+    final primary = isDark ? const Color(0xFFF4F4F4) : const Color(0xFF121212);
+    final secondary = isDark
+        ? const Color(0xFFA9A9A9)
+        : const Color(0xFF707070);
 
     return ThemeData(
       useMaterial3: true,
@@ -79,8 +78,7 @@ class RepositoryZarPlusAppV2 extends StatelessWidget {
         brightness: brightness,
         surface: card,
       ),
-      dividerColor:
-          isDark ? const Color(0xFF303030) : const Color(0xFFECEAE6),
+      dividerColor: isDark ? const Color(0xFF303030) : const Color(0xFFECEAE6),
       textTheme: TextTheme(
         headlineSmall: TextStyle(
           fontSize: 24,
@@ -121,8 +119,7 @@ class RepositoryZarPlusAppV2 extends StatelessWidget {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor:
-            isDark ? const Color(0xFF252525) : const Color(0xFFF6F4F1),
+        fillColor: isDark ? const Color(0xFF252525) : const Color(0xFFF6F4F1),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -131,8 +128,10 @@ class RepositoryZarPlusAppV2 extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: accent, width: 1.2),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 13,
+        ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: card,
@@ -154,8 +153,7 @@ class _RepositoryPhaseA2ShellV2 extends StatefulWidget {
       _RepositoryPhaseA2ShellV2State();
 }
 
-class _RepositoryPhaseA2ShellV2State
-    extends State<_RepositoryPhaseA2ShellV2> {
+class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
   static const _bridge = ZarLegacyPresentationBridge(
     businessId: 'preview-business',
     userId: 'preview-user',
@@ -169,10 +167,10 @@ class _RepositoryPhaseA2ShellV2State
   final ZarWriteCoordinator _writes = ZarWriteCoordinator();
   late final PersistedReminderCoordinator _persistedReminders =
       PersistedReminderCoordinator(
-    store: _store,
-    registry: _registry,
-    personName: _store.personName,
-  );
+        store: _store,
+        registry: _registry,
+        personName: _store.personName,
+      );
 
   late ZarNotificationPreferences _notificationPreferences;
   int _index = 0;
@@ -183,7 +181,8 @@ class _RepositoryPhaseA2ShellV2State
   @override
   void initState() {
     super.initState();
-    _notificationPreferences = ZarNativeNotificationRuntime.instance.preferences;
+    _notificationPreferences =
+        ZarNativeNotificationRuntime.instance.preferences;
     unawaited(_load());
   }
 
@@ -206,7 +205,7 @@ class _RepositoryPhaseA2ShellV2State
   List<AppRecord> get historyRecords => records
       .where(
         (record) =>
-            record.type == RecordType.settlement &&
+            record.type == RecordType.deal ||
             record.status != SettlementStatus.open,
       )
       .toList(growable: false);
@@ -219,8 +218,9 @@ class _RepositoryPhaseA2ShellV2State
         _ready = true;
         _loadError = null;
       });
-      ZarNativeNotificationRuntime.instance
-          .setRecordTapHandler(_handleNativeRecordTap);
+      ZarNativeNotificationRuntime.instance.setRecordTapHandler(
+        _handleNativeRecordTap,
+      );
       try {
         await _persistedReminders.reconcileAll(records);
       } catch (_) {
@@ -286,6 +286,7 @@ class _RepositoryPhaseA2ShellV2State
       try {
         await _persistedReminders.reconcileAll(records);
       } catch (_) {}
+      if (!mounted) return result.succeeded;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -350,7 +351,8 @@ class _RepositoryPhaseA2ShellV2State
   Future<void> _saveQuickAddDraftOrThrow(QuickAddDraft draft) async {
     if (_writing) throw StateError('Write already in progress.');
 
-    final isSettlement = draft.operation == 'دریافت' || draft.operation == 'تحویل';
+    final isSettlement =
+        draft.operation == 'دریافت' || draft.operation == 'تحویل';
     final isCurrency = draft.asset == 'ارز';
     final currencyCode = draft.currencyCode;
 
@@ -385,8 +387,7 @@ class _RepositoryPhaseA2ShellV2State
       await _store.saveRecord(
         record,
         auditAction: 'create',
-        reminderPlan:
-            isSettlement ? reminderPlanToDomain(runtimePlan) : null,
+        reminderPlan: isSettlement ? reminderPlanToDomain(runtimePlan) : null,
       );
       final persisted = _store.recordById(record.id);
       if (persisted?.isObligation == true) {
@@ -655,47 +656,45 @@ class _RepositoryPhaseA2ShellV2State
   }
 
   Widget _buildPersonDetail(AppPerson person) => PersonDetailScreen(
-        person: person,
-        records: records,
-        personName: _store.personName,
-        onTapRecord: _openRecord,
-        onEditPerson: (target) async {
-          await showModalBottomSheet<AppPerson>(
-            context: context,
-            isScrollControlled: true,
-            useSafeArea: true,
-            builder: (_) => ConfirmedPersonEditorSheet(
-              existing: target,
-              onSave: _savePersonOrThrow,
-            ),
-          );
-        },
-        onArchivePerson: (_) => _archivePerson(person),
+    person: person,
+    records: records,
+    personName: _store.personName,
+    onTapRecord: _openRecord,
+    onEditPerson: (target) async {
+      await showModalBottomSheet<AppPerson>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (_) => ConfirmedPersonEditorSheet(
+          existing: target,
+          onSave: _savePersonOrThrow,
+        ),
       );
+    },
+    onArchivePerson: (_) => _archivePerson(person),
+  );
 
   List<ZarNotificationItem> _notificationItemsFor(
     Iterable<AppRecord> source, {
     bool overdue = false,
-  }) =>
-      source
-          .map(
-            (record) => ZarNotificationItem(
-              id: 'notification-${record.id}',
-              recordId: record.id,
-              title:
-                  '${record.operationLabel} • ${_store.personName(record.personId)}',
-              subtitle: _notificationPreferences.privacy ==
-                      NotificationPrivacy.private
-                  ? 'یک یادآوری کاری دارید.'
-                  : _notificationPreferences.privacy ==
-                          NotificationPrivacy.limited
-                      ? '${record.operationLabel} برای ${_store.personName(record.personId)}'
-                      : '${record.assetLabel} • ${record.amountDisplay}',
-              timeLabel: record.timeLabel(),
-              isOverdue: overdue,
-            ),
-          )
-          .toList(growable: false);
+  }) => source
+      .map(
+        (record) => ZarNotificationItem(
+          id: 'notification-${record.id}',
+          recordId: record.id,
+          title:
+              '${record.operationLabel} • ${_store.personName(record.personId)}',
+          subtitle:
+              _notificationPreferences.privacy == NotificationPrivacy.private
+              ? 'یک یادآوری کاری دارید.'
+              : _notificationPreferences.privacy == NotificationPrivacy.limited
+              ? '${record.operationLabel} برای ${_store.personName(record.personId)}'
+              : '${record.assetLabel} • ${record.amountDisplay}',
+          timeLabel: record.timeLabel(),
+          isOverdue: overdue,
+        ),
+      )
+      .toList(growable: false);
 
   Future<void> _openNotificationCenter() async {
     final now = Jalali.now();
@@ -755,9 +754,7 @@ class _RepositoryPhaseA2ShellV2State
       );
     }
     if (!_ready) {
-      return const Scaffold(
-        body: Center(child: CupertinoActivityIndicator()),
-      );
+      return const Scaffold(body: Center(child: CupertinoActivityIndicator()));
     }
 
     final pages = [
@@ -783,19 +780,19 @@ class _RepositoryPhaseA2ShellV2State
             context: context,
             isScrollControlled: true,
             useSafeArea: true,
-            builder: (_) => ConfirmedPersonEditorSheet(
-              onSave: _savePersonOrThrow,
-            ),
+            builder: (_) =>
+                ConfirmedPersonEditorSheet(onSave: _savePersonOrThrow),
           );
         },
-        onOpenPerson: (person) => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => _buildPersonDetail(person)),
-        ),
+        onOpenPerson: (person) => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => _buildPersonDetail(person))),
         onOpenArchive: _openArchive,
       ),
       HistoryScreen(
         records: historyRecords,
         personName: _store.personName,
+        onTapRecord: _openRecord,
       ),
     ];
 

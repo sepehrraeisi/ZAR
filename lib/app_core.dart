@@ -19,11 +19,7 @@ class ZarPlusApp extends StatelessWidget {
       title: 'ZAR+',
       locale: const Locale('fa', 'IR'),
       supportedLocales: const [Locale('fa', 'IR'), Locale('en', 'US')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      localizationsDelegates: const [GlobalMaterialLocalizations.delegate, GlobalWidgetsLocalizations.delegate, GlobalCupertinoLocalizations.delegate],
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: ThemeMode.light,
@@ -57,12 +53,7 @@ class ZarPlusApp extends StatelessWidget {
         labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary),
       ),
       dividerColor: isDark ? const Color(0xFF303030) : const Color(0xFFECEAE6),
-      appBarTheme: AppBarTheme(
-        elevation: 0,
-        backgroundColor: surface,
-        foregroundColor: textPrimary,
-        centerTitle: false,
-      ),
+      appBarTheme: AppBarTheme(elevation: 0, backgroundColor: surface, foregroundColor: textPrimary, centerTitle: false),
       cardTheme: CardThemeData(
         color: card,
         elevation: 0,
@@ -90,16 +81,10 @@ enum RecordType { settlement, deal }
 
 enum SettlementStatus { open, completed, cancelled }
 
-enum HistoryFilter { all, completed, cancelled }
+enum HistoryFilter { all, buy, sell, receive, deliver, completed, cancelled }
 
 class AppPerson {
-  AppPerson({
-    required this.id,
-    required this.name,
-    this.phone,
-    this.note,
-    this.archived = false,
-  });
+  AppPerson({required this.id, required this.name, this.phone, this.note, this.archived = false});
 
   final String id;
   final String name;
@@ -108,13 +93,7 @@ class AppPerson {
   final bool archived;
 
   AppPerson copyWith({String? name, String? phone, String? note, bool? archived}) {
-    return AppPerson(
-      id: id,
-      name: name ?? this.name,
-      phone: phone ?? this.phone,
-      note: note ?? this.note,
-      archived: archived ?? this.archived,
-    );
+    return AppPerson(id: id, name: name ?? this.name, phone: phone ?? this.phone, note: note ?? this.note, archived: archived ?? this.archived);
   }
 }
 
@@ -364,15 +343,7 @@ class _ZarShellState extends State<ZarShell> {
       date: Jalali.now(),
       time: const TimeOfDay(hour: 14, minute: 45),
     ),
-    AppRecord(
-      id: 's4',
-      type: RecordType.settlement,
-      operationLabel: 'دریافت',
-      personId: 'p4',
-      amountDisplay: '۴۰۰',
-      assetLabel: 'گرم طلا',
-      date: Jalali.now().addDays(1),
-    ),
+    AppRecord(id: 's4', type: RecordType.settlement, operationLabel: 'دریافت', personId: 'p4', amountDisplay: '۴۰۰', assetLabel: 'گرم طلا', date: Jalali.now().addDays(1)),
     AppRecord(
       id: 'd1',
       type: RecordType.deal,
@@ -410,7 +381,12 @@ class _ZarShellState extends State<ZarShell> {
   ];
 
   String personName(String id) {
-    return _people.firstWhere((e) => e.id == id, orElse: () => AppPerson(id: '-', name: 'نامشخص')).name;
+    return _people
+        .firstWhere(
+          (e) => e.id == id,
+          orElse: () => AppPerson(id: '-', name: 'نامشخص'),
+        )
+        .name;
   }
 
   List<AppPerson> get activePeople => _people.where((p) => !p.archived).toList(growable: false);
@@ -419,10 +395,9 @@ class _ZarShellState extends State<ZarShell> {
 
   List<AppRecord> get calendarRecords => _records.where((r) => r.status == SettlementStatus.open).toList(growable: false);
 
-  List<AppRecord> get historyRecords => _records
-      .where((r) => r.type == RecordType.settlement && (r.status == SettlementStatus.completed || r.status == SettlementStatus.cancelled))
-      .toList(growable: false)
-    ..sort((a, b) => b.date.compareTo(a.date));
+  List<AppRecord> get historyRecords =>
+      _records.where((r) => r.type == RecordType.deal || r.status == SettlementStatus.completed || r.status == SettlementStatus.cancelled).toList(growable: false)
+        ..sort((a, b) => b.date.compareTo(a.date));
 
   void _updateRecord(AppRecord updated) {
     final index = _records.indexWhere((r) => r.id == updated.id);
@@ -554,12 +529,7 @@ class _ZarShellState extends State<ZarShell> {
         people: activePeople,
         records: _records,
         onAddPerson: () async {
-          final person = await showModalBottomSheet<AppPerson>(
-            context: context,
-            isScrollControlled: true,
-            useSafeArea: true,
-            builder: (_) => const PersonEditorSheet(),
-          );
+          final person = await showModalBottomSheet<AppPerson>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const PersonEditorSheet());
           if (person != null) {
             await _savePerson(person);
           }
@@ -589,11 +559,13 @@ class _ZarShellState extends State<ZarShell> {
           );
         },
       ),
-      HistoryScreen(records: historyRecords, personName: personName),
+      HistoryScreen(records: historyRecords, personName: personName, onTapRecord: _openRecord),
     ];
 
     return Scaffold(
-      body: SafeArea(child: IndexedStack(index: _index, children: pages)),
+      body: SafeArea(
+        child: IndexedStack(index: _index, children: pages),
+      ),
       bottomNavigationBar: ZBottomBar(
         currentIndex: _index,
         onTap: (value) {
@@ -633,7 +605,10 @@ class ZBottomBar extends StatelessWidget {
               children: [
                 Icon(icon, size: 20, color: color),
                 const SizedBox(height: 4),
-                Text(label, style: TextStyle(fontSize: 11.5, color: color, fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 11.5, color: color, fontWeight: selected ? FontWeight.w600 : FontWeight.w500),
+                ),
               ],
             ),
           ),
@@ -642,7 +617,10 @@ class ZBottomBar extends StatelessWidget {
     }
 
     return Container(
-      decoration: BoxDecoration(color: theme.colorScheme.surface, border: Border(top: BorderSide(color: theme.dividerColor))),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(top: BorderSide(color: theme.dividerColor)),
+      ),
       child: SafeArea(
         top: false,
         child: SizedBox(
@@ -679,6 +657,7 @@ class ZBottomBar extends StatelessWidget {
     );
   }
 }
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord});
 
@@ -771,9 +750,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       children: [
                         IconButton(onPressed: () => setState(() => _month = _month.addMonths(-1)), icon: const Icon(CupertinoIcons.chevron_right)),
                         Expanded(
-                          child: Center(
-                            child: Text('${monthName(_month.month)} ${toPersianDigits(_month.year.toString())}', style: Theme.of(context).textTheme.titleMedium),
-                          ),
+                          child: Center(child: Text('${monthName(_month.month)} ${toPersianDigits(_month.year.toString())}', style: Theme.of(context).textTheme.titleMedium)),
                         ),
                         IconButton(onPressed: () => setState(() => _month = _month.addMonths(1)), icon: const Icon(CupertinoIcons.chevron_left)),
                       ],
@@ -834,13 +811,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 }
 
 class PeopleScreen extends StatefulWidget {
-  const PeopleScreen({
-    super.key,
-    required this.people,
-    required this.records,
-    required this.onAddPerson,
-    required this.onOpenPerson,
-  });
+  const PeopleScreen({super.key, required this.people, required this.records, required this.onAddPerson, required this.onOpenPerson});
 
   final List<AppPerson> people;
   final List<AppRecord> records;
@@ -907,15 +878,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
 }
 
 class PersonDetailScreen extends StatelessWidget {
-  const PersonDetailScreen({
-    super.key,
-    required this.person,
-    required this.records,
-    required this.personName,
-    required this.onTapRecord,
-    required this.onEditPerson,
-    required this.onArchivePerson,
-  });
+  const PersonDetailScreen({super.key, required this.person, required this.records, required this.personName, required this.onTapRecord, required this.onEditPerson, required this.onArchivePerson});
 
   final AppPerson person;
   final List<AppRecord> records;
@@ -938,10 +901,7 @@ class PersonDetailScreen extends StatelessWidget {
           Text(person.name, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 4),
           Text(person.phone ?? 'شماره تماس ثبت نشده است.', style: Theme.of(context).textTheme.bodyMedium),
-          if ((person.note ?? '').trim().isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(person.note!, style: Theme.of(context).textTheme.bodyMedium),
-          ],
+          if ((person.note ?? '').trim().isNotEmpty) ...[const SizedBox(height: 4), Text(person.note!, style: Theme.of(context).textTheme.bodyMedium)],
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -981,10 +941,11 @@ class PersonDetailScreen extends StatelessWidget {
 }
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key, required this.records, required this.personName});
+  const HistoryScreen({super.key, required this.records, required this.personName, this.onTapRecord});
 
   final List<AppRecord> records;
   final String Function(String) personName;
+  final ValueChanged<AppRecord>? onTapRecord;
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -996,14 +957,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    var items = widget.records;
-    if (filter != HistoryFilter.all) {
-      final target = filter == HistoryFilter.completed ? SettlementStatus.completed : SettlementStatus.cancelled;
-      items = items.where((e) => e.status == target).toList(growable: false);
-    }
-    if (query.trim().isNotEmpty) {
-      items = items.where((e) => widget.personName(e.personId).contains(query.trim()) || e.operationLabel.contains(query.trim())).toList(growable: false);
-    }
+    final normalizedQuery = query.trim().toLowerCase();
+    final items =
+        widget.records
+            .where(_matchesFilter)
+            .where((record) {
+              if (normalizedQuery.isEmpty) return true;
+              final searchable = <String>[
+                widget.personName(record.personId),
+                record.operationLabel,
+                record.assetLabel,
+                record.amountDisplay,
+                record.currencyCode ?? '',
+                record.note ?? '',
+                if (record.type == RecordType.settlement) record.statusLabel(),
+              ].join(' ').toLowerCase();
+              return searchable.contains(normalizedQuery);
+            })
+            .toList(growable: false)
+          ..sort(_compareNewestFirst);
 
     return Scaffold(
       appBar: AppBar(title: const Text('سوابق')),
@@ -1011,15 +983,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         child: Column(
           children: [
-            TextField(decoration: const InputDecoration(prefixIcon: Icon(CupertinoIcons.search), hintText: 'جستجو'), onChanged: (value) => setState(() => query = value)),
+            TextField(
+              decoration: const InputDecoration(prefixIcon: Icon(CupertinoIcons.search), hintText: 'جستجو'),
+              onChanged: (value) => setState(() => query = value),
+            ),
             const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              children: [
-                _filterChip(context, 'همه', HistoryFilter.all),
-                _filterChip(context, 'انجام‌شده', HistoryFilter.completed),
-                _filterChip(context, 'لغو‌شده', HistoryFilter.cancelled),
-              ],
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _filterChip(context, 'همه', HistoryFilter.all),
+                  _filterChip(context, 'خرید', HistoryFilter.buy),
+                  _filterChip(context, 'فروش', HistoryFilter.sell),
+                  _filterChip(context, 'دریافت', HistoryFilter.receive),
+                  _filterChip(context, 'تحویل', HistoryFilter.deliver),
+                  _filterChip(context, 'انجام‌شده', HistoryFilter.completed),
+                  _filterChip(context, 'لغوشده', HistoryFilter.cancelled),
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             Expanded(
@@ -1029,7 +1010,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       itemCount: items.length,
                       itemBuilder: (context, index) {
                         final item = items[index];
-                        return SettlementRow(record: item, personName: widget.personName(item.personId));
+                        return HistoryRecordRow(
+                          key: ValueKey('history-record-${item.id}'),
+                          record: item,
+                          personName: widget.personName(item.personId),
+                          onTap: widget.onTapRecord == null ? null : () => widget.onTapRecord!(item),
+                        );
                       },
                     ),
             ),
@@ -1047,19 +1033,112 @@ class _HistoryScreenState extends State<HistoryScreen> {
       showCheckmark: false,
       selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
       side: BorderSide(color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.35) : Theme.of(context).dividerColor),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
       onSelected: (_) => setState(() => filter = value),
+    );
+  }
+
+  bool _matchesFilter(AppRecord record) {
+    switch (filter) {
+      case HistoryFilter.all:
+        return true;
+      case HistoryFilter.buy:
+        return record.type == RecordType.deal && record.operationLabel == 'خرید';
+      case HistoryFilter.sell:
+        return record.type == RecordType.deal && record.operationLabel == 'فروش';
+      case HistoryFilter.receive:
+        return record.type == RecordType.settlement && record.operationLabel == 'دریافت';
+      case HistoryFilter.deliver:
+        return record.type == RecordType.settlement && record.operationLabel == 'تحویل';
+      case HistoryFilter.completed:
+        return record.type == RecordType.settlement && record.status == SettlementStatus.completed;
+      case HistoryFilter.cancelled:
+        return record.type == RecordType.settlement && record.status == SettlementStatus.cancelled;
+    }
+  }
+
+  int _compareNewestFirst(AppRecord a, AppRecord b) {
+    final date = b.date.compareTo(a.date);
+    if (date != 0) return date;
+    final aMinutes = (a.time?.hour ?? -1) * 60 + (a.time?.minute ?? 0);
+    final bMinutes = (b.time?.hour ?? -1) * 60 + (b.time?.minute ?? 0);
+    return bMinutes.compareTo(aMinutes);
+  }
+}
+
+class HistoryRecordRow extends StatelessWidget {
+  const HistoryRecordRow({super.key, required this.record, required this.personName, this.onTap});
+
+  final AppRecord record;
+  final String personName;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isSettlement = record.type == RecordType.settlement;
+    final statusColor = record.status == SettlementStatus.completed ? const Color(0xFF2F7D4C) : const Color(0xFF9D3636);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: theme.dividerColor)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(record.operationLabel, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(personName, style: theme.textTheme.bodyMedium),
+                  const SizedBox(height: 5),
+                  Wrap(
+                    spacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      AmountText(record.amountDisplay),
+                      Text(record.assetLabel, style: theme.textTheme.bodyMedium),
+                      if (record.currencyCode != null)
+                        Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Text(record.currencyCode!, style: theme.textTheme.bodyMedium),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(formatJalaliDate(record.date), style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 2),
+                Text(record.timeLabel(), style: theme.textTheme.bodyMedium),
+                if (isSettlement) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    record.statusLabel(),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
 class SettlementRow extends StatelessWidget {
-  const SettlementRow({
-    super.key,
-    required this.record,
-    required this.personName,
-    this.onTap,
-    this.showOverdueTone = false,
-  });
+  const SettlementRow({super.key, required this.record, required this.personName, this.onTap, this.showOverdueTone = false});
 
   final AppRecord record;
   final String personName;
@@ -1072,10 +1151,10 @@ class SettlementRow extends StatelessWidget {
     final statusColor = showOverdueTone
         ? const Color(0xFF9D3636)
         : record.status == SettlementStatus.completed
-            ? const Color(0xFF2F7D4C)
-            : record.status == SettlementStatus.cancelled
-                ? const Color(0xFF9D3636)
-                : theme.textTheme.bodyMedium?.color;
+        ? const Color(0xFF2F7D4C)
+        : record.status == SettlementStatus.cancelled
+        ? const Color(0xFF9D3636)
+        : theme.textTheme.bodyMedium?.color;
 
     return InkWell(
       onTap: onTap,
@@ -1086,7 +1165,9 @@ class SettlementRow extends StatelessWidget {
       focusColor: Colors.transparent,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.dividerColor))),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: theme.dividerColor)),
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1098,7 +1179,13 @@ class SettlementRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(personName, style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.84))),
                   const SizedBox(height: 4),
-                  Wrap(spacing: 8, children: [AmountText(record.amountDisplay), Text(record.assetLabel, style: theme.textTheme.bodyMedium)]),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      AmountText(record.amountDisplay),
+                      Text(record.assetLabel, style: theme.textTheme.bodyMedium),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -1108,7 +1195,10 @@ class SettlementRow extends StatelessWidget {
               children: [
                 Text(record.timeLabel(), style: theme.textTheme.bodyMedium),
                 const SizedBox(height: 3),
-                Text(record.statusLabel(), style: theme.textTheme.bodyMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
+                Text(
+                  record.statusLabel(),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+                ),
               ],
             ),
           ],
@@ -1127,7 +1217,9 @@ class _ZEmptyRow extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor))),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
+      ),
       child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
     );
   }
@@ -1141,10 +1233,15 @@ class AmountText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.ltr,
-      child: Text(amount, textAlign: TextAlign.left, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+      child: Text(
+        amount,
+        textAlign: TextAlign.left,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
+
 class SettlementActionSheet extends StatelessWidget {
   const SettlementActionSheet({
     super.key,
@@ -1198,13 +1295,7 @@ class SettlementActionSheet extends StatelessWidget {
 }
 
 class DealDetailSheet extends StatelessWidget {
-  const DealDetailSheet({
-    super.key,
-    required this.record,
-    required this.personName,
-    required this.linkedSettlements,
-    required this.onOpenSettlement,
-  });
+  const DealDetailSheet({super.key, required this.record, required this.personName, required this.linkedSettlements, required this.onOpenSettlement});
 
   final AppRecord record;
   final String personName;
@@ -1224,17 +1315,11 @@ class DealDetailSheet extends StatelessWidget {
           Text(personName, style: Theme.of(context).textTheme.bodyLarge),
           const SizedBox(height: 4),
           Wrap(spacing: 8, children: [AmountText(record.amountDisplay), Text(record.assetLabel)]),
-          if ((record.note ?? '').isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(record.note!, style: Theme.of(context).textTheme.bodyMedium),
-          ],
+          if ((record.note ?? '').isNotEmpty) ...[const SizedBox(height: 8), Text(record.note!, style: Theme.of(context).textTheme.bodyMedium)],
           const SizedBox(height: 14),
           Text('تعهدهای لینک‌شده', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
-          if (linkedSettlements.isEmpty)
-            const Text('تعهد لینک‌شده‌ای ندارد.')
-          else
-            ...linkedSettlements.map((e) => SettlementRow(record: e, personName: personName, onTap: () => onOpenSettlement(e))),
+          if (linkedSettlements.isEmpty) const Text('تعهد لینک‌شده‌ای ندارد.') else ...linkedSettlements.map((e) => SettlementRow(record: e, personName: personName, onTap: () => onOpenSettlement(e))),
         ],
       ),
     );
@@ -1281,25 +1366,26 @@ class _EditRecordSheetState extends State<EditRecordSheet> {
                   }
                 },
               ),
-            TextField(controller: _amountController, decoration: const InputDecoration(labelText: 'مبلغ/مقدار')),
+            TextField(
+              controller: _amountController,
+              decoration: const InputDecoration(labelText: 'مبلغ/مقدار'),
+            ),
             const SizedBox(height: 10),
-            TextField(controller: _noteController, decoration: const InputDecoration(labelText: 'توضیحات'), maxLines: 2),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(labelText: 'توضیحات'),
+              maxLines: 2,
+            ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
                 onPressed: () {
                   final amountInput = _amountController.text.trim();
-                  final amountDisplay = widget.record.assetLabel == 'ارز' && _currencyCode != null
-                      ? formatCurrencyAmount(amountInput, _currencyCode!)
-                      : amountInput;
+                  final amountDisplay = widget.record.assetLabel == 'ارز' && _currencyCode != null ? formatCurrencyAmount(amountInput, _currencyCode!) : amountInput;
                   Navigator.pop(
                     context,
-                    widget.record.copyWith(
-                      amountDisplay: amountDisplay,
-                      currencyCode: widget.record.assetLabel == 'ارز' ? _currencyCode : null,
-                      note: _noteController.text.trim(),
-                    ),
+                    widget.record.copyWith(amountDisplay: amountDisplay, currencyCode: widget.record.assetLabel == 'ارز' ? _currencyCode : null, note: _noteController.text.trim()),
                   );
                 },
                 child: const Text('ذخیره'),
@@ -1336,11 +1422,22 @@ class _PersonEditorSheetState extends State<PersonEditorSheet> {
           children: [
             Text(widget.existing == null ? 'افزودن شخص' : 'ویرایش شخص', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'نام')),            
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'نام'),
+            ),
             const SizedBox(height: 10),
-            TextField(controller: _phoneController, decoration: const InputDecoration(labelText: 'شماره تماس (اختیاری)'), keyboardType: TextInputType.phone),
+            TextField(
+              controller: _phoneController,
+              decoration: const InputDecoration(labelText: 'شماره تماس (اختیاری)'),
+              keyboardType: TextInputType.phone,
+            ),
             const SizedBox(height: 10),
-            TextField(controller: _noteController, decoration: const InputDecoration(labelText: 'یادداشت (اختیاری)'), maxLines: 2),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(labelText: 'یادداشت (اختیاری)'),
+              maxLines: 2,
+            ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -1399,11 +1496,21 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(child: Container(width: 46, height: 4, decoration: BoxDecoration(color: Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(100)))),
+            Center(
+              child: Container(
+                width: 46,
+                height: 4,
+                decoration: BoxDecoration(color: Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(100)),
+              ),
+            ),
             const SizedBox(height: 16),
             Text('ثبت سریع', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
-            Wrap(spacing: 8, runSpacing: 8, children: ['خرید', 'فروش', 'دریافت', 'تحویل'].map((value) => _chip(context, value, _operation == value, () => setState(() => _operation = value))).toList()),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: ['خرید', 'فروش', 'دریافت', 'تحویل'].map((value) => _chip(context, value, _operation == value, () => setState(() => _operation = value))).toList(),
+            ),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -1489,7 +1596,11 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                 if (selected != null) setState(() => _reminder = selected);
               },
             ),
-            TextField(controller: _noteController, decoration: const InputDecoration(labelText: 'توضیحات (اختیاری)'), maxLines: 2),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(labelText: 'توضیحات (اختیاری)'),
+              maxLines: 2,
+            ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -1563,17 +1674,18 @@ class CalendarMonthGrid extends StatelessWidget {
           onTap: () => onDayTap(date),
           child: Container(
             margin: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.14) : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.14) : Colors.transparent, borderRadius: BorderRadius.circular(10)),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(toPersianDigits(day.toString()), style: Theme.of(context).textTheme.bodyLarge),
                 const SizedBox(height: 2),
                 if (hasEvent)
-                  Container(width: 5, height: 5, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), shape: BoxShape.circle))
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), shape: BoxShape.circle),
+                  )
                 else
                   const SizedBox(height: 5),
               ],
@@ -1585,14 +1697,11 @@ class CalendarMonthGrid extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: Theme.of(context).dividerColor)),
-      child: GridView.count(
-        shrinkWrap: true,
-        crossAxisCount: 7,
-        physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 0.9,
-        children: cells,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
+      child: GridView.count(shrinkWrap: true, crossAxisCount: 7, physics: const NeverScrollableScrollPhysics(), childAspectRatio: 0.9, children: cells),
     );
   }
 }
@@ -1650,7 +1759,10 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(decoration: const InputDecoration(prefixIcon: Icon(CupertinoIcons.search), hintText: 'جستجو'), onChanged: (v) => setState(() => query = v)),
+          TextField(
+            decoration: const InputDecoration(prefixIcon: Icon(CupertinoIcons.search), hintText: 'جستجو'),
+            onChanged: (v) => setState(() => query = v),
+          ),
           const SizedBox(height: 8),
           SizedBox(
             height: 320,
@@ -1766,9 +1878,7 @@ Future<TimeOfDay?> pickCupertinoTime(BuildContext context, TimeOfDay? initial) a
         child: Column(
           children: [
             Row(
-              children: [
-                CupertinoButton(onPressed: () => Navigator.pop(context), child: const Text('تایید')),
-              ],
+              children: [CupertinoButton(onPressed: () => Navigator.pop(context), child: const Text('تایید'))],
             ),
             Expanded(
               child: CupertinoDatePicker(
@@ -1810,15 +1920,7 @@ Future<String?> showReminderTextPickerBottomSheet(BuildContext context, String c
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: items
-              .map(
-                (e) => ListTile(
-                  title: Text(e),
-                  trailing: e == current ? const Icon(CupertinoIcons.check_mark) : null,
-                  onTap: () => Navigator.pop(context, e),
-                ),
-              )
-              .toList(),
+          children: items.map((e) => ListTile(title: Text(e), trailing: e == current ? const Icon(CupertinoIcons.check_mark) : null, onTap: () => Navigator.pop(context, e))).toList(),
         ),
       );
     },

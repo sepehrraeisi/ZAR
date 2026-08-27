@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_app/main_phase_a2.dart';
 
 void main() {
-  testWidgets('promoted Phase A2 app renders operational home and navigation', (tester) async {
+  testWidgets('promoted Phase A2 app renders operational home and navigation', (
+    tester,
+  ) async {
     await tester.pumpWidget(const ZarPlusPhaseA2App());
     await tester.pumpAndSettle();
 
@@ -15,6 +17,11 @@ void main() {
     expect(find.byIcon(CupertinoIcons.bell), findsOneWidget);
     expect(find.text('عقب‌افتاده'), findsOneWidget);
     expect(find.text('امروز'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.text('فردا'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('فردا'), findsOneWidget);
   });
 }

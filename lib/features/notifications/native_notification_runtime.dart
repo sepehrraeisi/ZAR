@@ -24,8 +24,7 @@ class ZarNativeNotificationRuntime {
       ZarNativeNotificationRuntime._();
 
   late final FlutterLocalNotificationScheduler scheduler;
-  final ZarNotificationPreferencesStore _preferencesStore =
-      SharedPreferencesNotificationStore();
+  ZarNotificationPreferencesStore? _preferencesStore;
   final RecordTapBuffer _recordTaps = RecordTapBuffer();
 
   ZarNotificationPreferences _preferences = const ZarNotificationPreferences();
@@ -44,13 +43,15 @@ class ZarNativeNotificationRuntime {
 
   Future<void> install() async {
     if (kIsWeb) return;
+    final preferencesStore = _preferencesStore ??=
+        SharedPreferencesNotificationStore();
     RecordReminderRegistry.defaultScheduler = scheduler;
     NotificationSettingsScreen.defaultRequestPermission = requestPermission;
     NotificationSettingsScreen.defaultOpenSystemSettings = openSystemSettings;
     NotificationSettingsScreen.defaultPreferencesChanged = updatePreferences;
 
     try {
-      _preferences = await _preferencesStore.load();
+      _preferences = await preferencesStore.load();
     } catch (_) {
       // Device settings are non-authoritative. A corrupt/unavailable preference
       // store must never prevent the business app from starting.
@@ -75,7 +76,8 @@ class ZarNativeNotificationRuntime {
 
   Future<bool> requestPermission() => scheduler.requestPermission();
 
-  Future<bool> openSystemSettings() => scheduler.openSystemNotificationSettings();
+  Future<bool> openSystemSettings() =>
+      scheduler.openSystemNotificationSettings();
 
   Future<String?> initialRecordId() => scheduler.initialRecordId();
 
@@ -90,8 +92,11 @@ class ZarNativeNotificationRuntime {
   Future<void> _persistAndApplyPreferenceChange(
     ZarNotificationPreferences value,
   ) async {
+    final preferencesStore = _preferencesStore;
     try {
-      await _preferencesStore.save(value);
+      if (preferencesStore != null) {
+        await preferencesStore.save(value);
+      }
     } catch (_) {
       // A preference write failure must not roll back or block business data.
       // The current session still honors the selected setting.
@@ -108,7 +113,8 @@ class ZarNativeNotificationRuntime {
   }
 
   Future<void> _applyDeliveryPreferences() async {
-    final wantsSound = _preferences.enabled &&
+    final wantsSound =
+        _preferences.enabled &&
         _preferences.soundEnabled &&
         _preferences.soundProfile != NotificationSoundProfile.silent;
     await scheduler.configure(

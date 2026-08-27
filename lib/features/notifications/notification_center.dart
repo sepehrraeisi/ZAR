@@ -42,7 +42,8 @@ class ZarNotificationPreferences {
       vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
       soundProfile: soundProfile ?? this.soundProfile,
       privacy: privacy ?? this.privacy,
-      defaultReminderMinutes: defaultReminderMinutes ?? this.defaultReminderMinutes,
+      defaultReminderMinutes:
+          defaultReminderMinutes ?? this.defaultReminderMinutes,
       defaultSnoozeMinutes: defaultSnoozeMinutes ?? this.defaultSnoozeMinutes,
     );
   }
@@ -181,7 +182,10 @@ class NotificationCenterScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          Text(item.subtitle, style: theme.textTheme.bodyMedium),
+                          Text(
+                            item.subtitle,
+                            style: theme.textTheme.bodyMedium,
+                          ),
                         ],
                       ),
                     ),
@@ -223,7 +227,8 @@ class NotificationSettingsScreen extends StatefulWidget {
       _NotificationSettingsScreenState();
 }
 
-class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
+class _NotificationSettingsScreenState
+    extends State<NotificationSettingsScreen> {
   late ZarNotificationPreferences value = widget.initial;
   bool _permissionBusy = false;
   bool? _permissionGranted;
@@ -235,7 +240,8 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   }
 
   Future<void> _requestPermission() async {
-    final callback = widget.onRequestPermission ??
+    final callback =
+        widget.onRequestPermission ??
         NotificationSettingsScreen.defaultRequestPermission;
     if (callback == null || _permissionBusy) return;
     setState(() => _permissionBusy = true);
@@ -258,7 +264,8 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   }
 
   Future<void> _openSystemSettings() async {
-    final callback = widget.onOpenSystemSettings ??
+    final callback =
+        widget.onOpenSystemSettings ??
         NotificationSettingsScreen.defaultOpenSystemSettings;
     if (callback == null) return;
     await callback();
@@ -266,9 +273,11 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final canRequest = widget.onRequestPermission != null ||
+    final canRequest =
+        widget.onRequestPermission != null ||
         NotificationSettingsScreen.defaultRequestPermission != null;
-    final canOpenSettings = widget.onOpenSystemSettings != null ||
+    final canOpenSettings =
+        widget.onOpenSystemSettings != null ||
         NotificationSettingsScreen.defaultOpenSystemSettings != null;
 
     return Directionality(
@@ -281,14 +290,14 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             if (canRequest) ...[
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(CupertinoIcons.bell_badge),
+                leading: const Icon(CupertinoIcons.bell_fill),
                 title: const Text('مجوز اعلان روی این دستگاه'),
                 subtitle: Text(
                   _permissionGranted == true
                       ? 'فعال'
                       : _permissionGranted == false
-                          ? 'فعال نیست'
-                          : 'برای دریافت یادآوری هنگام بسته بودن برنامه، مجوز دستگاه لازم است.',
+                      ? 'فعال نیست'
+                      : 'برای دریافت یادآوری هنگام بسته بودن برنامه، مجوز دستگاه لازم است.',
                 ),
                 trailing: _permissionBusy
                     ? const CupertinoActivityIndicator(radius: 9)
@@ -301,7 +310,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('تنظیمات اعلان در سیستم'),
-                  subtitle: const Text('صدا، نمایش روی صفحه قفل و مجوزهای iPhone/Android'),
+                  subtitle: const Text(
+                    'صدا، نمایش روی صفحه قفل و مجوزهای iPhone/Android',
+                  ),
                   trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
                   onTap: _openSystemSettings,
                 ),
@@ -344,18 +355,29 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   : null,
             ),
             const SizedBox(height: 18),
-            Text('حریم خصوصی اعلان', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'حریم خصوصی اعلان',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 6),
-            ...NotificationPrivacy.values.map(
-              (privacy) => RadioListTile<NotificationPrivacy>(
-                contentPadding: EdgeInsets.zero,
-                title: Text(_privacyTitle(privacy)),
-                subtitle: Text(_privacyExample(privacy)),
-                value: privacy,
-                groupValue: value.privacy,
-                onChanged: (v) {
-                  if (v != null) _set(value.copyWith(privacy: v));
-                },
+            RadioGroup<NotificationPrivacy>(
+              groupValue: value.privacy,
+              onChanged: (privacy) {
+                if (privacy != null) {
+                  _set(value.copyWith(privacy: privacy));
+                }
+              },
+              child: Column(
+                children: NotificationPrivacy.values
+                    .map(
+                      (privacy) => RadioListTile<NotificationPrivacy>(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(_privacyTitle(privacy)),
+                        subtitle: Text(_privacyExample(privacy)),
+                        value: privacy,
+                      ),
+                    )
+                    .toList(growable: false),
               ),
             ),
             const SizedBox(height: 18),
