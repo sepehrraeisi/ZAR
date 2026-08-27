@@ -250,19 +250,11 @@ class ZarSettlement {
 }
 
 String normalizeDecimal(String input) {
-  final value = input.trim()
-      .replaceAll('۰', '0')
-      .replaceAll('۱', '1')
-      .replaceAll('۲', '2')
-      .replaceAll('۳', '3')
-      .replaceAll('۴', '4')
-      .replaceAll('۵', '5')
-      .replaceAll('۶', '6')
-      .replaceAll('۷', '7')
-      .replaceAll('۸', '8')
-      .replaceAll('۹', '9')
+  final value = _latinDigits(input.trim())
       .replaceAll(',', '')
-      .replaceAll('٬', '');
+      .replaceAll('٬', '')
+      .replaceAll(' ', '')
+      .replaceAll('٫', '.');
 
   if (!RegExp(r'^\d+(\.\d+)?$').hasMatch(value)) {
     throw const FormatException('Invalid decimal value.');
@@ -273,6 +265,16 @@ String normalizeDecimal(String input) {
   if (parts.length == 1) return integer;
   final fraction = parts[1].replaceFirst(RegExp(r'0+$'), '');
   return fraction.isEmpty ? integer : '$integer.$fraction';
+}
+
+String _latinDigits(String input) {
+  const source = '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩';
+  const target = '01234567890123456789';
+  var result = input;
+  for (var i = 0; i < source.length; i++) {
+    result = result.replaceAll(source[i], target[i]);
+  }
+  return result;
 }
 
 String? _trimOrNull(String? input) {
