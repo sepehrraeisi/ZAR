@@ -4,12 +4,17 @@ import 'package:flutter/material.dart';
 /// Privacy level for content shown in notifications and on the lock screen.
 enum NotificationPrivacy { full, limited, private }
 
+/// User-facing sound preference. Native adapters must still respect platform
+/// settings (Silent/Focus modes, system notification permissions, etc.).
+enum NotificationSoundProfile { systemDefault, subtle, silent }
+
 /// UI-level notification preferences. Native persistence/scheduling is wired later.
 class ZarNotificationPreferences {
   const ZarNotificationPreferences({
     this.enabled = true,
     this.soundEnabled = true,
     this.vibrationEnabled = true,
+    this.soundProfile = NotificationSoundProfile.systemDefault,
     this.privacy = NotificationPrivacy.limited,
     this.defaultReminderMinutes = 60,
     this.defaultSnoozeMinutes = 30,
@@ -18,6 +23,7 @@ class ZarNotificationPreferences {
   final bool enabled;
   final bool soundEnabled;
   final bool vibrationEnabled;
+  final NotificationSoundProfile soundProfile;
   final NotificationPrivacy privacy;
   final int defaultReminderMinutes;
   final int defaultSnoozeMinutes;
@@ -26,6 +32,7 @@ class ZarNotificationPreferences {
     bool? enabled,
     bool? soundEnabled,
     bool? vibrationEnabled,
+    NotificationSoundProfile? soundProfile,
     NotificationPrivacy? privacy,
     int? defaultReminderMinutes,
     int? defaultSnoozeMinutes,
@@ -34,6 +41,7 @@ class ZarNotificationPreferences {
       enabled: enabled ?? this.enabled,
       soundEnabled: soundEnabled ?? this.soundEnabled,
       vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
+      soundProfile: soundProfile ?? this.soundProfile,
       privacy: privacy ?? this.privacy,
       defaultReminderMinutes: defaultReminderMinutes ?? this.defaultReminderMinutes,
       defaultSnoozeMinutes: defaultSnoozeMinutes ?? this.defaultSnoozeMinutes,
@@ -221,10 +229,16 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: const Text('صدا'),
-              subtitle: const Text('صدای پیش‌فرض برنامه؛ کنترل نهایی تابع تنظیمات سیستم است.'),
+              subtitle: const Text('کنترل نهایی صدا تابع تنظیمات و حالت‌های سیستم است.'),
               value: value.soundEnabled,
               onChanged: value.enabled ? (v) => _set(value.copyWith(soundEnabled: v)) : null,
             ),
+            if (value.enabled && value.soundEnabled)
+              _soundPicker(
+                context,
+                value: value.soundProfile,
+                onChanged: (profile) => _set(value.copyWith(soundProfile: profile)),
+              ),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: const Text('ویبره'),
@@ -263,9 +277,53 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               values: const [15, 30, 60, 180, 1440],
               onChanged: (v) => _set(value.copyWith(defaultSnoozeMinutes: v)),
             ),
+            const SizedBox(height: 20),
+            Text(
+              'نوع صدا و ویبره در ZAR+ به‌عنوان ترجیح ذخیره می‌شود؛ حالت Silent، Focus و مجوزهای اعلان iPhone/Android همیشه اولویت نهایی را دارند.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _soundPicker(
+    BuildContext context, {
+    required NotificationSoundProfile value,
+    required ValueChanged<NotificationSoundProfile> onChanged,
+  }) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: const Text('نوع صدا'),
+      subtitle: Text(_soundLabel(value)),
+      trailing: const Icon(CupertinoIcons.chevron_down, size: 18),
+      onTap: () async {
+        final selected = await showModalBottomSheet<NotificationSoundProfile>(
+          context: context,
+          useSafeArea: true,
+          builder: (sheetContext) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: NotificationSoundProfile.values
+                    .map(
+                      (profile) => ListTile(
+                        title: Text(_soundLabel(profile)),
+                        subtitle: Text(_soundDescription(profile)),
+                        trailing: profile == value ? const Icon(CupertinoIcons.check_mark) : null,
+                        onTap: () => Navigator.pop(sheetContext, profile),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+        );
+        if (selected != null) onChanged(selected);
+      },
     );
   }
 
@@ -307,6 +365,28 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         if (selected != null) onChanged(selected);
       },
     );
+  }
+
+  String _soundLabel(NotificationSoundProfile profile) {
+    switch (profile) {
+      case NotificationSoundProfile.systemDefault:
+        return 'صدای پیش‌فرض سیستم';
+      case NotificationSoundProfile.subtle:
+        return 'ملایم';
+      case NotificationSoundProfile.silent:
+        return 'بی‌صدا';
+    }
+  }
+
+  String _soundDescription(NotificationSoundProfile profile) {
+    switch (profile) {
+      case NotificationSoundProfile.systemDefault:
+        return 'از صدای استاندارد اعلان دستگاه استفاده شود.';
+      case NotificationSoundProfile.subtle:
+        return 'در نسخه Native از صدای کوتاه‌تر ZAR+ استفاده شود، در صورت پشتیبانی.';
+      case NotificationSoundProfile.silent:
+        return 'اعلان نمایش داده شود ولی ZAR+ درخواست پخش صدا نکند.';
+    }
   }
 
   String _privacyTitle(NotificationPrivacy privacy) {
