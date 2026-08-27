@@ -103,4 +103,50 @@ void main() {
     expect(scheduled.title, isNot(contains('رضا محمدی')));
     expect(scheduled.body, isNot(contains(r'$25,000')));
   });
+
+  test('refresh rewrites already pending notification content', () async {
+    final scheduler = InMemoryReminderScheduler();
+    var privateMode = false;
+    final registry = RecordReminderRegistry(
+      scheduler: scheduler,
+      contentBuilder: (record, personName) => privateMode
+          ? const ReminderNotificationContent(
+              title: 'یادآوری ZAR+',
+              body: 'یک یادآوری کاری دارید.',
+            )
+          : ReminderNotificationContent(
+              title: '${record.operationLabel} • $personName',
+              body: '${record.assetLabel} • ${record.amountDisplay}',
+            ),
+    );
+    final record = AppRecord(
+      id: 'privacy-refresh',
+      type: RecordType.settlement,
+      operationLabel: 'تحویل',
+      personId: 'p1',
+      amountDisplay: r'$40,000',
+      assetLabel: 'ارز',
+      date: Jalali(1405, 6, 8),
+      time: const TimeOfDay(hour: 12, minute: 0),
+    );
+
+    await registry.setPlan(
+      record: record,
+      plan: const ReminderPlan(
+        rules: [ReminderRule.offset(id: 'r1', minutesBefore: 30)],
+      ),
+      personName: 'رضا محمدی',
+    );
+    expect(
+      (await scheduler.pendingForRecord(record.id)).single.body,
+      contains(r'$40,000'),
+    );
+
+    privateMode = true;
+    await RecordReminderRegistry.refreshAllScheduledContent();
+
+    final refreshed = (await scheduler.pendingForRecord(record.id)).single;
+    expect(refreshed.title, 'یادآوری ZAR+');
+    expect(refreshed.body, 'یک یادآوری کاری دارید.');
+  });
 }
