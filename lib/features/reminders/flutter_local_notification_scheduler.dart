@@ -62,9 +62,6 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   bool get playSound => _playSound;
   bool get enableVibration => _enableVibration;
 
-  /// Applies app-level delivery preferences. Disabling notifications removes
-  /// native pending requests but keeps the business reminder plans in memory;
-  /// re-enabling schedules those plans again.
   Future<void> configure({
     required bool enabled,
     required bool playSound,
@@ -94,7 +91,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     tzdata.initializeTimeZones();
     _location = tz.getLocation(timeZoneName);
 
-    const android = AndroidInitializationSettings('ic_launcher');
+    const android = AndroidInitializationSettings('ic_stat_zar');
     const ios = IOSInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -111,7 +108,6 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     _initialized = true;
   }
 
-  /// Requests the OS notification permission after an explicit user action.
   Future<bool> requestPermission() async {
     if (kIsWeb) return false;
     await initialize();
@@ -192,6 +188,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
             priority: Priority.high,
             playSound: _playSound,
             enableVibration: _enableVibration,
+            icon: 'ic_stat_zar',
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,
