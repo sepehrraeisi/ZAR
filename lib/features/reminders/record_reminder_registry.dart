@@ -23,8 +23,17 @@ class RecordReminderRegistry {
   RecordReminderRegistry({
     ReminderScheduler? scheduler,
     ReminderContentBuilder? contentBuilder,
-  })  : scheduler = scheduler ?? InMemoryReminderScheduler(),
-        contentBuilder = contentBuilder ?? _defaultContent;
+  })  : scheduler = scheduler ?? defaultScheduler ?? InMemoryReminderScheduler(),
+        contentBuilder = contentBuilder ?? defaultContentBuilder ?? _defaultContent;
+
+  /// App startup may install a native scheduler here. Unit tests and web
+  /// previews intentionally leave it null and retain deterministic in-memory
+  /// scheduling.
+  static ReminderScheduler? defaultScheduler;
+
+  /// App startup may install a privacy-aware content builder here. This keeps
+  /// the reminder lifecycle independent from notification presentation policy.
+  static ReminderContentBuilder? defaultContentBuilder;
 
   final ReminderScheduler scheduler;
   final ReminderContentBuilder contentBuilder;
