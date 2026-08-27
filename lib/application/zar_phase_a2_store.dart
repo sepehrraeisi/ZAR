@@ -133,13 +133,25 @@ class ZarPhaseA2Store {
     _replacePerson(_bridge.personToUi(restored));
   }
 
-  Future<void> saveRecord(AppRecord record, {String auditAction = 'edit'}) async {
+  Future<void> saveRecord(
+    AppRecord record, {
+    String auditAction = 'edit',
+    ZarReminderPlan? reminderPlan,
+  }) async {
     if (record.type == RecordType.settlement) {
-      final domain = _bridge.settlementFromUi(
+      final existing = _domainSettlements[record.id];
+      var domain = _bridge.settlementFromUi(
         record,
-        existing: _domainSettlements[record.id],
+        existing: existing,
         now: _clock(),
       );
+      if (reminderPlan != null) {
+        domain = _copySettlement(
+          domain,
+          reminderPlan: reminderPlan,
+          updatedAt: _clock().toUtc(),
+        );
+      }
       await _repository.saveSettlement(domain, auditAction: auditAction);
       _domainSettlements[domain.id] = domain;
       _replaceRecord(_bridge.settlementToUi(domain));
@@ -170,22 +182,9 @@ class ZarPhaseA2Store {
     if (existing == null) {
       throw StateError('Settlement $recordId is not loaded.');
     }
-    final updated = ZarSettlement(
-      id: existing.id,
-      businessId: existing.businessId,
-      dealId: existing.dealId,
-      personId: existing.personId,
-      direction: existing.direction,
-      amount: existing.amount,
-      scheduledAt: existing.scheduledAt,
-      hasTime: existing.hasTime,
-      status: existing.status,
+    final updated = _copySettlement(
+      existing,
       reminderPlan: reminderPlan,
-      completedAt: existing.completedAt,
-      completedBy: existing.completedBy,
-      note: existing.note,
-      createdBy: existing.createdBy,
-      createdAt: existing.createdAt,
       updatedAt: _clock().toUtc(),
     );
     await _repository.saveSettlement(updated, auditAction: auditAction);
@@ -216,6 +215,30 @@ class ZarPhaseA2Store {
   }
 
   ZarSettlement? settlementById(String id) => _domainSettlements[id];
+
+  ZarSettlement _copySettlement(
+    ZarSettlement source, {
+    ZarReminderPlan? reminderPlan,
+    DateTime? updatedAt,
+  }) =>
+      ZarSettlement(
+        id: source.id,
+        businessId: source.businessId,
+        dealId: source.dealId,
+        personId: source.personId,
+        direction: source.direction,
+        amount: source.amount,
+        scheduledAt: source.scheduledAt,
+        hasTime: source.hasTime,
+        status: source.status,
+        reminderPlan: reminderPlan ?? source.reminderPlan,
+        completedAt: source.completedAt,
+        completedBy: source.completedBy,
+        note: source.note,
+        createdBy: source.createdBy,
+        createdAt: source.createdAt,
+        updatedAt: updatedAt ?? source.updatedAt,
+      );
 
   void _replacePerson(AppPerson person) {
     final index = _people.indexWhere((item) => item.id == person.id);
