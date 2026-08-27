@@ -1,0 +1,35 @@
+name: Phase A2 Flutter CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [codex/phase-a2-ux]
+
+jobs:
+  flutter-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build Phase A2 web preview
+        run: flutter build web --debug -t lib/main_phase_a2.dart
