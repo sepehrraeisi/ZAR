@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import 'package:shamsi_date/shamsi_date.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const ZarPlusApp());
@@ -15,73 +17,44 @@ class ZarPlusApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'ZAR+',
-      themeMode: ThemeMode.light,
+      locale: const Locale('fa', 'IR'),
+      supportedLocales: const [Locale('fa', 'IR'), Locale('en', 'US')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
-      home: const Directionality(
-        textDirection: TextDirection.rtl,
-        child: ZarShell(),
-      ),
+      themeMode: ThemeMode.light,
+      builder: (context, child) {
+        return Directionality(textDirection: TextDirection.rtl, child: child ?? const SizedBox.shrink());
+      },
+      home: const ZarShell(),
     );
   }
 
   ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
-
     const warmAccent = Color(0xFFC08A3D);
     final surface = isDark ? const Color(0xFF151515) : const Color(0xFFFBFAF8);
     final card = isDark ? const Color(0xFF1D1D1D) : Colors.white;
     final textPrimary = isDark ? const Color(0xFFF4F4F4) : const Color(0xFF121212);
     final textSecondary = isDark ? const Color(0xFFA9A9A9) : const Color(0xFF707070);
 
-    final base = ThemeData(
+    return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       scaffoldBackgroundColor: surface,
       fontFamily: 'Vazirmatn',
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: warmAccent,
-        brightness: brightness,
-        surface: card,
-      ).copyWith(
-        error: const Color(0xFFBD3A3A),
-      ),
+      colorScheme: ColorScheme.fromSeed(seedColor: warmAccent, brightness: brightness, surface: card),
       textTheme: TextTheme(
-        headlineSmall: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-          color: textPrimary,
-          height: 1.35,
-        ),
-        titleLarge: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: textPrimary,
-          height: 1.35,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w600,
-          color: textPrimary,
-          height: 1.45,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: textPrimary,
-          height: 1.55,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          color: textSecondary,
-          height: 1.6,
-        ),
-        labelLarge: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: textPrimary,
-        ),
+        headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: textPrimary, height: 1.35),
+        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: textPrimary, height: 1.35),
+        titleMedium: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: textPrimary, height: 1.45),
+        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: textPrimary, height: 1.55),
+        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: textSecondary, height: 1.6),
+        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary),
       ),
       dividerColor: isDark ? const Color(0xFF303030) : const Color(0xFFECEAE6),
       appBarTheme: AppBarTheme(
@@ -89,39 +62,255 @@ class ZarPlusApp extends StatelessWidget {
         backgroundColor: surface,
         foregroundColor: textPrimary,
         centerTitle: false,
-        titleTextStyle: TextStyle(
-          fontFamily: 'Vazirmatn',
-          color: textPrimary,
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-        ),
       ),
-      bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: card,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-      ),
-      chipTheme: ChipThemeData(
-        side: BorderSide(color: isDark ? const Color(0xFF3D3D3D) : const Color(0xFFE0DED8)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      cardTheme: CardThemeData(
+        color: card,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? const Color(0xFF252525) : const Color(0xFFF6F4F1),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: warmAccent, width: 1.2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: card,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      ),
     );
+  }
+}
 
-    return base;
+enum RecordType { settlement, deal }
+
+enum SettlementStatus { open, completed, cancelled }
+
+enum HistoryFilter { all, completed, cancelled }
+
+class AppPerson {
+  AppPerson({
+    required this.id,
+    required this.name,
+    this.phone,
+    this.note,
+    this.archived = false,
+  });
+
+  final String id;
+  final String name;
+  final String? phone;
+  final String? note;
+  final bool archived;
+
+  AppPerson copyWith({String? name, String? phone, String? note, bool? archived}) {
+    return AppPerson(
+      id: id,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      note: note ?? this.note,
+      archived: archived ?? this.archived,
+    );
+  }
+}
+
+class AppRecord {
+  AppRecord({
+    required this.id,
+    required this.type,
+    required this.operationLabel,
+    required this.personId,
+    required this.amountDisplay,
+    required this.assetLabel,
+    required this.date,
+    this.currencyCode,
+    this.time,
+    this.status = SettlementStatus.open,
+    this.note,
+    this.linkedSettlementIds = const [],
+  });
+
+  final String id;
+  final RecordType type;
+  final String operationLabel;
+  final String personId;
+  final String amountDisplay;
+  final String assetLabel;
+  final Jalali date;
+  final String? currencyCode;
+  final TimeOfDay? time;
+  final SettlementStatus status;
+  final String? note;
+  final List<String> linkedSettlementIds;
+
+  bool get isObligation => type == RecordType.settlement && (operationLabel == 'دریافت' || operationLabel == 'تحویل');
+
+  AppRecord copyWith({
+    String? operationLabel,
+    String? personId,
+    String? amountDisplay,
+    String? assetLabel,
+    Jalali? date,
+    String? currencyCode,
+    TimeOfDay? time,
+    bool clearTime = false,
+    SettlementStatus? status,
+    String? note,
+  }) {
+    return AppRecord(
+      id: id,
+      type: type,
+      operationLabel: operationLabel ?? this.operationLabel,
+      personId: personId ?? this.personId,
+      amountDisplay: amountDisplay ?? this.amountDisplay,
+      assetLabel: assetLabel ?? this.assetLabel,
+      date: date ?? this.date,
+      currencyCode: currencyCode ?? this.currencyCode,
+      time: clearTime ? null : (time ?? this.time),
+      status: status ?? this.status,
+      note: note ?? this.note,
+      linkedSettlementIds: linkedSettlementIds,
+    );
+  }
+
+  String timeLabel() {
+    if (time == null) return 'بدون ساعت';
+    final h = toPersianDigits(time!.hour.toString().padLeft(2, '0'));
+    final m = toPersianDigits(time!.minute.toString().padLeft(2, '0'));
+    return '$h:$m';
+  }
+
+  String statusLabel() {
+    switch (status) {
+      case SettlementStatus.open:
+        return 'در انتظار';
+      case SettlementStatus.completed:
+        return 'انجام شد';
+      case SettlementStatus.cancelled:
+        return 'لغو شد';
+    }
+  }
+}
+
+class QuickAddDraft {
+  QuickAddDraft({
+    required this.operation,
+    required this.asset,
+    required this.personId,
+    required this.amount,
+    required this.date,
+    required this.time,
+    required this.reminder,
+    required this.note,
+    this.currencyCode,
+  });
+
+  final String operation;
+  final String asset;
+  final String personId;
+  final String amount;
+  final Jalali date;
+  final TimeOfDay? time;
+  final String reminder;
+  final String note;
+  final String? currencyCode;
+}
+
+String formatJalaliDate(Jalali date) => '${toPersianDigits(date.day.toString())} ${monthName(date.month)} ${toPersianDigits(date.year.toString())}';
+
+String monthName(int month) {
+  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+  return months[month - 1];
+}
+
+String toPersianDigits(String input) {
+  const latin = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+  var output = input;
+  for (int i = 0; i < latin.length; i++) {
+    output = output.replaceAll(latin[i], persian[i]);
+  }
+  return output;
+}
+
+bool isSameJalali(Jalali a, Jalali b) => a.year == b.year && a.month == b.month && a.day == b.day;
+
+String phoneToEnglishDigits(String input) {
+  const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+  var output = input;
+  for (int i = 0; i < persian.length; i++) {
+    output = output.replaceAll(persian[i], i.toString());
+  }
+  return output;
+}
+
+String formatAmountWithGrouping(int amount) {
+  final formatter = NumberFormat('#,###');
+  return toPersianDigits(formatter.format(amount));
+}
+
+class CurrencyOption {
+  const CurrencyOption({required this.code, required this.persianName, required this.shortLabel});
+
+  final String code;
+  final String persianName;
+  final String shortLabel;
+
+  String get displayLabel => '$persianName — $code';
+}
+
+const List<CurrencyOption> kCurrencyOptions = [
+  CurrencyOption(code: 'USD', persianName: 'دلار آمریکا', shortLabel: 'دلار'),
+  CurrencyOption(code: 'EUR', persianName: 'یورو', shortLabel: 'یورو'),
+  CurrencyOption(code: 'AED', persianName: 'درهم امارات', shortLabel: 'درهم'),
+  CurrencyOption(code: 'TRY', persianName: 'لیر ترکیه', shortLabel: 'لیر'),
+  CurrencyOption(code: 'GBP', persianName: 'پوند انگلیس', shortLabel: 'پوند'),
+  CurrencyOption(code: 'CAD', persianName: 'دلار کانادا', shortLabel: 'دلار کانادا'),
+  CurrencyOption(code: 'OTHER', persianName: 'سایر', shortLabel: 'سایر'),
+];
+
+CurrencyOption? currencyByCode(String? code) {
+  if (code == null) return null;
+  for (final option in kCurrencyOptions) {
+    if (option.code == code) return option;
+  }
+  return null;
+}
+
+String digitsToEnglish(String input) {
+  const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+  var output = input;
+  for (int i = 0; i < persian.length; i++) {
+    output = output.replaceAll(persian[i], i.toString());
+  }
+  return output;
+}
+
+String formatCurrencyAmount(String amountInput, String currencyCode) {
+  final english = digitsToEnglish(amountInput).replaceAll(',', '').trim();
+  final digitsOnly = RegExp(r'\d+').allMatches(english).map((e) => e.group(0)!).join();
+  final amount = int.tryParse(digitsOnly) ?? 0;
+  final grouped = NumberFormat('#,###').format(amount);
+
+  switch (currencyCode) {
+    case 'USD':
+      return '\$$grouped';
+    case 'EUR':
+      return '€$grouped';
+    case 'GBP':
+      return '£$grouped';
+    case 'TRY':
+      return '₺$grouped';
+    case 'AED':
+      return 'AED $grouped';
+    case 'CAD':
+      return 'CAD $grouped';
+    default:
+      return 'OTHER $grouped';
   }
 }
 
@@ -135,46 +324,292 @@ class ZarShell extends StatefulWidget {
 class _ZarShellState extends State<ZarShell> {
   int _index = 0;
 
-  final _pages = const [
-    HomeScreen(),
-    CalendarScreen(),
-    SizedBox.shrink(),
-    PeopleScreen(),
+  final List<AppPerson> _people = [
+    AppPerson(id: 'p1', name: 'علی رضایی', phone: '۰۹۱۲۱۲۳۴۵۶۷', note: 'مشتری ثابت'),
+    AppPerson(id: 'p2', name: 'رضا محمدی', phone: '۰۹۱۲۴۴۴۵۵۶۶'),
+    AppPerson(id: 'p3', name: 'حسن کریمی', phone: '۰۹۱۲۳۳۳۴۴۵۵'),
+    AppPerson(id: 'p4', name: 'مهدی احمدی', note: 'ترجیح تماس بعدازظهر'),
   ];
+
+  late final List<AppRecord> _records = [
+    AppRecord(
+      id: 's1',
+      type: RecordType.settlement,
+      operationLabel: 'تحویل',
+      personId: 'p2',
+      amountDisplay: '\$10,000',
+      assetLabel: 'ارز',
+      currencyCode: 'USD',
+      date: Jalali.now().addDays(-1),
+      time: const TimeOfDay(hour: 11, minute: 0),
+    ),
+    AppRecord(
+      id: 's2',
+      type: RecordType.settlement,
+      operationLabel: 'دریافت',
+      personId: 'p1',
+      amountDisplay: '۲۵۰',
+      assetLabel: 'گرم طلا',
+      date: Jalali.now(),
+      time: const TimeOfDay(hour: 10, minute: 30),
+    ),
+    AppRecord(
+      id: 's3',
+      type: RecordType.settlement,
+      operationLabel: 'تحویل',
+      personId: 'p3',
+      amountDisplay: '€5,000',
+      assetLabel: 'ارز',
+      currencyCode: 'EUR',
+      date: Jalali.now(),
+      time: const TimeOfDay(hour: 14, minute: 45),
+    ),
+    AppRecord(
+      id: 's4',
+      type: RecordType.settlement,
+      operationLabel: 'دریافت',
+      personId: 'p4',
+      amountDisplay: '۴۰۰',
+      assetLabel: 'گرم طلا',
+      date: Jalali.now().addDays(1),
+    ),
+    AppRecord(
+      id: 'd1',
+      type: RecordType.deal,
+      operationLabel: 'خرید',
+      personId: 'p1',
+      amountDisplay: '۳۵۰',
+      assetLabel: 'گرم طلا',
+      date: Jalali.now(),
+      linkedSettlementIds: const ['s2'],
+      note: 'معامله نقدی با تسویه مرحله‌ای',
+    ),
+    AppRecord(
+      id: 's5',
+      type: RecordType.settlement,
+      operationLabel: 'تحویل',
+      personId: 'p2',
+      amountDisplay: '\$8,000',
+      assetLabel: 'ارز',
+      currencyCode: 'USD',
+      date: Jalali.now().addDays(-2),
+      time: const TimeOfDay(hour: 12, minute: 20),
+      status: SettlementStatus.completed,
+    ),
+    AppRecord(
+      id: 's6',
+      type: RecordType.settlement,
+      operationLabel: 'دریافت',
+      personId: 'p1',
+      amountDisplay: '۳۰۰',
+      assetLabel: 'گرم طلا',
+      date: Jalali.now().addDays(-1),
+      time: const TimeOfDay(hour: 9, minute: 10),
+      status: SettlementStatus.cancelled,
+    ),
+  ];
+
+  String personName(String id) {
+    return _people.firstWhere((e) => e.id == id, orElse: () => AppPerson(id: '-', name: 'نامشخص')).name;
+  }
+
+  List<AppPerson> get activePeople => _people.where((p) => !p.archived).toList(growable: false);
+
+  List<AppRecord> get openObligations => _records.where((r) => r.isObligation && r.status == SettlementStatus.open).toList(growable: false);
+
+  List<AppRecord> get calendarRecords => _records.where((r) => r.status == SettlementStatus.open).toList(growable: false);
+
+  List<AppRecord> get historyRecords => _records
+      .where((r) => r.type == RecordType.settlement && (r.status == SettlementStatus.completed || r.status == SettlementStatus.cancelled))
+      .toList(growable: false)
+    ..sort((a, b) => b.date.compareTo(a.date));
+
+  void _updateRecord(AppRecord updated) {
+    final index = _records.indexWhere((r) => r.id == updated.id);
+    if (index == -1) return;
+    setState(() {
+      _records[index] = updated;
+    });
+  }
+
+  Future<void> _openQuickAddSheet() async {
+    final draft = await showModalBottomSheet<QuickAddDraft>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => QuickAddSheet(people: activePeople),
+    );
+    if (draft == null) return;
+
+    final isCurrency = draft.asset == 'ارز';
+    final newRecord = AppRecord(
+      id: 'n${DateTime.now().millisecondsSinceEpoch}',
+      type: (draft.operation == 'دریافت' || draft.operation == 'تحویل') ? RecordType.settlement : RecordType.deal,
+      operationLabel: draft.operation,
+      personId: draft.personId,
+      amountDisplay: isCurrency && draft.currencyCode != null ? formatCurrencyAmount(draft.amount, draft.currencyCode!) : draft.amount,
+      assetLabel: draft.asset == 'طلا' ? 'گرم طلا' : 'ارز',
+      currencyCode: isCurrency ? draft.currencyCode : null,
+      date: draft.date,
+      time: draft.time,
+      note: draft.note.isEmpty ? null : 'یادآوری: ${draft.reminder} • ${draft.note}',
+    );
+
+    setState(() {
+      _records.add(newRecord);
+    });
+  }
+
+  Future<void> _openRecord(AppRecord record) async {
+    if (record.type == RecordType.deal) {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (_) => DealDetailSheet(
+          record: record,
+          personName: personName(record.personId),
+          linkedSettlements: _records.where((e) => record.linkedSettlementIds.contains(e.id)).toList(growable: false),
+          onOpenSettlement: (settlement) {
+            Navigator.pop(context);
+            _openRecord(settlement);
+          },
+        ),
+      );
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => SettlementActionSheet(
+        record: record,
+        personName: personName(record.personId),
+        onComplete: () {
+          _updateRecord(record.copyWith(status: SettlementStatus.completed));
+          Navigator.pop(context);
+        },
+        onCancel: () {
+          _updateRecord(record.copyWith(status: SettlementStatus.cancelled));
+          Navigator.pop(context);
+        },
+        onEdit: () async {
+          final updated = await showModalBottomSheet<AppRecord>(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            builder: (_) => EditRecordSheet(record: record, personName: personName(record.personId)),
+          );
+          if (updated != null) {
+            _updateRecord(updated);
+          }
+        },
+        onReschedule: () async {
+          final navigator = Navigator.of(context);
+          final date = await pickJalaliDate(context, record.date);
+          if (!mounted || date == null) return;
+          final time = await pickCupertinoTime(context, record.time);
+          if (!mounted) return;
+          _updateRecord(record.copyWith(date: date, time: time));
+          navigator.pop();
+        },
+        onSnooze: () async {
+          final dateTime = await showReminderPickerBottomSheet(context, initialDate: record.date, initialTime: record.time);
+          if (dateTime == null) return;
+          _updateRecord(record.copyWith(date: dateTime.$1, time: dateTime.$2));
+          if (mounted) Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  Future<void> _savePerson(AppPerson person) async {
+    final index = _people.indexWhere((p) => p.id == person.id);
+    setState(() {
+      if (index == -1) {
+        _people.add(person);
+      } else {
+        _people[index] = person;
+      }
+    });
+  }
+
+  void _archivePerson(String personId) {
+    final index = _people.indexWhere((p) => p.id == personId);
+    if (index == -1) return;
+    setState(() {
+      _people[index] = _people[index].copyWith(archived: true);
+    });
+    Navigator.of(context).maybePop();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: IndexedStack(index: _index, children: _pages),
+    final pages = [
+      HomeScreen(records: openObligations, personName: personName, onTapRecord: _openRecord),
+      CalendarScreen(records: calendarRecords, personName: personName, onTapRecord: _openRecord),
+      const SizedBox.shrink(),
+      PeopleScreen(
+        people: activePeople,
+        records: _records,
+        onAddPerson: () async {
+          final person = await showModalBottomSheet<AppPerson>(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            builder: (_) => const PersonEditorSheet(),
+          );
+          if (person != null) {
+            await _savePerson(person);
+          }
+        },
+        onOpenPerson: (person) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PersonDetailScreen(
+                person: person,
+                records: _records,
+                personName: personName,
+                onTapRecord: _openRecord,
+                onEditPerson: (target) async {
+                  final edited = await showModalBottomSheet<AppPerson>(
+                    context: context,
+                    isScrollControlled: true,
+                    useSafeArea: true,
+                    builder: (_) => PersonEditorSheet(existing: target),
+                  );
+                  if (edited != null) {
+                    await _savePerson(edited);
+                  }
+                },
+                onArchivePerson: _archivePerson,
+              ),
+            ),
+          );
+        },
       ),
-      bottomNavigationBar: _ZBottomBar(
+      HistoryScreen(records: historyRecords, personName: personName),
+    ];
+
+    return Scaffold(
+      body: SafeArea(child: IndexedStack(index: _index, children: pages)),
+      bottomNavigationBar: ZBottomBar(
         currentIndex: _index,
         onTap: (value) {
           if (value == 2) {
             _openQuickAddSheet();
             return;
           }
-          setState(() {
-            _index = value;
-          });
+          setState(() => _index = value);
         },
       ),
     );
   }
-
-  Future<void> _openQuickAddSheet() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => const QuickAddSheet(),
-    );
-  }
 }
 
-class _ZBottomBar extends StatelessWidget {
-  const _ZBottomBar({required this.currentIndex, required this.onTap});
+class ZBottomBar extends StatelessWidget {
+  const ZBottomBar({super.key, required this.currentIndex, required this.onTap});
 
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -182,34 +617,23 @@ class _ZBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accent = theme.colorScheme.primary;
+    final active = theme.colorScheme.primary;
     final inactive = theme.textTheme.bodyMedium?.color ?? Colors.grey;
 
-    Widget item({
-      required int index,
-      required IconData icon,
-      required String label,
-    }) {
-      final isActive = currentIndex == index;
-      final color = isActive ? accent : inactive;
+    Widget navItem({required int index, required IconData icon, required String label}) {
+      final selected = currentIndex == index;
+      final color = selected ? active : inactive;
       return Expanded(
         child: InkWell(
           onTap: () => onTap(index),
           child: SizedBox(
-            height: 60,
+            height: 62,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 21, color: color),
-                const SizedBox(height: 3),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                    color: color,
-                  ),
-                ),
+                Icon(icon, size: 20, color: color),
+                const SizedBox(height: 4),
+                Text(label, style: TextStyle(fontSize: 11.5, color: color, fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
               ],
             ),
           ),
@@ -218,44 +642,34 @@ class _ZBottomBar extends StatelessWidget {
     }
 
     return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          top: BorderSide(color: theme.dividerColor),
-        ),
-      ),
+      decoration: BoxDecoration(color: theme.colorScheme.surface, border: Border(top: BorderSide(color: theme.dividerColor))),
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 70,
+          height: 74,
           child: Stack(
             alignment: Alignment.center,
             children: [
               Row(
                 children: [
-                  item(index: 0, icon: CupertinoIcons.house, label: 'خانه'),
-                  item(index: 1, icon: CupertinoIcons.calendar, label: 'تقویم'),
-                  const SizedBox(width: 70),
-                  item(index: 3, icon: CupertinoIcons.person_2, label: 'اشخاص'),
+                  navItem(index: 0, icon: CupertinoIcons.house, label: 'خانه'),
+                  navItem(index: 1, icon: CupertinoIcons.calendar, label: 'تقویم'),
+                  const SizedBox(width: 76),
+                  navItem(index: 3, icon: CupertinoIcons.person_2, label: 'اشخاص'),
+                  navItem(index: 4, icon: CupertinoIcons.clock, label: 'سوابق'),
                 ],
               ),
               GestureDetector(
                 onTap: () => onTap(2),
                 child: Container(
-                  width: 54,
-                  height: 54,
+                  width: 46,
+                  height: 46,
                   decoration: BoxDecoration(
-                    color: accent,
+                    color: active,
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.34),
-                        blurRadius: 14,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: active.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 6))],
                   ),
-                  child: const Icon(CupertinoIcons.add, size: 24, color: Colors.white),
+                  child: const Icon(CupertinoIcons.add, color: Colors.white, size: 22),
                 ),
               ),
             ],
@@ -265,81 +679,53 @@ class _ZBottomBar extends StatelessWidget {
     );
   }
 }
-
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord});
+
+  final List<AppRecord> records;
+  final String Function(String) personName;
+  final ValueChanged<AppRecord> onTapRecord;
 
   @override
   Widget build(BuildContext context) {
     final now = Jalali.now();
+    final overdue = records.where((r) => r.date.compareTo(now) < 0).toList(growable: false);
+    final today = records.where((r) => isSameJalali(r.date, now)).toList(growable: false);
+    final tomorrow = records.where((r) => isSameJalali(r.date, now.addDays(1))).toList(growable: false);
 
     return CustomScrollView(
       slivers: [
         SliverAppBar(
           pinned: true,
-          title: const Text('ZAR+'),
-          actions: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(CupertinoIcons.bell),
-              tooltip: 'اعلان‌ها',
-            ),
-          ],
+          title: const Directionality(textDirection: TextDirection.ltr, child: Text('ZAR+')),
         ),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-            child: Text(
-              '${weekdayName(now.weekDay)}\n${formatJalaliDate(now)}',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            child: Text('امروز\n${formatJalaliDate(now)}', style: Theme.of(context).textTheme.titleLarge),
           ),
         ),
-        _buildSection(context, title: 'عقب‌افتاده', items: mockOverdue, isOverdue: true),
-        _buildSection(context, title: 'امروز', items: mockToday),
-        _buildSection(context, title: 'فردا', items: mockTomorrow),
+        _section(context, 'عقب‌افتاده', overdue, overdue: true),
+        _section(context, 'امروز', today),
+        _section(context, 'فردا', tomorrow),
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
       ],
     );
   }
 
-  Widget _buildSection(
-    BuildContext context, {
-    required String title,
-    required List<SettlementItem> items,
-    bool isOverdue = false,
-  }) {
+  Widget _section(BuildContext context, String title, List<AppRecord> items, {bool overdue = false}) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: isOverdue ? const Color(0xFF9D3636) : null,
-                      ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  toPersianDigits(items.length.toString()),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
+            Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: overdue ? const Color(0xFF9D3636) : null)),
+            const SizedBox(height: 8),
             if (items.isEmpty)
               const _ZEmptyRow(label: 'موردی ثبت نشده است.')
             else
-              ...items.map(
-                (item) => _SettlementRow(
-                  item: item,
-                  showOverdueTone: isOverdue,
-                ),
-              ),
+              ...items.map((item) => SettlementRow(record: item, personName: personName(item.personId), onTap: () => onTapRecord(item), showOverdueTone: overdue)),
           ],
         ),
       ),
@@ -347,13 +733,337 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _SettlementRow extends StatelessWidget {
-  const _SettlementRow({
-    required this.item,
+class CalendarScreen extends StatefulWidget {
+  const CalendarScreen({super.key, required this.records, required this.personName, required this.onTapRecord});
+
+  final List<AppRecord> records;
+  final String Function(String) personName;
+  final ValueChanged<AppRecord> onTapRecord;
+
+  @override
+  State<CalendarScreen> createState() => _CalendarScreenState();
+}
+
+class _CalendarScreenState extends State<CalendarScreen> {
+  Jalali _month = Jalali.now().withDay(1);
+  Jalali _selected = Jalali.now();
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedEvents = widget.records.where((e) => isSameJalali(e.date, _selected)).toList(growable: false);
+
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(title: const Text('تقویم'), pinned: true),
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _CalendarHeaderDelegate(
+            minExtentValue: 74,
+            maxExtentValue: 344,
+            builder: (context, shrink) {
+              final compact = shrink > 0.7;
+              return Container(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(onPressed: () => setState(() => _month = _month.addMonths(-1)), icon: const Icon(CupertinoIcons.chevron_right)),
+                        Expanded(
+                          child: Center(
+                            child: Text('${monthName(_month.month)} ${toPersianDigits(_month.year.toString())}', style: Theme.of(context).textTheme.titleMedium),
+                          ),
+                        ),
+                        IconButton(onPressed: () => setState(() => _month = _month.addMonths(1)), icon: const Icon(CupertinoIcons.chevron_left)),
+                      ],
+                    ),
+                    if (!compact)
+                      Expanded(
+                        child: CalendarMonthGrid(
+                          month: _month,
+                          selected: _selected,
+                          eventDays: widget.records.map((e) => e.date).toList(growable: false),
+                          onDayTap: (date) => setState(() => _selected = date),
+                        ),
+                      ),
+                    if (compact)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Theme.of(context).dividerColor),
+                        ),
+                        child: Text('برنامه روز ${formatJalaliDate(_selected)}', style: Theme.of(context).textTheme.bodyLarge),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
+            child: Text('برنامه روز • ${formatJalaliDate(_selected)}', style: Theme.of(context).textTheme.titleMedium),
+          ),
+        ),
+        if (selectedEvents.isEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(child: Text('برای این روز موردی ثبت نشده است.')),
+            ),
+          )
+        else
+          SliverList.builder(
+            itemCount: selectedEvents.length,
+            itemBuilder: (context, index) {
+              final item = selectedEvents[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: SettlementRow(record: item, personName: widget.personName(item.personId), onTap: () => widget.onTapRecord(item)),
+              );
+            },
+          ),
+        const SliverToBoxAdapter(child: SizedBox(height: 20)),
+      ],
+    );
+  }
+}
+
+class PeopleScreen extends StatefulWidget {
+  const PeopleScreen({
+    super.key,
+    required this.people,
+    required this.records,
+    required this.onAddPerson,
+    required this.onOpenPerson,
+  });
+
+  final List<AppPerson> people;
+  final List<AppRecord> records;
+  final VoidCallback onAddPerson;
+  final ValueChanged<AppPerson> onOpenPerson;
+
+  @override
+  State<PeopleScreen> createState() => _PeopleScreenState();
+}
+
+class _PeopleScreenState extends State<PeopleScreen> {
+  String query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.people.where((p) => p.name.contains(query.trim())).toList(growable: false);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('اشخاص')),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: const InputDecoration(hintText: 'جستجو در اشخاص', prefixIcon: Icon(CupertinoIcons.search)),
+                    onChanged: (value) => setState(() => query = value),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(onPressed: widget.onAddPerson, icon: const Icon(CupertinoIcons.add, size: 16), label: const Text('افزودن')),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView.separated(
+                itemCount: filtered.length,
+                separatorBuilder: (_, __) => Divider(color: Theme.of(context).dividerColor),
+                itemBuilder: (context, index) {
+                  final person = filtered[index];
+                  final openCount = widget.records.where((r) => r.personId == person.id && r.status == SettlementStatus.open && r.isObligation).length;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
+                      child: Text(person.name.isEmpty ? '-' : person.name[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                    ),
+                    title: Text(person.name, style: Theme.of(context).textTheme.bodyLarge),
+                    subtitle: Text('${toPersianDigits(openCount.toString())} تعهد باز', style: Theme.of(context).textTheme.bodyMedium),
+                    trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
+                    onTap: () => widget.onOpenPerson(person),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PersonDetailScreen extends StatelessWidget {
+  const PersonDetailScreen({
+    super.key,
+    required this.person,
+    required this.records,
+    required this.personName,
+    required this.onTapRecord,
+    required this.onEditPerson,
+    required this.onArchivePerson,
+  });
+
+  final AppPerson person;
+  final List<AppRecord> records;
+  final String Function(String) personName;
+  final ValueChanged<AppRecord> onTapRecord;
+  final ValueChanged<AppPerson> onEditPerson;
+  final ValueChanged<String> onArchivePerson;
+
+  @override
+  Widget build(BuildContext context) {
+    final personItems = records.where((e) => e.personId == person.id).toList(growable: false)..sort((a, b) => b.date.compareTo(a.date));
+    final openItems = personItems.where((e) => e.status == SettlementStatus.open && e.isObligation).toList(growable: false);
+    final historyItems = personItems.where((e) => e.status != SettlementStatus.open).toList(growable: false);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('جزئیات شخص')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        children: [
+          Text(person.name, style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 4),
+          Text(person.phone ?? 'شماره تماس ثبت نشده است.', style: Theme.of(context).textTheme.bodyMedium),
+          if ((person.note ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(person.note!, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: [
+              OutlinedButton.icon(onPressed: () => onEditPerson(person), icon: const Icon(CupertinoIcons.pencil, size: 16), label: const Text('ویرایش')),
+              FilledButton.tonalIcon(
+                onPressed: person.phone == null
+                    ? null
+                    : () async {
+                        final uri = Uri(scheme: 'tel', path: phoneToEnglishDigits(person.phone!));
+                        await launchUrl(uri);
+                      },
+                icon: const Icon(CupertinoIcons.phone, size: 16),
+                label: const Text('تماس'),
+              ),
+              TextButton.icon(onPressed: () => onArchivePerson(person.id), icon: const Icon(CupertinoIcons.archivebox, size: 16), label: const Text('آرشیو')),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text('تعهدهای باز', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (openItems.isEmpty)
+            const _ZEmptyRow(label: 'تعهد باز وجود ندارد.')
+          else
+            ...openItems.map((e) => SettlementRow(record: e, personName: personName(e.personId), onTap: () => onTapRecord(e))),
+          const SizedBox(height: 18),
+          Text('سوابق زمانی', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (historyItems.isEmpty)
+            const _ZEmptyRow(label: 'سابقه‌ای ثبت نشده است.')
+          else
+            ...historyItems.map((e) => SettlementRow(record: e, personName: personName(e.personId), onTap: () => onTapRecord(e))),
+        ],
+      ),
+    );
+  }
+}
+
+class HistoryScreen extends StatefulWidget {
+  const HistoryScreen({super.key, required this.records, required this.personName});
+
+  final List<AppRecord> records;
+  final String Function(String) personName;
+
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  String query = '';
+  HistoryFilter filter = HistoryFilter.all;
+
+  @override
+  Widget build(BuildContext context) {
+    var items = widget.records;
+    if (filter != HistoryFilter.all) {
+      final target = filter == HistoryFilter.completed ? SettlementStatus.completed : SettlementStatus.cancelled;
+      items = items.where((e) => e.status == target).toList(growable: false);
+    }
+    if (query.trim().isNotEmpty) {
+      items = items.where((e) => widget.personName(e.personId).contains(query.trim()) || e.operationLabel.contains(query.trim())).toList(growable: false);
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('سوابق')),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        child: Column(
+          children: [
+            TextField(decoration: const InputDecoration(prefixIcon: Icon(CupertinoIcons.search), hintText: 'جستجو'), onChanged: (value) => setState(() => query = value)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              children: [
+                _filterChip(context, 'همه', HistoryFilter.all),
+                _filterChip(context, 'انجام‌شده', HistoryFilter.completed),
+                _filterChip(context, 'لغو‌شده', HistoryFilter.cancelled),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: items.isEmpty
+                  ? const Center(child: Text('نتیجه‌ای پیدا نشد.'))
+                  : ListView.builder(
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        return SettlementRow(record: item, personName: widget.personName(item.personId));
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip(BuildContext context, String label, HistoryFilter value) {
+    final selected = filter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      showCheckmark: false,
+      selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
+      side: BorderSide(color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.35) : Theme.of(context).dividerColor),
+      onSelected: (_) => setState(() => filter = value),
+    );
+  }
+}
+
+class SettlementRow extends StatelessWidget {
+  const SettlementRow({
+    super.key,
+    required this.record,
+    required this.personName,
+    this.onTap,
     this.showOverdueTone = false,
   });
 
-  final SettlementItem item;
+  final AppRecord record;
+  final String personName;
+  final VoidCallback? onTap;
   final bool showOverdueTone;
 
   @override
@@ -361,20 +1071,22 @@ class _SettlementRow extends StatelessWidget {
     final theme = Theme.of(context);
     final statusColor = showOverdueTone
         ? const Color(0xFF9D3636)
-        : item.status == SettlementStatus.completed
+        : record.status == SettlementStatus.completed
             ? const Color(0xFF2F7D4C)
-            : theme.textTheme.bodyMedium?.color;
+            : record.status == SettlementStatus.cancelled
+                ? const Color(0xFF9D3636)
+                : theme.textTheme.bodyMedium?.color;
 
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       borderRadius: BorderRadius.circular(12),
+      splashColor: theme.colorScheme.primary.withValues(alpha: 0.08),
+      highlightColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      focusColor: Colors.transparent,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: theme.dividerColor),
-          ),
-        ),
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.dividerColor))),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -382,41 +1094,23 @@ class _SettlementRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${item.operationLabel} • ${item.personName}',
-                    style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-                  ),
+                  Text(record.operationLabel, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(personName, style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.84))),
                   const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      AmountText(item.amountDisplay),
-                      Text(item.assetLabel, style: theme.textTheme.bodyMedium),
-                    ],
-                  ),
+                  Wrap(spacing: 8, children: [AmountText(record.amountDisplay), Text(record.assetLabel, style: theme.textTheme.bodyMedium)]),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  item.timeLabel,
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item.statusLabel,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: statusColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                Text(record.timeLabel(), style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 3),
+                Text(record.statusLabel(), style: theme.textTheme.bodyMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -426,29 +1120,257 @@ class _SettlementRow extends StatelessWidget {
 
 class _ZEmptyRow extends StatelessWidget {
   const _ZEmptyRow({required this.label});
-
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Theme.of(context).dividerColor),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor))),
+      child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+    );
+  }
+}
+
+class AmountText extends StatelessWidget {
+  const AmountText(this.amount, {super.key});
+  final String amount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Text(amount, textAlign: TextAlign.left, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+    );
+  }
+}
+class SettlementActionSheet extends StatelessWidget {
+  const SettlementActionSheet({
+    super.key,
+    required this.record,
+    required this.personName,
+    required this.onComplete,
+    required this.onEdit,
+    required this.onReschedule,
+    required this.onSnooze,
+    required this.onCancel,
+  });
+
+  final AppRecord record;
+  final String personName;
+  final VoidCallback onComplete;
+  final VoidCallback onEdit;
+  final VoidCallback onReschedule;
+  final VoidCallback onSnooze;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${record.operationLabel} • $personName', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text('${record.assetLabel} • ${record.amountDisplay}', style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 12),
+          _action(context, 'انجام شد', CupertinoIcons.check_mark_circled, onComplete),
+          _action(context, 'ویرایش', CupertinoIcons.pencil, onEdit),
+          _action(context, 'زمان‌بندی مجدد', CupertinoIcons.calendar, onReschedule),
+          _action(context, 'یادآوری بعداً', CupertinoIcons.bell, onSnooze),
+          _action(context, 'لغو', CupertinoIcons.xmark_circle, onCancel, destructive: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _action(BuildContext context, String text, IconData icon, VoidCallback onTap, {bool destructive = false}) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: destructive ? Colors.red : null),
+      title: Text(text, style: TextStyle(color: destructive ? Colors.red : null)),
+      onTap: onTap,
+    );
+  }
+}
+
+class DealDetailSheet extends StatelessWidget {
+  const DealDetailSheet({
+    super.key,
+    required this.record,
+    required this.personName,
+    required this.linkedSettlements,
+    required this.onOpenSettlement,
+  });
+
+  final AppRecord record;
+  final String personName;
+  final List<AppRecord> linkedSettlements;
+  final ValueChanged<AppRecord> onOpenSettlement;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('جزئیات معامله (${record.operationLabel})', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text(personName, style: Theme.of(context).textTheme.bodyLarge),
+          const SizedBox(height: 4),
+          Wrap(spacing: 8, children: [AmountText(record.amountDisplay), Text(record.assetLabel)]),
+          if ((record.note ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(record.note!, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+          const SizedBox(height: 14),
+          Text('تعهدهای لینک‌شده', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          if (linkedSettlements.isEmpty)
+            const Text('تعهد لینک‌شده‌ای ندارد.')
+          else
+            ...linkedSettlements.map((e) => SettlementRow(record: e, personName: personName, onTap: () => onOpenSettlement(e))),
+        ],
+      ),
+    );
+  }
+}
+
+class EditRecordSheet extends StatefulWidget {
+  const EditRecordSheet({super.key, required this.record, required this.personName});
+
+  final AppRecord record;
+  final String personName;
+
+  @override
+  State<EditRecordSheet> createState() => _EditRecordSheetState();
+}
+
+class _EditRecordSheetState extends State<EditRecordSheet> {
+  late final TextEditingController _amountController = TextEditingController(text: widget.record.amountDisplay);
+  late final TextEditingController _noteController = TextEditingController(text: widget.record.note ?? '');
+  late String? _currencyCode = widget.record.currencyCode ?? (widget.record.assetLabel == 'ارز' ? 'USD' : null);
+
+  CurrencyOption? get _selectedCurrency => currencyByCode(_currencyCode);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 14, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('ویرایش تعهد', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            if (widget.record.assetLabel == 'ارز')
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('نوع ارز'),
+                subtitle: Text(_selectedCurrency?.displayLabel ?? 'انتخاب نوع ارز'),
+                trailing: const Icon(CupertinoIcons.chevron_down),
+                onTap: () async {
+                  final selected = await showCurrencyPickerBottomSheet(context, _currencyCode);
+                  if (selected != null) {
+                    setState(() => _currencyCode = selected.code);
+                  }
+                },
+              ),
+            TextField(controller: _amountController, decoration: const InputDecoration(labelText: 'مبلغ/مقدار')),
+            const SizedBox(height: 10),
+            TextField(controller: _noteController, decoration: const InputDecoration(labelText: 'توضیحات'), maxLines: 2),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () {
+                  final amountInput = _amountController.text.trim();
+                  final amountDisplay = widget.record.assetLabel == 'ارز' && _currencyCode != null
+                      ? formatCurrencyAmount(amountInput, _currencyCode!)
+                      : amountInput;
+                  Navigator.pop(
+                    context,
+                    widget.record.copyWith(
+                      amountDisplay: amountDisplay,
+                      currencyCode: widget.record.assetLabel == 'ارز' ? _currencyCode : null,
+                      note: _noteController.text.trim(),
+                    ),
+                  );
+                },
+                child: const Text('ذخیره'),
+              ),
+            ),
+          ],
         ),
       ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.bodyMedium,
+    );
+  }
+}
+
+class PersonEditorSheet extends StatefulWidget {
+  const PersonEditorSheet({super.key, this.existing});
+
+  final AppPerson? existing;
+
+  @override
+  State<PersonEditorSheet> createState() => _PersonEditorSheetState();
+}
+
+class _PersonEditorSheetState extends State<PersonEditorSheet> {
+  late final TextEditingController _nameController = TextEditingController(text: widget.existing?.name ?? '');
+  late final TextEditingController _phoneController = TextEditingController(text: widget.existing?.phone ?? '');
+  late final TextEditingController _noteController = TextEditingController(text: widget.existing?.note ?? '');
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 14, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.existing == null ? 'افزودن شخص' : 'ویرایش شخص', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'نام')),            
+            const SizedBox(height: 10),
+            TextField(controller: _phoneController, decoration: const InputDecoration(labelText: 'شماره تماس (اختیاری)'), keyboardType: TextInputType.phone),
+            const SizedBox(height: 10),
+            TextField(controller: _noteController, decoration: const InputDecoration(labelText: 'یادداشت (اختیاری)'), maxLines: 2),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () {
+                  final name = _nameController.text.trim();
+                  if (name.isEmpty) return;
+                  final person = AppPerson(
+                    id: widget.existing?.id ?? 'p${DateTime.now().millisecondsSinceEpoch}',
+                    name: name,
+                    phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+                    note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+                    archived: widget.existing?.archived ?? false,
+                  );
+                  Navigator.pop(context, person);
+                },
+                child: const Text('ذخیره'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class QuickAddSheet extends StatefulWidget {
-  const QuickAddSheet({super.key});
+  const QuickAddSheet({super.key, required this.people});
+
+  final List<AppPerson> people;
 
   @override
   State<QuickAddSheet> createState() => _QuickAddSheetState();
@@ -457,176 +1379,162 @@ class QuickAddSheet extends StatefulWidget {
 class _QuickAddSheetState extends State<QuickAddSheet> {
   String? _operation;
   String? _asset;
+  String? _currencyCode;
+  AppPerson? _person;
+  Jalali _date = Jalali.now();
+  TimeOfDay? _time;
+  String _reminder = '۱۵ دقیقه';
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _noteController = TextEditingController();
+
+  CurrencyOption? get _selectedCurrency => currencyByCode(_currencyCode);
 
   @override
   Widget build(BuildContext context) {
+    final currencyReady = _asset != 'ارز' || _currencyCode != null;
+    final ready = _operation != null && _asset != null && _person != null && currencyReady && _amountController.text.trim().isNotEmpty;
     return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 14,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 48,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).dividerColor,
-                  borderRadius: BorderRadius.circular(100),
-                ),
-              ),
+            Center(child: Container(width: 46, height: 4, decoration: BoxDecoration(color: Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(100)))),
+            const SizedBox(height: 16),
+            Text('ثبت سریع', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 10),
+            Wrap(spacing: 8, runSpacing: 8, children: ['خرید', 'فروش', 'دریافت', 'تحویل'].map((value) => _chip(context, value, _operation == value, () => setState(() => _operation = value))).toList()),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: ['طلا', 'ارز']
+                  .map(
+                    (value) => _chip(
+                      context,
+                      value,
+                      _asset == value,
+                      _operation == null
+                          ? null
+                          : () => setState(() {
+                              _asset = value;
+                              if (_asset != 'ارز') {
+                                _currencyCode = null;
+                              } else {
+                                _currencyCode ??= 'USD';
+                              }
+                            }),
+                    ),
+                  )
+                  .toList(),
             ),
-            const SizedBox(height: 18),
-            Text('چه کاری می‌خواهید ثبت کنید؟', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: ['خرید', 'فروش', 'دریافت', 'تحویل'].map((value) {
-                final selected = _operation == value;
-                return ChoiceChip(
-                  label: Text(value),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _operation = value),
-                );
-              }).toList(),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('شخص'),
+              subtitle: Text(_person?.name ?? 'انتخاب شخص'),
+              trailing: const Icon(CupertinoIcons.chevron_down),
+              onTap: () async {
+                final selected = await showPersonPickerBottomSheet(context, widget.people);
+                if (selected != null) setState(() => _person = selected);
+              },
             ),
-            const SizedBox(height: 18),
-            Text('نوع دارایی', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: ['طلا', 'ارز'].map((value) {
-                final selected = _asset == value;
-                return ChoiceChip(
-                  label: Text(value),
-                  selected: selected,
-                  onSelected: _operation == null ? null : (_) => setState(() => _asset = value),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-            if (_operation != null && _asset != null) ...[
-              TextField(decoration: const InputDecoration(labelText: 'شخص')),
-              const SizedBox(height: 10),
-              TextField(
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: _asset == 'طلا' ? 'مقدار' : 'مبلغ'),
+            if (_asset == 'ارز')
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('نوع ارز'),
+                subtitle: Text(_selectedCurrency?.displayLabel ?? 'انتخاب نوع ارز'),
+                trailing: const Icon(CupertinoIcons.chevron_down),
+                onTap: () async {
+                  final selected = await showCurrencyPickerBottomSheet(context, _currencyCode);
+                  if (selected != null) {
+                    setState(() => _currencyCode = selected.code);
+                  }
+                },
               ),
-              const SizedBox(height: 10),
-              if (_asset == 'طلا')
-                TextField(
-                  decoration: const InputDecoration(labelText: 'عیار (اختیاری)'),
-                ),
-              if (_asset == 'طلا') const SizedBox(height: 10),
-              TextField(decoration: const InputDecoration(labelText: 'تاریخ')),
-              const SizedBox(height: 10),
-              TextField(decoration: const InputDecoration(labelText: 'ساعت (اختیاری)')),
-              const SizedBox(height: 10),
-              TextField(decoration: const InputDecoration(labelText: 'یادآوری')),
-              const SizedBox(height: 10),
-              TextField(decoration: const InputDecoration(labelText: 'توضیحات (اختیاری)')),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('ثبت'),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
-
-  @override
-  State<CalendarScreen> createState() => _CalendarScreenState();
-}
-
-class _CalendarScreenState extends State<CalendarScreen> {
-  Jalali _month = Jalali.now().withDay(1);
-  Jalali _selectedDay = Jalali.now();
-
-  @override
-  Widget build(BuildContext context) {
-    final events = mockCalendarEvents;
-    final selectedEvents = events.where((e) => isSameJalali(e.date, _selectedDay)).toList();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('تقویم')),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => setState(() => _month = _month.addMonths(-1)),
-                  icon: const Icon(CupertinoIcons.chevron_right),
-                ),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      '${monthName(_month.month)} ${toPersianDigits(_month.year.toString())}',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => setState(() => _month = _month.addMonths(1)),
-                  icon: const Icon(CupertinoIcons.chevron_left),
-                ),
-              ],
+            TextField(
+              controller: _amountController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(labelText: _asset == 'طلا' ? 'مقدار' : 'مبلغ'),
+              onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 8),
-            _CalendarMonthGrid(
-              month: _month,
-              selected: _selectedDay,
-              eventDays: events.map((e) => e.date).toList(),
-              onDayTap: (date) => setState(() => _selectedDay = date),
+            const SizedBox(height: 6),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('تاریخ'),
+              subtitle: Text(formatJalaliDate(_date)),
+              trailing: const Icon(CupertinoIcons.calendar),
+              onTap: () async {
+                final selected = await pickJalaliDate(context, _date);
+                if (selected != null) setState(() => _date = selected);
+              },
             ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('ساعت'),
+              subtitle: Text(_time == null ? 'بدون ساعت' : '${toPersianDigits(_time!.hour.toString().padLeft(2, '0'))}:${toPersianDigits(_time!.minute.toString().padLeft(2, '0'))}'),
+              trailing: const Icon(CupertinoIcons.time),
+              onTap: () async {
+                final selected = await pickCupertinoTime(context, _time);
+                if (selected != null) setState(() => _time = selected);
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('یادآوری'),
+              subtitle: Text(_reminder),
+              trailing: const Icon(CupertinoIcons.bell),
+              onTap: () async {
+                final selected = await showReminderTextPickerBottomSheet(context, _reminder);
+                if (selected != null) setState(() => _reminder = selected);
+              },
+            ),
+            TextField(controller: _noteController, decoration: const InputDecoration(labelText: 'توضیحات (اختیاری)'), maxLines: 2),
             const SizedBox(height: 16),
-            Text(
-              'برنامه روز ${formatJalaliDate(_selectedDay)}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: selectedEvents.isEmpty
-                  ? const Center(child: Text('برای این روز موردی ثبت نشده است.'))
-                  : ListView.separated(
-                      itemBuilder: (context, index) => _SettlementRow(item: selectedEvents[index]),
-                      separatorBuilder: (_, __) => const SizedBox(height: 0),
-                      itemCount: selectedEvents.length,
-                    ),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: ready
+                    ? () {
+                        Navigator.pop(
+                          context,
+                          QuickAddDraft(
+                            operation: _operation!,
+                            asset: _asset!,
+                            personId: _person!.id,
+                            amount: _amountController.text.trim(),
+                            date: _date,
+                            time: _time,
+                            reminder: _reminder,
+                            note: _noteController.text.trim(),
+                            currencyCode: _currencyCode,
+                          ),
+                        );
+                      }
+                    : null,
+                child: const Text('ثبت'),
+              ),
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _chip(BuildContext context, String text, bool selected, VoidCallback? onTap) {
+    return ChoiceChip(
+      label: Text(text),
+      selected: selected,
+      showCheckmark: false,
+      selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
+      side: BorderSide(color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.35) : Theme.of(context).dividerColor),
+      onSelected: onTap == null ? null : (_) => onTap(),
+    );
+  }
 }
 
-class _CalendarMonthGrid extends StatelessWidget {
-  const _CalendarMonthGrid({
-    required this.month,
-    required this.selected,
-    required this.eventDays,
-    required this.onDayTap,
-  });
+class CalendarMonthGrid extends StatelessWidget {
+  const CalendarMonthGrid({super.key, required this.month, required this.selected, required this.eventDays, required this.onDayTap});
 
   final Jalali month;
   final Jalali selected;
@@ -636,56 +1544,36 @@ class _CalendarMonthGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const weekTitles = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
-
     final firstWeekday = ((month.toDateTime().weekday + 1) % 7);
     final daysInMonth = month.monthLength;
-
     final cells = <Widget>[];
-    for (final title in weekTitles) {
-      cells.add(
-        Center(
-          child: Text(title, style: Theme.of(context).textTheme.bodyMedium),
-        ),
-      );
-    }
 
+    for (final title in weekTitles) {
+      cells.add(Center(child: Text(title, style: Theme.of(context).textTheme.bodyMedium)));
+    }
     for (int i = 0; i < firstWeekday; i++) {
       cells.add(const SizedBox());
     }
-
     for (int day = 1; day <= daysInMonth; day++) {
       final date = month.withDay(day);
-      final hasEvent = eventDays.any((eventDate) => isSameJalali(eventDate, date));
-      final isSelected = isSameJalali(selected, date);
-
+      final hasEvent = eventDays.any((e) => isSameJalali(e, date));
+      final isSelected = isSameJalali(date, selected);
       cells.add(
         GestureDetector(
           onTap: () => onDayTap(date),
           child: Container(
-            margin: const EdgeInsets.all(4),
+            margin: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.14)
-                  : Colors.transparent,
+              color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.14) : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  toPersianDigits(day.toString()),
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
+                Text(toPersianDigits(day.toString()), style: Theme.of(context).textTheme.bodyLarge),
                 const SizedBox(height: 2),
                 if (hasEvent)
-                  Container(
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
-                      shape: BoxShape.circle,
-                    ),
-                  )
+                  Container(width: 5, height: 5, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), shape: BoxShape.circle))
                 else
                   const SizedBox(height: 5),
               ],
@@ -697,10 +1585,7 @@ class _CalendarMonthGrid extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: Theme.of(context).dividerColor)),
       child: GridView.count(
         shrinkWrap: true,
         crossAxisCount: 7,
@@ -712,338 +1597,230 @@ class _CalendarMonthGrid extends StatelessWidget {
   }
 }
 
-class PeopleScreen extends StatefulWidget {
-  const PeopleScreen({super.key});
+class _CalendarHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _CalendarHeaderDelegate({required this.minExtentValue, required this.maxExtentValue, required this.builder});
+
+  final double minExtentValue;
+  final double maxExtentValue;
+  final Widget Function(BuildContext, double) builder;
 
   @override
-  State<PeopleScreen> createState() => _PeopleScreenState();
+  double get minExtent => minExtentValue;
+
+  @override
+  double get maxExtent => maxExtentValue;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+    return builder(context, progress);
+  }
+
+  @override
+  bool shouldRebuild(covariant _CalendarHeaderDelegate oldDelegate) {
+    return oldDelegate.minExtentValue != minExtentValue || oldDelegate.maxExtentValue != maxExtentValue;
+  }
 }
 
-class _PeopleScreenState extends State<PeopleScreen> {
+Future<AppPerson?> showPersonPickerBottomSheet(BuildContext context, List<AppPerson> people) {
+  return showModalBottomSheet<AppPerson>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (_) => _PersonPickerSheet(people: people),
+  );
+}
+
+class _PersonPickerSheet extends StatefulWidget {
+  const _PersonPickerSheet({required this.people});
+  final List<AppPerson> people;
+
+  @override
+  State<_PersonPickerSheet> createState() => _PersonPickerSheetState();
+}
+
+class _PersonPickerSheetState extends State<_PersonPickerSheet> {
   String query = '';
 
   @override
   Widget build(BuildContext context) {
-    final filtered = mockPeople
-        .where((person) => person.name.contains(query.trim()))
-        .toList(growable: false);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('اشخاص')),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-        child: Column(
-          children: [
-            TextField(
-              decoration: const InputDecoration(
-                hintText: 'جستجو در اشخاص',
-                prefixIcon: Icon(CupertinoIcons.search),
-              ),
-              onChanged: (value) => setState(() => query = value),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.separated(
-                itemBuilder: (context, index) {
-                  final person = filtered[index];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
-                      child: Text(
-                        person.name.trim().isEmpty ? '-' : person.name.trim()[0],
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      person.name,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      '${toPersianDigits(person.openCount.toString())} تعهد باز',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => PersonDetailScreen(person: person),
-                        ),
-                      );
-                    },
-                  );
-                },
-                separatorBuilder: (_, __) => Divider(color: Theme.of(context).dividerColor),
-                itemCount: filtered.length,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class PersonDetailScreen extends StatelessWidget {
-  const PersonDetailScreen({super.key, required this.person});
-
-  final Person person;
-
-  @override
-  Widget build(BuildContext context) {
-    final personItems = mockAllItems.where((item) => item.personName == person.name).toList();
-    final openItems = personItems.where((item) => item.status == SettlementStatus.open).toList();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('جزئیات شخص')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
-          children: [
-            Text(person.name, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 6),
-            Text(person.phone ?? 'شماره تماس ثبت نشده است.', style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: 14),
-            Text(
-              '${toPersianDigits(openItems.length.toString())} تعهد باز',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 10),
-            ...openItems.map((item) => _SettlementRow(item: item)),
-            const SizedBox(height: 18),
-            Text('سوابق', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            ...personItems.map((item) => _SettlementRow(item: item)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class HistoryScreen extends StatelessWidget {
-  const HistoryScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('سوابق')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+    final filtered = widget.people.where((e) => e.name.contains(query.trim())).toList(growable: false);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text('امروز', style: Theme.of(context).textTheme.titleMedium),
+          TextField(decoration: const InputDecoration(prefixIcon: Icon(CupertinoIcons.search), hintText: 'جستجو'), onChanged: (v) => setState(() => query = v)),
           const SizedBox(height: 8),
-          ...mockHistory.map((item) => _SettlementRow(item: item)),
+          SizedBox(
+            height: 320,
+            child: ListView.builder(
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
+                final person = filtered[index];
+                return ListTile(title: Text(person.name), onTap: () => Navigator.pop(context, person));
+              },
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class AmountText extends StatelessWidget {
-  const AmountText(this.amount, {super.key});
+Future<CurrencyOption?> showCurrencyPickerBottomSheet(BuildContext context, String? currentCode) {
+  return showModalBottomSheet<CurrencyOption>(
+    context: context,
+    useSafeArea: true,
+    builder: (_) => _CurrencyPickerSheet(currentCode: currentCode),
+  );
+}
 
-  final String amount;
+class _CurrencyPickerSheet extends StatelessWidget {
+  const _CurrencyPickerSheet({required this.currentCode});
+
+  final String? currentCode;
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Text(
-        amount,
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('نوع ارز', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          ...kCurrencyOptions.map(
+            (option) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(option.displayLabel),
+              trailing: currentCode == option.code ? const Icon(CupertinoIcons.check_mark) : null,
+              onTap: () => Navigator.pop(context, option),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-enum SettlementStatus { open, completed, cancelled }
+Future<Jalali?> pickJalaliDate(BuildContext context, Jalali initial) {
+  return showDialog<Jalali>(
+    context: context,
+    builder: (_) => _JalaliDateDialog(initial: initial),
+  );
+}
 
-class SettlementItem {
-  SettlementItem({
-    required this.operationLabel,
-    required this.personName,
-    required this.amountDisplay,
-    required this.assetLabel,
-    required this.timeLabel,
-    required this.status,
-    required this.date,
-  });
+class _JalaliDateDialog extends StatefulWidget {
+  const _JalaliDateDialog({required this.initial});
+  final Jalali initial;
 
-  final String operationLabel;
-  final String personName;
-  final String amountDisplay;
-  final String assetLabel;
-  final String timeLabel;
-  final SettlementStatus status;
-  final Jalali date;
+  @override
+  State<_JalaliDateDialog> createState() => _JalaliDateDialogState();
+}
 
-  String get statusLabel {
-    switch (status) {
-      case SettlementStatus.open:
-        return 'در انتظار';
-      case SettlementStatus.completed:
-        return 'انجام شد';
-      case SettlementStatus.cancelled:
-        return 'لغو شد';
-    }
+class _JalaliDateDialogState extends State<_JalaliDateDialog> {
+  late Jalali month = widget.initial.withDay(1);
+  late Jalali selected = widget.initial;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('انتخاب تاریخ'),
+      content: SizedBox(
+        width: 330,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                IconButton(onPressed: () => setState(() => month = month.addMonths(-1)), icon: const Icon(CupertinoIcons.chevron_right)),
+                Expanded(child: Center(child: Text('${monthName(month.month)} ${toPersianDigits(month.year.toString())}'))),
+                IconButton(onPressed: () => setState(() => month = month.addMonths(1)), icon: const Icon(CupertinoIcons.chevron_left)),
+              ],
+            ),
+            SizedBox(
+              height: 280,
+              child: CalendarMonthGrid(month: month, selected: selected, eventDays: const [], onDayTap: (d) => setState(() => selected = d)),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
+        FilledButton(onPressed: () => Navigator.pop(context, selected), child: const Text('تایید')),
+      ],
+    );
   }
 }
 
-class Person {
-  Person({
-    required this.name,
-    required this.openCount,
-    this.phone,
-  });
-
-  final String name;
-  final int openCount;
-  final String? phone;
+Future<TimeOfDay?> pickCupertinoTime(BuildContext context, TimeOfDay? initial) async {
+  TimeOfDay selected = initial ?? TimeOfDay.now();
+  await showCupertinoModalPopup<void>(
+    context: context,
+    builder: (_) {
+      return Container(
+        height: 280,
+        color: Theme.of(context).colorScheme.surface,
+        child: Column(
+          children: [
+            Row(
+              children: [
+                CupertinoButton(onPressed: () => Navigator.pop(context), child: const Text('تایید')),
+              ],
+            ),
+            Expanded(
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.time,
+                initialDateTime: DateTime(2025, 1, 1, selected.hour, selected.minute),
+                use24hFormat: true,
+                onDateTimeChanged: (value) => selected = TimeOfDay(hour: value.hour, minute: value.minute),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+  return selected;
 }
 
-final mockOverdue = [
-  SettlementItem(
-    operationLabel: 'تحویل',
-    personName: 'رضا محمدی',
-    amountDisplay: '\$10,000',
-    assetLabel: 'ارز',
-    timeLabel: 'دیروز ۱۱:۰۰',
-    status: SettlementStatus.open,
-    date: Jalali.now().addDays(-1),
-  ),
-];
-
-final mockToday = [
-  SettlementItem(
-    operationLabel: 'دریافت',
-    personName: 'علی رضایی',
-    amountDisplay: '۲۵۰',
-    assetLabel: 'گرم طلا',
-    timeLabel: '۱۰:۳۰',
-    status: SettlementStatus.open,
-    date: Jalali.now(),
-  ),
-  SettlementItem(
-    operationLabel: 'تحویل',
-    personName: 'حسن کریمی',
-    amountDisplay: '€5,000',
-    assetLabel: 'ارز',
-    timeLabel: '۱۴:۴۵',
-    status: SettlementStatus.open,
-    date: Jalali.now(),
-  ),
-];
-
-final mockTomorrow = [
-  SettlementItem(
-    operationLabel: 'دریافت',
-    personName: 'مهدی احمدی',
-    amountDisplay: '۴۰۰',
-    assetLabel: 'گرم طلا',
-    timeLabel: 'بدون ساعت',
-    status: SettlementStatus.open,
-    date: Jalali.now().addDays(1),
-  ),
-];
-
-final mockHistory = [
-  SettlementItem(
-    operationLabel: 'دریافت',
-    personName: 'علی رضایی',
-    amountDisplay: '۳۰۰',
-    assetLabel: 'گرم طلا',
-    timeLabel: '۰۹:۱۰',
-    status: SettlementStatus.completed,
-    date: Jalali.now(),
-  ),
-  SettlementItem(
-    operationLabel: 'تحویل',
-    personName: 'رضا محمدی',
-    amountDisplay: '\$8,000',
-    assetLabel: 'ارز',
-    timeLabel: '۱۲:۲۰',
-    status: SettlementStatus.completed,
-    date: Jalali.now(),
-  ),
-];
-
-final mockPeople = [
-  Person(name: 'علی رضایی', openCount: 2, phone: '۰۹۱۲۱۲۳۴۵۶۷'),
-  Person(name: 'رضا محمدی', openCount: 1, phone: '۰۹۱۲۴۴۴۵۵۶۶'),
-  Person(name: 'حسن کریمی', openCount: 1, phone: '۰۹۱۲۳۳۳۴۴۵۵'),
-  Person(name: 'مهدی احمدی با نام خانوادگی طولانی', openCount: 0),
-];
-
-List<SettlementItem> get mockAllItems => [...mockOverdue, ...mockToday, ...mockTomorrow, ...mockHistory];
-
-List<SettlementItem> get mockCalendarEvents => mockAllItems;
-
-String formatJalaliDate(Jalali date) {
-  return '${toPersianDigits(date.day.toString())} ${monthName(date.month)} ${toPersianDigits(date.year.toString())}';
-}
-
-String weekdayName(int weekday) {
-  switch (weekday) {
-    case 1:
-      return 'دوشنبه';
-    case 2:
-      return 'سه‌شنبه';
-    case 3:
-      return 'چهارشنبه';
-    case 4:
-      return 'پنج‌شنبه';
-    case 5:
-      return 'جمعه';
-    case 6:
-      return 'شنبه';
-    case 7:
-      return 'یکشنبه';
-    default:
-      return '';
+Future<(Jalali, TimeOfDay?)?> showReminderPickerBottomSheet(BuildContext context, {required Jalali initialDate, required TimeOfDay? initialTime}) async {
+  final selected = await showReminderTextPickerBottomSheet(context, '۱ ساعت');
+  if (!context.mounted || selected == null) return null;
+  if (selected == '۱ ساعت') return (Jalali.now(), TimeOfDay.now().replacing(hour: (TimeOfDay.now().hour + 1) % 24));
+  if (selected == 'فردا') return (Jalali.now().addDays(1), initialTime ?? const TimeOfDay(hour: 9, minute: 0));
+  if (selected == 'سفارشی') {
+    final d = await pickJalaliDate(context, initialDate);
+    if (!context.mounted || d == null) return null;
+    final t = await pickCupertinoTime(context, initialTime);
+    return (d, t);
   }
+  return (initialDate, initialTime);
 }
 
-String monthName(int month) {
-  const months = [
-    'فروردین',
-    'اردیبهشت',
-    'خرداد',
-    'تیر',
-    'مرداد',
-    'شهریور',
-    'مهر',
-    'آبان',
-    'آذر',
-    'دی',
-    'بهمن',
-    'اسفند',
-  ];
-  return months[month - 1];
-}
-
-String toPersianDigits(String input) {
-  const latin = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-  const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-
-  var output = input;
-  for (int i = 0; i < latin.length; i++) {
-    output = output.replaceAll(latin[i], persian[i]);
-  }
-  return output;
-}
-
-bool isSameJalali(Jalali a, Jalali b) {
-  return a.year == b.year && a.month == b.month && a.day == b.day;
-}
-
-String formatAmountWithGrouping(int amount) {
-  final formatter = NumberFormat('#,###');
-  return toPersianDigits(formatter.format(amount));
+Future<String?> showReminderTextPickerBottomSheet(BuildContext context, String current) async {
+  return showModalBottomSheet<String>(
+    context: context,
+    useSafeArea: true,
+    builder: (_) {
+      final items = ['۱۵ دقیقه', '۳۰ دقیقه', '۱ ساعت', '۳ ساعت', '۱ روز', 'فردا', 'سفارشی'];
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: items
+              .map(
+                (e) => ListTile(
+                  title: Text(e),
+                  trailing: e == current ? const Icon(CupertinoIcons.check_mark) : null,
+                  onTap: () => Navigator.pop(context, e),
+                ),
+              )
+              .toList(),
+        ),
+      );
+    },
+  );
 }
