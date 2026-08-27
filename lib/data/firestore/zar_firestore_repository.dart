@@ -100,6 +100,36 @@ class ZarFirestoreRepository implements ZarDomainRepository {
   }
 
   @override
+  Future<List<ZarSettlement>> loadRecentSettlements({int limit = 250}) async {
+    final snapshot = await _settlements
+        .orderBy('scheduledAt', descending: true)
+        .limit(limit)
+        .get();
+    return snapshot.docs
+        .map((doc) => _mapper.settlementFromMap(
+              id: doc.id,
+              businessId: businessId,
+              map: doc.data(),
+            ))
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<ZarDeal>> loadRecentDeals({int limit = 250}) async {
+    final snapshot = await _deals
+        .orderBy('dealAt', descending: true)
+        .limit(limit)
+        .get();
+    return snapshot.docs
+        .map((doc) => _mapper.dealFromMap(
+              id: doc.id,
+              businessId: businessId,
+              map: doc.data(),
+            ))
+        .toList(growable: false);
+  }
+
+  @override
   Future<List<ZarSettlement>> loadPersonSettlements({
     required String personId,
     int limit = 100,
