@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 import '../app_core.dart';
+import '../domain/zar_amount_formatter.dart';
 import '../domain/zar_amount_parser.dart';
 import '../domain/zar_domain_models.dart';
 import '../domain/zar_reminder_plan.dart';
@@ -173,13 +174,7 @@ class ZarLegacyPresentationBridge {
       case ZarGoldAssetAmount():
         return toPersianDigits(amount.value.decimal);
       case ZarCurrencyAssetAmount():
-        final value = amount.value;
-        final scale = value.minorUnitScale;
-        final digits = value.minorUnits.toString().padLeft(scale + 1, '0');
-        final whole = scale == 0 ? digits : digits.substring(0, digits.length - scale);
-        final fraction = scale == 0 ? '' : digits.substring(digits.length - scale);
-        final decimal = fraction.isEmpty || int.parse(fraction) == 0 ? whole : '$whole.$fraction';
-        return formatCurrencyAmount(decimal, value.code);
+        return ZarAmountFormatter.currency(amount.value);
     }
   }
 
