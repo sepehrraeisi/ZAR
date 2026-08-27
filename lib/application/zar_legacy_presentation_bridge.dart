@@ -4,6 +4,7 @@ import 'package:shamsi_date/shamsi_date.dart';
 import '../app_core.dart';
 import '../domain/zar_amount_parser.dart';
 import '../domain/zar_domain_models.dart';
+import '../domain/zar_reminder_plan.dart';
 
 /// Temporary bridge while the polished Phase A.2 widgets are migrated from the
 /// original prototype models to the production domain models.
@@ -88,6 +89,7 @@ class ZarLegacyPresentationBridge {
       scheduledAt: scheduled,
       hasTime: record.time != null,
       status: status,
+      reminderPlan: existing?.reminderPlan ?? const ZarReminderPlan(),
       completedAt: completion,
       completedBy: status == ZarSettlementStatus.completed
           ? (existing?.completedBy ?? userId)
