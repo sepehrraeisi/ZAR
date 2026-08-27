@@ -2,17 +2,36 @@ import '../../app_core.dart';
 import 'reminder_model.dart';
 import 'reminder_scheduler.dart';
 
+class ReminderNotificationContent {
+  const ReminderNotificationContent({required this.title, required this.body});
+
+  final String title;
+  final String body;
+}
+
+typedef ReminderContentBuilder = ReminderNotificationContent Function(
+  AppRecord record,
+  String personName,
+);
+
 /// Coordinates reminder state with settlement lifecycle without coupling UI to
-/// a native notification plugin. Firebase/native adapters can replace storage
-/// and delivery later while preserving these semantics.
+/// a native notification plugin.
+///
+/// Native/local delivery and lock-screen privacy policy are injected so the
+/// business lifecycle stays testable and deterministic.
 class RecordReminderRegistry {
-  RecordReminderRegistry({ReminderScheduler? scheduler})
-      : scheduler = scheduler ?? InMemoryReminderScheduler();
+  RecordReminderRegistry({
+    ReminderScheduler? scheduler,
+    ReminderContentBuilder? contentBuilder,
+  })  : scheduler = scheduler ?? InMemoryReminderScheduler(),
+        contentBuilder = contentBuilder ?? _defaultContent;
 
   final ReminderScheduler scheduler;
+  final ReminderContentBuilder contentBuilder;
   final Map<String, ReminderPlan> _plans = {};
 
-  ReminderPlan planFor(String recordId) => _plans[recordId] ?? const ReminderPlan();
+  ReminderPlan planFor(String recordId) =>
+      _plans[recordId] ?? const ReminderPlan();
 
   Future<void> setPlan({
     required AppRecord record,
@@ -59,12 +78,22 @@ class RecordReminderRegistry {
     required String personName,
   }) async {
     final dueAt = dueDateTimeFromJalali(record.date, record.time);
+    final content = contentBuilder(record, personName);
     await scheduler.replaceForRecord(
       recordId: record.id,
       dueAt: dueAt,
       plan: plan,
-      title: '${record.operationLabel} • $personName',
-      body: '${record.assetLabel} • ${record.amountDisplay}',
+      title: content.title,
+      body: content.body,
     );
   }
+
+  static ReminderNotificationContent _defaultContent(
+    AppRecord record,
+    String personName,
+  ) =>
+      ReminderNotificationContent(
+        title: '${record.operationLabel} • $personName',
+        body: '${record.assetLabel} • ${record.amountDisplay}',
+      );
 }
