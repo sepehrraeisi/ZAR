@@ -18,7 +18,7 @@ void main() {
       amountDisplay: r'$10,000',
       assetLabel: 'ارز',
       date: Jalali(1405, 6, 5),
-      time: const TimeOfDay(hour: 11),
+      time: const TimeOfDay(hour: 11, minute: 0),
     );
 
     await registry.setPlan(
@@ -48,7 +48,7 @@ void main() {
       amountDisplay: '۲۵۰',
       assetLabel: 'گرم طلا',
       date: Jalali(1405, 6, 5),
-      time: const TimeOfDay(hour: 11),
+      time: const TimeOfDay(hour: 11, minute: 0),
     );
     const plan = ReminderPlan(
       rules: [ReminderRule.offset(id: 'r1', minutesBefore: 30)],
@@ -59,7 +59,7 @@ void main() {
 
     final moved = original.copyWith(
       date: Jalali(1405, 6, 6),
-      time: const TimeOfDay(hour: 15),
+      time: const TimeOfDay(hour: 15, minute: 0),
     );
     await registry.onRecordChanged(record: moved, personName: 'علی رضایی');
     final after = (await scheduler.pendingForRecord(original.id)).single.scheduledAt;
