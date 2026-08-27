@@ -1,128 +1,77 @@
 # ZAR+
 
-ZAR+ is a Persian-first, RTL-first Flutter application for operational gold and foreign-currency workflows.
+Private Persian-first Flutter application for operational gold and currency work.
 
-## Product direction
+## Current Phase A.2 architecture
 
-- iPhone-first Flutter UX
-- Persian UI with Jalali calendar
-- strict separation between **Deal** (خرید / فروش) and **Settlement** (دریافت / تحویل)
-- Firebase/Firestore planned as the authoritative cloud source of truth
-- device-local notification preferences only for non-authoritative UX settings
-- structured reminders, auditability, archive/restore, backup/export
+- Persian RTL + Jalali operational UI
+- strict Deal vs Settlement separation
+- repository-backed application state
+- exact gold decimal strings and currency integer minor units
+- Notification Center + archived people flows
+- native local notification foundation for iOS/Android
+- notification privacy, sound, vibration and device-local preferences
+- notification deep-link record IDs and cold-start buffering
+- confirmed-write / Retry foundation
+- lossless production-domain JSON backup + Persian CSV export foundation
+- Firestore mapper/repository, rules and indexes prepared but production Firebase remains disabled
 
-## Current development branch
+## Reminder data ownership
 
-Primary active branch:
+Reminder intent is business data, not only device notification state.
 
-`codex/phase-a2-ux`
+Each `ZarSettlement` now owns a persistence-safe `ZarReminderPlan` containing:
 
-The `master` branch remains the preserved Genspark checkpoint until Phase A.2 is validated.
+- offset reminders such as 15m / 30m / 1h / 3h / 1d before
+- custom reminder timestamps
+- snoozed-until timestamp
+- enabled state per rule
 
-## Phase A.2 implemented foundation
+The plan is serialized with the settlement in Firestore and in the lossless domain backup. Native iOS/Android scheduling remains a separate delivery layer. This means restarting or replacing the phone does not erase the user's chosen reminder configuration once cloud persistence is active.
 
-Current branch includes:
-
-- repository-backed operational app shell
-- Persian RTL/Jalali Home, Calendar, People and History flows
-- Quick Add with gold/currency separation and currency selector
-- People archive + archived-people search + restore
-- Notification Center and notification preferences
-- local iOS/Android reminder scheduling foundation
-- notification privacy modes: کامل / محدود / خصوصی
-- device-local persistence for notification preferences
-- native notification tap buffering for cold-start/bootstrap timing
-- notification tap routing into the exact Deal/Settlement once the repository workspace is ready
-- confirmed-write coordination for business mutations
-- Complete / Cancel / Reschedule / Archive only dismiss after confirmed persistence
-- failed writes remain visible and expose Persian Retry feedback
-- bounded iOS pending-notification policy that keeps the nearest reminders and preserves authoritative reminder plans for later queue refresh
-- decimal-safe gold quantities and integer minor-unit currency values
-- typed production-domain models and repository boundary
-- Firestore repository/schema/security-rule foundation (production connection still disabled)
-- versioned JSON backup foundation + Persian CSV export
-- Persian email/password auth UI foundation
-
-## Safety / data-integrity rules
-
-ZAR+ must never claim that a business record was saved unless the persistence operation completed successfully.
-
-Core business records must not live only in local preferences or device cache.
-
-Archived people must remain recoverable and their historical Deals/Settlements must remain intact.
-
-Completed/cancelled obligations must cancel obsolete reminder schedules.
-
-## Firebase status
-
-Production Firebase remains intentionally disabled until configuration matches the final package identity:
-
-`com.zarplus.app`
-
-Do not reuse a `google-services.json` or Apple Firebase configuration generated for another package/bundle identifier.
-
-## Validation status
-
-GitHub Actions passed Flutter analyze/tests/web build earlier in Phase A.2. Recent GitHub-hosted runner jobs are currently failing before any workflow step starts (`steps: null` / no usable job execution), so new native changes still require a healthy CI runner and real-device validation before merge.
-
-Native notifications especially require real iPhone/Android validation for:
-
-- permission flow
-- Focus / Silent mode behavior
-- lock-screen privacy
-- sound/vibration behavior
-- notification tap deep-link behavior
-- reboot/update rescheduling behavior
+Legacy Firestore/backup settlement documents that do not yet contain `reminderPlan` remain readable and default safely to an empty plan.
 
 ## Next Development Pass (Do Not Skip)
 
-### 1. Notification Center
+### 1) Finish live reminder-plan wiring
 
-The Home bell is a real operational entry point, not decoration.
+The persistence model/store is now ready. The live shell still needs to stop treating the default reminder as the authoritative plan.
 
-Notification Center requirements:
+Required next wiring:
 
-- overdue reminders
-- due-soon reminders
-- upcoming receive/deliver obligations
-- snoozed reminders returning
-- unread state / restrained badge
-- tap notification → open related record
-- settings access
+- after repository/workspace load, schedule each open settlement using its persisted `ZarReminderPlan`
+- use the device/user default reminder only when a newly created settlement has no explicit plan
+- Quick Add must save the selected reminder plan in the settlement before scheduling native notifications
+- Snooze must persist the new `snoozedUntil` before changing the native schedule
+- reminder edits must persist before native schedule replacement
+- Complete/Cancel must retain historical reminder intent if desired for audit/backup, while cancelling obsolete native pending notifications
+- after successful Retry, reconcile the native reminder schedule from the persisted settlement state
 
-Notification settings include:
+### 2) Notification Center remains a core operational feature
 
-- enable/disable
-- sound
-- vibration where supported
-- system notification settings shortcut
-- privacy: کامل / محدود / خصوصی
-- default reminder preset
-- default snooze preset
+- Home bell icon opens Persian RTL `اعلان‌ها`.
+- Show due soon, overdue, snoozed returns and upcoming deliveries/receipts.
+- Notification items deep-link to the relevant record/settlement.
+- Include subtle unread state + optional unread badge/count.
 
-### 2. Archived People
+#### Notification settings (`تنظیمات اعلان‌ها`)
 
-Archive means hidden from the active People list, not deleted.
+- اعلان‌ها: on/off
+- صدا: supported app notification behavior/sound options within platform limits
+- ویبره: where OS supports it
+- حریم خصوصی اعلان: `کامل` / `محدود` / `خصوصی`
+- یادآوری‌های پیش‌فرض: 15m, 30m, 1h, 3h, 1d before
+- Snooze defaults: 15m, 30m, 1h, 3h, tomorrow, custom time
 
-Archived People must support:
+### 3) Archived People must never disappear
 
-- search
-- open person detail
-- restore
-- historical Deal/Settlement continuity
-- warning when archiving a person with open obligations
+- Archive means hidden from active People list, not deleted/inaccessible.
+- `اشخاص بایگانی‌شده` remains searchable, openable and restorable.
+- Archiving must not delete/detach deals, settlements, history or audit logs.
+- If a person has open obligations, require confirmation; do not cancel them.
 
-### 3. Remaining pre-Firebase hardening
+## Safety constraints
 
-Before enabling production Firebase:
-
-- validate current branch on a healthy Flutter CI runner
-- run real-device iOS/Android notification tests
-- verify iOS bounded pending-notification refresh with many future obligations
-- further reduce legacy `AppRecord` / presentation ownership where practical
-- finish end-to-end user-facing JSON export/import flow
-- perform final Persian RTL/Jalali visual QA
-
-## Merge policy
-
-Do not merge Phase A.2 into `master` while CI runner validation is unavailable or native notification behavior has not been exercised on real devices.
+- Firebase production integration remains paused until the correct configuration for `com.zarplus.app` is provided.
+- Do not commit Firebase Admin keys, `.env`, signing keys, tokens or credentials.
+- Do not merge the Phase A.2 PR until CI/device validation is available.
