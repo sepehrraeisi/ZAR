@@ -15,26 +15,36 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   FlutterLocalNotificationScheduler({
     FlutterLocalNotificationsPlugin? plugin,
     this.timeZoneName = 'Asia/Tehran',
-    this.playSound = true,
-    this.enableVibration = true,
+    bool playSound = true,
+    bool enableVibration = true,
     this.onRecordTapped,
-  }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+  })  : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+        _playSound = playSound,
+        _enableVibration = enableVibration;
 
-  static const _channelId = 'zar_reminders';
+  static const _soundChannelId = 'zar_reminders_sound';
+  static const _silentChannelId = 'zar_reminders_silent';
   static const _channelName = 'یادآوری‌های ZAR+';
   static const _channelDescription = 'یادآوری تحویل، دریافت و تعهدات کاری';
   static const _payloadPrefix = 'zar-record:';
 
   final FlutterLocalNotificationsPlugin _plugin;
   final String timeZoneName;
-  final bool playSound;
-  final bool enableVibration;
   final ValueChanged<String>? onRecordTapped;
 
+  bool _playSound;
+  bool _enableVibration;
   bool _initialized = false;
   late tz.Location _location;
 
   bool get initialized => _initialized;
+  bool get playSound => _playSound;
+  bool get enableVibration => _enableVibration;
+
+  void configure({required bool playSound, required bool enableVibration}) {
+    _playSound = playSound;
+    _enableVibration = enableVibration;
+  }
 
   Future<void> initialize() async {
     if (_initialized || kIsWeb) return;
@@ -70,7 +80,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
       return await ios.requestPermissions(
             alert: true,
             badge: true,
-            sound: playSound,
+            sound: _playSound,
           ) ??
           false;
     }
@@ -116,6 +126,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
       final utc = fireAt.toUtc();
       if (!utc.isAfter(now)) continue;
 
+      final channelId = _playSound ? _soundChannelId : _silentChannelId;
       await _plugin.zonedSchedule(
         id: _stableNotificationId(recordId, utc),
         title: title,
@@ -123,18 +134,18 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
         scheduledDate: tz.TZDateTime.from(utc, _location),
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            _channelId,
+            channelId,
             _channelName,
             channelDescription: _channelDescription,
             importance: Importance.high,
             priority: Priority.high,
-            playSound: playSound,
-            enableVibration: enableVibration,
+            playSound: _playSound,
+            enableVibration: _enableVibration,
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,
             presentBadge: true,
-            presentSound: playSound,
+            presentSound: _playSound,
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -158,8 +169,8 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   Future<List<ScheduledReminder>> pendingForRecord(String recordId) async {
     // The native plugin exposes pending ids/title/body but not the resolved
     // schedule timestamp consistently on every platform. Business logic should
-    // remain sourced from ReminderPlan; this method intentionally returns the
-    // deterministic in-memory representation only in preview/test schedulers.
+    // remain sourced from ReminderPlan; deterministic schedule assertions use
+    // InMemoryReminderScheduler in tests and web preview.
     return const [];
   }
 
