@@ -1,6 +1,7 @@
 import '../app_core.dart';
 import '../data/zar_domain_repository.dart';
 import '../domain/zar_domain_models.dart';
+import '../domain/zar_reminder_plan.dart';
 import 'zar_legacy_presentation_bridge.dart';
 
 /// Repository-backed presentation store for the current Phase A.2 widgets.
@@ -154,6 +155,43 @@ class ZarPhaseA2Store {
     }
   }
 
+  ZarReminderPlan reminderPlanFor(String recordId) =>
+      _domainSettlements[recordId]?.reminderPlan ?? const ZarReminderPlan();
+
+  /// Persists reminder selection as part of the settlement business record.
+  /// Native notification scheduling is performed separately after this write
+  /// succeeds, so a device restart or replacement never loses user intent.
+  Future<void> saveReminderPlan(
+    String recordId,
+    ZarReminderPlan reminderPlan, {
+    String auditAction = 'reminder_update',
+  }) async {
+    final existing = _domainSettlements[recordId];
+    if (existing == null) {
+      throw StateError('Settlement $recordId is not loaded.');
+    }
+    final updated = ZarSettlement(
+      id: existing.id,
+      businessId: existing.businessId,
+      dealId: existing.dealId,
+      personId: existing.personId,
+      direction: existing.direction,
+      amount: existing.amount,
+      scheduledAt: existing.scheduledAt,
+      hasTime: existing.hasTime,
+      status: existing.status,
+      reminderPlan: reminderPlan,
+      completedAt: existing.completedAt,
+      completedBy: existing.completedBy,
+      note: existing.note,
+      createdBy: existing.createdBy,
+      createdAt: existing.createdAt,
+      updatedAt: _clock().toUtc(),
+    );
+    await _repository.saveSettlement(updated, auditAction: auditAction);
+    _domainSettlements[updated.id] = updated;
+  }
+
   Future<void> completeSettlement(AppRecord record) =>
       saveRecord(record.copyWith(status: SettlementStatus.completed), auditAction: 'complete');
 
@@ -176,6 +214,8 @@ class ZarPhaseA2Store {
     }
     return null;
   }
+
+  ZarSettlement? settlementById(String id) => _domainSettlements[id];
 
   void _replacePerson(AppPerson person) {
     final index = _people.indexWhere((item) => item.id == person.id);
