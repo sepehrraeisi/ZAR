@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../app_core.dart';
+import '../../domain/zar_amount_formatter.dart';
+import '../../domain/zar_amount_parser.dart';
 
 /// Person editor that owns the persistence attempt. It never dismisses the
 /// sheet until the supplied async save callback succeeds.
@@ -126,8 +128,9 @@ class ConfirmedRecordEditorSheet extends StatefulWidget {
 }
 
 class _ConfirmedRecordEditorSheetState extends State<ConfirmedRecordEditorSheet> {
-  late final TextEditingController _amount =
-      TextEditingController(text: widget.record.amountDisplay);
+  late final TextEditingController _amount = TextEditingController(
+    text: _numericInputFromDisplay(widget.record.amountDisplay),
+  );
   late final TextEditingController _note =
       TextEditingController(text: widget.record.note ?? '');
   late String? _currencyCode = widget.record.currencyCode ??
@@ -153,20 +156,28 @@ class _ConfirmedRecordEditorSheetState extends State<ConfirmedRecordEditorSheet>
       _error = null;
     });
 
-    final amountDisplay = widget.record.assetLabel == 'ارز' &&
-            _currencyCode != null
-        ? formatCurrencyAmount(rawAmount, _currencyCode!)
-        : rawAmount;
-    final updated = widget.record.copyWith(
-      amountDisplay: amountDisplay,
-      currencyCode:
-          widget.record.assetLabel == 'ارز' ? _currencyCode : null,
-      note: _note.text.trim(),
-    );
-
     try {
+      final amountDisplay = widget.record.assetLabel == 'ارز' &&
+              _currencyCode != null
+          ? ZarAmountFormatter.currency(
+              ZarAmountParser.currency(rawAmount, code: _currencyCode!),
+            )
+          : rawAmount;
+      final updated = widget.record.copyWith(
+        amountDisplay: amountDisplay,
+        currencyCode:
+            widget.record.assetLabel == 'ارز' ? _currencyCode : null,
+        note: _note.text.trim(),
+      );
+
       await widget.onSave(updated);
       if (mounted) Navigator.of(context).pop(updated);
+    } on FormatException {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = 'مقدار واردشده معتبر نیست.';
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -230,6 +241,10 @@ class _ConfirmedRecordEditorSheetState extends State<ConfirmedRecordEditorSheet>
     );
   }
 }
+
+String _numericInputFromDisplay(String input) => input
+    .replaceAll(RegExp(r'[^0-9۰-۹٠-٩.,٬٫]'), '')
+    .trim();
 
 class _ConfirmedSheetFrame extends StatelessWidget {
   const _ConfirmedSheetFrame({
