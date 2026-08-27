@@ -13,5 +13,6 @@ void main() {
     expect(find.text('اشخاص'), findsOneWidget);
     expect(find.text('سوابق'), findsOneWidget);
     expect(find.text('عقب‌افتاده'), findsOneWidget);
+    expect(find.text('رضا محمدی'), findsWidgets);
   });
 }
