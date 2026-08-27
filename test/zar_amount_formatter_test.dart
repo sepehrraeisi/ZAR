@@ -8,7 +8,7 @@ void main() {
     final usd = ZarAmountParser.currency('۱۰٬۰۰۰٫۵۰', code: 'USD');
     final eur = ZarAmountParser.currency('1234.05', code: 'EUR');
 
-    expect(ZarAmountFormatter.currency(usd), r'$10,000.5');
+    expect(ZarAmountFormatter.currency(usd), r'$10,000.50');
     expect(ZarAmountFormatter.currency(eur), '€1,234.05');
   });
 
