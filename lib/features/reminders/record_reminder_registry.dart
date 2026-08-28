@@ -100,6 +100,15 @@ class RecordReminderRegistry {
     await scheduler.cancelForRecord(recordId);
   }
 
+  Future<void> clearTracked() async {
+    final ids = {..._plans.keys, ..._contexts.keys};
+    _plans.clear();
+    _contexts.clear();
+    for (final id in ids) {
+      await scheduler.cancelForRecord(id);
+    }
+  }
+
   Future<void> _refreshScheduledContent() async {
     for (final entry in List<MapEntry<String, _ReminderRecordContext>>.from(
       _contexts.entries,

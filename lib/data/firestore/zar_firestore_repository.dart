@@ -34,6 +34,84 @@ class ZarFirestoreRepository implements ZarDomainRepository {
       _business.collection('auditLogs');
 
   @override
+  Future<ZarDomainSnapshot> loadCompleteSnapshot() async {
+    final result = await Future.wait([_people.get(), _deals.get(), _settlements.get()]);
+    return ZarDomainSnapshot(
+      people: result[0].docs
+          .map((doc) => _mapper.personFromMap(doc.id, doc.data()))
+          .toList(growable: false),
+      deals: result[1].docs
+          .map((doc) => _mapper.dealFromMap(
+                id: doc.id,
+                businessId: businessId,
+                map: doc.data(),
+              ))
+          .toList(growable: false),
+      settlements: result[2].docs
+          .map((doc) => _mapper.settlementFromMap(
+                id: doc.id,
+                businessId: businessId,
+                map: doc.data(),
+              ))
+          .toList(growable: false),
+    );
+  }
+
+  @override
+  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
+    final existing = await Future.wait([_people.get(), _deals.get(), _settlements.get()]);
+    final replacementIds = [
+      snapshot.people.map((item) => item.id).toSet(),
+      snapshot.deals.map((item) => item.id).toSet(),
+      snapshot.settlements.map((item) => item.id).toSet(),
+    ];
+    var deleteCount = 0;
+    for (var index = 0; index < existing.length; index++) {
+      deleteCount += existing[index]
+          .docs
+          .where((document) => !replacementIds[index].contains(document.id))
+          .length;
+    }
+    final writeCount = deleteCount + snapshot.people.length +
+        snapshot.deals.length + snapshot.settlements.length + 1;
+    if (writeCount > 499) {
+      throw StateError(
+        'Atomic restore exceeds the Firestore 500-write transaction limit.',
+      );
+    }
+    final batch = _firestore.batch();
+    for (var index = 0; index < existing.length; index++) {
+      for (final document in existing[index].docs) {
+        if (!replacementIds[index].contains(document.id)) {
+          batch.delete(document.reference);
+        }
+      }
+    }
+    for (final person in snapshot.people) {
+      batch.set(_people.doc(person.id), _mapper.personToMap(person));
+    }
+    for (final deal in snapshot.deals) {
+      batch.set(_deals.doc(deal.id), _mapper.dealToMap(deal));
+    }
+    for (final settlement in snapshot.settlements) {
+      batch.set(_settlements.doc(settlement.id), _mapper.settlementToMap(settlement));
+    }
+    _appendAuditToBatch(
+      batch,
+      recordId: 'complete-backup',
+      recordType: 'business',
+      action: 'restore_replace',
+      before: null,
+      after: {
+        'people': snapshot.people.length,
+        'deals': snapshot.deals.length,
+        'settlements': snapshot.settlements.length,
+      },
+    );
+    await batch.commit();
+  }
+
+  @override
   Future<List<ZarPerson>> loadActivePeople({int limit = 100}) async {
     final snapshot = await _people
         .where('archived', isEqualTo: false)

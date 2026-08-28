@@ -7,6 +7,7 @@ import 'package:shamsi_date/shamsi_date.dart';
 
 import 'app_core.dart';
 import 'application/persisted_reminder_coordinator.dart';
+import 'application/zar_backup_manager.dart';
 import 'application/zar_legacy_presentation_bridge.dart';
 import 'application/zar_phase_a2_store.dart';
 import 'application/zar_write_coordinator.dart';
@@ -15,6 +16,7 @@ import 'domain/zar_amount_formatter.dart';
 import 'domain/zar_amount_parser.dart';
 import 'domain/zar_reminder_plan.dart';
 import 'features/editors/confirmed_editors.dart';
+import 'features/backup/backup_screen.dart';
 import 'features/editors/confirmed_quick_add_sheet.dart';
 import 'features/notifications/native_notification_runtime.dart';
 import 'features/notifications/notification_center.dart';
@@ -29,9 +31,14 @@ import 'repository_phase_a2_app.dart' show buildPhaseA2PreviewRepository;
 /// Phase A.2 live shell with persisted reminder editing and confirmed editor
 /// writes wired into the approved Persian-first UI.
 class RepositoryZarPlusAppV2 extends StatelessWidget {
-  const RepositoryZarPlusAppV2({super.key, this.repository});
+  const RepositoryZarPlusAppV2({
+    super.key,
+    this.repository,
+    this.businessId = 'preview-business',
+  });
 
   final ZarDomainRepository? repository;
+  final String businessId;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +61,7 @@ class RepositoryZarPlusAppV2 extends StatelessWidget {
       ),
       home: _RepositoryPhaseA2ShellV2(
         repository: repository ?? buildPhaseA2PreviewRepository(),
+        businessId: businessId,
       ),
     );
   }
@@ -144,9 +152,13 @@ class RepositoryZarPlusAppV2 extends StatelessWidget {
 }
 
 class _RepositoryPhaseA2ShellV2 extends StatefulWidget {
-  const _RepositoryPhaseA2ShellV2({required this.repository});
+  const _RepositoryPhaseA2ShellV2({
+    required this.repository,
+    required this.businessId,
+  });
 
   final ZarDomainRepository repository;
+  final String businessId;
 
   @override
   State<_RepositoryPhaseA2ShellV2> createState() =>
@@ -171,6 +183,13 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         registry: _registry,
         personName: _store.personName,
       );
+  late final ZarBackupManager _backupManager = ZarBackupManager(
+    repository: widget.repository,
+    store: _store,
+    businessId: widget.businessId,
+    reconcileRemindersAfterRestore: () =>
+        _persistedReminders.reconcileAfterReplacement(records),
+  );
 
   late ZarNotificationPreferences _notificationPreferences;
   int _index = 0;
@@ -734,6 +753,13 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     );
   }
 
+  Future<void> _openBackup() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => BackupScreen(manager: _backupManager)),
+    );
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loadError != null && !_ready) {
@@ -763,6 +789,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         personName: _store.personName,
         onTapRecord: _openRecord,
         onOpenNotifications: _openNotificationCenter,
+        onOpenSettings: _openBackup,
         unreadCount: openObligations.length,
       ),
       CalendarScreen(

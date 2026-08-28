@@ -80,6 +80,15 @@ class _FailingWriteRepository implements ZarDomainRepository {
   StateError get failure => StateError('simulated persistence failure');
 
   @override
+  Future<ZarDomainSnapshot> loadCompleteSnapshot() =>
+      delegate.loadCompleteSnapshot();
+
+  @override
+  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
+    throw failure;
+  }
+
+  @override
   Future<List<ZarPerson>> loadActivePeople({int limit = 100}) =>
       delegate.loadActivePeople(limit: limit);
 

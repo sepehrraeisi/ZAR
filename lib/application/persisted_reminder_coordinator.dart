@@ -40,6 +40,11 @@ class PersistedReminderCoordinator {
     }
   }
 
+  Future<void> reconcileAfterReplacement(Iterable<AppRecord> records) async {
+    await _registry.clearTracked();
+    await reconcileAll(records);
+  }
+
   Future<void> savePlan({
     required AppRecord record,
     required ZarReminderPlan plan,

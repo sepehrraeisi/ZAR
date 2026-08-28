@@ -420,13 +420,14 @@ class _PhaseA2ShellState extends State<PhaseA2Shell> {
 }
 
 class PhaseA2HomeScreen extends StatelessWidget {
-  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount});
+  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings});
 
   final List<AppRecord> records;
   final String Function(String) personName;
   final ValueChanged<AppRecord> onTapRecord;
   final VoidCallback onOpenNotifications;
   final int unreadCount;
+  final VoidCallback? onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -441,6 +442,12 @@ class PhaseA2HomeScreen extends StatelessWidget {
           pinned: true,
           title: const Directionality(textDirection: TextDirection.ltr, child: Text('ZAR+')),
           actions: [
+            if (onOpenSettings != null)
+              IconButton(
+                tooltip: 'تنظیمات و داده‌ها',
+                onPressed: onOpenSettings,
+                icon: const Icon(CupertinoIcons.settings),
+              ),
             _NotificationBell(count: unreadCount, onTap: onOpenNotifications),
             const SizedBox(width: 8),
           ],

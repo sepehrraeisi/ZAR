@@ -1,11 +1,28 @@
 import '../domain/zar_domain_models.dart';
 
+class ZarDomainSnapshot {
+  const ZarDomainSnapshot({
+    required this.people,
+    required this.deals,
+    required this.settlements,
+  });
+
+  final List<ZarPerson> people;
+  final List<ZarDeal> deals;
+  final List<ZarSettlement> settlements;
+}
+
 /// Repository boundary used by the production application layer.
 ///
 /// UI code must depend on this contract rather than Firestore directly so the
 /// same workflows can be exercised against deterministic in-memory data in
 /// tests and previews.
 abstract interface class ZarDomainRepository {
+  Future<ZarDomainSnapshot> loadCompleteSnapshot();
+
+  /// Atomically replaces the business dataset or fails without changing it.
+  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot);
+
   Future<List<ZarPerson>> loadActivePeople({int limit = 100});
 
   Future<List<ZarPerson>> loadArchivedPeople({int limit = 100});
@@ -62,6 +79,32 @@ class InMemoryZarDomainRepository implements ZarDomainRepository {
   final Map<String, ZarDeal> _deals;
   final Map<String, ZarSettlement> _settlements;
   final List<Map<String, Object?>> auditEvents = [];
+
+  @override
+  Future<ZarDomainSnapshot> loadCompleteSnapshot() async => ZarDomainSnapshot(
+        people: List.unmodifiable(_people.values),
+        deals: List.unmodifiable(_deals.values),
+        settlements: List.unmodifiable(_settlements.values),
+      );
+
+  @override
+  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
+    final people = {for (final item in snapshot.people) item.id: item};
+    final deals = {for (final item in snapshot.deals) item.id: item};
+    final settlements = {
+      for (final item in snapshot.settlements) item.id: item,
+    };
+    _people
+      ..clear()
+      ..addAll(people);
+    _deals
+      ..clear()
+      ..addAll(deals);
+    _settlements
+      ..clear()
+      ..addAll(settlements);
+    _audit('complete-backup', 'business', 'restore_replace');
+  }
 
   @override
   Future<List<ZarPerson>> loadActivePeople({int limit = 100}) async => _people.values
