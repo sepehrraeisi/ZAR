@@ -29,6 +29,7 @@ class RepositorySettlementActionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isOpen = record.status == SettlementStatus.open;
     return SafeArea(
       top: false,
       child: Padding(
@@ -55,50 +56,96 @@ class RepositorySettlementActionSheet extends StatelessWidget {
             const SizedBox(height: 4),
             Row(
               children: [
-                Text(record.assetLabel,
-                    style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  record.assetLabel,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
                 const SizedBox(width: 8),
                 AmountText(record.amountDisplay),
+                if (record.currencyCode != null) ...[
+                  const SizedBox(width: 8),
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      record.currencyCode!,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 4),
-            Text(
-              reminderSummary,
-              style: Theme.of(context).textTheme.bodyMedium,
+            Wrap(
+              spacing: 10,
+              runSpacing: 4,
+              children: [
+                Text(
+                  formatJalaliDate(record.date),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                Text(
+                  record.timeLabel(),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                Text(
+                  record.statusLabel(),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: isOpen
+                        ? null
+                        : record.status == SettlementStatus.completed
+                        ? const Color(0xFF2F7D4C)
+                        : const Color(0xFF9D3636),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            _action(
-              context,
-              'انجام شد',
-              CupertinoIcons.check_mark_circled,
-              onComplete,
-            ),
-            _action(context, 'ویرایش', CupertinoIcons.pencil, onEdit),
-            _action(
-              context,
-              'زمان‌بندی مجدد',
-              CupertinoIcons.calendar,
-              onReschedule,
-            ),
-            _action(
-              context,
-              'مدیریت یادآوری‌ها',
-              CupertinoIcons.bell,
-              onEditReminders,
-            ),
-            _action(
-              context,
-              'یادآوری بعداً',
-              CupertinoIcons.moon_zzz,
-              onSnooze,
-            ),
-            _action(
-              context,
-              'لغو',
-              CupertinoIcons.xmark_circle,
-              onCancel,
-              destructive: true,
-            ),
+            if (isOpen) ...[
+              const SizedBox(height: 4),
+              Text(
+                reminderSummary,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 10),
+              _action(
+                context,
+                'انجام شد',
+                CupertinoIcons.check_mark_circled,
+                onComplete,
+              ),
+              _action(context, 'ویرایش', CupertinoIcons.pencil, onEdit),
+              _action(
+                context,
+                'زمان‌بندی مجدد',
+                CupertinoIcons.calendar,
+                onReschedule,
+              ),
+              _action(
+                context,
+                'مدیریت یادآوری‌ها',
+                CupertinoIcons.bell,
+                onEditReminders,
+              ),
+              _action(
+                context,
+                'یادآوری بعداً',
+                CupertinoIcons.moon_zzz,
+                onSnooze,
+              ),
+              _action(
+                context,
+                'لغو',
+                CupertinoIcons.xmark_circle,
+                onCancel,
+                destructive: true,
+              ),
+            ] else ...[
+              const SizedBox(height: 14),
+              Text(
+                'این تسویه بسته شده و فقط برای مشاهده در سوابق نمایش داده می‌شود.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
           ],
         ),
       ),

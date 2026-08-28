@@ -1314,7 +1314,22 @@ class DealDetailSheet extends StatelessWidget {
           const SizedBox(height: 6),
           Text(personName, style: Theme.of(context).textTheme.bodyLarge),
           const SizedBox(height: 4),
-          Wrap(spacing: 8, children: [AmountText(record.amountDisplay), Text(record.assetLabel)]),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              AmountText(record.amountDisplay),
+              Text(record.assetLabel),
+              if (record.currencyCode != null)
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(record.currencyCode!),
+                ),
+              Text(formatJalaliDate(record.date), style: Theme.of(context).textTheme.bodyMedium),
+              Text(record.timeLabel(), style: Theme.of(context).textTheme.bodyMedium),
+            ],
+          ),
           if ((record.note ?? '').isNotEmpty) ...[const SizedBox(height: 8), Text(record.note!, style: Theme.of(context).textTheme.bodyMedium)],
           const SizedBox(height: 14),
           Text('تعهدهای لینک‌شده', style: Theme.of(context).textTheme.titleMedium),
