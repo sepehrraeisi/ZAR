@@ -6,24 +6,22 @@ import 'zar_legacy_presentation_bridge.dart';
 
 /// Repository-backed presentation store for the current Phase A.2 widgets.
 ///
-/// This is intentionally transitional: widgets can continue consuming the
-/// polished `AppPerson` / `AppRecord` presentation models while every load and
-/// mutation goes through the production `ZarDomainRepository` boundary.
+/// Typed domain entities are the sole owned business state. The current widgets
+/// still consume `AppPerson` / `AppRecord`, so those values are derived at the
+/// presentation boundary rather than retained as a second mutable state graph.
 class ZarPhaseA2Store {
   ZarPhaseA2Store({
     required ZarDomainRepository repository,
     required ZarLegacyPresentationBridge bridge,
     DateTime Function()? clock,
-  })  : _repository = repository,
-        _bridge = bridge,
-        _clock = clock ?? DateTime.now;
+  }) : _repository = repository,
+       _bridge = bridge,
+       _clock = clock ?? DateTime.now;
 
   final ZarDomainRepository _repository;
   final ZarLegacyPresentationBridge _bridge;
   final DateTime Function() _clock;
 
-  final List<AppPerson> _people = [];
-  final List<AppRecord> _records = [];
   final Map<String, ZarPerson> _domainPeople = {};
   final Map<String, ZarSettlement> _domainSettlements = {};
   final Map<String, ZarDeal> _domainDeals = {};
@@ -33,13 +31,29 @@ class ZarPhaseA2Store {
 
   bool get loading => _loading;
   Object? get lastError => _lastError;
-  List<AppPerson> get people => List.unmodifiable(_people);
-  List<AppRecord> get records => List.unmodifiable(_records);
+  List<ZarPerson> get domainPeople => List.unmodifiable(_domainPeople.values);
+  List<ZarSettlement> get settlements =>
+      List.unmodifiable(_domainSettlements.values);
+  List<ZarDeal> get deals => List.unmodifiable(_domainDeals.values);
 
-  List<AppPerson> get activePeople =>
-      _people.where((item) => !item.archived).toList(growable: false);
-  List<AppPerson> get archivedPeople =>
-      _people.where((item) => item.archived).toList(growable: false);
+  List<AppPerson> get people =>
+      List.unmodifiable(_domainPeople.values.map(_bridge.personToUi));
+  List<AppRecord> get records {
+    final result = <AppRecord>[
+      ..._domainSettlements.values.map(_bridge.settlementToUi),
+      ..._domainDeals.values.map(_bridge.dealToUi),
+    ]..sort(_compareRecordDescending);
+    return List.unmodifiable(result);
+  }
+
+  List<AppPerson> get activePeople => _domainPeople.values
+      .where((item) => !item.archived)
+      .map(_bridge.personToUi)
+      .toList(growable: false);
+  List<AppPerson> get archivedPeople => _domainPeople.values
+      .where((item) => item.archived)
+      .map(_bridge.personToUi)
+      .toList(growable: false);
 
   Future<void> refresh() async {
     _loading = true;
@@ -58,22 +72,15 @@ class ZarPhaseA2Store {
 
       _domainPeople
         ..clear()
-        ..addEntries([...active, ...archived].map((item) => MapEntry(item.id, item)));
+        ..addEntries(
+          [...active, ...archived].map((item) => MapEntry(item.id, item)),
+        );
       _domainSettlements
         ..clear()
         ..addEntries(settlements.map((item) => MapEntry(item.id, item)));
       _domainDeals
         ..clear()
         ..addEntries(deals.map((item) => MapEntry(item.id, item)));
-
-      _people
-        ..clear()
-        ..addAll([...active, ...archived].map(_bridge.personToUi));
-      _records
-        ..clear()
-        ..addAll(settlements.map(_bridge.settlementToUi))
-        ..addAll(deals.map(_bridge.dealToUi));
-      _records.sort(_compareRecordDescending);
     } catch (error) {
       _lastError = error;
       rethrow;
@@ -83,17 +90,15 @@ class ZarPhaseA2Store {
   }
 
   String personName(String personId) {
-    for (final person in _people) {
-      if (person.id == personId) return person.name;
-    }
-    return 'نامشخص';
+    return _domainPeople[personId]?.displayName ?? 'نامشخص';
   }
 
-  int openCountFor(String personId) => _records
-      .where((item) =>
-          item.personId == personId &&
-          item.type == RecordType.settlement &&
-          item.status == SettlementStatus.open)
+  int openCountFor(String personId) => _domainSettlements.values
+      .where(
+        (item) =>
+            item.personId == personId &&
+            item.status == ZarSettlementStatus.open,
+      )
       .length;
 
   Future<void> savePerson(AppPerson person) async {
@@ -104,12 +109,11 @@ class ZarPhaseA2Store {
     );
     await _repository.savePerson(domain);
     _domainPeople[domain.id] = domain;
-    _replacePerson(_bridge.personToUi(domain));
   }
 
   Future<void> archivePerson(AppPerson person) async {
-    final existing = _domainPeople[person.id] ??
-        _bridge.personFromUi(person, now: _clock());
+    final existing =
+        _domainPeople[person.id] ?? _bridge.personFromUi(person, now: _clock());
     await _repository.archivePerson(existing);
     final archived = _bridge.personFromUi(
       person.copyWith(archived: true),
@@ -117,12 +121,11 @@ class ZarPhaseA2Store {
       now: _clock(),
     );
     _domainPeople[archived.id] = archived;
-    _replacePerson(_bridge.personToUi(archived));
   }
 
   Future<void> restorePerson(AppPerson person) async {
-    final existing = _domainPeople[person.id] ??
-        _bridge.personFromUi(person, now: _clock());
+    final existing =
+        _domainPeople[person.id] ?? _bridge.personFromUi(person, now: _clock());
     await _repository.restorePerson(existing);
     final restored = _bridge.personFromUi(
       person.copyWith(archived: false),
@@ -130,7 +133,6 @@ class ZarPhaseA2Store {
       now: _clock(),
     );
     _domainPeople[restored.id] = restored;
-    _replacePerson(_bridge.personToUi(restored));
   }
 
   Future<void> saveRecord(
@@ -154,7 +156,6 @@ class ZarPhaseA2Store {
       }
       await _repository.saveSettlement(domain, auditAction: auditAction);
       _domainSettlements[domain.id] = domain;
-      _replaceRecord(_bridge.settlementToUi(domain));
     } else {
       final domain = _bridge.dealFromUi(
         record,
@@ -163,7 +164,6 @@ class ZarPhaseA2Store {
       );
       await _repository.saveDeal(domain, auditAction: auditAction);
       _domainDeals[domain.id] = domain;
-      _replaceRecord(_bridge.dealToUi(domain));
     }
   }
 
@@ -191,73 +191,56 @@ class ZarPhaseA2Store {
     _domainSettlements[updated.id] = updated;
   }
 
-  Future<void> completeSettlement(AppRecord record) =>
-      saveRecord(record.copyWith(status: SettlementStatus.completed), auditAction: 'complete');
+  Future<void> completeSettlement(AppRecord record) => saveRecord(
+    record.copyWith(status: SettlementStatus.completed),
+    auditAction: 'complete',
+  );
 
-  Future<void> cancelSettlement(AppRecord record) =>
-      saveRecord(record.copyWith(status: SettlementStatus.cancelled), auditAction: 'cancel');
+  Future<void> cancelSettlement(AppRecord record) => saveRecord(
+    record.copyWith(status: SettlementStatus.cancelled),
+    auditAction: 'cancel',
+  );
 
   Future<void> rescheduleSettlement(AppRecord record) =>
       saveRecord(record, auditAction: 'reschedule');
 
   AppPerson? personById(String id) {
-    for (final person in _people) {
-      if (person.id == id) return person;
-    }
-    return null;
+    final person = _domainPeople[id];
+    return person == null ? null : _bridge.personToUi(person);
   }
 
   AppRecord? recordById(String id) {
-    for (final record in _records) {
-      if (record.id == id) return record;
-    }
-    return null;
+    final settlement = _domainSettlements[id];
+    if (settlement != null) return _bridge.settlementToUi(settlement);
+    final deal = _domainDeals[id];
+    return deal == null ? null : _bridge.dealToUi(deal);
   }
 
   ZarSettlement? settlementById(String id) => _domainSettlements[id];
+  ZarDeal? dealById(String id) => _domainDeals[id];
 
   ZarSettlement _copySettlement(
     ZarSettlement source, {
     ZarReminderPlan? reminderPlan,
     DateTime? updatedAt,
-  }) =>
-      ZarSettlement(
-        id: source.id,
-        businessId: source.businessId,
-        dealId: source.dealId,
-        personId: source.personId,
-        direction: source.direction,
-        amount: source.amount,
-        scheduledAt: source.scheduledAt,
-        hasTime: source.hasTime,
-        status: source.status,
-        reminderPlan: reminderPlan ?? source.reminderPlan,
-        completedAt: source.completedAt,
-        completedBy: source.completedBy,
-        note: source.note,
-        createdBy: source.createdBy,
-        createdAt: source.createdAt,
-        updatedAt: updatedAt ?? source.updatedAt,
-      );
-
-  void _replacePerson(AppPerson person) {
-    final index = _people.indexWhere((item) => item.id == person.id);
-    if (index == -1) {
-      _people.add(person);
-    } else {
-      _people[index] = person;
-    }
-  }
-
-  void _replaceRecord(AppRecord record) {
-    final index = _records.indexWhere((item) => item.id == record.id);
-    if (index == -1) {
-      _records.add(record);
-    } else {
-      _records[index] = record;
-    }
-    _records.sort(_compareRecordDescending);
-  }
+  }) => ZarSettlement(
+    id: source.id,
+    businessId: source.businessId,
+    dealId: source.dealId,
+    personId: source.personId,
+    direction: source.direction,
+    amount: source.amount,
+    scheduledAt: source.scheduledAt,
+    hasTime: source.hasTime,
+    status: source.status,
+    reminderPlan: reminderPlan ?? source.reminderPlan,
+    completedAt: source.completedAt,
+    completedBy: source.completedBy,
+    note: source.note,
+    createdBy: source.createdBy,
+    createdAt: source.createdAt,
+    updatedAt: updatedAt ?? source.updatedAt,
+  );
 
   int _compareRecordDescending(AppRecord a, AppRecord b) {
     final dateCompare = b.date.compareTo(a.date);
