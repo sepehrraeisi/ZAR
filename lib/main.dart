@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import 'data/local/zar_local_database.dart';
+import 'data/local/zar_local_repository.dart';
 import 'features/notifications/native_notification_runtime.dart';
 import 'repository_phase_a2_app_v2.dart';
 
@@ -13,5 +15,7 @@ export 'app_core.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ZarNativeNotificationRuntime.instance.install();
-  runApp(const RepositoryZarPlusAppV2());
+  final repository = ZarLocalRepository(ZarLocalDatabase.defaults());
+  await repository.ensureReady();
+  runApp(RepositoryZarPlusAppV2(repository: repository));
 }

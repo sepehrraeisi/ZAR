@@ -80,7 +80,7 @@ Required next wiring:
 
 Firebase remains in the application dependencies and its Dart bootstrap remains
 opt-in. Local Windows UI development also keeps the native FlutterFire plugins
-disabled by default, so the in-memory V2 experience does not download or
+disabled by default, so the local persistent V2 experience does not download or
 initialize the Firebase C++ SDK.
 
 ### Local Windows UI mode (default)
@@ -92,9 +92,9 @@ flutter pub get
 flutter run -d windows
 ```
 
-This mode uses `InMemoryZarDomainRepository`. It retains the Windows plugins
-needed for notifications, file selection, sharing and URL launching, but it
-neither links nor initializes Firebase.
+This mode uses `ZarLocalRepository` backed by Drift/SQLite. It retains the
+Windows plugins needed for notifications, file selection, sharing and URL
+launching, but it neither links nor initializes Firebase.
 
 ### Future Firebase-enabled Windows mode (explicit opt-in)
 
@@ -121,3 +121,18 @@ registrant files. Flutter owns and may regenerate them during `flutter pub get`.
 When adding a non-Firebase Windows plugin, also add it to the manually owned
 `windows/flutter/local_plugins.cmake` and, for method-channel plugins, to
 `windows/runner/local_plugin_registrant.cc`.
+
+## Local data persistence
+
+Production startup opens a versioned Drift/SQLite database in the platform's
+application documents directory. People, deals, settlements, archive state and
+settlement reminder plans are stored as typed domain fields. Currency is stored
+as integer minor units and scale; gold is stored as its normalized decimal text.
+No `AppRecord` or calculated presentation value is stored.
+
+JSON V2 remains the portable backup format. Restore validates the complete
+typed snapshot before opening one replacement transaction; a validation or
+database failure rolls the transaction back. Native reminders are reconciled
+only after persistence succeeds. Schema upgrades must be implemented as
+explicit migrations—the app never deletes or recreates a user database as an
+automatic recovery step.
