@@ -75,3 +75,49 @@ Required next wiring:
 - Firebase production integration remains paused until the correct configuration for `com.zarplus.app` is provided.
 - Do not commit Firebase Admin keys, `.env`, signing keys, tokens or credentials.
 - Do not merge the Phase A.2 PR until CI/device validation is available.
+
+## Windows development modes
+
+Firebase remains in the application dependencies and its Dart bootstrap remains
+opt-in. Local Windows UI development also keeps the native FlutterFire plugins
+disabled by default, so the in-memory V2 experience does not download or
+initialize the Firebase C++ SDK.
+
+### Local Windows UI mode (default)
+
+No Firebase flag is required:
+
+```powershell
+flutter pub get
+flutter run -d windows
+```
+
+This mode uses `InMemoryZarDomainRepository`. It retains the Windows plugins
+needed for notifications, file selection, sharing and URL launching, but it
+neither links nor initializes Firebase.
+
+### Future Firebase-enabled Windows mode (explicit opt-in)
+
+Only use this after the production Firebase project and native SDK path are
+ready:
+
+```powershell
+$env:ZAR_ENABLE_FIREBASE_NATIVE = "ON"
+flutter build windows --dart-define=ZAR_USE_FIREBASE=true
+```
+
+`ZAR_ENABLE_FIREBASE_NATIVE` selects Flutter's generated native plugin list and
+registrant. The existing `ZAR_USE_FIREBASE` Dart define separately permits the
+Firebase bootstrap. Both are opt-in; setting neither keeps local mode active.
+
+To return the current PowerShell session to local mode:
+
+```powershell
+Remove-Item Env:ZAR_ENABLE_FIREBASE_NATIVE -ErrorAction SilentlyContinue
+```
+
+Do not edit `windows/flutter/generated_plugins.cmake` or the generated plugin
+registrant files. Flutter owns and may regenerate them during `flutter pub get`.
+When adding a non-Firebase Windows plugin, also add it to the manually owned
+`windows/flutter/local_plugins.cmake` and, for method-channel plugins, to
+`windows/runner/local_plugin_registrant.cc`.

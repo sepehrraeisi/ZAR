@@ -88,7 +88,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     await initialize();
 
     if (!_enabled) {
-      await _plugin.cancelAllPendingNotifications();
+      await _cancelAllNative();
       return;
     }
 
@@ -98,7 +98,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     }
 
     final specs = List<_NativeReminderSpec>.from(_specs.values);
-    await _plugin.cancelAllPendingNotifications();
+    await _cancelAllNative();
     for (final spec in specs) {
       await _scheduleSpec(spec);
     }
@@ -116,9 +116,18 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
+    const windows = WindowsInitializationSettings(
+      appName: 'ZAR+',
+      appUserModelId: 'Com.ZarPlus.App',
+      guid: '0268d312-ca76-40ba-8c3d-ce0bb0b99407',
+    );
 
     await _plugin.initialize(
-      settings: const InitializationSettings(android: android, iOS: ios),
+      settings: const InitializationSettings(
+        android: android,
+        iOS: ios,
+        windows: windows,
+      ),
       onDidReceiveNotificationResponse: (response) {
         final recordId = _recordIdFromPayload(response.payload);
         if (recordId != null) onRecordTapped?.call(recordId);
@@ -154,6 +163,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   Future<bool> openSystemNotificationSettings() async {
     if (kIsWeb) return false;
     await initialize();
+    if (defaultTargetPlatform == TargetPlatform.windows) return false;
     return await _plugin.openAppNotificationSettings() ?? false;
   }
 
@@ -216,6 +226,14 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
         candidate.value.fireAt,
       );
     }
+  }
+
+  Future<void> _cancelAllNative() async {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      await _plugin.cancelAll();
+      return;
+    }
+    await _plugin.cancelAllPendingNotifications();
   }
 
   Future<void> _scheduleSpec(_NativeReminderSpec spec) async {
