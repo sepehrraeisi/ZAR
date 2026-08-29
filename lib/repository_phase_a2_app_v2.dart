@@ -25,7 +25,8 @@ import 'features/reminders/record_reminder_registry.dart';
 import 'features/reminders/reminder_model.dart';
 import 'features/reminders/reminder_plan_editor.dart';
 import 'features/settlements/repository_settlement_action_sheet.dart';
-import 'main_phase_a2.dart' show PhaseA2HomeScreen, PhaseA2PeopleScreen;
+import 'main_phase_a2.dart'
+    show PhaseA2HomeScreen, PhaseA2PeopleScreen, isRecordOverdueAt;
 import 'repository_phase_a2_app.dart' show buildPhaseA2PreviewRepository;
 
 /// Phase A.2 live shell with persisted reminder editing and confirmed editor
@@ -483,6 +484,9 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       builder: (_) => ConfirmedQuickAddSheet(
         people: _store.activePeople,
         onSave: _saveQuickAddDraftOrThrow,
+        initialReminder: reminderPresetLabel(
+          _notificationPreferences.defaultReminderMinutes,
+        ),
       ),
     );
   }
@@ -617,6 +621,9 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             context,
             initialDate: record.date,
             initialTime: record.time,
+            initialSelection: reminderPresetLabel(
+              _notificationPreferences.defaultSnoozeMinutes,
+            ),
           );
           if (value == null) return;
           final until = dueDateTimeFromJalali(value.$1, value.$2);
@@ -716,19 +723,28 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       .toList(growable: false);
 
   Future<void> _openNotificationCenter() async {
-    final now = Jalali.now();
+    final currentTime = DateTime.now();
+    final currentDate = Jalali.fromDateTime(currentTime);
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => NotificationCenterScreen(
           overdue: _notificationItemsFor(
-            openObligations.where((record) => record.date.compareTo(now) < 0),
+            openObligations.where(
+              (record) => isRecordOverdueAt(record, currentTime),
+            ),
             overdue: true,
           ),
           today: _notificationItemsFor(
-            openObligations.where((record) => isSameJalali(record.date, now)),
+            openObligations.where(
+              (record) =>
+                  isSameJalali(record.date, currentDate) &&
+                  !isRecordOverdueAt(record, currentTime),
+            ),
           ),
           upcoming: _notificationItemsFor(
-            openObligations.where((record) => record.date.compareTo(now) > 0),
+            openObligations.where(
+              (record) => record.date.compareTo(currentDate) > 0,
+            ),
           ),
           onOpenRecord: (recordId) {
             final target = _store.recordById(recordId);

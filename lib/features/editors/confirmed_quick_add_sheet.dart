@@ -10,10 +10,12 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
     super.key,
     required this.people,
     required this.onSave,
+    this.initialReminder = '۱۵ دقیقه',
   });
 
   final List<AppPerson> people;
   final Future<void> Function(QuickAddDraft draft) onSave;
+  final String initialReminder;
 
   @override
   State<ConfirmedQuickAddSheet> createState() =>
@@ -27,7 +29,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   AppPerson? _person;
   Jalali _date = Jalali.now();
   TimeOfDay? _time;
-  String _reminder = '۱۵ دقیقه';
+  late String _reminder = widget.initialReminder;
   final TextEditingController _amount = TextEditingController();
   final TextEditingController _note = TextEditingController();
   bool _saving = false;

@@ -5,6 +5,8 @@ import 'package:intl/intl.dart' show NumberFormat;
 import 'package:shamsi_date/shamsi_date.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'features/reminders/reminder_model.dart';
+
 void main() {
   runApp(const ZarPlusApp());
 }
@@ -1911,18 +1913,28 @@ Future<TimeOfDay?> pickCupertinoTime(BuildContext context, TimeOfDay? initial) a
   return selected;
 }
 
-Future<(Jalali, TimeOfDay?)?> showReminderPickerBottomSheet(BuildContext context, {required Jalali initialDate, required TimeOfDay? initialTime}) async {
-  final selected = await showReminderTextPickerBottomSheet(context, '۱ ساعت');
+Future<(Jalali, TimeOfDay?)?> showReminderPickerBottomSheet(
+  BuildContext context, {
+  required Jalali initialDate,
+  required TimeOfDay? initialTime,
+  String initialSelection = '۱ ساعت',
+  DateTime? now,
+}) async {
+  final selected = await showReminderTextPickerBottomSheet(context, initialSelection);
   if (!context.mounted || selected == null) return null;
-  if (selected == '۱ ساعت') return (Jalali.now(), TimeOfDay.now().replacing(hour: (TimeOfDay.now().hour + 1) % 24));
-  if (selected == 'فردا') return (Jalali.now().addDays(1), initialTime ?? const TimeOfDay(hour: 9, minute: 0));
   if (selected == 'سفارشی') {
     final d = await pickJalaliDate(context, initialDate);
     if (!context.mounted || d == null) return null;
     final t = await pickCupertinoTime(context, initialTime);
     return (d, t);
   }
-  return (initialDate, initialTime);
+  final target = snoozePresetDateTime(
+    selected,
+    now ?? DateTime.now(),
+    tomorrowTime: initialTime,
+  );
+  if (target == null) return null;
+  return (Jalali.fromDateTime(target), TimeOfDay(hour: target.hour, minute: target.minute));
 }
 
 Future<String?> showReminderTextPickerBottomSheet(BuildContext context, String current) async {
@@ -1933,8 +1945,8 @@ Future<String?> showReminderTextPickerBottomSheet(BuildContext context, String c
       final items = ['۱۵ دقیقه', '۳۰ دقیقه', '۱ ساعت', '۳ ساعت', '۱ روز', 'فردا', 'سفارشی'];
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
           children: items.map((e) => ListTile(title: Text(e), trailing: e == current ? const Icon(CupertinoIcons.check_mark) : null, onTap: () => Navigator.pop(context, e))).toList(),
         ),
       );

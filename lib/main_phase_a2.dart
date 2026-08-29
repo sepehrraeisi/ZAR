@@ -419,8 +419,11 @@ class _PhaseA2ShellState extends State<PhaseA2Shell> {
   }
 }
 
+bool isRecordOverdueAt(AppRecord record, DateTime now) =>
+    dueDateTimeFromJalali(record.date, record.time).isBefore(now);
+
 class PhaseA2HomeScreen extends StatelessWidget {
-  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings});
+  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings, this.now});
 
   final List<AppRecord> records;
   final String Function(String) personName;
@@ -428,13 +431,15 @@ class PhaseA2HomeScreen extends StatelessWidget {
   final VoidCallback onOpenNotifications;
   final int unreadCount;
   final VoidCallback? onOpenSettings;
+  final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
-    final now = Jalali.now();
-    final overdue = records.where((r) => r.date.compareTo(now) < 0).toList(growable: false);
-    final today = records.where((r) => isSameJalali(r.date, now)).toList(growable: false);
-    final tomorrow = records.where((r) => isSameJalali(r.date, now.addDays(1))).toList(growable: false);
+    final currentTime = now ?? DateTime.now();
+    final currentDate = Jalali.fromDateTime(currentTime);
+    final overdue = records.where((r) => isRecordOverdueAt(r, currentTime)).toList(growable: false);
+    final today = records.where((r) => isSameJalali(r.date, currentDate) && !isRecordOverdueAt(r, currentTime)).toList(growable: false);
+    final tomorrow = records.where((r) => isSameJalali(r.date, currentDate.addDays(1))).toList(growable: false);
 
     return CustomScrollView(
       slivers: [
@@ -455,7 +460,7 @@ class PhaseA2HomeScreen extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-            child: Text('امروز\n${formatJalaliDate(now)}', style: Theme.of(context).textTheme.titleLarge),
+            child: Text('امروز\n${formatJalaliDate(currentDate)}', style: Theme.of(context).textTheme.titleLarge),
           ),
         ),
         _section(context, 'عقب‌افتاده', overdue, overdue: true),

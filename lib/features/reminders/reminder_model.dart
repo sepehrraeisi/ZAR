@@ -171,6 +171,42 @@ DateTime dueDateTimeFromJalali(Jalali date, TimeOfDay? time) {
   );
 }
 
+String reminderPresetLabel(int minutes) => switch (minutes) {
+  15 => '۱۵ دقیقه',
+  30 => '۳۰ دقیقه',
+  60 => '۱ ساعت',
+  180 => '۳ ساعت',
+  1440 => '۱ روز',
+  _ => '۳۰ دقیقه',
+};
+
+DateTime? snoozePresetDateTime(
+  String label,
+  DateTime now, {
+  TimeOfDay? tomorrowTime,
+}) {
+  if (label.trim() == 'فردا') {
+    final tomorrow = now.add(const Duration(days: 1));
+    final time = tomorrowTime ?? const TimeOfDay(hour: 9, minute: 0);
+    return DateTime(
+      tomorrow.year,
+      tomorrow.month,
+      tomorrow.day,
+      time.hour,
+      time.minute,
+    );
+  }
+  final minutes = switch (label.trim()) {
+    '۱۵ دقیقه' => 15,
+    '۳۰ دقیقه' => 30,
+    '۱ ساعت' => 60,
+    '۳ ساعت' => 180,
+    '۱ روز' => 1440,
+    _ => null,
+  };
+  return minutes == null ? null : now.add(Duration(minutes: minutes));
+}
+
 /// Transitional adapter for the existing Quick Add UI. The UI can continue
 /// displaying Persian labels while the domain layer stores structured rules.
 ReminderPlan reminderPlanFromLegacyLabel(String label) {
