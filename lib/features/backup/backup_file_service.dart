@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:file_saver/file_saver.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
 
 abstract interface class BackupFileService {
@@ -21,13 +22,26 @@ class PlatformBackupFileService implements BackupFileService {
 
   @override
   Future<bool> saveJson({required String fileName, required String contents}) async {
+    final bytes = Uint8List.fromList(utf8.encode(contents));
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      final baseName = fileName.toLowerCase().endsWith('.json')
+          ? fileName.substring(0, fileName.length - 5)
+          : fileName;
+      final savedPath = await FileSaver.instance.saveAs(
+        name: baseName,
+        bytes: bytes,
+        fileExtension: 'json',
+        mimeType: MimeType.json,
+      );
+      return savedPath != null;
+    }
     final location = await getSaveLocation(
       suggestedName: fileName,
       acceptedTypeGroups: const [_jsonGroup],
     );
     if (location == null) return false;
     await XFile.fromData(
-      Uint8List.fromList(utf8.encode(contents)),
+      bytes,
       mimeType: 'application/json',
       name: fileName,
     ).saveTo(location.path);

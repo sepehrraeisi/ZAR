@@ -729,6 +729,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Jalali _month = Jalali.now().withDay(1);
   Jalali _selected = Jalali.now();
 
+  double _expandedHeaderExtent(BuildContext context) {
+    const horizontalPadding = 32.0;
+    const headerAndVerticalPadding = 66.0;
+    const gridVerticalPadding = 16.0;
+    const cellAspectRatio = 0.9;
+    final gridWidth = MediaQuery.sizeOf(context).width - horizontalPadding;
+    final cellHeight = (gridWidth / 7) / cellAspectRatio;
+    return headerAndVerticalPadding +
+        gridVerticalPadding +
+        (CalendarMonthGrid.rowCountFor(_month) * cellHeight);
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedEvents = widget.records.where((e) => isSameJalali(e.date, _selected)).toList(growable: false);
@@ -740,7 +752,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           pinned: true,
           delegate: _CalendarHeaderDelegate(
             minExtentValue: 74,
-            maxExtentValue: 344,
+            maxExtentValue: _expandedHeaderExtent(context),
             builder: (context, shrink) {
               final compact = shrink > 0.7;
               return Container(
@@ -1688,6 +1700,7 @@ class CalendarMonthGrid extends StatelessWidget {
       final isSelected = isSameJalali(date, selected);
       cells.add(
         GestureDetector(
+          key: ValueKey('calendar-day-$day'),
           onTap: () => onDayTap(date),
           child: Container(
             margin: const EdgeInsets.all(3),
@@ -1713,6 +1726,7 @@ class CalendarMonthGrid extends StatelessWidget {
     }
 
     return Container(
+      key: const ValueKey('calendar-month-grid'),
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
@@ -1720,6 +1734,12 @@ class CalendarMonthGrid extends StatelessWidget {
       ),
       child: GridView.count(shrinkWrap: true, crossAxisCount: 7, physics: const NeverScrollableScrollPhysics(), childAspectRatio: 0.9, children: cells),
     );
+  }
+
+  static int rowCountFor(Jalali month) {
+    final firstWeekday = ((month.toDateTime().weekday + 1) % 7);
+    final cellCount = 7 + firstWeekday + month.monthLength;
+    return (cellCount / 7).ceil();
   }
 }
 
