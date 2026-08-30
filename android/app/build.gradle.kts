@@ -1,9 +1,23 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+val releaseSigningPropertiesFile = rootProject.file("key.properties")
+val releaseSigningProperties = Properties()
+if (releaseSigningPropertiesFile.exists()) {
+    releaseSigningPropertiesFile.inputStream().use(releaseSigningProperties::load)
+}
+
+val requiredSigningKeys =
+    listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+val releaseSigningReady =
+    releaseSigningPropertiesFile.exists() &&
+        requiredSigningKeys.all { !releaseSigningProperties.getProperty(it).isNullOrBlank() }
 
 android {
     namespace = "com.zarplus.app"
@@ -29,11 +43,41 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        if (releaseSigningReady) {
+            create("release") {
+                storeFile = rootProject.file(releaseSigningProperties.getProperty("storeFile"))
+                storePassword = releaseSigningProperties.getProperty("storePassword")
+                keyAlias = releaseSigningProperties.getProperty("keyAlias")
+                keyPassword = releaseSigningProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Production signing must be configured before external distribution.
-            signingConfig = signingConfigs.getByName("debug")
+            // Release artifacts must never fall back to Flutter's debug key.
+            if (releaseSigningReady) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val requestsReleaseArtifact =
+        allTasks.any { task ->
+            task.path.contains("Release", ignoreCase = true) &&
+                (task.name.startsWith("assemble") ||
+                    task.name.startsWith("bundle") ||
+                    task.name.startsWith("package"))
+        }
+    if (requestsReleaseArtifact && !releaseSigningReady) {
+        throw GradleException(
+            "Android release signing is not configured. Copy " +
+                "android/key.properties.example to android/key.properties and " +
+                "point storeFile to a keystore outside Git.",
+        )
     }
 }
 

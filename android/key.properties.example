@@ -1,0 +1,6 @@
+# Copy this file to android/key.properties. The real file is ignored by Git.
+# Keep the keystore outside this repository and back it up securely.
+storeFile=C:/secure/location/zarplus-release.jks
+storePassword=REPLACE_WITH_SECRET
+keyAlias=zarplus-release
+keyPassword=REPLACE_WITH_SECRET
