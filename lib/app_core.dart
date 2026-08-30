@@ -905,7 +905,13 @@ class PersonDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final personItems = records.where((e) => e.personId == person.id).toList(growable: false)..sort((a, b) => b.date.compareTo(a.date));
     final openItems = personItems.where((e) => e.status == SettlementStatus.open && e.isObligation).toList(growable: false);
-    final historyItems = personItems.where((e) => e.status != SettlementStatus.open).toList(growable: false);
+    final historyItems = personItems
+        .where(
+          (e) =>
+              e.type == RecordType.deal ||
+              e.status != SettlementStatus.open,
+        )
+        .toList(growable: false);
 
     return Scaffold(
       appBar: AppBar(title: const Text('جزئیات شخص')),
@@ -942,10 +948,10 @@ class PersonDetailScreen extends StatelessWidget {
           else
             ...openItems.map((e) => SettlementRow(record: e, personName: personName(e.personId), onTap: () => onTapRecord(e))),
           const SizedBox(height: 18),
-          Text('سوابق زمانی', style: Theme.of(context).textTheme.titleMedium),
+          Text('سوابق معاملات و تسویه‌ها', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           if (historyItems.isEmpty)
-            const _ZEmptyRow(label: 'سابقه‌ای ثبت نشده است.')
+            const _ZEmptyRow(label: 'معامله یا تسویه‌ای ثبت نشده است.')
           else
             ...historyItems.map((e) => SettlementRow(record: e, personName: personName(e.personId), onTap: () => onTapRecord(e))),
         ],
@@ -1209,10 +1215,13 @@ class SettlementRow extends StatelessWidget {
               children: [
                 Text(record.timeLabel(), style: theme.textTheme.bodyMedium),
                 const SizedBox(height: 3),
-                Text(
-                  record.statusLabel(),
-                  style: theme.textTheme.bodyMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
-                ),
+                if (record.type == RecordType.settlement)
+                  Text(
+                    record.statusLabel(),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+                  )
+                else
+                  Text('معامله', style: theme.textTheme.bodyMedium),
               ],
             ),
           ],

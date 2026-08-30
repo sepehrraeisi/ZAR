@@ -809,7 +809,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         unreadCount: openObligations.length,
       ),
       CalendarScreen(
-        records: openObligations,
+        records: records,
         personName: _store.personName,
         onTapRecord: _openRecord,
       ),

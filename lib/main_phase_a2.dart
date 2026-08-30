@@ -580,6 +580,7 @@ class _PhaseA2PeopleScreenState extends State<PhaseA2PeopleScreen> {
                       itemBuilder: (context, index) {
                         final person = filtered[index];
                         final openCount = widget.records.where((r) => r.personId == person.id && r.status == SettlementStatus.open && r.isObligation).length;
+                        final dealCount = widget.records.where((r) => r.personId == person.id && r.type == RecordType.deal).length;
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: CircleAvatar(
@@ -588,7 +589,10 @@ class _PhaseA2PeopleScreenState extends State<PhaseA2PeopleScreen> {
                             child: Text(person.name.isEmpty ? '-' : person.name[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)),
                           ),
                           title: Text(person.name, style: Theme.of(context).textTheme.bodyLarge),
-                          subtitle: Text('${toPersianDigits(openCount.toString())} تعهد باز', style: Theme.of(context).textTheme.bodyMedium),
+                          subtitle: Text(
+                            '${toPersianDigits(dealCount.toString())} معامله • ${toPersianDigits(openCount.toString())} تعهد باز',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                           trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
                           onTap: () => widget.onOpenPerson(person),
                         );
