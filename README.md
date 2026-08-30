@@ -130,7 +130,8 @@ settlement reminder plans are stored as typed domain fields. Currency is stored
 as integer minor units and scale; gold is stored as its normalized decimal text.
 No `AppRecord` or calculated presentation value is stored.
 
-JSON V2 remains the portable backup format. Restore validates the complete
+JSON V3 is the portable backup format for exact Toman deal pricing. Existing
+JSON V2 backups remain importable. Restore validates the complete
 typed snapshot before opening one replacement transaction; a validation or
 database failure rolls the transaction back. Native reminders are reconciled
 only after persistence succeeds. Schema upgrades must be implemented as

@@ -18,20 +18,22 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
   final String initialReminder;
 
   @override
-  State<ConfirmedQuickAddSheet> createState() =>
-      _ConfirmedQuickAddSheetState();
+  State<ConfirmedQuickAddSheet> createState() => _ConfirmedQuickAddSheetState();
 }
 
 class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   String? _operation;
   String? _asset;
   String? _currencyCode;
+  int _goldFineness = 750;
   AppPerson? _person;
   Jalali _date = Jalali.now();
   TimeOfDay? _time;
   late String _reminder = widget.initialReminder;
   final TextEditingController _amount = TextEditingController();
   final TextEditingController _note = TextEditingController();
+  final TextEditingController _tomanRate = TextEditingController();
+  final TextEditingController _totalToman = TextEditingController();
   bool _saving = false;
   String? _error;
 
@@ -40,10 +42,15 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
 
   bool get _ready {
     final currencyReady = _asset != 'ارز' || _currencyCode != null;
+    final pricingReady =
+        _isSettlement ||
+        (_tomanRate.text.trim().isNotEmpty &&
+            _totalToman.text.trim().isNotEmpty);
     return _operation != null &&
         _asset != null &&
         _person != null &&
         currencyReady &&
+        pricingReady &&
         _amount.text.trim().isNotEmpty;
   }
 
@@ -51,6 +58,8 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   void dispose() {
     _amount.dispose();
     _note.dispose();
+    _tomanRate.dispose();
+    _totalToman.dispose();
     super.dispose();
   }
 
@@ -71,6 +80,9 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       reminder: _isSettlement ? _reminder : '',
       note: _note.text.trim(),
       currencyCode: _currencyCode,
+      goldFineness: !_isSettlement && _asset == 'طلا' ? _goldFineness : null,
+      tomanRate: _isSettlement ? null : _tomanRate.text.trim(),
+      totalToman: _isSettlement ? null : _totalToman.text.trim(),
     );
 
     try {
@@ -148,13 +160,13 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                         _operation == null || _saving
                             ? null
                             : () => setState(() {
-                                  _asset = value;
-                                  if (value == 'ارز') {
-                                    _currencyCode ??= 'USD';
-                                  } else {
-                                    _currencyCode = null;
-                                  }
-                                }),
+                                _asset = value;
+                                if (value == 'ارز') {
+                                  _currencyCode ??= 'USD';
+                                } else {
+                                  _currencyCode = null;
+                                }
+                              }),
                       ),
                     )
                     .toList(growable: false),
@@ -167,8 +179,10 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                 subtitle: Text(_person?.name ?? 'انتخاب شخص'),
                 trailing: const Icon(CupertinoIcons.chevron_down),
                 onTap: () async {
-                  final selected =
-                      await showPersonPickerBottomSheet(context, widget.people);
+                  final selected = await showPersonPickerBottomSheet(
+                    context,
+                    widget.people,
+                  );
                   if (mounted && selected != null) {
                     setState(() => _person = selected);
                   }
@@ -196,14 +210,66 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
               TextField(
                 controller: _amount,
                 enabled: !_saving,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 textDirection: TextDirection.ltr,
                 textAlign: TextAlign.right,
-                decoration:
-                    InputDecoration(labelText: _asset == 'طلا' ? 'مقدار' : 'مبلغ'),
+                decoration: InputDecoration(
+                  labelText: _asset == 'طلا' ? 'مقدار' : 'مبلغ',
+                ),
                 onChanged: (_) => setState(() {}),
               ),
+              if (!_isSettlement && _asset == 'طلا') ...[
+                const SizedBox(height: 10),
+                Text('عیار طلا', style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  children: [750, 995, 999]
+                      .map(
+                        (value) => _chip(
+                          context,
+                          toPersianDigits(value.toString()),
+                          _goldFineness == value,
+                          _saving
+                              ? null
+                              : () => setState(() => _goldFineness = value),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ],
+              if (!_isSettlement) ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _tomanRate,
+                  enabled: !_saving,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    labelText: _asset == 'طلا'
+                        ? 'قیمت هر گرم (تومان)'
+                        : 'نرخ هر واحد ارز (تومان)',
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _totalToman,
+                  enabled: !_saving,
+                  keyboardType: TextInputType.number,
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.right,
+                  decoration: const InputDecoration(
+                    labelText: 'مبلغ کل (تومان)',
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ],
               const SizedBox(height: 6),
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -255,8 +321,9 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
               TextField(
                 controller: _note,
                 enabled: !_saving,
-                decoration:
-                    const InputDecoration(labelText: 'توضیحات (اختیاری)'),
+                decoration: const InputDecoration(
+                  labelText: 'توضیحات (اختیاری)',
+                ),
                 maxLines: 2,
               ),
               if (_error != null) ...[
@@ -297,8 +364,9 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       label: Text(text),
       selected: selected,
       showCheckmark: false,
-      selectedColor:
-          Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
+      selectedColor: Theme.of(
+        context,
+      ).colorScheme.primary.withValues(alpha: 0.14),
       side: BorderSide(
         color: selected
             ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.35)

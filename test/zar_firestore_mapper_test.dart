@@ -54,7 +54,12 @@ void main() {
       type: ZarDealType.buy,
       personId: 'p1',
       amount: ZarGoldAssetAmount(
-        ZarGoldQuantity(decimal: '1000.125', purity: '18K'),
+        ZarGoldQuantity(decimal: '1000.125', purity: '750'),
+      ),
+      pricing: ZarGoldDealPricing(
+        fineness: 750,
+        pricePerGramToman: ZarTomanAmount(4900000),
+        totalToman: ZarTomanAmount(4900612500),
       ),
       dealAt: DateTime(2026, 8, 27, 9),
       createdBy: 'u1',
@@ -69,6 +74,9 @@ void main() {
     );
     final amount = restored.amount as ZarGoldAssetAmount;
     expect(amount.value.decimal, '1000.125');
-    expect(amount.value.purity, '18K');
+    expect(amount.value.purity, '750');
+    final pricing = restored.pricing as ZarGoldDealPricing;
+    expect(pricing.pricePerGramToman.wholeTomans, 4900000);
+    expect(pricing.totalToman.wholeTomans, 4900612500);
   });
 }

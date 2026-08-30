@@ -14,6 +14,7 @@ import 'application/zar_write_coordinator.dart';
 import 'data/zar_domain_repository.dart';
 import 'domain/zar_amount_formatter.dart';
 import 'domain/zar_amount_parser.dart';
+import 'domain/zar_domain_models.dart' show normalizeDecimal;
 import 'domain/zar_reminder_plan.dart';
 import 'features/editors/confirmed_editors.dart';
 import 'features/backup/backup_screen.dart';
@@ -380,6 +381,25 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       throw const FormatException('Currency code is required.');
     }
 
+    int? totalToman;
+    String? tomanRate;
+    if (!isSettlement) {
+      if (draft.tomanRate == null || draft.totalToman == null) {
+        throw const FormatException('Deal pricing is required.');
+      }
+      tomanRate = normalizeDecimal(draft.tomanRate!);
+      final normalizedTotal = normalizeDecimal(draft.totalToman!);
+      if (normalizedTotal.contains('.')) {
+        throw const FormatException('Total Toman must be a whole amount.');
+      }
+      totalToman = int.parse(normalizedTotal);
+      if (!isCurrency && tomanRate.contains('.')) {
+        throw const FormatException(
+          'Gold price per gram must be a whole Toman amount.',
+        );
+      }
+    }
+
     final amountDisplay = isCurrency
         ? ZarAmountFormatter.currency(
             ZarAmountParser.currency(draft.amount, code: currencyCode!),
@@ -397,6 +417,9 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       date: draft.date,
       time: draft.time,
       note: draft.note.isEmpty ? null : draft.note,
+      goldFineness: isSettlement ? null : draft.goldFineness,
+      tomanRate: tomanRate,
+      totalToman: totalToman,
     );
     final runtimePlan = isSettlement
         ? reminderPlanFromLegacyLabel(draft.reminder)

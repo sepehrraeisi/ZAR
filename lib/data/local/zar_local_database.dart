@@ -31,6 +31,10 @@ class ZarDeals extends Table {
   TextColumn get currencyCode => text().nullable()();
   IntColumn get currencyMinorUnits => integer().nullable()();
   IntColumn get currencyMinorUnitScale => integer().nullable()();
+  TextColumn get pricingKind => text().nullable()();
+  IntColumn get goldFineness => integer().nullable()();
+  TextColumn get tomanRateDecimal => text().nullable()();
+  IntColumn get totalToman => integer().nullable()();
   IntColumn get dealAtMicros => integer()();
   TextColumn get status => text()();
   TextColumn get note => text().nullable()();
@@ -113,7 +117,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
 
   ZarLocalDatabase.defaults() : super(driftDatabase(name: 'zar_plus_local'));
 
-  static const currentSchemaVersion = 1;
+  static const currentSchemaVersion = 2;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -125,16 +129,25 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
       await into(zarLocalMetadata).insert(
         ZarLocalMetadataCompanion.insert(
           key: 'domain_schema_version',
-          value: '1',
+          value: '2',
         ),
       );
     },
     onUpgrade: (migrator, from, to) async {
-      // Each future schema change must have an explicit, transactional
-      // migration. Never delete or recreate a user's database implicitly.
-      throw StateError(
-        'Unsupported ZAR+ local database migration from $from to $to.',
-      );
+      if (from < 2) {
+        await migrator.addColumn(zarDeals, zarDeals.pricingKind);
+        await migrator.addColumn(zarDeals, zarDeals.goldFineness);
+        await migrator.addColumn(zarDeals, zarDeals.tomanRateDecimal);
+        await migrator.addColumn(zarDeals, zarDeals.totalToman);
+        await (update(zarLocalMetadata)
+              ..where((row) => row.key.equals('domain_schema_version')))
+            .write(const ZarLocalMetadataCompanion(value: Value('2')));
+      }
+      if (to > currentSchemaVersion) {
+        throw StateError(
+          'Unsupported ZAR+ local database migration from $from to $to.',
+        );
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');

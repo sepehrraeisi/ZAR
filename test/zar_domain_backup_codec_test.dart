@@ -24,7 +24,12 @@ void main() {
       type: ZarDealType.buy,
       personId: 'p1',
       amount: ZarGoldAssetAmount(
-        ZarGoldQuantity(decimal: '250.125', purity: '18K'),
+        ZarGoldQuantity(decimal: '250.125', purity: '750'),
+      ),
+      pricing: ZarGoldDealPricing(
+        fineness: 750,
+        pricePerGramToman: ZarTomanAmount(4850123),
+        totalToman: ZarTomanAmount(1213141592),
       ),
       dealAt: DateTime.utc(2026, 8, 27, 13),
       createdBy: 'u1',
@@ -70,9 +75,14 @@ void main() {
     expect(decoded.businessId, 'b1');
     final restoredGold = decoded.deals.single.amount as ZarGoldAssetAmount;
     expect(restoredGold.value.decimal, '250.125');
-    expect(restoredGold.value.purity, '18K');
+    expect(restoredGold.value.purity, '750');
+    final restoredPricing = decoded.deals.single.pricing as ZarGoldDealPricing;
+    expect(restoredPricing.fineness, 750);
+    expect(restoredPricing.pricePerGramToman.wholeTomans, 4850123);
+    expect(restoredPricing.totalToman.wholeTomans, 1213141592);
     final restoredSettlement = decoded.settlements.single;
-    final restoredCurrency = restoredSettlement.amount as ZarCurrencyAssetAmount;
+    final restoredCurrency =
+        restoredSettlement.amount as ZarCurrencyAssetAmount;
     expect(restoredCurrency.value.code, 'USD');
     expect(restoredCurrency.value.minorUnits, 1000050);
     expect(restoredSettlement.reminderPlan.rules, hasLength(2));
@@ -120,6 +130,7 @@ void main() {
     final raw = Map<String, Object?>.from(
       jsonDecode(codec.encodeJson(source)) as Map,
     );
+    raw['exportVersion'] = 2;
     final settlements = (raw['settlements']! as List)
         .map((item) => Map<String, Object?>.from(item as Map))
         .toList(growable: false);
@@ -128,6 +139,55 @@ void main() {
 
     final decoded = codec.decodeJson(jsonEncode(raw));
     expect(decoded.settlements.single.reminderPlan.isEmpty, isTrue);
+  });
+
+  test('old V2 deal without pricing remains importable', () {
+    final raw = <String, Object?>{
+      'app': 'ZAR+',
+      'format': 'domain-backup',
+      'exportVersion': 2,
+      'businessId': 'b1',
+      'generatedAt': created.toIso8601String(),
+      'people': [
+        {
+          'id': 'p1',
+          'displayName': 'علی رضایی',
+          'phone': null,
+          'note': null,
+          'archived': false,
+          'createdAt': created.toIso8601String(),
+          'updatedAt': created.toIso8601String(),
+          'createdBy': 'u1',
+        },
+      ],
+      'deals': [
+        {
+          'id': 'd1',
+          'type': 'buy',
+          'personId': 'p1',
+          'amount': {
+            'assetType': 'currency',
+            'currency': {
+              'code': 'USD',
+              'minorUnits': 1000000,
+              'minorUnitScale': 2,
+            },
+          },
+          'dealAt': created.toIso8601String(),
+          'status': 'active',
+          'note': null,
+          'createdBy': 'u1',
+          'createdAt': created.toIso8601String(),
+          'updatedAt': created.toIso8601String(),
+        },
+      ],
+      'settlements': <Object?>[],
+    };
+
+    final decoded = codec.decodeJson(jsonEncode(raw));
+    expect(decoded.exportVersion, 2);
+    expect(decoded.deals.single.id, 'd1');
+    expect(decoded.deals.single.pricing, isNull);
   });
 
   test('rejects a settlement referencing an unknown person', () {

@@ -119,7 +119,7 @@ class _BackupScreenState extends State<BackupScreen> {
           Text('نسخه پشتیبان کامل', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
           const Text(
-            'افراد، خرید و فروش، دریافت و تحویل، وضعیت بایگانی و برنامه‌های یادآوری در فایل JSON نسخه ۲ نگهداری می‌شوند.',
+            'افراد، خرید و فروش با قیمت‌گذاری تومان، دریافت و تحویل، وضعیت بایگانی و برنامه‌های یادآوری در فایل JSON نسخه ۳ نگهداری می‌شوند. فایل‌های نسخه ۲ همچنان قابل بازیابی هستند.',
           ),
           const SizedBox(height: 20),
           FilledButton.icon(

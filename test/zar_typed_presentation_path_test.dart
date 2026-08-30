@@ -93,6 +93,8 @@ void main() {
         currencyCode: 'USD',
         date: Jalali(1405, 6, 5),
         time: const TimeOfDay(hour: 12, minute: 30),
+        tomanRate: '92000.125',
+        totalToman: 1135802475,
       ),
       auditAction: 'create',
     );
@@ -103,6 +105,9 @@ void main() {
     expect(store.recordById('quick-deal')!.type, RecordType.deal);
     expect((store.deals.single.amount as ZarCurrencyAssetAmount).value.minorUnits,
         1234567);
+    final pricing = store.deals.single.pricing as ZarCurrencyDealPricing;
+    expect(pricing.tomanPerUnit, '92000.125');
+    expect(pricing.totalToman.wholeTomans, 1135802475);
   });
 
   test('Home and History presentation data derives from typed state', () async {

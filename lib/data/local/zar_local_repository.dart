@@ -255,6 +255,12 @@ class ZarLocalRepository implements ZarDomainRepository {
       currencyMinorUnits: row.currencyMinorUnits,
       currencyMinorUnitScale: row.currencyMinorUnitScale,
     ),
+    pricing: _dealPricingFromColumns(
+      kind: row.pricingKind,
+      goldFineness: row.goldFineness,
+      tomanRateDecimal: row.tomanRateDecimal,
+      totalToman: row.totalToman,
+    ),
     dealAt: _date(row.dealAtMicros),
     status: ZarDealStatus.values.byName(row.status),
     note: row.note,
@@ -319,6 +325,7 @@ class ZarLocalRepository implements ZarDomainRepository {
 
   ZarDealsCompanion _dealToRow(ZarDeal deal) {
     final amount = _amountColumns(deal.amount);
+    final pricing = deal.pricing;
     return ZarDealsCompanion.insert(
       id: deal.id,
       businessId: deal.businessId,
@@ -331,6 +338,23 @@ class ZarLocalRepository implements ZarDomainRepository {
       currencyCode: Value(amount.currencyCode),
       currencyMinorUnits: Value(amount.currencyMinorUnits),
       currencyMinorUnitScale: Value(amount.currencyMinorUnitScale),
+      pricingKind: Value(
+        pricing == null
+            ? null
+            : pricing is ZarGoldDealPricing
+            ? 'gold'
+            : 'currency',
+      ),
+      goldFineness: Value(
+        pricing is ZarGoldDealPricing ? pricing.fineness : null,
+      ),
+      tomanRateDecimal: Value(switch (pricing) {
+        ZarGoldDealPricing() =>
+          pricing.pricePerGramToman.wholeTomans.toString(),
+        ZarCurrencyDealPricing() => pricing.tomanPerUnit,
+        null => null,
+      }),
+      totalToman: Value(pricing?.totalToman.wholeTomans),
       dealAtMicros: _micros(deal.dealAt),
       status: deal.status.name,
       note: Value(deal.note),
@@ -338,6 +362,35 @@ class ZarLocalRepository implements ZarDomainRepository {
       createdAtMicros: _micros(deal.createdAt),
       updatedAtMicros: _micros(deal.updatedAt),
     );
+  }
+
+  ZarDealPricing? _dealPricingFromColumns({
+    required String? kind,
+    required int? goldFineness,
+    required String? tomanRateDecimal,
+    required int? totalToman,
+  }) {
+    if (kind == null) return null;
+    if (tomanRateDecimal == null || totalToman == null) {
+      throw const FormatException('Stored deal pricing is incomplete.');
+    }
+    if (kind == 'gold') {
+      if (goldFineness == null) {
+        throw const FormatException('Stored gold fineness is missing.');
+      }
+      return ZarGoldDealPricing(
+        fineness: goldFineness,
+        pricePerGramToman: ZarTomanAmount(int.parse(tomanRateDecimal)),
+        totalToman: ZarTomanAmount(totalToman),
+      );
+    }
+    if (kind == 'currency') {
+      return ZarCurrencyDealPricing(
+        tomanPerUnit: tomanRateDecimal,
+        totalToman: ZarTomanAmount(totalToman),
+      );
+    }
+    throw FormatException('Unsupported stored deal pricing kind: $kind');
   }
 
   ZarSettlementsCompanion _settlementToRow(ZarSettlement settlement) {

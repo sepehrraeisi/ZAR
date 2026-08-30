@@ -15,7 +15,7 @@ class ZarDomainBackupBundle {
     required this.people,
     required this.deals,
     required this.settlements,
-    this.exportVersion = 2,
+    this.exportVersion = 3,
   });
 
   final int exportVersion;
@@ -29,7 +29,8 @@ class ZarDomainBackupBundle {
 class ZarDomainBackupCodec {
   const ZarDomainBackupCodec();
 
-  static const supportedVersion = 2;
+  static const supportedVersion = 3;
+  static const supportedImportVersions = {2, 3};
 
   String encodeJson(ZarDomainBackupBundle bundle) {
     if (bundle.exportVersion != supportedVersion) {
@@ -64,7 +65,7 @@ class ZarDomainBackupCodec {
       throw const FormatException('This file is not a ZAR+ domain backup.');
     }
     final version = raw['exportVersion'];
-    if (version != supportedVersion) {
+    if (version is! int || !supportedImportVersions.contains(version)) {
       throw FormatException('Unsupported ZAR+ domain export version: $version');
     }
     final businessId = (raw['businessId'] as String?)?.trim() ?? '';
@@ -82,6 +83,7 @@ class ZarDomainBackupCodec {
     _validateReferences(people: people, deals: deals, settlements: settlements);
 
     return ZarDomainBackupBundle(
+      exportVersion: version,
       businessId: businessId,
       generatedAt: _date(raw['generatedAt'], 'generatedAt'),
       people: people,
@@ -128,6 +130,7 @@ class ZarDomainBackupCodec {
         'type': deal.type.name,
         'personId': deal.personId,
         'amount': deal.amount.toMap(),
+        'pricing': deal.pricing?.toMap(),
         'dealAt': deal.dealAt.toUtc().toIso8601String(),
         'status': deal.status.name,
         'note': deal.note,
@@ -142,6 +145,11 @@ class ZarDomainBackupCodec {
         type: ZarDealType.values.byName(_requiredString(map['type'], 'deal.type')),
         personId: _requiredString(map['personId'], 'deal.personId'),
         amount: ZarAssetAmount.fromMap(_requiredMap(map['amount'], 'deal.amount')),
+        pricing: map['pricing'] == null
+            ? null
+            : ZarDealPricing.fromMap(
+                _requiredMap(map['pricing'], 'deal.pricing'),
+              ),
         dealAt: _date(map['dealAt'], 'deal.dealAt'),
         status: ZarDealStatus.values.byName(
           _requiredString(map['status'], 'deal.status'),

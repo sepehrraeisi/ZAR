@@ -113,6 +113,9 @@ class AppRecord {
     this.status = SettlementStatus.open,
     this.note,
     this.linkedSettlementIds = const [],
+    this.goldFineness,
+    this.tomanRate,
+    this.totalToman,
   });
 
   final String id;
@@ -127,6 +130,9 @@ class AppRecord {
   final SettlementStatus status;
   final String? note;
   final List<String> linkedSettlementIds;
+  final int? goldFineness;
+  final String? tomanRate;
+  final int? totalToman;
 
   bool get isObligation => type == RecordType.settlement && (operationLabel == 'دریافت' || operationLabel == 'تحویل');
 
@@ -141,6 +147,9 @@ class AppRecord {
     bool clearTime = false,
     SettlementStatus? status,
     String? note,
+    int? goldFineness,
+    String? tomanRate,
+    int? totalToman,
   }) {
     return AppRecord(
       id: id,
@@ -155,6 +164,9 @@ class AppRecord {
       status: status ?? this.status,
       note: note ?? this.note,
       linkedSettlementIds: linkedSettlementIds,
+      goldFineness: goldFineness ?? this.goldFineness,
+      tomanRate: tomanRate ?? this.tomanRate,
+      totalToman: totalToman ?? this.totalToman,
     );
   }
 
@@ -188,6 +200,9 @@ class QuickAddDraft {
     required this.reminder,
     required this.note,
     this.currencyCode,
+    this.goldFineness,
+    this.tomanRate,
+    this.totalToman,
   });
 
   final String operation;
@@ -199,6 +214,9 @@ class QuickAddDraft {
   final String reminder;
   final String note;
   final String? currencyCode;
+  final int? goldFineness;
+  final String? tomanRate;
+  final String? totalToman;
 }
 
 String formatJalaliDate(Jalali date) => '${toPersianDigits(date.day.toString())} ${monthName(date.month)} ${toPersianDigits(date.year.toString())}';
@@ -1353,6 +1371,26 @@ class DealDetailSheet extends StatelessWidget {
               Text(record.timeLabel(), style: Theme.of(context).textTheme.bodyMedium),
             ],
           ),
+          if (record.goldFineness != null) ...[
+            const SizedBox(height: 8),
+            Text('عیار: ${toPersianDigits(record.goldFineness.toString())}', style: Theme.of(context).textTheme.bodyMedium),
+          ],
+          if (record.tomanRate != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              record.assetLabel == 'ارز'
+                  ? 'نرخ هر واحد: ${toPersianDigits(record.tomanRate!)} تومان'
+                  : 'قیمت هر گرم: ${toPersianDigits(record.tomanRate!)} تومان',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+          if (record.totalToman != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'مبلغ کل: ${toPersianDigits(NumberFormat.decimalPattern('en_US').format(record.totalToman))} تومان',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ],
           if ((record.note ?? '').isNotEmpty) ...[const SizedBox(height: 8), Text(record.note!, style: Theme.of(context).textTheme.bodyMedium)],
           const SizedBox(height: 14),
           Text('تعهدهای لینک‌شده', style: Theme.of(context).textTheme.titleMedium),

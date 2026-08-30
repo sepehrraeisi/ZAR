@@ -35,6 +35,7 @@ class ZarFirestoreMapper {
         'dealAt': Timestamp.fromDate(deal.dealAt.toUtc()),
         'status': deal.status.name,
         ..._amountFields(deal.amount),
+        'pricing': deal.pricing?.toMap(),
         'note': deal.note,
         'createdBy': deal.createdBy,
         'createdAt': Timestamp.fromDate(deal.createdAt.toUtc()),
@@ -52,6 +53,11 @@ class ZarFirestoreMapper {
         type: ZarDealType.values.byName(map['dealType']! as String),
         personId: map['personId']! as String,
         amount: _amountFromFirestore(map),
+        pricing: map['pricing'] == null
+            ? null
+            : ZarDealPricing.fromMap(
+                Map<String, Object?>.from(map['pricing']! as Map),
+              ),
         dealAt: _date(map['dealAt']),
         status: ZarDealStatus.values.byName(map['status']! as String),
         note: map['note'] as String?,

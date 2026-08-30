@@ -43,6 +43,13 @@ void main() {
       expect(currency.value.minorUnits, 123456789);
       expect(currency.value.minorUnitScale, 3);
       expect(currency.value.code, 'USD');
+      final currencyPricing =
+          snapshot.deals
+                  .singleWhere((deal) => deal.id == 'deal-currency')
+                  .pricing
+              as ZarCurrencyDealPricing;
+      expect(currencyPricing.tomanPerUnit, '92000.125');
+      expect(currencyPricing.totalToman.wholeTomans, 1135802475);
 
       final gold =
           snapshot.deals.singleWhere((deal) => deal.id == 'deal-gold').amount
@@ -50,6 +57,12 @@ void main() {
       expect(gold.value.decimal, '12.3456789');
       expect(gold.value.unit, ZarGoldUnit.mesghal);
       expect(gold.value.purity, '750');
+      final goldPricing =
+          snapshot.deals.singleWhere((deal) => deal.id == 'deal-gold').pricing
+              as ZarGoldDealPricing;
+      expect(goldPricing.fineness, 750);
+      expect(goldPricing.pricePerGramToman.wholeTomans, 4850000);
+      expect(goldPricing.totalToman.wholeTomans, 59876543);
     });
 
     test(
@@ -133,7 +146,7 @@ void main() {
   });
 
   test(
-    'JSON V2 exports from Drift and restores into an empty database',
+    'JSON V3 exports pricing from Drift and restores into an empty database',
     () async {
       final sourceDb = ZarLocalDatabase(NativeDatabase.memory());
       final sourceRepo = ZarLocalRepository(sourceDb);
@@ -172,6 +185,11 @@ void main() {
                   .amount
               as ZarCurrencyAssetAmount;
       expect(currency.value.minorUnits, 123456789);
+      final restoredPricing = restored.deals
+          .singleWhere((item) => item.id == 'deal-currency')
+          .pricing as ZarCurrencyDealPricing;
+      expect(restoredPricing.tomanPerUnit, '92000.125');
+      expect(restoredPricing.totalToman.wholeTomans, 1135802475);
       expect(restored.settlements.first.reminderPlan.rules, hasLength(2));
 
       await targetRepo.close();
@@ -216,6 +234,10 @@ ZarDeal _currencyDeal() => ZarDeal(
   amount: ZarCurrencyAssetAmount(
     ZarCurrencyAmount(code: 'usd', minorUnits: 123456789, minorUnitScale: 3),
   ),
+  pricing: ZarCurrencyDealPricing(
+    tomanPerUnit: '92000.125000',
+    totalToman: ZarTomanAmount(1135802475),
+  ),
   dealAt: _at(2026, 8, 20, 10, 30),
   createdBy: 'user-1',
   createdAt: _at(2026, 8, 20, 10),
@@ -233,6 +255,11 @@ ZarDeal _goldDeal() => ZarDeal(
       unit: ZarGoldUnit.mesghal,
       purity: '750',
     ),
+  ),
+  pricing: ZarGoldDealPricing(
+    fineness: 750,
+    pricePerGramToman: ZarTomanAmount(4850000),
+    totalToman: ZarTomanAmount(59876543),
   ),
   dealAt: _at(2026, 8, 21, 11),
   createdBy: 'user-1',

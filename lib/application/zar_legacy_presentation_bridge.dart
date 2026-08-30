@@ -23,12 +23,12 @@ class ZarLegacyPresentationBridge {
   final String userId;
 
   AppPerson personToUi(ZarPerson person) => AppPerson(
-        id: person.id,
-        name: person.displayName,
-        phone: person.phone,
-        note: person.note,
-        archived: person.archived,
-      );
+    id: person.id,
+    name: person.displayName,
+    phone: person.phone,
+    note: person.note,
+    archived: person.archived,
+  );
 
   ZarPerson personFromUi(
     AppPerson person, {
@@ -53,13 +53,17 @@ class ZarLegacyPresentationBridge {
     return AppRecord(
       id: settlement.id,
       type: RecordType.settlement,
-      operationLabel: settlement.direction == ZarSettlementDirection.receive ? 'دریافت' : 'تحویل',
+      operationLabel: settlement.direction == ZarSettlementDirection.receive
+          ? 'دریافت'
+          : 'تحویل',
       personId: settlement.personId,
       amountDisplay: _amountDisplay(settlement.amount),
       assetLabel: _assetLabel(settlement.amount),
       currencyCode: _currencyCode(settlement.amount),
       date: Jalali.fromDateTime(local),
-      time: settlement.hasTime ? TimeOfDay(hour: local.hour, minute: local.minute) : null,
+      time: settlement.hasTime
+          ? TimeOfDay(hour: local.hour, minute: local.minute)
+          : null,
       status: _settlementStatusToUi(settlement.status),
       note: settlement.note,
     );
@@ -116,21 +120,32 @@ class ZarLegacyPresentationBridge {
       time: TimeOfDay(hour: local.hour, minute: local.minute),
       status: _dealStatusToUi(deal.status),
       note: deal.note,
+      goldFineness: deal.pricing is ZarGoldDealPricing
+          ? (deal.pricing! as ZarGoldDealPricing).fineness
+          : null,
+      tomanRate: switch (deal.pricing) {
+        ZarGoldDealPricing() =>
+          (deal.pricing! as ZarGoldDealPricing).pricePerGramToman.wholeTomans
+              .toString(),
+        ZarCurrencyDealPricing() =>
+          (deal.pricing! as ZarCurrencyDealPricing).tomanPerUnit,
+        null => null,
+      },
+      totalToman: deal.pricing?.totalToman.wholeTomans,
     );
   }
 
-  ZarDeal dealFromUi(
-    AppRecord record, {
-    ZarDeal? existing,
-    DateTime? now,
-  }) {
+  ZarDeal dealFromUi(AppRecord record, {ZarDeal? existing, DateTime? now}) {
     final timestamp = (now ?? DateTime.now()).toUtc();
     return ZarDeal(
       id: record.id,
       businessId: existing?.businessId ?? businessId,
-      type: record.operationLabel == 'خرید' ? ZarDealType.buy : ZarDealType.sell,
+      type: record.operationLabel == 'خرید'
+          ? ZarDealType.buy
+          : ZarDealType.sell,
       personId: record.personId,
       amount: _amountFromUi(record),
+      pricing: _dealPricingFromUi(record),
       dealAt: _uiDateTime(record).toUtc(),
       status: _dealStatusFromUi(record.status),
       note: record.note,
@@ -144,10 +159,37 @@ class ZarLegacyPresentationBridge {
     if (record.currencyCode != null || record.assetLabel == 'ارز') {
       final code = record.currencyCode ?? 'USD';
       return ZarCurrencyAssetAmount(
-        ZarAmountParser.currency(_numericOnly(record.amountDisplay), code: code),
+        ZarAmountParser.currency(
+          _numericOnly(record.amountDisplay),
+          code: code,
+        ),
       );
     }
-    return ZarGoldAssetAmount(ZarAmountParser.gold(record.amountDisplay));
+    final parsed = ZarAmountParser.gold(record.amountDisplay);
+    return ZarGoldAssetAmount(
+      ZarGoldQuantity(
+        decimal: parsed.decimal,
+        purity: record.goldFineness?.toString(),
+      ),
+    );
+  }
+
+  ZarDealPricing? _dealPricingFromUi(AppRecord record) {
+    if (record.tomanRate == null || record.totalToman == null) return null;
+    if (record.assetLabel == 'ارز') {
+      return ZarCurrencyDealPricing(
+        tomanPerUnit: record.tomanRate!,
+        totalToman: ZarTomanAmount(record.totalToman!),
+      );
+    }
+    if (record.goldFineness == null) {
+      throw const FormatException('Gold fineness is required.');
+    }
+    return ZarGoldDealPricing(
+      fineness: record.goldFineness!,
+      pricePerGramToman: ZarTomanAmount(int.parse(record.tomanRate!)),
+      totalToman: ZarTomanAmount(record.totalToman!),
+    );
   }
 
   String _numericOnly(String display) {
