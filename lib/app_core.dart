@@ -114,6 +114,11 @@ class AppRecord {
     this.note,
     this.linkedSettlementIds = const [],
     this.goldFineness,
+    this.goldInputWeight,
+    this.goldInputUnit,
+    this.goldPriceUnit,
+    this.goldEquivalentWeight,
+    this.goldEquivalentPrice,
     this.tomanRate,
     this.totalToman,
   });
@@ -131,6 +136,11 @@ class AppRecord {
   final String? note;
   final List<String> linkedSettlementIds;
   final int? goldFineness;
+  final String? goldInputWeight;
+  final String? goldInputUnit;
+  final String? goldPriceUnit;
+  final String? goldEquivalentWeight;
+  final String? goldEquivalentPrice;
   final String? tomanRate;
   final int? totalToman;
 
@@ -148,6 +158,11 @@ class AppRecord {
     SettlementStatus? status,
     String? note,
     int? goldFineness,
+    String? goldInputWeight,
+    String? goldInputUnit,
+    String? goldPriceUnit,
+    String? goldEquivalentWeight,
+    String? goldEquivalentPrice,
     String? tomanRate,
     int? totalToman,
   }) {
@@ -165,6 +180,11 @@ class AppRecord {
       note: note ?? this.note,
       linkedSettlementIds: linkedSettlementIds,
       goldFineness: goldFineness ?? this.goldFineness,
+      goldInputWeight: goldInputWeight ?? this.goldInputWeight,
+      goldInputUnit: goldInputUnit ?? this.goldInputUnit,
+      goldPriceUnit: goldPriceUnit ?? this.goldPriceUnit,
+      goldEquivalentWeight: goldEquivalentWeight ?? this.goldEquivalentWeight,
+      goldEquivalentPrice: goldEquivalentPrice ?? this.goldEquivalentPrice,
       tomanRate: tomanRate ?? this.tomanRate,
       totalToman: totalToman ?? this.totalToman,
     );
@@ -201,6 +221,8 @@ class QuickAddDraft {
     required this.note,
     this.currencyCode,
     this.goldFineness,
+    this.goldInputUnit,
+    this.goldPriceUnit,
     this.tomanRate,
     this.totalToman,
   });
@@ -215,6 +237,8 @@ class QuickAddDraft {
   final String note;
   final String? currencyCode;
   final int? goldFineness;
+  final String? goldInputUnit;
+  final String? goldPriceUnit;
   final String? tomanRate;
   final String? totalToman;
 }
@@ -1374,15 +1398,30 @@ class DealDetailSheet extends StatelessWidget {
           if (record.goldFineness != null) ...[
             const SizedBox(height: 8),
             Text('عیار: ${toPersianDigits(record.goldFineness.toString())}', style: Theme.of(context).textTheme.bodyMedium),
+            if (record.goldInputWeight != null)
+              Text(
+                'وزن ثبت‌شده: ${toPersianDigits(record.goldInputWeight!)} ${record.goldInputUnit == 'mesghal' ? 'مثقال' : 'گرم'}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            if (record.goldEquivalentWeight != null)
+              Text(
+                'معادل وزن: ${toPersianDigits(record.goldEquivalentWeight!)} ${record.goldInputUnit == 'mesghal' ? 'گرم' : 'مثقال'}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
           ],
           if (record.tomanRate != null) ...[
             const SizedBox(height: 6),
             Text(
               record.assetLabel == 'ارز'
                   ? 'نرخ هر واحد: ${toPersianDigits(record.tomanRate!)} تومان'
-                  : 'قیمت هر گرم: ${toPersianDigits(record.tomanRate!)} تومان',
+                  : 'قیمت هر ${record.goldPriceUnit == 'mesghal' ? 'مثقال' : 'گرم'}: ${toPersianDigits(record.tomanRate!)} تومان',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            if (record.goldEquivalentPrice != null)
+              Text(
+                'قیمت معادل هر ${record.goldPriceUnit == 'mesghal' ? 'گرم' : 'مثقال'}: ${toPersianDigits(record.goldEquivalentPrice!)} تومان',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
           ],
           if (record.totalToman != null) ...[
             const SizedBox(height: 6),

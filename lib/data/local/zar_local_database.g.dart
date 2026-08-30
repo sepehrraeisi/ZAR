@@ -673,6 +673,39 @@ class $ZarDealsTable extends ZarDeals
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _goldInputDecimalMeta = const VerificationMeta(
+    'goldInputDecimal',
+  );
+  @override
+  late final GeneratedColumn<String> goldInputDecimal = GeneratedColumn<String>(
+    'gold_input_decimal',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _goldInputUnitMeta = const VerificationMeta(
+    'goldInputUnit',
+  );
+  @override
+  late final GeneratedColumn<String> goldInputUnit = GeneratedColumn<String>(
+    'gold_input_unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _goldPriceUnitMeta = const VerificationMeta(
+    'goldPriceUnit',
+  );
+  @override
+  late final GeneratedColumn<String> goldPriceUnit = GeneratedColumn<String>(
+    'gold_price_unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _tomanRateDecimalMeta = const VerificationMeta(
     'tomanRateDecimal',
   );
@@ -772,6 +805,9 @@ class $ZarDealsTable extends ZarDeals
     currencyMinorUnitScale,
     pricingKind,
     goldFineness,
+    goldInputDecimal,
+    goldInputUnit,
+    goldPriceUnit,
     tomanRateDecimal,
     totalToman,
     dealAtMicros,
@@ -893,6 +929,33 @@ class $ZarDealsTable extends ZarDeals
         goldFineness.isAcceptableOrUnknown(
           data['gold_fineness']!,
           _goldFinenessMeta,
+        ),
+      );
+    }
+    if (data.containsKey('gold_input_decimal')) {
+      context.handle(
+        _goldInputDecimalMeta,
+        goldInputDecimal.isAcceptableOrUnknown(
+          data['gold_input_decimal']!,
+          _goldInputDecimalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('gold_input_unit')) {
+      context.handle(
+        _goldInputUnitMeta,
+        goldInputUnit.isAcceptableOrUnknown(
+          data['gold_input_unit']!,
+          _goldInputUnitMeta,
+        ),
+      );
+    }
+    if (data.containsKey('gold_price_unit')) {
+      context.handle(
+        _goldPriceUnitMeta,
+        goldPriceUnit.isAcceptableOrUnknown(
+          data['gold_price_unit']!,
+          _goldPriceUnitMeta,
         ),
       );
     }
@@ -1027,6 +1090,18 @@ class $ZarDealsTable extends ZarDeals
         DriftSqlType.int,
         data['${effectivePrefix}gold_fineness'],
       ),
+      goldInputDecimal: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}gold_input_decimal'],
+      ),
+      goldInputUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}gold_input_unit'],
+      ),
+      goldPriceUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}gold_price_unit'],
+      ),
       tomanRateDecimal: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}toman_rate_decimal'],
@@ -1082,6 +1157,9 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
   final int? currencyMinorUnitScale;
   final String? pricingKind;
   final int? goldFineness;
+  final String? goldInputDecimal;
+  final String? goldInputUnit;
+  final String? goldPriceUnit;
   final String? tomanRateDecimal;
   final int? totalToman;
   final int dealAtMicros;
@@ -1104,6 +1182,9 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
     this.currencyMinorUnitScale,
     this.pricingKind,
     this.goldFineness,
+    this.goldInputDecimal,
+    this.goldInputUnit,
+    this.goldPriceUnit,
     this.tomanRateDecimal,
     this.totalToman,
     required this.dealAtMicros,
@@ -1144,6 +1225,15 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
     }
     if (!nullToAbsent || goldFineness != null) {
       map['gold_fineness'] = Variable<int>(goldFineness);
+    }
+    if (!nullToAbsent || goldInputDecimal != null) {
+      map['gold_input_decimal'] = Variable<String>(goldInputDecimal);
+    }
+    if (!nullToAbsent || goldInputUnit != null) {
+      map['gold_input_unit'] = Variable<String>(goldInputUnit);
+    }
+    if (!nullToAbsent || goldPriceUnit != null) {
+      map['gold_price_unit'] = Variable<String>(goldPriceUnit);
     }
     if (!nullToAbsent || tomanRateDecimal != null) {
       map['toman_rate_decimal'] = Variable<String>(tomanRateDecimal);
@@ -1193,6 +1283,15 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
       goldFineness: goldFineness == null && nullToAbsent
           ? const Value.absent()
           : Value(goldFineness),
+      goldInputDecimal: goldInputDecimal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(goldInputDecimal),
+      goldInputUnit: goldInputUnit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(goldInputUnit),
+      goldPriceUnit: goldPriceUnit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(goldPriceUnit),
       tomanRateDecimal: tomanRateDecimal == null && nullToAbsent
           ? const Value.absent()
           : Value(tomanRateDecimal),
@@ -1229,6 +1328,9 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
       ),
       pricingKind: serializer.fromJson<String?>(json['pricingKind']),
       goldFineness: serializer.fromJson<int?>(json['goldFineness']),
+      goldInputDecimal: serializer.fromJson<String?>(json['goldInputDecimal']),
+      goldInputUnit: serializer.fromJson<String?>(json['goldInputUnit']),
+      goldPriceUnit: serializer.fromJson<String?>(json['goldPriceUnit']),
       tomanRateDecimal: serializer.fromJson<String?>(json['tomanRateDecimal']),
       totalToman: serializer.fromJson<int?>(json['totalToman']),
       dealAtMicros: serializer.fromJson<int>(json['dealAtMicros']),
@@ -1256,6 +1358,9 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
       'currencyMinorUnitScale': serializer.toJson<int?>(currencyMinorUnitScale),
       'pricingKind': serializer.toJson<String?>(pricingKind),
       'goldFineness': serializer.toJson<int?>(goldFineness),
+      'goldInputDecimal': serializer.toJson<String?>(goldInputDecimal),
+      'goldInputUnit': serializer.toJson<String?>(goldInputUnit),
+      'goldPriceUnit': serializer.toJson<String?>(goldPriceUnit),
       'tomanRateDecimal': serializer.toJson<String?>(tomanRateDecimal),
       'totalToman': serializer.toJson<int?>(totalToman),
       'dealAtMicros': serializer.toJson<int>(dealAtMicros),
@@ -1281,6 +1386,9 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
     Value<int?> currencyMinorUnitScale = const Value.absent(),
     Value<String?> pricingKind = const Value.absent(),
     Value<int?> goldFineness = const Value.absent(),
+    Value<String?> goldInputDecimal = const Value.absent(),
+    Value<String?> goldInputUnit = const Value.absent(),
+    Value<String?> goldPriceUnit = const Value.absent(),
     Value<String?> tomanRateDecimal = const Value.absent(),
     Value<int?> totalToman = const Value.absent(),
     int? dealAtMicros,
@@ -1307,6 +1415,15 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
         : this.currencyMinorUnitScale,
     pricingKind: pricingKind.present ? pricingKind.value : this.pricingKind,
     goldFineness: goldFineness.present ? goldFineness.value : this.goldFineness,
+    goldInputDecimal: goldInputDecimal.present
+        ? goldInputDecimal.value
+        : this.goldInputDecimal,
+    goldInputUnit: goldInputUnit.present
+        ? goldInputUnit.value
+        : this.goldInputUnit,
+    goldPriceUnit: goldPriceUnit.present
+        ? goldPriceUnit.value
+        : this.goldPriceUnit,
     tomanRateDecimal: tomanRateDecimal.present
         ? tomanRateDecimal.value
         : this.tomanRateDecimal,
@@ -1349,6 +1466,15 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
       goldFineness: data.goldFineness.present
           ? data.goldFineness.value
           : this.goldFineness,
+      goldInputDecimal: data.goldInputDecimal.present
+          ? data.goldInputDecimal.value
+          : this.goldInputDecimal,
+      goldInputUnit: data.goldInputUnit.present
+          ? data.goldInputUnit.value
+          : this.goldInputUnit,
+      goldPriceUnit: data.goldPriceUnit.present
+          ? data.goldPriceUnit.value
+          : this.goldPriceUnit,
       tomanRateDecimal: data.tomanRateDecimal.present
           ? data.tomanRateDecimal.value
           : this.tomanRateDecimal,
@@ -1386,6 +1512,9 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
           ..write('currencyMinorUnitScale: $currencyMinorUnitScale, ')
           ..write('pricingKind: $pricingKind, ')
           ..write('goldFineness: $goldFineness, ')
+          ..write('goldInputDecimal: $goldInputDecimal, ')
+          ..write('goldInputUnit: $goldInputUnit, ')
+          ..write('goldPriceUnit: $goldPriceUnit, ')
           ..write('tomanRateDecimal: $tomanRateDecimal, ')
           ..write('totalToman: $totalToman, ')
           ..write('dealAtMicros: $dealAtMicros, ')
@@ -1413,6 +1542,9 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
     currencyMinorUnitScale,
     pricingKind,
     goldFineness,
+    goldInputDecimal,
+    goldInputUnit,
+    goldPriceUnit,
     tomanRateDecimal,
     totalToman,
     dealAtMicros,
@@ -1439,6 +1571,9 @@ class LocalDealRow extends DataClass implements Insertable<LocalDealRow> {
           other.currencyMinorUnitScale == this.currencyMinorUnitScale &&
           other.pricingKind == this.pricingKind &&
           other.goldFineness == this.goldFineness &&
+          other.goldInputDecimal == this.goldInputDecimal &&
+          other.goldInputUnit == this.goldInputUnit &&
+          other.goldPriceUnit == this.goldPriceUnit &&
           other.tomanRateDecimal == this.tomanRateDecimal &&
           other.totalToman == this.totalToman &&
           other.dealAtMicros == this.dealAtMicros &&
@@ -1463,6 +1598,9 @@ class ZarDealsCompanion extends UpdateCompanion<LocalDealRow> {
   final Value<int?> currencyMinorUnitScale;
   final Value<String?> pricingKind;
   final Value<int?> goldFineness;
+  final Value<String?> goldInputDecimal;
+  final Value<String?> goldInputUnit;
+  final Value<String?> goldPriceUnit;
   final Value<String?> tomanRateDecimal;
   final Value<int?> totalToman;
   final Value<int> dealAtMicros;
@@ -1486,6 +1624,9 @@ class ZarDealsCompanion extends UpdateCompanion<LocalDealRow> {
     this.currencyMinorUnitScale = const Value.absent(),
     this.pricingKind = const Value.absent(),
     this.goldFineness = const Value.absent(),
+    this.goldInputDecimal = const Value.absent(),
+    this.goldInputUnit = const Value.absent(),
+    this.goldPriceUnit = const Value.absent(),
     this.tomanRateDecimal = const Value.absent(),
     this.totalToman = const Value.absent(),
     this.dealAtMicros = const Value.absent(),
@@ -1510,6 +1651,9 @@ class ZarDealsCompanion extends UpdateCompanion<LocalDealRow> {
     this.currencyMinorUnitScale = const Value.absent(),
     this.pricingKind = const Value.absent(),
     this.goldFineness = const Value.absent(),
+    this.goldInputDecimal = const Value.absent(),
+    this.goldInputUnit = const Value.absent(),
+    this.goldPriceUnit = const Value.absent(),
     this.tomanRateDecimal = const Value.absent(),
     this.totalToman = const Value.absent(),
     required int dealAtMicros,
@@ -1543,6 +1687,9 @@ class ZarDealsCompanion extends UpdateCompanion<LocalDealRow> {
     Expression<int>? currencyMinorUnitScale,
     Expression<String>? pricingKind,
     Expression<int>? goldFineness,
+    Expression<String>? goldInputDecimal,
+    Expression<String>? goldInputUnit,
+    Expression<String>? goldPriceUnit,
     Expression<String>? tomanRateDecimal,
     Expression<int>? totalToman,
     Expression<int>? dealAtMicros,
@@ -1569,6 +1716,9 @@ class ZarDealsCompanion extends UpdateCompanion<LocalDealRow> {
         'currency_minor_unit_scale': currencyMinorUnitScale,
       if (pricingKind != null) 'pricing_kind': pricingKind,
       if (goldFineness != null) 'gold_fineness': goldFineness,
+      if (goldInputDecimal != null) 'gold_input_decimal': goldInputDecimal,
+      if (goldInputUnit != null) 'gold_input_unit': goldInputUnit,
+      if (goldPriceUnit != null) 'gold_price_unit': goldPriceUnit,
       if (tomanRateDecimal != null) 'toman_rate_decimal': tomanRateDecimal,
       if (totalToman != null) 'total_toman': totalToman,
       if (dealAtMicros != null) 'deal_at_micros': dealAtMicros,
@@ -1595,6 +1745,9 @@ class ZarDealsCompanion extends UpdateCompanion<LocalDealRow> {
     Value<int?>? currencyMinorUnitScale,
     Value<String?>? pricingKind,
     Value<int?>? goldFineness,
+    Value<String?>? goldInputDecimal,
+    Value<String?>? goldInputUnit,
+    Value<String?>? goldPriceUnit,
     Value<String?>? tomanRateDecimal,
     Value<int?>? totalToman,
     Value<int>? dealAtMicros,
@@ -1620,6 +1773,9 @@ class ZarDealsCompanion extends UpdateCompanion<LocalDealRow> {
           currencyMinorUnitScale ?? this.currencyMinorUnitScale,
       pricingKind: pricingKind ?? this.pricingKind,
       goldFineness: goldFineness ?? this.goldFineness,
+      goldInputDecimal: goldInputDecimal ?? this.goldInputDecimal,
+      goldInputUnit: goldInputUnit ?? this.goldInputUnit,
+      goldPriceUnit: goldPriceUnit ?? this.goldPriceUnit,
       tomanRateDecimal: tomanRateDecimal ?? this.tomanRateDecimal,
       totalToman: totalToman ?? this.totalToman,
       dealAtMicros: dealAtMicros ?? this.dealAtMicros,
@@ -1676,6 +1832,15 @@ class ZarDealsCompanion extends UpdateCompanion<LocalDealRow> {
     if (goldFineness.present) {
       map['gold_fineness'] = Variable<int>(goldFineness.value);
     }
+    if (goldInputDecimal.present) {
+      map['gold_input_decimal'] = Variable<String>(goldInputDecimal.value);
+    }
+    if (goldInputUnit.present) {
+      map['gold_input_unit'] = Variable<String>(goldInputUnit.value);
+    }
+    if (goldPriceUnit.present) {
+      map['gold_price_unit'] = Variable<String>(goldPriceUnit.value);
+    }
     if (tomanRateDecimal.present) {
       map['toman_rate_decimal'] = Variable<String>(tomanRateDecimal.value);
     }
@@ -1722,6 +1887,9 @@ class ZarDealsCompanion extends UpdateCompanion<LocalDealRow> {
           ..write('currencyMinorUnitScale: $currencyMinorUnitScale, ')
           ..write('pricingKind: $pricingKind, ')
           ..write('goldFineness: $goldFineness, ')
+          ..write('goldInputDecimal: $goldInputDecimal, ')
+          ..write('goldInputUnit: $goldInputUnit, ')
+          ..write('goldPriceUnit: $goldPriceUnit, ')
           ..write('tomanRateDecimal: $tomanRateDecimal, ')
           ..write('totalToman: $totalToman, ')
           ..write('dealAtMicros: $dealAtMicros, ')
@@ -4213,6 +4381,9 @@ typedef $$ZarDealsTableCreateCompanionBuilder =
       Value<int?> currencyMinorUnitScale,
       Value<String?> pricingKind,
       Value<int?> goldFineness,
+      Value<String?> goldInputDecimal,
+      Value<String?> goldInputUnit,
+      Value<String?> goldPriceUnit,
       Value<String?> tomanRateDecimal,
       Value<int?> totalToman,
       required int dealAtMicros,
@@ -4238,6 +4409,9 @@ typedef $$ZarDealsTableUpdateCompanionBuilder =
       Value<int?> currencyMinorUnitScale,
       Value<String?> pricingKind,
       Value<int?> goldFineness,
+      Value<String?> goldInputDecimal,
+      Value<String?> goldInputUnit,
+      Value<String?> goldPriceUnit,
       Value<String?> tomanRateDecimal,
       Value<int?> totalToman,
       Value<int> dealAtMicros,
@@ -4356,6 +4530,21 @@ class $$ZarDealsTableFilterComposer
 
   ColumnFilters<int> get goldFineness => $composableBuilder(
     column: $table.goldFineness,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get goldInputDecimal => $composableBuilder(
+    column: $table.goldInputDecimal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get goldInputUnit => $composableBuilder(
+    column: $table.goldInputUnit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get goldPriceUnit => $composableBuilder(
+    column: $table.goldPriceUnit,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4517,6 +4706,21 @@ class $$ZarDealsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get goldInputDecimal => $composableBuilder(
+    column: $table.goldInputDecimal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get goldInputUnit => $composableBuilder(
+    column: $table.goldInputUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get goldPriceUnit => $composableBuilder(
+    column: $table.goldPriceUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get tomanRateDecimal => $composableBuilder(
     column: $table.tomanRateDecimal,
     builder: (column) => ColumnOrderings(column),
@@ -4639,6 +4843,21 @@ class $$ZarDealsTableAnnotationComposer
 
   GeneratedColumn<int> get goldFineness => $composableBuilder(
     column: $table.goldFineness,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get goldInputDecimal => $composableBuilder(
+    column: $table.goldInputDecimal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get goldInputUnit => $composableBuilder(
+    column: $table.goldInputUnit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get goldPriceUnit => $composableBuilder(
+    column: $table.goldPriceUnit,
     builder: (column) => column,
   );
 
@@ -4766,6 +4985,9 @@ class $$ZarDealsTableTableManager
                 Value<int?> currencyMinorUnitScale = const Value.absent(),
                 Value<String?> pricingKind = const Value.absent(),
                 Value<int?> goldFineness = const Value.absent(),
+                Value<String?> goldInputDecimal = const Value.absent(),
+                Value<String?> goldInputUnit = const Value.absent(),
+                Value<String?> goldPriceUnit = const Value.absent(),
                 Value<String?> tomanRateDecimal = const Value.absent(),
                 Value<int?> totalToman = const Value.absent(),
                 Value<int> dealAtMicros = const Value.absent(),
@@ -4789,6 +5011,9 @@ class $$ZarDealsTableTableManager
                 currencyMinorUnitScale: currencyMinorUnitScale,
                 pricingKind: pricingKind,
                 goldFineness: goldFineness,
+                goldInputDecimal: goldInputDecimal,
+                goldInputUnit: goldInputUnit,
+                goldPriceUnit: goldPriceUnit,
                 tomanRateDecimal: tomanRateDecimal,
                 totalToman: totalToman,
                 dealAtMicros: dealAtMicros,
@@ -4814,6 +5039,9 @@ class $$ZarDealsTableTableManager
                 Value<int?> currencyMinorUnitScale = const Value.absent(),
                 Value<String?> pricingKind = const Value.absent(),
                 Value<int?> goldFineness = const Value.absent(),
+                Value<String?> goldInputDecimal = const Value.absent(),
+                Value<String?> goldInputUnit = const Value.absent(),
+                Value<String?> goldPriceUnit = const Value.absent(),
                 Value<String?> tomanRateDecimal = const Value.absent(),
                 Value<int?> totalToman = const Value.absent(),
                 required int dealAtMicros,
@@ -4837,6 +5065,9 @@ class $$ZarDealsTableTableManager
                 currencyMinorUnitScale: currencyMinorUnitScale,
                 pricingKind: pricingKind,
                 goldFineness: goldFineness,
+                goldInputDecimal: goldInputDecimal,
+                goldInputUnit: goldInputUnit,
+                goldPriceUnit: goldPriceUnit,
                 tomanRateDecimal: tomanRateDecimal,
                 totalToman: totalToman,
                 dealAtMicros: dealAtMicros,

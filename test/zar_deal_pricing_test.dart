@@ -31,14 +31,20 @@ void main() {
     expect(find.text('۷۵۰'), findsOneWidget);
     expect(find.text('۹۹۵'), findsOneWidget);
     expect(find.text('۹۹۹'), findsOneWidget);
-    expect(find.text('قیمت هر گرم (تومان)'), findsOneWidget);
-    expect(find.text('مبلغ کل (تومان)'), findsOneWidget);
+    expect(find.text('واحد وزن'), findsOneWidget);
+    expect(find.text('مثقال'), findsOneWidget);
+    expect(find.text('قیمت (تومان/گرم)'), findsOneWidget);
+    expect(find.text('واحد قیمت'), findsOneWidget);
+    expect(find.text('مبلغ کل (تومان)'), findsNothing);
     expect(find.textContaining('ریال'), findsNothing);
   });
 
   test('gold deal keeps fineness and exact Toman pricing', () {
     final pricing = ZarGoldDealPricing(
       fineness: 750,
+      inputWeight: '250.125',
+      inputWeightUnit: ZarGoldUnit.gram,
+      priceUnit: ZarGoldUnit.gram,
       pricePerGramToman: ZarTomanAmount(4850123),
       totalToman: ZarTomanAmount(1213141592),
     );
@@ -48,6 +54,34 @@ void main() {
     expect(restored.fineness, 750);
     expect(restored.pricePerGramToman.wholeTomans, 4850123);
     expect(restored.totalToman.wholeTomans, 1213141592);
+  });
+
+  test('mithqal conversion and pricing are exact', () {
+    final pricing = ZarGoldDealPricing.calculate(
+      fineness: 750,
+      inputWeight: '10',
+      inputWeightUnit: ZarGoldUnit.mesghal,
+      priceUnit: ZarGoldUnit.mesghal,
+      pricePerUnitToman: ZarTomanAmount(35000000),
+    );
+
+    expect(pricing.normalizedWeightGrams, '46.083');
+    expect(pricing.totalToman.wholeTomans, 350000000);
+    expect(pricing.equivalentPricePerGramToman, '7594991.64550919');
+  });
+
+  test('gram pricing exposes exact mithqal equivalents', () {
+    final pricing = ZarGoldDealPricing.calculate(
+      fineness: 999,
+      inputWeight: '100',
+      inputWeightUnit: ZarGoldUnit.gram,
+      priceUnit: ZarGoldUnit.gram,
+      pricePerUnitToman: ZarTomanAmount(7000000),
+    );
+
+    expect(pricing.equivalentWeightMesghal, '21.69997613');
+    expect(pricing.equivalentPricePerMesghalToman, '32258100');
+    expect(pricing.totalToman.wholeTomans, 700000000);
   });
 
   test('currency deal normalizes exact Toman-per-unit rate', () {
@@ -156,6 +190,9 @@ void main() {
             'gold_fineness',
             'toman_rate_decimal',
             'total_toman',
+            'gold_input_decimal',
+            'gold_input_unit',
+            'gold_price_unit',
           }),
         );
         final legacy = await database

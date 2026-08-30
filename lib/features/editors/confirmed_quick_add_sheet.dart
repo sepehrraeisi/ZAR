@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 import '../../app_core.dart';
+import '../../domain/zar_domain_models.dart';
 
 /// Quick Add variant that keeps the sheet open until persistence succeeds.
 class ConfirmedQuickAddSheet extends StatefulWidget {
@@ -26,6 +27,8 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   String? _asset;
   String? _currencyCode;
   int _goldFineness = 750;
+  ZarGoldUnit _goldWeightUnit = ZarGoldUnit.gram;
+  ZarGoldUnit _goldPriceUnit = ZarGoldUnit.gram;
   AppPerson? _person;
   Jalali _date = Jalali.now();
   TimeOfDay? _time;
@@ -45,7 +48,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     final pricingReady =
         _isSettlement ||
         (_tomanRate.text.trim().isNotEmpty &&
-            _totalToman.text.trim().isNotEmpty);
+            (_asset == 'طلا' || _totalToman.text.trim().isNotEmpty));
     return _operation != null &&
         _asset != null &&
         _person != null &&
@@ -81,6 +84,12 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       note: _note.text.trim(),
       currencyCode: _currencyCode,
       goldFineness: !_isSettlement && _asset == 'طلا' ? _goldFineness : null,
+      goldInputUnit: !_isSettlement && _asset == 'طلا'
+          ? _goldWeightUnit.name
+          : null,
+      goldPriceUnit: !_isSettlement && _asset == 'طلا'
+          ? _goldPriceUnit.name
+          : null,
       tomanRate: _isSettlement ? null : _tomanRate.text.trim(),
       totalToman: _isSettlement ? null : _totalToman.text.trim(),
     );
@@ -100,6 +109,26 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
         _saving = false;
         _error = 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
       });
+    }
+  }
+
+  String? _goldCalculationSummary() {
+    try {
+      final rate = normalizeDecimal(_tomanRate.text);
+      if (rate.contains('.')) return null;
+      final pricing = ZarGoldDealPricing.calculate(
+        fineness: _goldFineness,
+        inputWeight: _amount.text,
+        inputWeightUnit: _goldWeightUnit,
+        priceUnit: _goldPriceUnit,
+        pricePerUnitToman: ZarTomanAmount(int.parse(rate)),
+      );
+      return 'معادل ${toPersianDigits(pricing.normalizedWeightGrams)} گرم • '
+          '${toPersianDigits(pricing.equivalentWeightMesghal)} مثقال\n'
+          'قیمت معادل هر گرم ${toPersianDigits(pricing.equivalentPricePerGramToman)} تومان • '
+          'مبلغ کل ${toPersianDigits(pricing.totalToman.wholeTomans.toString())} تومان';
+    } on FormatException {
+      return null;
     }
   }
 
@@ -221,6 +250,26 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                 onChanged: (_) => setState(() {}),
               ),
               if (!_isSettlement && _asset == 'طلا') ...[
+                const SizedBox(height: 8),
+                Text('واحد وزن', style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  children: [ZarGoldUnit.gram, ZarGoldUnit.mesghal]
+                      .map(
+                        (unit) => _chip(
+                          context,
+                          unit == ZarGoldUnit.gram ? 'گرم' : 'مثقال',
+                          _goldWeightUnit == unit,
+                          _saving
+                              ? null
+                              : () => setState(() => _goldWeightUnit = unit),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ],
+              if (!_isSettlement && _asset == 'طلا') ...[
                 const SizedBox(height: 10),
                 Text('عیار طلا', style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: 6),
@@ -252,23 +301,53 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                   textAlign: TextAlign.right,
                   decoration: InputDecoration(
                     labelText: _asset == 'طلا'
-                        ? 'قیمت هر گرم (تومان)'
+                        ? 'قیمت (${_goldPriceUnit == ZarGoldUnit.gram ? 'تومان/گرم' : 'تومان/مثقال'})'
                         : 'نرخ هر واحد ارز (تومان)',
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _totalToman,
-                  enabled: !_saving,
-                  keyboardType: TextInputType.number,
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.right,
-                  decoration: const InputDecoration(
-                    labelText: 'مبلغ کل (تومان)',
+                if (_asset == 'طلا') ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'واحد قیمت',
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  onChanged: (_) => setState(() {}),
-                ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    children: [ZarGoldUnit.gram, ZarGoldUnit.mesghal]
+                        .map(
+                          (unit) => _chip(
+                            context,
+                            unit == ZarGoldUnit.gram
+                                ? 'تومان/گرم'
+                                : 'تومان/مثقال',
+                            _goldPriceUnit == unit,
+                            _saving
+                                ? null
+                                : () => setState(() => _goldPriceUnit = unit),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                  if (_goldCalculationSummary() case final summary?) ...[
+                    const SizedBox(height: 10),
+                    Text(summary, style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ] else ...[
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _totalToman,
+                    enabled: !_saving,
+                    keyboardType: TextInputType.number,
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.right,
+                    decoration: const InputDecoration(
+                      labelText: 'مبلغ کل (تومان)',
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ],
               ],
               const SizedBox(height: 6),
               ListTile(

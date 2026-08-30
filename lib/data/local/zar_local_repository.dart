@@ -258,6 +258,9 @@ class ZarLocalRepository implements ZarDomainRepository {
     pricing: _dealPricingFromColumns(
       kind: row.pricingKind,
       goldFineness: row.goldFineness,
+      goldInputDecimal: row.goldInputDecimal,
+      goldInputUnit: row.goldInputUnit,
+      goldPriceUnit: row.goldPriceUnit,
       tomanRateDecimal: row.tomanRateDecimal,
       totalToman: row.totalToman,
     ),
@@ -324,8 +327,17 @@ class ZarLocalRepository implements ZarDomainRepository {
       );
 
   ZarDealsCompanion _dealToRow(ZarDeal deal) {
-    final amount = _amountColumns(deal.amount);
     final pricing = deal.pricing;
+    final persistedAmount = pricing is ZarGoldDealPricing
+        ? ZarGoldAssetAmount(
+            ZarGoldQuantity(
+              decimal: pricing.normalizedWeightGrams,
+              unit: ZarGoldUnit.gram,
+              purity: pricing.fineness.toString(),
+            ),
+          )
+        : deal.amount;
+    final amount = _amountColumns(persistedAmount);
     return ZarDealsCompanion.insert(
       id: deal.id,
       businessId: deal.businessId,
@@ -348,9 +360,18 @@ class ZarLocalRepository implements ZarDomainRepository {
       goldFineness: Value(
         pricing is ZarGoldDealPricing ? pricing.fineness : null,
       ),
+      goldInputDecimal: Value(
+        pricing is ZarGoldDealPricing ? pricing.inputWeight : null,
+      ),
+      goldInputUnit: Value(
+        pricing is ZarGoldDealPricing ? pricing.inputWeightUnit.name : null,
+      ),
+      goldPriceUnit: Value(
+        pricing is ZarGoldDealPricing ? pricing.priceUnit.name : null,
+      ),
       tomanRateDecimal: Value(switch (pricing) {
         ZarGoldDealPricing() =>
-          pricing.pricePerGramToman.wholeTomans.toString(),
+          pricing.pricePerUnitToman.wholeTomans.toString(),
         ZarCurrencyDealPricing() => pricing.tomanPerUnit,
         null => null,
       }),
@@ -367,6 +388,9 @@ class ZarLocalRepository implements ZarDomainRepository {
   ZarDealPricing? _dealPricingFromColumns({
     required String? kind,
     required int? goldFineness,
+    required String? goldInputDecimal,
+    required String? goldInputUnit,
+    required String? goldPriceUnit,
     required String? tomanRateDecimal,
     required int? totalToman,
   }) {
@@ -380,7 +404,14 @@ class ZarLocalRepository implements ZarDomainRepository {
       }
       return ZarGoldDealPricing(
         fineness: goldFineness,
-        pricePerGramToman: ZarTomanAmount(int.parse(tomanRateDecimal)),
+        inputWeight: goldInputDecimal ?? '1',
+        inputWeightUnit: ZarGoldUnit.values.byName(
+          goldInputUnit ?? ZarGoldUnit.gram.name,
+        ),
+        priceUnit: ZarGoldUnit.values.byName(
+          goldPriceUnit ?? ZarGoldUnit.gram.name,
+        ),
+        pricePerUnitToman: ZarTomanAmount(int.parse(tomanRateDecimal)),
         totalToman: ZarTomanAmount(totalToman),
       );
     }

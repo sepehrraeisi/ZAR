@@ -14,7 +14,7 @@ import 'application/zar_write_coordinator.dart';
 import 'data/zar_domain_repository.dart';
 import 'domain/zar_amount_formatter.dart';
 import 'domain/zar_amount_parser.dart';
-import 'domain/zar_domain_models.dart' show normalizeDecimal;
+import 'domain/zar_domain_models.dart';
 import 'domain/zar_reminder_plan.dart';
 import 'features/editors/confirmed_editors.dart';
 import 'features/backup/backup_screen.dart';
@@ -384,19 +384,31 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     int? totalToman;
     String? tomanRate;
     if (!isSettlement) {
-      if (draft.tomanRate == null || draft.totalToman == null) {
+      if (draft.tomanRate == null || (isCurrency && draft.totalToman == null)) {
         throw const FormatException('Deal pricing is required.');
       }
       tomanRate = normalizeDecimal(draft.tomanRate!);
-      final normalizedTotal = normalizeDecimal(draft.totalToman!);
-      if (normalizedTotal.contains('.')) {
-        throw const FormatException('Total Toman must be a whole amount.');
-      }
-      totalToman = int.parse(normalizedTotal);
       if (!isCurrency && tomanRate.contains('.')) {
-        throw const FormatException(
-          'Gold price per gram must be a whole Toman amount.',
-        );
+        throw const FormatException('Gold price must be a whole Toman amount.');
+      }
+      if (isCurrency) {
+        final normalizedTotal = normalizeDecimal(draft.totalToman!);
+        if (normalizedTotal.contains('.')) {
+          throw const FormatException('Total Toman must be a whole amount.');
+        }
+        totalToman = int.parse(normalizedTotal);
+      } else {
+        totalToman = ZarGoldDealPricing.calculate(
+          fineness: draft.goldFineness!,
+          inputWeight: draft.amount,
+          inputWeightUnit: ZarGoldUnit.values.byName(
+            draft.goldInputUnit ?? ZarGoldUnit.gram.name,
+          ),
+          priceUnit: ZarGoldUnit.values.byName(
+            draft.goldPriceUnit ?? ZarGoldUnit.gram.name,
+          ),
+          pricePerUnitToman: ZarTomanAmount(int.parse(tomanRate)),
+        ).totalToman.wholeTomans;
       }
     }
 
@@ -418,6 +430,15 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       time: draft.time,
       note: draft.note.isEmpty ? null : draft.note,
       goldFineness: isSettlement ? null : draft.goldFineness,
+      goldInputWeight: !isSettlement && !isCurrency
+          ? normalizeDecimal(draft.amount)
+          : null,
+      goldInputUnit: !isSettlement && !isCurrency
+          ? (draft.goldInputUnit ?? ZarGoldUnit.gram.name)
+          : null,
+      goldPriceUnit: !isSettlement && !isCurrency
+          ? (draft.goldPriceUnit ?? ZarGoldUnit.gram.name)
+          : null,
       tomanRate: tomanRate,
       totalToman: totalToman,
     );

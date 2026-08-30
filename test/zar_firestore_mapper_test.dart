@@ -58,6 +58,7 @@ void main() {
       ),
       pricing: ZarGoldDealPricing(
         fineness: 750,
+        inputWeight: '1000.125',
         pricePerGramToman: ZarTomanAmount(4900000),
         totalToman: ZarTomanAmount(4900612500),
       ),
@@ -76,6 +77,9 @@ void main() {
     expect(amount.value.decimal, '1000.125');
     expect(amount.value.purity, '750');
     final pricing = restored.pricing as ZarGoldDealPricing;
+    expect(pricing.inputWeight, '1000.125');
+    expect(pricing.inputWeightUnit, ZarGoldUnit.gram);
+    expect(pricing.priceUnit, ZarGoldUnit.gram);
     expect(pricing.pricePerGramToman.wholeTomans, 4900000);
     expect(pricing.totalToman.wholeTomans, 4900612500);
   });

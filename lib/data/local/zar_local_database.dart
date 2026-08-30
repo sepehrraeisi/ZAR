@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import '../../domain/zar_domain_models.dart';
+
 part 'zar_local_database.g.dart';
 
 @DataClassName('LocalPersonRow')
@@ -33,6 +35,9 @@ class ZarDeals extends Table {
   IntColumn get currencyMinorUnitScale => integer().nullable()();
   TextColumn get pricingKind => text().nullable()();
   IntColumn get goldFineness => integer().nullable()();
+  TextColumn get goldInputDecimal => text().nullable()();
+  TextColumn get goldInputUnit => text().nullable()();
+  TextColumn get goldPriceUnit => text().nullable()();
   TextColumn get tomanRateDecimal => text().nullable()();
   IntColumn get totalToman => integer().nullable()();
   IntColumn get dealAtMicros => integer()();
@@ -117,7 +122,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
 
   ZarLocalDatabase.defaults() : super(driftDatabase(name: 'zar_plus_local'));
 
-  static const currentSchemaVersion = 2;
+  static const currentSchemaVersion = 3;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -129,7 +134,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
       await into(zarLocalMetadata).insert(
         ZarLocalMetadataCompanion.insert(
           key: 'domain_schema_version',
-          value: '2',
+          value: '3',
         ),
       );
     },
@@ -142,6 +147,42 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
         await (update(zarLocalMetadata)
               ..where((row) => row.key.equals('domain_schema_version')))
             .write(const ZarLocalMetadataCompanion(value: Value('2')));
+      }
+      if (from < 3) {
+        await migrator.addColumn(zarDeals, zarDeals.goldInputDecimal);
+        await migrator.addColumn(zarDeals, zarDeals.goldInputUnit);
+        await migrator.addColumn(zarDeals, zarDeals.goldPriceUnit);
+        final oldGoldDeals = await (select(
+          zarDeals,
+        )..where((row) => row.assetType.equals(ZarAssetType.gold.name))).get();
+        for (final row in oldGoldDeals) {
+          final originalDecimal = row.goldDecimal;
+          final originalUnitName = row.goldUnit;
+          if (originalDecimal == null || originalUnitName == null) continue;
+          final originalUnit = ZarGoldUnit.values.byName(originalUnitName);
+          if (originalUnit != ZarGoldUnit.gram &&
+              originalUnit != ZarGoldUnit.mesghal) {
+            continue;
+          }
+          await (update(
+            zarDeals,
+          )..where((deal) => deal.id.equals(row.id))).write(
+            ZarDealsCompanion(
+              goldDecimal: Value(
+                zarGoldWeightInGrams(originalDecimal, originalUnit),
+              ),
+              goldUnit: Value(ZarGoldUnit.gram.name),
+              goldInputDecimal: Value(originalDecimal),
+              goldInputUnit: Value(originalUnit.name),
+              goldPriceUnit: row.pricingKind == 'gold'
+                  ? Value(ZarGoldUnit.gram.name)
+                  : const Value.absent(),
+            ),
+          );
+        }
+        await (update(zarLocalMetadata)
+              ..where((row) => row.key.equals('domain_schema_version')))
+            .write(const ZarLocalMetadataCompanion(value: Value('3')));
       }
       if (to > currentSchemaVersion) {
         throw StateError(

@@ -54,8 +54,8 @@ void main() {
       final gold =
           snapshot.deals.singleWhere((deal) => deal.id == 'deal-gold').amount
               as ZarGoldAssetAmount;
-      expect(gold.value.decimal, '12.3456789');
-      expect(gold.value.unit, ZarGoldUnit.mesghal);
+      expect(gold.value.decimal, '56.89259207487');
+      expect(gold.value.unit, ZarGoldUnit.gram);
       expect(gold.value.purity, '750');
       final goldPricing =
           snapshot.deals.singleWhere((deal) => deal.id == 'deal-gold').pricing
@@ -146,7 +146,7 @@ void main() {
   });
 
   test(
-    'JSON V3 exports pricing from Drift and restores into an empty database',
+    'JSON V4 exports pricing from Drift and restores into an empty database',
     () async {
       final sourceDb = ZarLocalDatabase(NativeDatabase.memory());
       final sourceRepo = ZarLocalRepository(sourceDb);
@@ -178,16 +178,18 @@ void main() {
       final gold =
           restored.deals.singleWhere((item) => item.id == 'deal-gold').amount
               as ZarGoldAssetAmount;
-      expect(gold.value.decimal, '12.3456789');
+      expect(gold.value.decimal, '56.89259207487');
       final currency =
           restored.deals
                   .singleWhere((item) => item.id == 'deal-currency')
                   .amount
               as ZarCurrencyAssetAmount;
       expect(currency.value.minorUnits, 123456789);
-      final restoredPricing = restored.deals
-          .singleWhere((item) => item.id == 'deal-currency')
-          .pricing as ZarCurrencyDealPricing;
+      final restoredPricing =
+          restored.deals
+                  .singleWhere((item) => item.id == 'deal-currency')
+                  .pricing
+              as ZarCurrencyDealPricing;
       expect(restoredPricing.tomanPerUnit, '92000.125');
       expect(restoredPricing.totalToman.wholeTomans, 1135802475);
       expect(restored.settlements.first.reminderPlan.rules, hasLength(2));
@@ -258,6 +260,8 @@ ZarDeal _goldDeal() => ZarDeal(
   ),
   pricing: ZarGoldDealPricing(
     fineness: 750,
+    inputWeight: '12.345678900',
+    inputWeightUnit: ZarGoldUnit.mesghal,
     pricePerGramToman: ZarTomanAmount(4850000),
     totalToman: ZarTomanAmount(59876543),
   ),

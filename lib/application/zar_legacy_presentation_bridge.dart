@@ -123,9 +123,32 @@ class ZarLegacyPresentationBridge {
       goldFineness: deal.pricing is ZarGoldDealPricing
           ? (deal.pricing! as ZarGoldDealPricing).fineness
           : null,
+      goldInputWeight: deal.pricing is ZarGoldDealPricing
+          ? (deal.pricing! as ZarGoldDealPricing).inputWeight
+          : null,
+      goldInputUnit: deal.pricing is ZarGoldDealPricing
+          ? (deal.pricing! as ZarGoldDealPricing).inputWeightUnit.name
+          : null,
+      goldPriceUnit: deal.pricing is ZarGoldDealPricing
+          ? (deal.pricing! as ZarGoldDealPricing).priceUnit.name
+          : null,
+      goldEquivalentWeight: deal.pricing is ZarGoldDealPricing
+          ? ((deal.pricing! as ZarGoldDealPricing).inputWeightUnit ==
+                    ZarGoldUnit.mesghal
+                ? (deal.pricing! as ZarGoldDealPricing).normalizedWeightGrams
+                : (deal.pricing! as ZarGoldDealPricing).equivalentWeightMesghal)
+          : null,
+      goldEquivalentPrice: deal.pricing is ZarGoldDealPricing
+          ? ((deal.pricing! as ZarGoldDealPricing).priceUnit ==
+                    ZarGoldUnit.mesghal
+                ? (deal.pricing! as ZarGoldDealPricing)
+                      .equivalentPricePerGramToman
+                : (deal.pricing! as ZarGoldDealPricing)
+                      .equivalentPricePerMesghalToman)
+          : null,
       tomanRate: switch (deal.pricing) {
         ZarGoldDealPricing() =>
-          (deal.pricing! as ZarGoldDealPricing).pricePerGramToman.wholeTomans
+          (deal.pricing! as ZarGoldDealPricing).pricePerUnitToman.wholeTomans
               .toString(),
         ZarCurrencyDealPricing() =>
           (deal.pricing! as ZarCurrencyDealPricing).tomanPerUnit,
@@ -165,10 +188,16 @@ class ZarLegacyPresentationBridge {
         ),
       );
     }
-    final parsed = ZarAmountParser.gold(record.amountDisplay);
+    final inputWeight =
+        record.goldInputWeight ??
+        ZarAmountParser.gold(record.amountDisplay).decimal;
+    final inputUnit = ZarGoldUnit.values.byName(
+      record.goldInputUnit ?? ZarGoldUnit.gram.name,
+    );
     return ZarGoldAssetAmount(
       ZarGoldQuantity(
-        decimal: parsed.decimal,
+        decimal: zarGoldWeightInGrams(inputWeight, inputUnit),
+        unit: ZarGoldUnit.gram,
         purity: record.goldFineness?.toString(),
       ),
     );
@@ -187,7 +216,16 @@ class ZarLegacyPresentationBridge {
     }
     return ZarGoldDealPricing(
       fineness: record.goldFineness!,
-      pricePerGramToman: ZarTomanAmount(int.parse(record.tomanRate!)),
+      inputWeight:
+          record.goldInputWeight ??
+          ZarAmountParser.gold(record.amountDisplay).decimal,
+      inputWeightUnit: ZarGoldUnit.values.byName(
+        record.goldInputUnit ?? ZarGoldUnit.gram.name,
+      ),
+      priceUnit: ZarGoldUnit.values.byName(
+        record.goldPriceUnit ?? ZarGoldUnit.gram.name,
+      ),
+      pricePerUnitToman: ZarTomanAmount(int.parse(record.tomanRate!)),
       totalToman: ZarTomanAmount(record.totalToman!),
     );
   }

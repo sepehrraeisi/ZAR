@@ -15,7 +15,7 @@ class ZarDomainBackupBundle {
     required this.people,
     required this.deals,
     required this.settlements,
-    this.exportVersion = 3,
+    this.exportVersion = 4,
   });
 
   final int exportVersion;
@@ -29,8 +29,8 @@ class ZarDomainBackupBundle {
 class ZarDomainBackupCodec {
   const ZarDomainBackupCodec();
 
-  static const supportedVersion = 3;
-  static const supportedImportVersions = {2, 3};
+  static const supportedVersion = 4;
+  static const supportedImportVersions = {2, 3, 4};
 
   String encodeJson(ZarDomainBackupBundle bundle) {
     if (bundle.exportVersion != supportedVersion) {
@@ -139,17 +139,48 @@ class ZarDomainBackupCodec {
         'updatedAt': deal.updatedAt.toUtc().toIso8601String(),
       };
 
-  ZarDeal _dealFromMap(Map<String, Object?> map, String businessId) => ZarDeal(
+  ZarDeal _dealFromMap(Map<String, Object?> map, String businessId) {
+    var amount = ZarAssetAmount.fromMap(_requiredMap(map['amount'], 'deal.amount'));
+    ZarDealPricing? pricing;
+    if (map['pricing'] != null) {
+      final pricingMap = _requiredMap(map['pricing'], 'deal.pricing');
+      if (pricingMap['kind'] == 'gold' &&
+          pricingMap['pricePerUnitToman'] == null) {
+        if (amount is! ZarGoldAssetAmount) {
+          throw const FormatException('Gold pricing requires a gold amount.');
+        }
+        pricing = ZarGoldDealPricing(
+          fineness: pricingMap['fineness']! as int,
+          inputWeight: amount.value.decimal,
+          inputWeightUnit: amount.value.unit,
+          priceUnit: ZarGoldUnit.gram,
+          pricePerUnitToman: ZarTomanAmount.fromMap(
+            Map<String, Object?>.from(pricingMap['pricePerGramToman']! as Map),
+          ),
+          totalToman: ZarTomanAmount.fromMap(
+            Map<String, Object?>.from(pricingMap['totalToman']! as Map),
+          ),
+        );
+      } else {
+        pricing = ZarDealPricing.fromMap(pricingMap);
+      }
+    }
+    if (pricing is ZarGoldDealPricing) {
+      amount = ZarGoldAssetAmount(
+        ZarGoldQuantity(
+          decimal: pricing.normalizedWeightGrams,
+          unit: ZarGoldUnit.gram,
+          purity: pricing.fineness.toString(),
+        ),
+      );
+    }
+    return ZarDeal(
         id: _requiredString(map['id'], 'deal.id'),
         businessId: businessId,
         type: ZarDealType.values.byName(_requiredString(map['type'], 'deal.type')),
         personId: _requiredString(map['personId'], 'deal.personId'),
-        amount: ZarAssetAmount.fromMap(_requiredMap(map['amount'], 'deal.amount')),
-        pricing: map['pricing'] == null
-            ? null
-            : ZarDealPricing.fromMap(
-                _requiredMap(map['pricing'], 'deal.pricing'),
-              ),
+        amount: amount,
+        pricing: pricing,
         dealAt: _date(map['dealAt'], 'deal.dealAt'),
         status: ZarDealStatus.values.byName(
           _requiredString(map['status'], 'deal.status'),
@@ -159,6 +190,7 @@ class ZarDomainBackupCodec {
         createdAt: _date(map['createdAt'], 'deal.createdAt'),
         updatedAt: _date(map['updatedAt'], 'deal.updatedAt'),
       );
+  }
 
   Map<String, Object?> _settlementToMap(ZarSettlement settlement) => {
         'id': settlement.id,

@@ -28,6 +28,7 @@ void main() {
       ),
       pricing: ZarGoldDealPricing(
         fineness: 750,
+        inputWeight: '250.125',
         pricePerGramToman: ZarTomanAmount(4850123),
         totalToman: ZarTomanAmount(1213141592),
       ),
@@ -139,6 +140,59 @@ void main() {
 
     final decoded = codec.decodeJson(jsonEncode(raw));
     expect(decoded.settlements.single.reminderPlan.isEmpty, isTrue);
+  });
+
+  test('old V3 gold pricing imports as gram pricing without loss', () {
+    final source = <String, Object?>{
+      'app': 'ZAR+',
+      'format': 'domain-backup',
+      'exportVersion': 3,
+      'businessId': 'b1',
+      'generatedAt': created.toIso8601String(),
+      'people': [
+        {
+          'id': 'p1',
+          'displayName': 'مهیار',
+          'archived': false,
+          'createdAt': created.toIso8601String(),
+          'updatedAt': created.toIso8601String(),
+          'createdBy': 'u1',
+        },
+      ],
+      'deals': [
+        {
+          'id': 'd1',
+          'type': 'buy',
+          'personId': 'p1',
+          'amount': {
+            'assetType': 'gold',
+            'gold': {'decimal': '10.25', 'unit': 'gram', 'purity': '750'},
+          },
+          'pricing': {
+            'kind': 'gold',
+            'fineness': 750,
+            'pricePerGramToman': {'wholeTomans': 7000000},
+            'totalToman': {'wholeTomans': 71750000},
+          },
+          'dealAt': created.toIso8601String(),
+          'status': 'active',
+          'createdBy': 'u1',
+          'createdAt': created.toIso8601String(),
+          'updatedAt': created.toIso8601String(),
+        },
+      ],
+      'settlements': <Object?>[],
+    };
+
+    final restored = codec.decodeJson(jsonEncode(source)).deals.single;
+    final amount = restored.amount as ZarGoldAssetAmount;
+    final pricing = restored.pricing as ZarGoldDealPricing;
+    expect(amount.value.decimal, '10.25');
+    expect(amount.value.unit, ZarGoldUnit.gram);
+    expect(pricing.inputWeight, '10.25');
+    expect(pricing.inputWeightUnit, ZarGoldUnit.gram);
+    expect(pricing.priceUnit, ZarGoldUnit.gram);
+    expect(pricing.pricePerUnitToman.wholeTomans, 7000000);
   });
 
   test('old V2 deal without pricing remains importable', () {

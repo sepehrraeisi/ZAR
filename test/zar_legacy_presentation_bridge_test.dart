@@ -52,6 +52,42 @@ void main() {
     expect(domain.hasTime, isFalse);
   });
 
+  test('mithqal deal keeps canonical grams and market display values', () {
+    final pricing = ZarGoldDealPricing.calculate(
+      fineness: 750,
+      inputWeight: '10',
+      inputWeightUnit: ZarGoldUnit.mesghal,
+      priceUnit: ZarGoldUnit.mesghal,
+      pricePerUnitToman: ZarTomanAmount(35000000),
+    );
+    final deal = ZarDeal(
+      id: 'd1',
+      businessId: 'b1',
+      type: ZarDealType.buy,
+      personId: 'p1',
+      amount: ZarGoldAssetAmount(
+        ZarGoldQuantity(
+          decimal: pricing.normalizedWeightGrams,
+          unit: ZarGoldUnit.gram,
+          purity: '750',
+        ),
+      ),
+      pricing: pricing,
+      dealAt: now,
+      createdBy: 'u1',
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final record = bridge.dealToUi(deal);
+    expect(record.amountDisplay, '۴۶.۰۸۳');
+    expect(record.goldInputWeight, '10');
+    expect(record.goldInputUnit, 'mesghal');
+    expect(record.goldEquivalentWeight, '46.083');
+    expect(record.goldPriceUnit, 'mesghal');
+    expect(record.goldEquivalentPrice, '7594991.64550919');
+  });
+
   test('completion transition sets completion metadata', () {
     final record = AppRecord(
       id: 's3',
