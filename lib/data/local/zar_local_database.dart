@@ -36,6 +36,7 @@ class ZarDeals extends Table {
   TextColumn get pricingKind => text().nullable()();
   IntColumn get goldFineness => integer().nullable()();
   TextColumn get goldFinenessDecimal => text().nullable()();
+  TextColumn get goldPriceReferenceFineness => text().nullable()();
   TextColumn get goldInputDecimal => text().nullable()();
   TextColumn get goldInputUnit => text().nullable()();
   TextColumn get goldPriceUnit => text().nullable()();
@@ -123,7 +124,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
 
   ZarLocalDatabase.defaults() : super(driftDatabase(name: 'zar_plus_local'));
 
-  static const currentSchemaVersion = 4;
+  static const currentSchemaVersion = 5;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -135,7 +136,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
       await into(zarLocalMetadata).insert(
         ZarLocalMetadataCompanion.insert(
           key: 'domain_schema_version',
-          value: '4',
+          value: '5',
         ),
       );
     },
@@ -194,6 +195,16 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
         await (update(zarLocalMetadata)
               ..where((row) => row.key.equals('domain_schema_version')))
             .write(const ZarLocalMetadataCompanion(value: Value('4')));
+      }
+      if (from < 5) {
+        await migrator.addColumn(zarDeals, zarDeals.goldPriceReferenceFineness);
+        await customStatement(
+          'UPDATE zar_deals SET gold_price_reference_fineness = '
+          'gold_fineness_decimal WHERE pricing_kind = \'gold\'',
+        );
+        await (update(zarLocalMetadata)
+              ..where((row) => row.key.equals('domain_schema_version')))
+            .write(const ZarLocalMetadataCompanion(value: Value('5')));
       }
       if (to > currentSchemaVersion) {
         throw StateError(

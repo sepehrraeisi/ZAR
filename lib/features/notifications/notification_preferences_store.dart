@@ -16,7 +16,7 @@ abstract interface class ZarNotificationPreferencesStore {
 class SharedPreferencesNotificationStore
     implements ZarNotificationPreferencesStore {
   SharedPreferencesNotificationStore({SharedPreferencesAsync? preferences})
-      : _preferences = preferences ?? SharedPreferencesAsync();
+    : _preferences = preferences ?? SharedPreferencesAsync();
 
   static const _enabled = 'zar.notifications.enabled';
   static const _soundEnabled = 'zar.notifications.soundEnabled';
@@ -25,6 +25,7 @@ class SharedPreferencesNotificationStore
   static const _privacy = 'zar.notifications.privacy';
   static const _defaultReminder = 'zar.notifications.defaultReminderMinutes';
   static const _defaultSnooze = 'zar.notifications.defaultSnoozeMinutes';
+  static const _deliveryMode = 'zar.notifications.deliveryMode';
 
   final SharedPreferencesAsync _preferences;
 
@@ -32,6 +33,7 @@ class SharedPreferencesNotificationStore
   Future<ZarNotificationPreferences> load() async {
     final soundName = await _preferences.getString(_soundProfile);
     final privacyName = await _preferences.getString(_privacy);
+    final deliveryModeName = await _preferences.getString(_deliveryMode);
 
     return ZarNotificationPreferences(
       enabled: await _preferences.getBool(_enabled) ?? true,
@@ -47,9 +49,13 @@ class SharedPreferencesNotificationStore
         privacyName,
         NotificationPrivacy.limited,
       ),
-      defaultReminderMinutes:
-          await _preferences.getInt(_defaultReminder) ?? 60,
+      defaultReminderMinutes: await _preferences.getInt(_defaultReminder) ?? 60,
       defaultSnoozeMinutes: await _preferences.getInt(_defaultSnooze) ?? 30,
+      deliveryMode: _enumByName(
+        NotificationDeliveryMode.values,
+        deliveryModeName,
+        NotificationDeliveryMode.normal,
+      ),
     );
   }
 
@@ -63,6 +69,7 @@ class SharedPreferencesNotificationStore
       _preferences.setString(_privacy, value.privacy.name),
       _preferences.setInt(_defaultReminder, value.defaultReminderMinutes),
       _preferences.setInt(_defaultSnooze, value.defaultSnoozeMinutes),
+      _preferences.setString(_deliveryMode, value.deliveryMode.name),
     ]);
   }
 

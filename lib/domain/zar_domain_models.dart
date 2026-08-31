@@ -153,6 +153,7 @@ sealed class ZarDealPricing {
 class ZarGoldDealPricing extends ZarDealPricing {
   ZarGoldDealPricing({
     required Object fineness,
+    Object? priceReferenceFineness,
     String inputWeight = '1',
     this.inputWeightUnit = ZarGoldUnit.gram,
     this.priceUnit = ZarGoldUnit.gram,
@@ -160,6 +161,9 @@ class ZarGoldDealPricing extends ZarDealPricing {
     ZarTomanAmount? pricePerGramToman,
     required this.totalToman,
   }) : fineness = normalizeGoldFineness(fineness.toString()),
+       priceReferenceFineness = normalizeGoldFineness(
+         (priceReferenceFineness ?? fineness).toString(),
+       ),
        inputWeight = normalizeDecimal(inputWeight),
        pricePerUnitToman =
            pricePerUnitToman ??
@@ -178,6 +182,7 @@ class ZarGoldDealPricing extends ZarDealPricing {
 
   factory ZarGoldDealPricing.calculate({
     required Object fineness,
+    Object? priceReferenceFineness,
     required String inputWeight,
     required ZarGoldUnit inputWeightUnit,
     required ZarGoldUnit priceUnit,
@@ -187,28 +192,30 @@ class ZarGoldDealPricing extends ZarDealPricing {
     final price = ZarExactDecimal.parse(
       pricePerUnitToman.wholeTomans.toString(),
     );
-    final total = switch ((inputWeightUnit, priceUnit)) {
+    final converted = switch ((inputWeightUnit, priceUnit)) {
       (ZarGoldUnit.gram, ZarGoldUnit.gram) ||
-      (
-        ZarGoldUnit.mesghal,
-        ZarGoldUnit.mesghal,
-      ) => input.multiply(price).roundToWhole(),
-      (ZarGoldUnit.mesghal, ZarGoldUnit.gram) =>
-        input
-            .multiply(ZarExactDecimal.parse(zarGramsPerMesghal))
-            .multiply(price)
-            .roundToWhole(),
-      (ZarGoldUnit.gram, ZarGoldUnit.mesghal) =>
-        input
-            .multiply(price)
-            .divide(ZarExactDecimal.parse(zarGramsPerMesghal), decimalPlaces: 0)
-            .roundToWhole(),
+      (ZarGoldUnit.mesghal, ZarGoldUnit.mesghal) => input,
+      (ZarGoldUnit.mesghal, ZarGoldUnit.gram) => input.multiply(
+        ZarExactDecimal.parse(zarGramsPerMesghal),
+      ),
+      (ZarGoldUnit.gram, ZarGoldUnit.mesghal) => input.divide(
+        ZarExactDecimal.parse(zarGramsPerMesghal),
+      ),
       _ => throw const FormatException(
         'Gold pricing supports gram or mesghal only.',
       ),
     };
+    final actual = ZarExactDecimal.parse(fineness.toString());
+    final reference = ZarExactDecimal.parse(
+      (priceReferenceFineness ?? fineness).toString(),
+    );
+    final equivalent = converted
+        .multiply(actual)
+        .divide(reference, decimalPlaces: 12);
+    final total = equivalent.multiply(price).roundToWhole();
     return ZarGoldDealPricing(
       fineness: fineness,
+      priceReferenceFineness: priceReferenceFineness ?? fineness,
       inputWeight: inputWeight,
       inputWeightUnit: inputWeightUnit,
       priceUnit: priceUnit,
@@ -218,6 +225,7 @@ class ZarGoldDealPricing extends ZarDealPricing {
   }
 
   final String fineness;
+  final String priceReferenceFineness;
   final String inputWeight;
   final ZarGoldUnit inputWeightUnit;
   final ZarGoldUnit priceUnit;
@@ -226,6 +234,24 @@ class ZarGoldDealPricing extends ZarDealPricing {
       zarGoldWeightInGrams(inputWeight, inputWeightUnit);
   String get equivalentWeightMesghal =>
       zarGoldWeightInMesghal(normalizedWeightGrams);
+  String get equivalentQuantityInPriceUnit {
+    final input = ZarExactDecimal.parse(inputWeight);
+    final converted = switch ((inputWeightUnit, priceUnit)) {
+      (ZarGoldUnit.gram, ZarGoldUnit.gram) ||
+      (ZarGoldUnit.mesghal, ZarGoldUnit.mesghal) => input,
+      (ZarGoldUnit.mesghal, ZarGoldUnit.gram) => input.multiply(
+        ZarExactDecimal.parse(zarGramsPerMesghal),
+      ),
+      (ZarGoldUnit.gram, ZarGoldUnit.mesghal) => input.divide(
+        ZarExactDecimal.parse(zarGramsPerMesghal),
+      ),
+      _ => throw const FormatException('Unsupported gold unit.'),
+    };
+    return converted
+        .multiply(ZarExactDecimal.parse(fineness))
+        .divide(ZarExactDecimal.parse(priceReferenceFineness), decimalPlaces: 8)
+        .toString();
+  }
 
   /// Backwards-compatible Phase 1 accessor for records priced per gram.
   ZarTomanAmount get pricePerGramToman {
@@ -252,6 +278,7 @@ class ZarGoldDealPricing extends ZarDealPricing {
   Map<String, Object?> toMap() => {
     'kind': 'gold',
     'fineness': fineness,
+    'priceReferenceFineness': priceReferenceFineness,
     'inputWeight': inputWeight,
     'inputWeightUnit': inputWeightUnit.name,
     'priceUnit': priceUnit.name,
@@ -262,6 +289,8 @@ class ZarGoldDealPricing extends ZarDealPricing {
   factory ZarGoldDealPricing.fromMap(Map<String, Object?> map) =>
       ZarGoldDealPricing(
         fineness: map['fineness']!,
+        priceReferenceFineness:
+            map['priceReferenceFineness'] ?? map['fineness']!,
         inputWeight: map['inputWeight']! as String,
         inputWeightUnit: ZarGoldUnit.values.byName(
           map['inputWeightUnit']! as String,
@@ -285,6 +314,20 @@ class ZarCurrencyDealPricing extends ZarDealPricing {
   final String tomanPerUnit;
   @override
   final ZarTomanAmount totalToman;
+
+  factory ZarCurrencyDealPricing.calculate({
+    required String amount,
+    required String tomanPerUnit,
+  }) {
+    final normalizedRate = normalizeDecimal(tomanPerUnit);
+    final total = ZarExactDecimal.parse(
+      amount,
+    ).multiply(ZarExactDecimal.parse(normalizedRate)).roundToWhole();
+    return ZarCurrencyDealPricing(
+      tomanPerUnit: normalizedRate,
+      totalToman: ZarTomanAmount(total),
+    );
+  }
 
   @override
   Map<String, Object?> toMap() => {

@@ -8,6 +8,8 @@ enum NotificationPrivacy { full, limited, private }
 /// settings (Silent/Focus modes, system notification permissions, etc.).
 enum NotificationSoundProfile { systemDefault, subtle, silent }
 
+enum NotificationDeliveryMode { normal, persistentAlarm }
+
 class ZarNotificationPreferences {
   const ZarNotificationPreferences({
     this.enabled = true,
@@ -17,6 +19,7 @@ class ZarNotificationPreferences {
     this.privacy = NotificationPrivacy.limited,
     this.defaultReminderMinutes = 60,
     this.defaultSnoozeMinutes = 30,
+    this.deliveryMode = NotificationDeliveryMode.normal,
   });
 
   final bool enabled;
@@ -26,6 +29,7 @@ class ZarNotificationPreferences {
   final NotificationPrivacy privacy;
   final int defaultReminderMinutes;
   final int defaultSnoozeMinutes;
+  final NotificationDeliveryMode deliveryMode;
 
   ZarNotificationPreferences copyWith({
     bool? enabled,
@@ -35,6 +39,7 @@ class ZarNotificationPreferences {
     NotificationPrivacy? privacy,
     int? defaultReminderMinutes,
     int? defaultSnoozeMinutes,
+    NotificationDeliveryMode? deliveryMode,
   }) {
     return ZarNotificationPreferences(
       enabled: enabled ?? this.enabled,
@@ -45,6 +50,7 @@ class ZarNotificationPreferences {
       defaultReminderMinutes:
           defaultReminderMinutes ?? this.defaultReminderMinutes,
       defaultSnoozeMinutes: defaultSnoozeMinutes ?? this.defaultSnoozeMinutes,
+      deliveryMode: deliveryMode ?? this.deliveryMode,
     );
   }
 }
@@ -324,6 +330,37 @@ class _NotificationSettingsScreenState
               subtitle: const Text('یادآوری‌های ZAR+ روی این دستگاه'),
               value: value.enabled,
               onChanged: (v) => _set(value.copyWith(enabled: v)),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'رفتار یادآوری',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            RadioGroup<NotificationDeliveryMode>(
+              groupValue: value.deliveryMode,
+              onChanged: (mode) {
+                if (mode != null) _set(value.copyWith(deliveryMode: mode));
+              },
+              child: const Column(
+                children: [
+                  RadioListTile<NotificationDeliveryMode>(
+                    contentPadding: EdgeInsets.zero,
+                    value: NotificationDeliveryMode.normal,
+                    title: Text('اعلان معمولی'),
+                    subtitle: Text(
+                      'نمایش استاندارد با صدا و ویبره مطابق تنظیمات.',
+                    ),
+                  ),
+                  RadioListTile<NotificationDeliveryMode>(
+                    contentPadding: EdgeInsets.zero,
+                    value: NotificationDeliveryMode.persistentAlarm,
+                    title: Text('آلارم تا زمان اقدام'),
+                    subtitle: Text(
+                      'اعلان پر‌اهمیت و ماندگار؛ زمان دقیق تابع محدودیت‌های Android است.',
+                    ),
+                  ),
+                ],
+              ),
             ),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,

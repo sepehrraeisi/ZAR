@@ -259,6 +259,7 @@ class ZarLocalRepository implements ZarDomainRepository {
       kind: row.pricingKind,
       goldFineness: row.goldFineness,
       goldFinenessDecimal: row.goldFinenessDecimal,
+      goldPriceReferenceFineness: row.goldPriceReferenceFineness,
       goldInputDecimal: row.goldInputDecimal,
       goldInputUnit: row.goldInputUnit,
       goldPriceUnit: row.goldPriceUnit,
@@ -366,6 +367,9 @@ class ZarLocalRepository implements ZarDomainRepository {
       goldFinenessDecimal: Value(
         pricing is ZarGoldDealPricing ? pricing.fineness : null,
       ),
+      goldPriceReferenceFineness: Value(
+        pricing is ZarGoldDealPricing ? pricing.priceReferenceFineness : null,
+      ),
       goldInputDecimal: Value(
         pricing is ZarGoldDealPricing ? pricing.inputWeight : null,
       ),
@@ -395,6 +399,7 @@ class ZarLocalRepository implements ZarDomainRepository {
     required String? kind,
     required int? goldFineness,
     required String? goldFinenessDecimal,
+    required String? goldPriceReferenceFineness,
     required String? goldInputDecimal,
     required String? goldInputUnit,
     required String? goldPriceUnit,
@@ -412,6 +417,7 @@ class ZarLocalRepository implements ZarDomainRepository {
       }
       return ZarGoldDealPricing(
         fineness: fineness,
+        priceReferenceFineness: goldPriceReferenceFineness ?? fineness,
         inputWeight: goldInputDecimal ?? '1',
         inputWeightUnit: ZarGoldUnit.values.byName(
           goldInputUnit ?? ZarGoldUnit.gram.name,

@@ -24,10 +24,7 @@ class _NativeReminderSpec {
 }
 
 class _NativeScheduledReminder {
-  const _NativeScheduledReminder({
-    required this.spec,
-    required this.fireAt,
-  });
+  const _NativeScheduledReminder({required this.spec, required this.fireAt});
 
   final _NativeReminderSpec spec;
   final DateTime fireAt;
@@ -45,15 +42,19 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     bool enabled = true,
     bool playSound = true,
     bool enableVibration = true,
+    bool persistentAlarm = false,
     this.onRecordTapped,
     this.capacityPolicy = const NativeNotificationCapacityPolicy(),
-  })  : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
-        _enabled = enabled,
-        _playSound = playSound,
-        _enableVibration = enableVibration;
+  }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+       _enabled = enabled,
+       _playSound = playSound,
+       _enableVibration = enableVibration,
+       _persistentAlarm = persistentAlarm;
 
   static const _soundChannelId = 'zar_reminders_sound';
   static const _silentChannelId = 'zar_reminders_silent';
+  static const _alarmSoundChannelId = 'zar_reminders_alarm_sound_v1';
+  static const _alarmSilentChannelId = 'zar_reminders_alarm_silent_v1';
   static const _channelName = 'یادآوری‌های ZAR+';
   static const _channelDescription = 'یادآوری تحویل، دریافت و تعهدات کاری';
   static const _payloadPrefix = 'zar-record:';
@@ -67,6 +68,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   bool _enabled;
   bool _playSound;
   bool _enableVibration;
+  bool _persistentAlarm;
   bool _initialized = false;
   late tz.Location _location;
 
@@ -74,16 +76,19 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   bool get enabled => _enabled;
   bool get playSound => _playSound;
   bool get enableVibration => _enableVibration;
+  bool get persistentAlarm => _persistentAlarm;
   bool get _isIos => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   Future<void> configure({
     required bool enabled,
     required bool playSound,
     required bool enableVibration,
+    bool persistentAlarm = false,
   }) async {
     _enabled = enabled;
     _playSound = playSound;
     _enableVibration = enableVibration;
+    _persistentAlarm = persistentAlarm;
     if (kIsWeb) return;
     await initialize();
 
@@ -129,6 +134,9 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
         windows: windows,
       ),
       onDidReceiveNotificationResponse: (response) {
+        if (response.id != null) {
+          _plugin.cancel(id: response.id!);
+        }
         final recordId = _recordIdFromPayload(response.payload);
         if (recordId != null) onRecordTapped?.call(recordId);
       },
@@ -140,8 +148,10 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     if (kIsWeb) return false;
     await initialize();
 
-    final ios = _plugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
     if (ios != null) {
       return await ios.requestPermissions(
             alert: true,
@@ -151,8 +161,10 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
           false;
     }
 
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
       return await android.requestNotificationsPermission() ?? false;
     }
@@ -213,18 +225,13 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
         final utc = fireAt.toUtc();
         if (!utc.isAfter(now)) continue;
         final scheduled = _NativeScheduledReminder(spec: spec, fireAt: utc);
-        candidates.add(
-          NativeReminderCandidate(value: scheduled, fireAt: utc),
-        );
+        candidates.add(NativeReminderCandidate(value: scheduled, fireAt: utc));
       }
     }
 
     final selected = capacityPolicy.earliestForIos(candidates, now: now);
     for (final candidate in selected) {
-      await _scheduleSingle(
-        candidate.value.spec,
-        candidate.value.fireAt,
-      );
+      await _scheduleSingle(candidate.value.spec, candidate.value.fireAt);
     }
   }
 
@@ -245,11 +252,12 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     }
   }
 
-  Future<void> _scheduleSingle(
-    _NativeReminderSpec spec,
-    DateTime utc,
-  ) async {
-    final channelId = _playSound ? _soundChannelId : _silentChannelId;
+  Future<void> _scheduleSingle(_NativeReminderSpec spec, DateTime utc) async {
+    final channelId = _persistentAlarm
+        ? (_playSound ? _alarmSoundChannelId : _alarmSilentChannelId)
+        : _playSound
+        ? _soundChannelId
+        : _silentChannelId;
     await _plugin.zonedSchedule(
       id: _stableNotificationId(spec.recordId, utc),
       title: spec.title,
@@ -260,10 +268,18 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
           channelId,
           _channelName,
           channelDescription: _channelDescription,
-          importance: Importance.high,
-          priority: Priority.high,
+          importance: _persistentAlarm ? Importance.max : Importance.high,
+          priority: _persistentAlarm ? Priority.max : Priority.high,
           playSound: _playSound,
           enableVibration: _enableVibration,
+          autoCancel: !_persistentAlarm,
+          ongoing: _persistentAlarm,
+          category: _persistentAlarm
+              ? AndroidNotificationCategory.alarm
+              : AndroidNotificationCategory.reminder,
+          audioAttributesUsage: _persistentAlarm
+              ? AudioAttributesUsage.alarm
+              : AudioAttributesUsage.notification,
           icon: 'ic_stat_zar',
         ),
         iOS: DarwinNotificationDetails(

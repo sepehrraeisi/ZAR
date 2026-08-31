@@ -45,6 +45,8 @@ void main() {
 
     await tester.tap(find.text('دریافت'));
     await tester.pump();
+    await tester.tap(find.text('طلا'));
+    await tester.pump();
 
     expect(find.text('۳ ساعت'), findsOneWidget);
   });
@@ -78,10 +80,7 @@ void main() {
       matching: find.byType(ListTile),
     );
     expect(
-      find.descendant(
-        of: selectedTile,
-        matching: find.byType(Icon),
-      ),
+      find.descendant(of: selectedTile, matching: find.byType(Icon)),
       findsOneWidget,
     );
   });

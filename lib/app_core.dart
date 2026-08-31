@@ -115,6 +115,7 @@ class AppRecord {
     this.note,
     this.linkedSettlementIds = const [],
     this.goldFineness,
+    this.goldPriceReferenceFineness,
     this.goldInputWeight,
     this.goldInputUnit,
     this.goldPriceUnit,
@@ -137,6 +138,7 @@ class AppRecord {
   final String? note;
   final List<String> linkedSettlementIds;
   final String? goldFineness;
+  final String? goldPriceReferenceFineness;
   final String? goldInputWeight;
   final String? goldInputUnit;
   final String? goldPriceUnit;
@@ -159,6 +161,7 @@ class AppRecord {
     SettlementStatus? status,
     String? note,
     String? goldFineness,
+    String? goldPriceReferenceFineness,
     String? goldInputWeight,
     String? goldInputUnit,
     String? goldPriceUnit,
@@ -181,6 +184,7 @@ class AppRecord {
       note: note ?? this.note,
       linkedSettlementIds: linkedSettlementIds,
       goldFineness: goldFineness ?? this.goldFineness,
+      goldPriceReferenceFineness: goldPriceReferenceFineness ?? this.goldPriceReferenceFineness,
       goldInputWeight: goldInputWeight ?? this.goldInputWeight,
       goldInputUnit: goldInputUnit ?? this.goldInputUnit,
       goldPriceUnit: goldPriceUnit ?? this.goldPriceUnit,
@@ -222,6 +226,7 @@ class QuickAddDraft {
     required this.note,
     this.currencyCode,
     this.goldFineness,
+    this.goldPriceReferenceFineness,
     this.goldInputUnit,
     this.goldPriceUnit,
     this.tomanRate,
@@ -238,6 +243,7 @@ class QuickAddDraft {
   final String note;
   final String? currencyCode;
   final String? goldFineness;
+  final String? goldPriceReferenceFineness;
   final String? goldInputUnit;
   final String? goldPriceUnit;
   final String? tomanRate;

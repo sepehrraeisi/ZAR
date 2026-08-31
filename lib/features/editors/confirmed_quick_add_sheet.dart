@@ -1,11 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 import 'package:shamsi_date/shamsi_date.dart';
 
 import '../../app_core.dart';
 import '../../domain/zar_domain_models.dart';
 
-/// Quick Add variant that keeps the sheet open until persistence succeeds.
 class ConfirmedQuickAddSheet extends StatefulWidget {
   const ConfirmedQuickAddSheet({
     super.key,
@@ -13,71 +13,111 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
     required this.onSave,
     this.initialReminder = '۱۵ دقیقه',
   });
-
   final List<AppPerson> people;
   final Future<void> Function(QuickAddDraft draft) onSave;
   final String initialReminder;
-
   @override
   State<ConfirmedQuickAddSheet> createState() => _ConfirmedQuickAddSheetState();
 }
 
 class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
-  String? _operation;
-  String? _asset;
-  String? _currencyCode;
-  final TextEditingController _goldFineness = TextEditingController(
-    text: '750',
-  );
-  ZarGoldUnit _goldWeightUnit = ZarGoldUnit.gram;
-  ZarGoldUnit _goldPriceUnit = ZarGoldUnit.gram;
+  String? _operation, _asset, _currencyCode;
   AppPerson? _person;
+  final _amount = TextEditingController();
+  final _fineness = TextEditingController(text: '750');
+  final _reference = TextEditingController(text: '750');
+  final _rate = TextEditingController();
+  final _note = TextEditingController();
+  ZarGoldUnit _weightUnit = ZarGoldUnit.gram;
+  ZarGoldUnit _priceUnit = ZarGoldUnit.gram;
+  bool _more = false,
+      _settlementValue = false,
+      _saving = false,
+      _submitted = false;
   Jalali _date = Jalali.now();
   TimeOfDay? _time;
   late String _reminder = widget.initialReminder;
-  final TextEditingController _amount = TextEditingController();
-  final TextEditingController _note = TextEditingController();
-  final TextEditingController _tomanRate = TextEditingController();
-  final TextEditingController _totalToman = TextEditingController();
-  bool _saving = false;
   String? _error;
 
   bool get _isSettlement => _operation == 'دریافت' || _operation == 'تحویل';
-  CurrencyOption? get _selectedCurrency => currencyByCode(_currencyCode);
-
-  bool get _ready {
-    final currencyReady = _asset != 'ارز' || _currencyCode != null;
-    final pricingReady =
-        _isSettlement ||
-        (_tomanRate.text.trim().isNotEmpty &&
-            (_asset == 'طلا' || _totalToman.text.trim().isNotEmpty));
-    final goldReady = _asset != 'طلا' || _goldFineness.text.trim().isNotEmpty;
-    return _operation != null &&
-        _asset != null &&
-        _person != null &&
-        currencyReady &&
-        goldReady &&
-        pricingReady &&
-        _amount.text.trim().isNotEmpty;
-  }
+  bool get _isGold => _asset == 'طلا';
+  bool get _isCash => _asset == 'وجه نقد';
+  bool get _isCurrency => _asset == 'ارز' || _isCash;
+  bool get _needsPricing => !_isSettlement || _settlementValue;
 
   @override
   void dispose() {
-    _amount.dispose();
-    _note.dispose();
-    _tomanRate.dispose();
-    _totalToman.dispose();
-    _goldFineness.dispose();
+    for (final controller in [_amount, _fineness, _reference, _rate, _note]) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
+  String? _required(String value) =>
+      _submitted && value.trim().isEmpty ? 'این فیلد الزامی است.' : null;
+
+  ZarDealPricing? _pricing() {
+    if (!_needsPricing ||
+        _isCash ||
+        _amount.text.trim().isEmpty ||
+        _rate.text.trim().isEmpty) {
+      return null;
+    }
+    try {
+      if (_isGold) {
+        return ZarGoldDealPricing.calculate(
+          fineness: _fineness.text,
+          priceReferenceFineness: _reference.text,
+          inputWeight: _amount.text,
+          inputWeightUnit: _weightUnit,
+          priceUnit: _priceUnit,
+          pricePerUnitToman: ZarTomanAmount(
+            int.parse(normalizeDecimal(_rate.text)),
+          ),
+        );
+      }
+      return ZarCurrencyDealPricing.calculate(
+        amount: _amount.text,
+        tomanPerUnit: _rate.text,
+      );
+    } on FormatException {
+      return null;
+    }
+  }
+
+  bool get _ready =>
+      _operation != null &&
+      _asset != null &&
+      _person != null &&
+      _amount.text.trim().isNotEmpty &&
+      (!_isGold || _fineness.text.trim().isNotEmpty) &&
+      (_asset != 'ارز' || _currencyCode != null) &&
+      (!_needsPricing || _isCash || _pricing() != null);
+
+  void _selectOperation(String value) => setState(() {
+    _operation = value;
+    if (!_isSettlement && _isCash) _asset = null;
+  });
+  void _selectAsset(String value) => setState(() {
+    _asset = value;
+    _currencyCode = value == 'ارز'
+        ? (_currencyCode ?? 'USD')
+        : value == 'وجه نقد'
+        ? 'TOMAN'
+        : null;
+  });
+  void _selectPriceUnit(ZarGoldUnit value) => setState(() {
+    _priceUnit = value;
+    _reference.text = value == ZarGoldUnit.gram ? '750' : '705';
+  });
+
   Future<void> _save() async {
-    if (!_ready || _saving) return;
     setState(() {
-      _saving = true;
+      _submitted = true;
       _error = null;
     });
-
+    if (!_ready || _saving) return;
+    final pricing = _pricing();
     final draft = QuickAddDraft(
       operation: _operation!,
       asset: _asset!,
@@ -87,372 +127,411 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       time: _time,
       reminder: _isSettlement ? _reminder : '',
       note: _note.text.trim(),
-      currencyCode: _currencyCode,
-      goldFineness: _asset == 'طلا'
-          ? normalizeGoldFineness(_goldFineness.text)
+      currencyCode: _isCurrency ? (_currencyCode ?? 'TOMAN') : null,
+      goldFineness: _isGold ? normalizeGoldFineness(_fineness.text) : null,
+      goldPriceReferenceFineness: _isGold && pricing != null
+          ? normalizeGoldFineness(_reference.text)
           : null,
-      goldInputUnit: _asset == 'طلا' ? _goldWeightUnit.name : null,
-      goldPriceUnit: !_isSettlement && _asset == 'طلا'
-          ? _goldPriceUnit.name
+      goldInputUnit: _isGold ? _weightUnit.name : null,
+      goldPriceUnit: _isGold && pricing != null ? _priceUnit.name : null,
+      tomanRate: pricing is ZarGoldDealPricing
+          ? pricing.pricePerUnitToman.wholeTomans.toString()
+          : pricing is ZarCurrencyDealPricing
+          ? pricing.tomanPerUnit
           : null,
-      tomanRate: _isSettlement ? null : _tomanRate.text.trim(),
-      totalToman: _isSettlement ? null : _totalToman.text.trim(),
+      totalToman: pricing?.totalToman.wholeTomans.toString(),
     );
-
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_submitLabel),
+        content: Text(_confirmation(pricing)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('بازبینی'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('تأیید و ثبت'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _saving = true);
     try {
       await widget.onSave(draft);
-      if (mounted) Navigator.of(context).pop(draft);
+      if (mounted) Navigator.pop(context, draft);
     } on FormatException {
-      if (!mounted) return;
-      setState(() {
-        _saving = false;
-        _error = 'مقدار واردشده معتبر نیست.';
-      });
+      if (mounted) setState(() => _error = 'مقادیر واردشده معتبر نیستند.');
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _saving = false;
-        _error = 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
-      });
+      if (mounted) {
+        setState(() => _error = 'اطلاعات ثبت نشد. دوباره تلاش کنید.');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
-  String? _goldCalculationSummary() {
-    try {
-      final rate = normalizeDecimal(_tomanRate.text);
-      if (rate.contains('.')) return null;
-      final pricing = ZarGoldDealPricing.calculate(
-        fineness: _goldFineness.text,
-        inputWeight: _amount.text,
-        inputWeightUnit: _goldWeightUnit,
-        priceUnit: _goldPriceUnit,
-        pricePerUnitToman: ZarTomanAmount(int.parse(rate)),
-      );
-      return 'معادل ${toPersianDigits(pricing.normalizedWeightGrams)} گرم • '
-          '${toPersianDigits(pricing.equivalentWeightMesghal)} مثقال\n'
-          'قیمت معادل هر گرم ${toPersianDigits(pricing.equivalentPricePerGramToman)} تومان • '
-          'مبلغ کل ${toPersianDigits(pricing.totalToman.wholeTomans.toString())} تومان';
-    } on FormatException {
-      return null;
+  String get _submitLabel => 'ثبت ${_operation ?? ''} ${_asset ?? ''}'.trim();
+  String _toman(int value) =>
+      toPersianDigits(NumberFormat.decimalPattern('en_US').format(value));
+  String _confirmation(ZarDealPricing? pricing) {
+    final unit = _isGold
+        ? (_weightUnit == ZarGoldUnit.gram ? 'گرم' : 'مثقال')
+        : (_currencyCode == 'TOMAN' ? 'تومان' : _currencyCode ?? '');
+    return '${_person!.name}\n${toPersianDigits(normalizeDecimal(_amount.text))} $unit'
+        '${pricing == null ? '' : '\nمبلغ کل: ${_toman(pricing.totalToman.wholeTomans)} تومان'}';
+  }
+
+  String? _summary() {
+    final pricing = _pricing();
+    if (pricing == null) return null;
+    if (pricing is ZarCurrencyDealPricing) {
+      return 'مبلغ کل: ${_toman(pricing.totalToman.wholeTomans)} تومان';
     }
+    final gold = pricing as ZarGoldDealPricing;
+    final other = gold.inputWeightUnit == ZarGoldUnit.gram
+        ? gold.equivalentWeightMesghal
+        : gold.normalizedWeightGrams;
+    return '${toPersianDigits(gold.inputWeight)} ${gold.inputWeightUnit == ZarGoldUnit.gram ? 'گرم' : 'مثقال'} = '
+        '${toPersianDigits(other)} ${gold.inputWeightUnit == ZarGoldUnit.gram ? 'مثقال' : 'گرم'}\n'
+        'مقدار تعدیل‌شده: ${toPersianDigits(gold.equivalentQuantityInPriceUnit)} ${gold.priceUnit == ZarGoldUnit.gram ? 'گرم' : 'مثقال'}\n'
+        'مبلغ کل: ${_toman(gold.totalToman.wholeTomans)} تومان';
   }
 
   @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          12,
-          20,
-          MediaQuery.of(context).viewInsets.bottom + 20,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 46,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).dividerColor,
-                    borderRadius: BorderRadius.circular(100),
-                  ),
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    child: Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 46,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).dividerColor,
+                  borderRadius: BorderRadius.circular(100),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text('ثبت سریع', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: ['خرید', 'فروش', 'دریافت', 'تحویل']
-                    .map(
-                      (value) => _chip(
-                        context,
-                        value,
-                        _operation == value,
-                        _saving
-                            ? null
-                            : () => setState(() => _operation = value),
-                      ),
-                    )
-                    .toList(growable: false),
+            ),
+            const SizedBox(height: 16),
+            Text('ثبت سریع', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            _label('نوع عملیات'),
+            _choices(
+              ['خرید', 'فروش', 'دریافت', 'تحویل'],
+              _operation,
+              _selectOperation,
+            ),
+            if (_operation != null) ...[
+              const SizedBox(height: 14),
+              _label('موضوع'),
+              _choices(
+                _isSettlement ? ['طلا', 'ارز', 'وجه نقد'] : ['طلا', 'ارز'],
+                _asset,
+                _selectAsset,
               ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: ['طلا', 'ارز']
-                    .map(
-                      (value) => _chip(
-                        context,
-                        value,
-                        _asset == value,
-                        _operation == null || _saving
-                            ? null
-                            : () => setState(() {
-                                _asset = value;
-                                if (value == 'ارز') {
-                                  _currencyCode ??= 'USD';
-                                } else {
-                                  _currencyCode = null;
-                                }
-                              }),
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
+            ],
+            if (_asset != null) ...[
               const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                enabled: !_saving,
-                title: const Text('شخص'),
-                subtitle: Text(_person?.name ?? 'انتخاب شخص'),
-                trailing: const Icon(CupertinoIcons.chevron_down),
-                onTap: () async {
-                  final selected = await showPersonPickerBottomSheet(
-                    context,
-                    widget.people,
-                  );
-                  if (mounted && selected != null) {
-                    setState(() => _person = selected);
-                  }
-                },
-              ),
-              if (_asset == 'ارز')
+              _card([
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  enabled: !_saving,
-                  title: const Text('نوع ارز'),
-                  subtitle: Text(
-                    _selectedCurrency?.displayLabel ?? 'انتخاب نوع ارز',
-                  ),
+                  title: const Text('شخص'),
+                  subtitle: Text(_person?.name ?? 'انتخاب شخص'),
                   trailing: const Icon(CupertinoIcons.chevron_down),
                   onTap: () async {
-                    final selected = await showCurrencyPickerBottomSheet(
+                    final selected = await showPersonPickerBottomSheet(
                       context,
-                      _currencyCode,
+                      widget.people,
                     );
                     if (mounted && selected != null) {
-                      setState(() => _currencyCode = selected.code);
+                      setState(() => _person = selected);
                     }
                   },
                 ),
-              TextField(
-                controller: _amount,
-                enabled: !_saving,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                textDirection: TextDirection.ltr,
-                textAlign: TextAlign.right,
-                decoration: InputDecoration(
-                  labelText: _asset == 'طلا' ? 'مقدار' : 'مبلغ',
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-              if (_asset == 'طلا') ...[
-                const SizedBox(height: 8),
-                Text('واحد وزن', style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  children: [ZarGoldUnit.gram, ZarGoldUnit.mesghal]
-                      .map(
-                        (unit) => _chip(
-                          context,
-                          unit == ZarGoldUnit.gram ? 'گرم' : 'مثقال',
-                          _goldWeightUnit == unit,
-                          _saving
-                              ? null
-                              : () => setState(() => _goldWeightUnit = unit),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
-              ],
-              if (_asset == 'طلا') ...[
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _goldFineness,
-                  enabled: !_saving,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                if (_submitted && _person == null)
+                  _fieldError('انتخاب شخص الزامی است.'),
+                if (_asset == 'ارز')
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('نوع ارز'),
+                    subtitle: Text(
+                      currencyByCode(_currencyCode)?.displayLabel ??
+                          'انتخاب نوع ارز',
+                    ),
+                    trailing: const Icon(CupertinoIcons.chevron_down),
+                    onTap: () async {
+                      final selected = await showCurrencyPickerBottomSheet(
+                        context,
+                        _currencyCode,
+                      );
+                      if (mounted && selected != null) {
+                        setState(() => _currencyCode = selected.code);
+                      }
+                    },
                   ),
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.right,
-                  decoration: const InputDecoration(
-                    labelText: 'عیار (۱ تا ۱۰۰۰)',
-                  ),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ],
-              if (!_isSettlement) ...[
-                const SizedBox(height: 10),
                 TextField(
-                  controller: _tomanRate,
-                  enabled: !_saving,
+                  controller: _amount,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.right,
                   decoration: InputDecoration(
-                    labelText: _asset == 'طلا'
-                        ? 'قیمت (${_goldPriceUnit == ZarGoldUnit.gram ? 'تومان/گرم' : 'تومان/مثقال'})'
-                        : 'نرخ هر واحد ارز (تومان)',
+                    labelText: _isGold ? 'وزن' : 'مقدار',
+                    errorText: _required(_amount.text),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
-                if (_asset == 'طلا') ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'واحد قیمت',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                if (_isGold) ...[
+                  const SizedBox(height: 12),
+                  _label('واحد وزن'),
+                  _units(
+                    _weightUnit,
+                    (v) => setState(() => _weightUnit = v),
+                    false,
                   ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    children: [ZarGoldUnit.gram, ZarGoldUnit.mesghal]
-                        .map(
-                          (unit) => _chip(
-                            context,
-                            unit == ZarGoldUnit.gram
-                                ? 'تومان/گرم'
-                                : 'تومان/مثقال',
-                            _goldPriceUnit == unit,
-                            _saving
-                                ? null
-                                : () => setState(() => _goldPriceUnit = unit),
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  if (_goldCalculationSummary() case final summary?) ...[
-                    const SizedBox(height: 10),
-                    Text(summary, style: Theme.of(context).textTheme.bodySmall),
-                  ],
-                ] else ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   TextField(
-                    controller: _totalToman,
-                    enabled: !_saving,
-                    keyboardType: TextInputType.number,
+                    controller: _fineness,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     textDirection: TextDirection.ltr,
                     textAlign: TextAlign.right,
-                    decoration: const InputDecoration(
-                      labelText: 'مبلغ کل (تومان)',
+                    decoration: InputDecoration(
+                      labelText: 'عیار واقعی',
+                      errorText: _required(_fineness.text),
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
+                  const SizedBox(height: 8),
+                  _choices(
+                    ['705', '740', '750', '875', '916', '999.9'],
+                    _fineness.text,
+                    (v) => setState(() => _fineness.text = v),
+                  ),
                 ],
-              ],
-              const SizedBox(height: 6),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                enabled: !_saving,
-                title: const Text('تاریخ'),
-                subtitle: Text(formatJalaliDate(_date)),
-                trailing: const Icon(CupertinoIcons.calendar),
-                onTap: () async {
-                  final selected = await pickJalaliDate(context, _date);
-                  if (mounted && selected != null) {
-                    setState(() => _date = selected);
-                  }
-                },
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                enabled: !_saving,
-                title: const Text('ساعت'),
-                subtitle: Text(
-                  _time == null
-                      ? 'بدون ساعت'
-                      : '${toPersianDigits(_time!.hour.toString().padLeft(2, '0'))}:${toPersianDigits(_time!.minute.toString().padLeft(2, '0'))}',
+              ]),
+              if (_isSettlement && !_isCash)
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('محاسبه ارزش مالی'),
+                  subtitle: const Text('اختیاری؛ فقط برای محاسبه همین ثبت'),
+                  value: _settlementValue,
+                  onChanged: (v) => setState(() => _settlementValue = v),
                 ),
-                trailing: const Icon(CupertinoIcons.time),
-                onTap: () async {
-                  final selected = await pickCupertinoTime(context, _time);
-                  if (mounted && selected != null) {
-                    setState(() => _time = selected);
-                  }
-                },
-              ),
-              if (_isSettlement)
+              if (_needsPricing && !_isCash) ...[
+                const SizedBox(height: 10),
+                _card([
+                  if (_isGold) ...[
+                    _label('واحد قیمت'),
+                    _units(_priceUnit, _selectPriceUnit, true),
+                  ],
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _rate,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.right,
+                    decoration: InputDecoration(
+                      labelText: _isGold
+                          ? 'قیمت هر ${_priceUnit == ZarGoldUnit.gram ? 'گرم' : 'مثقال'} (تومان)'
+                          : 'نرخ هر واحد ارز (تومان)',
+                      errorText: _required(_rate.text),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  if (_isGold) ...[
+                    TextButton(
+                      onPressed: () => setState(() => _more = !_more),
+                      child: Text(
+                        _more ? 'بستن گزینه‌های بیشتر' : 'گزینه‌های بیشتر',
+                      ),
+                    ),
+                    if (_more)
+                      TextField(
+                        controller: _reference,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textDirection: TextDirection.ltr,
+                        textAlign: TextAlign.right,
+                        decoration: const InputDecoration(
+                          labelText: 'عیار مرجع قیمت',
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                  ],
+                  if (_summary() case final summary?) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF9A6700).withValues(alpha: .08),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        summary,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          height: 1.7,
+                        ),
+                      ),
+                    ),
+                  ],
+                ]),
+              ],
+              const SizedBox(height: 10),
+              _card([
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  enabled: !_saving,
-                  title: const Text('یادآوری'),
-                  subtitle: Text(_reminder),
-                  trailing: const Icon(CupertinoIcons.bell),
+                  title: const Text('تاریخ'),
+                  subtitle: Text(formatJalaliDate(_date)),
+                  trailing: const Icon(CupertinoIcons.calendar),
                   onTap: () async {
-                    final selected = await showReminderTextPickerBottomSheet(
-                      context,
-                      _reminder,
-                    );
-                    if (mounted && selected != null) {
-                      setState(() => _reminder = selected);
-                    }
+                    final value = await pickJalaliDate(context, _date);
+                    if (mounted && value != null) setState(() => _date = value);
                   },
                 ),
-              TextField(
-                controller: _note,
-                enabled: !_saving,
-                decoration: const InputDecoration(
-                  labelText: 'توضیحات (اختیاری)',
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('ساعت'),
+                  subtitle: Text(
+                    _time == null
+                        ? 'بدون ساعت'
+                        : '${toPersianDigits(_time!.hour.toString().padLeft(2, '0'))}:${toPersianDigits(_time!.minute.toString().padLeft(2, '0'))}',
+                  ),
+                  trailing: const Icon(CupertinoIcons.time),
+                  onTap: () async {
+                    final value = await pickCupertinoTime(context, _time);
+                    if (mounted && value != null) setState(() => _time = value);
+                  },
                 ),
-                maxLines: 2,
-              ),
+                if (_isSettlement)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('یادآوری'),
+                    subtitle: Text(_reminder),
+                    trailing: const Icon(CupertinoIcons.bell),
+                    onTap: () async {
+                      final value = await showReminderTextPickerBottomSheet(
+                        context,
+                        _reminder,
+                      );
+                      if (mounted && value != null) {
+                        setState(() => _reminder = value);
+                      }
+                    },
+                  ),
+                TextField(
+                  controller: _note,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'توضیحات (اختیاری)',
+                  ),
+                ),
+              ]),
               if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
+                const SizedBox(height: 10),
+                _fieldError(_error!),
               ],
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _ready && !_saving ? _save : null,
+                  onPressed: _saving ? null : _save,
                   child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CupertinoActivityIndicator(),
-                        )
-                      : const Text('ثبت'),
+                      ? const CupertinoActivityIndicator()
+                      : Text(_submitLabel),
                 ),
               ),
             ],
-          ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
 
-  Widget _chip(
-    BuildContext context,
-    String text,
-    bool selected,
-    VoidCallback? onTap,
-  ) {
-    return ChoiceChip(
-      label: Text(text),
-      selected: selected,
-      showCheckmark: false,
-      selectedColor: Theme.of(
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 7),
+    child: Text(
+      text,
+      style: Theme.of(
         context,
-      ).colorScheme.primary.withValues(alpha: 0.14),
-      side: BorderSide(
-        color: selected
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.35)
-            : Theme.of(context).dividerColor,
+      ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+    ),
+  );
+  Widget _choices(
+    List<String> values,
+    String? selected,
+    ValueChanged<String> changed,
+  ) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: values
+        .map(
+          (v) => ChoiceChip(
+            label: Text(toPersianDigits(v)),
+            selected: selected == v,
+            showCheckmark: false,
+            onSelected: _saving ? null : (_) => changed(v),
+          ),
+        )
+        .toList(),
+  );
+  Widget _units(
+    ZarGoldUnit selected,
+    ValueChanged<ZarGoldUnit> changed,
+    bool price,
+  ) => Wrap(
+    spacing: 8,
+    children: [ZarGoldUnit.gram, ZarGoldUnit.mesghal]
+        .map(
+          (v) => ChoiceChip(
+            label: Text(
+              price
+                  ? (v == ZarGoldUnit.gram ? 'تومان/گرم' : 'تومان/مثقال')
+                  : (v == ZarGoldUnit.gram ? 'گرم' : 'مثقال'),
+            ),
+            selected: selected == v,
+            showCheckmark: false,
+            onSelected: (_) => changed(v),
+          ),
+        )
+        .toList(),
+  );
+  Widget _card(List<Widget> children) => Material(
+    color: Theme.of(context).colorScheme.surface,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: BorderSide(color: Theme.of(context).dividerColor),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
       ),
-      onSelected: onTap == null ? null : (_) => onTap(),
-    );
-  }
+    ),
+  );
+  Widget _fieldError(String text) => Text(
+    text,
+    style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+  );
 }

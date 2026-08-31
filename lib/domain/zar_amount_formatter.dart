@@ -10,18 +10,21 @@ class ZarAmountFormatter {
     final whole = scale == 0 ? raw : raw.substring(0, raw.length - scale);
     final fraction = scale == 0 ? '' : raw.substring(raw.length - scale);
     final groupedWhole = _group(whole);
-    final hasFraction = fraction.isNotEmpty && RegExp(r'[1-9]').hasMatch(fraction);
+    final hasFraction =
+        fraction.isNotEmpty && RegExp(r'[1-9]').hasMatch(fraction);
     final number = hasFraction ? '$groupedWhole.$fraction' : groupedWhole;
 
-    return switch (value.code) {
+    final formatted = switch (value.code) {
       'USD' => '\$$number',
       'EUR' => '€$number',
       'GBP' => '£$number',
       'TRY' => '₺$number',
       'AED' => 'AED $number',
       'CAD' => 'CAD $number',
+      'TOMAN' => '$number تومان',
       final code => '$code $number',
     };
+    return _persianDigits(formatted);
   }
 
   static String _group(String digits) {
@@ -38,5 +41,15 @@ class ZarAmountFormatter {
       index += 3;
     }
     return buffer.toString();
+  }
+
+  static String _persianDigits(String input) {
+    const latin = '0123456789';
+    const persian = '۰۱۲۳۴۵۶۷۸۹';
+    var result = input;
+    for (var index = 0; index < latin.length; index++) {
+      result = result.replaceAll(latin[index], persian[index]);
+    }
+    return result;
   }
 }

@@ -27,10 +27,10 @@ void main() {
     await tester.tap(find.text('طلا'));
     await tester.pump();
 
-    expect(find.text('عیار (۱ تا ۱۰۰۰)'), findsOneWidget);
+    expect(find.text('عیار واقعی'), findsOneWidget);
     expect(find.text('واحد وزن'), findsOneWidget);
     expect(find.text('مثقال'), findsOneWidget);
-    expect(find.text('قیمت (تومان/گرم)'), findsOneWidget);
+    expect(find.text('قیمت هر گرم (تومان)'), findsOneWidget);
     expect(find.text('واحد قیمت'), findsOneWidget);
     expect(find.text('مبلغ کل (تومان)'), findsNothing);
     expect(find.textContaining('ریال'), findsNothing);
@@ -59,6 +59,77 @@ void main() {
     }
     expect(() => normalizeGoldFineness('0'), throwsFormatException);
     expect(() => normalizeGoldFineness('1000.1'), throwsFormatException);
+  });
+
+  test('all gram and mithqal weight/price combinations stay exact', () {
+    final cases = [
+      ('46.083', ZarGoldUnit.gram, ZarGoldUnit.gram, 7000000),
+      ('46.083', ZarGoldUnit.gram, ZarGoldUnit.mesghal, 32258100),
+      ('10', ZarGoldUnit.mesghal, ZarGoldUnit.gram, 7000000),
+      ('10', ZarGoldUnit.mesghal, ZarGoldUnit.mesghal, 32258100),
+    ];
+    for (final item in cases) {
+      final pricing = ZarGoldDealPricing.calculate(
+        fineness: '750',
+        priceReferenceFineness: '750',
+        inputWeight: item.$1,
+        inputWeightUnit: item.$2,
+        priceUnit: item.$3,
+        pricePerUnitToman: ZarTomanAmount(item.$4),
+      );
+      expect(pricing.totalToman.wholeTomans, 322581000);
+    }
+  });
+
+  test('price-reference fineness adjusts exact quantity', () {
+    final pricing = ZarGoldDealPricing.calculate(
+      fineness: '999.9',
+      priceReferenceFineness: '705',
+      inputWeight: '10',
+      inputWeightUnit: ZarGoldUnit.mesghal,
+      priceUnit: ZarGoldUnit.mesghal,
+      pricePerUnitToman: ZarTomanAmount(35000000),
+    );
+    expect(pricing.priceReferenceFineness, '705');
+    expect(pricing.equivalentQuantityInPriceUnit, '14.18297872');
+    expect(pricing.totalToman.wholeTomans, 496404255);
+  });
+
+  test('currency total is calculated from amount and Toman rate', () {
+    final pricing = ZarCurrencyDealPricing.calculate(
+      amount: '10000',
+      tomanPerUnit: '92000',
+    );
+    expect(pricing.totalToman.wholeTomans, 920000000);
+  });
+
+  testWidgets('settlement pricing stays behind its optional switch', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ConfirmedQuickAddSheet(
+            people: [AppPerson(id: 'p1', name: 'مهیار')],
+            onSave: (_) async {},
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('دریافت'));
+    await tester.pump();
+    await tester.tap(find.text('طلا'));
+    await tester.pump();
+    expect(find.text('محاسبه ارزش مالی'), findsOneWidget);
+    expect(find.text('واحد قیمت'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('محاسبه ارزش مالی'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pump();
+    expect(find.text('واحد قیمت'), findsOneWidget);
   });
 
   test('mithqal conversion and pricing are exact', () {

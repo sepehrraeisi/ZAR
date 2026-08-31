@@ -121,6 +121,8 @@ class ZarNativeNotificationRuntime {
       enabled: _preferences.enabled,
       playSound: wantsSound,
       enableVibration: _preferences.enabled && _preferences.vibrationEnabled,
+      persistentAlarm:
+          _preferences.deliveryMode == NotificationDeliveryMode.persistentAlarm,
     );
   }
 

@@ -86,7 +86,7 @@ void main() {
 
     await store.refresh();
 
-    expect(store.records.single.amountDisplay, r'$10,000.50');
+    expect(store.records.single.amountDisplay, r'$۱۰,۰۰۰.۵۰');
   });
 
   test('complete settlement persists through repository and updates presentation', () async {

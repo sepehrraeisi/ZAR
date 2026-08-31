@@ -126,6 +126,9 @@ class ZarLegacyPresentationBridge {
       goldFineness: deal.pricing is ZarGoldDealPricing
           ? (deal.pricing! as ZarGoldDealPricing).fineness
           : null,
+      goldPriceReferenceFineness: deal.pricing is ZarGoldDealPricing
+          ? (deal.pricing! as ZarGoldDealPricing).priceReferenceFineness
+          : null,
       goldInputWeight: deal.pricing is ZarGoldDealPricing
           ? (deal.pricing! as ZarGoldDealPricing).inputWeight
           : null,
@@ -182,12 +185,15 @@ class ZarLegacyPresentationBridge {
   }
 
   ZarAssetAmount _amountFromUi(AppRecord record) {
-    if (record.currencyCode != null || record.assetLabel == 'ارز') {
+    if (record.currencyCode != null ||
+        record.assetLabel == 'ارز' ||
+        record.assetLabel == 'وجه نقد') {
       final code = record.currencyCode ?? 'USD';
       return ZarCurrencyAssetAmount(
         ZarAmountParser.currency(
           _numericOnly(record.amountDisplay),
           code: code,
+          minorUnitScale: code == 'TOMAN' ? 0 : 2,
         ),
       );
     }
@@ -219,6 +225,8 @@ class ZarLegacyPresentationBridge {
     }
     return ZarGoldDealPricing(
       fineness: record.goldFineness!,
+      priceReferenceFineness:
+          record.goldPriceReferenceFineness ?? record.goldFineness!,
       inputWeight:
           record.goldInputWeight ??
           ZarAmountParser.gold(record.amountDisplay).decimal,

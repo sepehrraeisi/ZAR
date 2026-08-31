@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_app/features/notifications/notification_center.dart';
 import 'package:flutter_app/features/notifications/notification_preferences_store.dart';
@@ -28,27 +29,52 @@ void main() {
     expect(muted.soundProfile, NotificationSoundProfile.subtle);
   });
 
-  test('device-local preference store round-trips all notification options', () async {
-    final store = InMemoryNotificationPreferencesStore();
-    const expected = ZarNotificationPreferences(
-      enabled: false,
-      soundEnabled: false,
-      vibrationEnabled: false,
-      soundProfile: NotificationSoundProfile.silent,
-      privacy: NotificationPrivacy.private,
-      defaultReminderMinutes: 120,
-      defaultSnoozeMinutes: 45,
+  test(
+    'device-local preference store round-trips all notification options',
+    () async {
+      final store = InMemoryNotificationPreferencesStore();
+      const expected = ZarNotificationPreferences(
+        enabled: false,
+        soundEnabled: false,
+        vibrationEnabled: false,
+        soundProfile: NotificationSoundProfile.silent,
+        privacy: NotificationPrivacy.private,
+        defaultReminderMinutes: 120,
+        defaultSnoozeMinutes: 45,
+        deliveryMode: NotificationDeliveryMode.persistentAlarm,
+      );
+
+      await store.save(expected);
+      final restored = await store.load();
+
+      expect(restored.enabled, expected.enabled);
+      expect(restored.soundEnabled, expected.soundEnabled);
+      expect(restored.vibrationEnabled, expected.vibrationEnabled);
+      expect(restored.soundProfile, expected.soundProfile);
+      expect(restored.privacy, expected.privacy);
+      expect(restored.defaultReminderMinutes, expected.defaultReminderMinutes);
+      expect(restored.defaultSnoozeMinutes, expected.defaultSnoozeMinutes);
+      expect(restored.deliveryMode, NotificationDeliveryMode.persistentAlarm);
+    },
+  );
+
+  testWidgets('alarm-style mode is user selectable', (tester) async {
+    ZarNotificationPreferences? changed;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationSettingsScreen(
+          initial: const ZarNotificationPreferences(),
+          onChanged: (value) => changed = value,
+        ),
+      ),
     );
-
-    await store.save(expected);
-    final restored = await store.load();
-
-    expect(restored.enabled, expected.enabled);
-    expect(restored.soundEnabled, expected.soundEnabled);
-    expect(restored.vibrationEnabled, expected.vibrationEnabled);
-    expect(restored.soundProfile, expected.soundProfile);
-    expect(restored.privacy, expected.privacy);
-    expect(restored.defaultReminderMinutes, expected.defaultReminderMinutes);
-    expect(restored.defaultSnoozeMinutes, expected.defaultSnoozeMinutes);
+    await tester.scrollUntilVisible(
+      find.text('آلارم تا زمان اقدام'),
+      250,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.tap(find.text('آلارم تا زمان اقدام'));
+    await tester.pump();
+    expect(changed?.deliveryMode, NotificationDeliveryMode.persistentAlarm);
   });
 }

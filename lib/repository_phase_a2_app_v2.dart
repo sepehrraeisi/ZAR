@@ -374,7 +374,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
 
     final isSettlement =
         draft.operation == 'دریافت' || draft.operation == 'تحویل';
-    final isCurrency = draft.asset == 'ارز';
+    final isCurrency = draft.asset == 'ارز' || draft.asset == 'وجه نقد';
     final currencyCode = draft.currencyCode;
 
     if (isCurrency && currencyCode == null) {
@@ -384,7 +384,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     int? totalToman;
     String? tomanRate;
     if (!isSettlement) {
-      if (draft.tomanRate == null || (isCurrency && draft.totalToman == null)) {
+      if (draft.tomanRate == null) {
         throw const FormatException('Deal pricing is required.');
       }
       tomanRate = normalizeDecimal(draft.tomanRate!);
@@ -392,14 +392,15 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         throw const FormatException('Gold price must be a whole Toman amount.');
       }
       if (isCurrency) {
-        final normalizedTotal = normalizeDecimal(draft.totalToman!);
-        if (normalizedTotal.contains('.')) {
-          throw const FormatException('Total Toman must be a whole amount.');
-        }
-        totalToman = int.parse(normalizedTotal);
+        totalToman = ZarCurrencyDealPricing.calculate(
+          amount: draft.amount,
+          tomanPerUnit: tomanRate,
+        ).totalToman.wholeTomans;
       } else {
         totalToman = ZarGoldDealPricing.calculate(
           fineness: draft.goldFineness!,
+          priceReferenceFineness:
+              draft.goldPriceReferenceFineness ?? draft.goldFineness!,
           inputWeight: draft.amount,
           inputWeightUnit: ZarGoldUnit.values.byName(
             draft.goldInputUnit ?? ZarGoldUnit.gram.name,
@@ -414,7 +415,11 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
 
     final amountDisplay = isCurrency
         ? ZarAmountFormatter.currency(
-            ZarAmountParser.currency(draft.amount, code: currencyCode!),
+            ZarAmountParser.currency(
+              draft.amount,
+              code: currencyCode!,
+              minorUnitScale: currencyCode == 'TOMAN' ? 0 : 2,
+            ),
           )
         : toPersianDigits(ZarAmountParser.gold(draft.amount).decimal);
 
@@ -424,15 +429,20 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       operationLabel: draft.operation,
       personId: draft.personId,
       amountDisplay: amountDisplay,
-      assetLabel: isCurrency ? 'ارز' : 'گرم طلا',
+      assetLabel: draft.asset == 'وجه نقد'
+          ? 'وجه نقد'
+          : isCurrency
+          ? 'ارز'
+          : 'گرم طلا',
       currencyCode: currencyCode,
       date: draft.date,
       time: draft.time,
       note: draft.note.isEmpty ? null : draft.note,
       goldFineness: !isCurrency ? draft.goldFineness : null,
-      goldInputWeight: !isCurrency
-          ? normalizeDecimal(draft.amount)
+      goldPriceReferenceFineness: !isCurrency
+          ? draft.goldPriceReferenceFineness
           : null,
+      goldInputWeight: !isCurrency ? normalizeDecimal(draft.amount) : null,
       goldInputUnit: !isCurrency
           ? (draft.goldInputUnit ?? ZarGoldUnit.gram.name)
           : null,
