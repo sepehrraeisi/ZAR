@@ -24,12 +24,15 @@ class ConfirmedPersonEditorSheet extends StatefulWidget {
 
 class _ConfirmedPersonEditorSheetState
     extends State<ConfirmedPersonEditorSheet> {
-  late final TextEditingController _name =
-      TextEditingController(text: widget.existing?.name ?? '');
-  late final TextEditingController _phone =
-      TextEditingController(text: widget.existing?.phone ?? '');
-  late final TextEditingController _note =
-      TextEditingController(text: widget.existing?.note ?? '');
+  late final TextEditingController _name = TextEditingController(
+    text: widget.existing?.name ?? '',
+  );
+  late final TextEditingController _phone = TextEditingController(
+    text: widget.existing?.phone ?? '',
+  );
+  late final TextEditingController _note = TextEditingController(
+    text: widget.existing?.note ?? '',
+  );
 
   bool _saving = false;
   String? _error;
@@ -92,8 +95,9 @@ class _ConfirmedPersonEditorSheetState
             keyboardType: TextInputType.phone,
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.right,
-            decoration:
-                const InputDecoration(labelText: 'شماره تماس (اختیاری)'),
+            decoration: const InputDecoration(
+              labelText: 'شماره تماس (اختیاری)',
+            ),
           ),
           const SizedBox(height: 10),
           TextField(
@@ -127,13 +131,16 @@ class ConfirmedRecordEditorSheet extends StatefulWidget {
       _ConfirmedRecordEditorSheetState();
 }
 
-class _ConfirmedRecordEditorSheetState extends State<ConfirmedRecordEditorSheet> {
+class _ConfirmedRecordEditorSheetState
+    extends State<ConfirmedRecordEditorSheet> {
   late final TextEditingController _amount = TextEditingController(
     text: _numericInputFromDisplay(widget.record.amountDisplay),
   );
-  late final TextEditingController _note =
-      TextEditingController(text: widget.record.note ?? '');
-  late String? _currencyCode = widget.record.currencyCode ??
+  late final TextEditingController _note = TextEditingController(
+    text: widget.record.note ?? '',
+  );
+  late String? _currencyCode =
+      widget.record.currencyCode ??
       (widget.record.assetLabel == 'ارز' ? 'USD' : null);
 
   bool _saving = false;
@@ -157,16 +164,17 @@ class _ConfirmedRecordEditorSheetState extends State<ConfirmedRecordEditorSheet>
     });
 
     try {
-      final amountDisplay = widget.record.assetLabel == 'ارز' &&
-              _currencyCode != null
+      final amountDisplay =
+          widget.record.assetLabel == 'ارز' && _currencyCode != null
           ? ZarAmountFormatter.currency(
               ZarAmountParser.currency(rawAmount, code: _currencyCode!),
             )
           : rawAmount;
       final updated = widget.record.copyWith(
         amountDisplay: amountDisplay,
-        currencyCode:
-            widget.record.assetLabel == 'ارز' ? _currencyCode : null,
+        goldInputWeight: widget.record.assetLabel == 'ارز' ? null : rawAmount,
+        goldInputUnit: widget.record.assetLabel == 'ارز' ? null : 'gram',
+        currencyCode: widget.record.assetLabel == 'ارز' ? _currencyCode : null,
         note: _note.text.trim(),
       );
 
@@ -197,7 +205,10 @@ class _ConfirmedRecordEditorSheetState extends State<ConfirmedRecordEditorSheet>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.personName, style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            widget.personName,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           if (widget.record.assetLabel == 'ارز') ...[
             const SizedBox(height: 8),
             ListTile(
@@ -223,8 +234,7 @@ class _ConfirmedRecordEditorSheetState extends State<ConfirmedRecordEditorSheet>
           TextField(
             controller: _amount,
             enabled: !_saving,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.right,
             decoration: const InputDecoration(labelText: 'مبلغ/مقدار'),
@@ -242,9 +252,8 @@ class _ConfirmedRecordEditorSheetState extends State<ConfirmedRecordEditorSheet>
   }
 }
 
-String _numericInputFromDisplay(String input) => input
-    .replaceAll(RegExp(r'[^0-9۰-۹٠-٩.,٬٫]'), '')
-    .trim();
+String _numericInputFromDisplay(String input) =>
+    input.replaceAll(RegExp(r'[^0-9۰-۹٠-٩.,٬٫]'), '').trim();
 
 class _ConfirmedSheetFrame extends StatelessWidget {
   const _ConfirmedSheetFrame({

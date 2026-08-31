@@ -66,6 +66,9 @@ class ZarLegacyPresentationBridge {
           : null,
       status: _settlementStatusToUi(settlement.status),
       note: settlement.note,
+      goldFineness: settlement.amount is ZarGoldAssetAmount
+          ? (settlement.amount as ZarGoldAssetAmount).value.purity
+          : null,
     );
   }
 
@@ -198,7 +201,7 @@ class ZarLegacyPresentationBridge {
       ZarGoldQuantity(
         decimal: zarGoldWeightInGrams(inputWeight, inputUnit),
         unit: ZarGoldUnit.gram,
-        purity: record.goldFineness?.toString(),
+        purity: record.goldFineness,
       ),
     );
   }

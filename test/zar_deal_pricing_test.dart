@@ -27,10 +27,7 @@ void main() {
     await tester.tap(find.text('طلا'));
     await tester.pump();
 
-    expect(find.text('عیار طلا'), findsOneWidget);
-    expect(find.text('۷۵۰'), findsOneWidget);
-    expect(find.text('۹۹۵'), findsOneWidget);
-    expect(find.text('۹۹۹'), findsOneWidget);
+    expect(find.text('عیار (۱ تا ۱۰۰۰)'), findsOneWidget);
     expect(find.text('واحد وزن'), findsOneWidget);
     expect(find.text('مثقال'), findsOneWidget);
     expect(find.text('قیمت (تومان/گرم)'), findsOneWidget);
@@ -51,9 +48,17 @@ void main() {
 
     final restored =
         ZarDealPricing.fromMap(pricing.toMap()) as ZarGoldDealPricing;
-    expect(restored.fineness, 750);
+    expect(restored.fineness, '750');
     expect(restored.pricePerGramToman.wholeTomans, 4850123);
     expect(restored.totalToman.wholeTomans, 1213141592);
+  });
+
+  test('gold fineness accepts exact Iranian market values from 1 to 1000', () {
+    for (final value in ['705', '740', '750', '875', '916', '999.9', '1000']) {
+      expect(normalizeGoldFineness(value), value);
+    }
+    expect(() => normalizeGoldFineness('0'), throwsFormatException);
+    expect(() => normalizeGoldFineness('1000.1'), throwsFormatException);
   });
 
   test('mithqal conversion and pricing are exact', () {
@@ -188,6 +193,7 @@ void main() {
           containsAll(<String>{
             'pricing_kind',
             'gold_fineness',
+            'gold_fineness_decimal',
             'toman_rate_decimal',
             'total_toman',
             'gold_input_decimal',

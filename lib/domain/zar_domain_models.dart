@@ -35,6 +35,13 @@ class ZarExactDecimal {
     scale + other.scale,
   )._trimmed();
 
+  ZarExactDecimal add(ZarExactDecimal other) {
+    final targetScale = scale > other.scale ? scale : other.scale;
+    final left = unscaled * _pow10(targetScale - scale);
+    final right = other.unscaled * _pow10(targetScale - other.scale);
+    return ZarExactDecimal._(left + right, targetScale)._trimmed();
+  }
+
   ZarExactDecimal divide(ZarExactDecimal other, {int decimalPlaces = 8}) {
     if (other.unscaled == BigInt.zero) {
       throw const FormatException('Cannot divide by zero.');
@@ -145,21 +152,19 @@ sealed class ZarDealPricing {
 
 class ZarGoldDealPricing extends ZarDealPricing {
   ZarGoldDealPricing({
-    required this.fineness,
+    required Object fineness,
     String inputWeight = '1',
     this.inputWeightUnit = ZarGoldUnit.gram,
     this.priceUnit = ZarGoldUnit.gram,
     ZarTomanAmount? pricePerUnitToman,
     ZarTomanAmount? pricePerGramToman,
     required this.totalToman,
-  }) : inputWeight = normalizeDecimal(inputWeight),
+  }) : fineness = normalizeGoldFineness(fineness.toString()),
+       inputWeight = normalizeDecimal(inputWeight),
        pricePerUnitToman =
            pricePerUnitToman ??
            pricePerGramToman ??
            (throw const FormatException('Gold unit price is required.')) {
-    if (!const {750, 995, 999}.contains(fineness)) {
-      throw const FormatException('Gold fineness must be 750, 995, or 999.');
-    }
     if (!const {
           ZarGoldUnit.gram,
           ZarGoldUnit.mesghal,
@@ -172,7 +177,7 @@ class ZarGoldDealPricing extends ZarDealPricing {
   }
 
   factory ZarGoldDealPricing.calculate({
-    required int fineness,
+    required Object fineness,
     required String inputWeight,
     required ZarGoldUnit inputWeightUnit,
     required ZarGoldUnit priceUnit,
@@ -212,7 +217,7 @@ class ZarGoldDealPricing extends ZarDealPricing {
     );
   }
 
-  final int fineness;
+  final String fineness;
   final String inputWeight;
   final ZarGoldUnit inputWeightUnit;
   final ZarGoldUnit priceUnit;
@@ -256,7 +261,7 @@ class ZarGoldDealPricing extends ZarDealPricing {
 
   factory ZarGoldDealPricing.fromMap(Map<String, Object?> map) =>
       ZarGoldDealPricing(
-        fineness: map['fineness']! as int,
+        fineness: map['fineness']!,
         inputWeight: map['inputWeight']! as String,
         inputWeightUnit: ZarGoldUnit.values.byName(
           map['inputWeightUnit']! as String,
@@ -311,7 +316,11 @@ class ZarGoldQuantity {
     if (normalized == '0') {
       throw const FormatException('Gold quantity must be greater than zero.');
     }
-    return ZarGoldQuantity._(normalized, unit, _trimOrNull(purity));
+    return ZarGoldQuantity._(
+      normalized,
+      unit,
+      purity == null ? null : normalizeGoldQuantityPurity(purity),
+    );
   }
 
   final String decimal;
@@ -582,6 +591,32 @@ String normalizeDecimal(String input) {
   if (parts.length == 1) return integer;
   final fraction = parts[1].replaceFirst(RegExp(r'0+$'), '');
   return fraction.isEmpty ? integer : '$integer.$fraction';
+}
+
+String normalizeGoldFineness(String input) {
+  final normalized = normalizeDecimal(input);
+  final value = ZarExactDecimal.parse(normalized);
+  if (value.unscaled == BigInt.zero ||
+      value.unscaled > BigInt.from(1000) * BigInt.from(10).pow(value.scale)) {
+    throw const FormatException('Gold fineness must be between 1 and 1000.');
+  }
+  return normalized;
+}
+
+/// Normalizes numeric Iranian-market fineness while retaining legacy textual
+/// purity labels already present in older backups (for example `18K`). New
+/// entry flows validate with [normalizeGoldFineness] and therefore only create
+/// exact values in the 1..1000 range.
+String normalizeGoldQuantityPurity(String input) {
+  final value = input.trim();
+  if (value.isEmpty) {
+    throw const FormatException('Gold purity cannot be empty.');
+  }
+  try {
+    return normalizeGoldFineness(value);
+  } on FormatException {
+    return value;
+  }
 }
 
 String _latinDigits(String input) {

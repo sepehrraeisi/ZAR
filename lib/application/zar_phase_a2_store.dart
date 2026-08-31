@@ -3,6 +3,7 @@ import '../data/zar_domain_repository.dart';
 import '../domain/zar_domain_models.dart';
 import '../domain/zar_reminder_plan.dart';
 import 'zar_legacy_presentation_bridge.dart';
+import 'customer_position_projector.dart';
 
 /// Repository-backed presentation store for the current Phase A.2 widgets.
 ///
@@ -100,6 +101,13 @@ class ZarPhaseA2Store {
             item.status == ZarSettlementStatus.open,
       )
       .length;
+
+  ZarCustomerPosition customerPositionFor(String personId) =>
+      const ZarCustomerPositionProjector().project(
+        personId: personId,
+        deals: _domainDeals.values,
+        settlements: _domainSettlements.values,
+      );
 
   Future<void> savePerson(AppPerson person) async {
     final domain = _bridge.personFromUi(

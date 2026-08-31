@@ -60,7 +60,7 @@ void main() {
       final goldPricing =
           snapshot.deals.singleWhere((deal) => deal.id == 'deal-gold').pricing
               as ZarGoldDealPricing;
-      expect(goldPricing.fineness, 750);
+      expect(goldPricing.fineness, '750');
       expect(goldPricing.pricePerGramToman.wholeTomans, 4850000);
       expect(goldPricing.totalToman.wholeTomans, 59876543);
     });

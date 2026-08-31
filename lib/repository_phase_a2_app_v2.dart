@@ -429,11 +429,11 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       date: draft.date,
       time: draft.time,
       note: draft.note.isEmpty ? null : draft.note,
-      goldFineness: isSettlement ? null : draft.goldFineness,
-      goldInputWeight: !isSettlement && !isCurrency
+      goldFineness: !isCurrency ? draft.goldFineness : null,
+      goldInputWeight: !isCurrency
           ? normalizeDecimal(draft.amount)
           : null,
-      goldInputUnit: !isSettlement && !isCurrency
+      goldInputUnit: !isCurrency
           ? (draft.goldInputUnit ?? ZarGoldUnit.gram.name)
           : null,
       goldPriceUnit: !isSettlement && !isCurrency
@@ -728,6 +728,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
   Widget _buildPersonDetail(AppPerson person) => PersonDetailScreen(
     person: person,
     records: records,
+    position: _store.customerPositionFor(person.id),
     personName: _store.personName,
     onTapRecord: _openRecord,
     onEditPerson: (target) async {

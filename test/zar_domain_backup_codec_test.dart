@@ -78,7 +78,7 @@ void main() {
     expect(restoredGold.value.decimal, '250.125');
     expect(restoredGold.value.purity, '750');
     final restoredPricing = decoded.deals.single.pricing as ZarGoldDealPricing;
-    expect(restoredPricing.fineness, 750);
+    expect(restoredPricing.fineness, '750');
     expect(restoredPricing.pricePerGramToman.wholeTomans, 4850123);
     expect(restoredPricing.totalToman.wholeTomans, 1213141592);
     final restoredSettlement = decoded.settlements.single;

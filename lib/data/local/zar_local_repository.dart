@@ -258,6 +258,7 @@ class ZarLocalRepository implements ZarDomainRepository {
     pricing: _dealPricingFromColumns(
       kind: row.pricingKind,
       goldFineness: row.goldFineness,
+      goldFinenessDecimal: row.goldFinenessDecimal,
       goldInputDecimal: row.goldInputDecimal,
       goldInputUnit: row.goldInputUnit,
       goldPriceUnit: row.goldPriceUnit,
@@ -358,6 +359,11 @@ class ZarLocalRepository implements ZarDomainRepository {
             : 'currency',
       ),
       goldFineness: Value(
+        pricing is ZarGoldDealPricing && !pricing.fineness.contains('.')
+            ? int.parse(pricing.fineness)
+            : null,
+      ),
+      goldFinenessDecimal: Value(
         pricing is ZarGoldDealPricing ? pricing.fineness : null,
       ),
       goldInputDecimal: Value(
@@ -388,6 +394,7 @@ class ZarLocalRepository implements ZarDomainRepository {
   ZarDealPricing? _dealPricingFromColumns({
     required String? kind,
     required int? goldFineness,
+    required String? goldFinenessDecimal,
     required String? goldInputDecimal,
     required String? goldInputUnit,
     required String? goldPriceUnit,
@@ -399,11 +406,12 @@ class ZarLocalRepository implements ZarDomainRepository {
       throw const FormatException('Stored deal pricing is incomplete.');
     }
     if (kind == 'gold') {
-      if (goldFineness == null) {
+      final fineness = goldFinenessDecimal ?? goldFineness?.toString();
+      if (fineness == null) {
         throw const FormatException('Stored gold fineness is missing.');
       }
       return ZarGoldDealPricing(
-        fineness: goldFineness,
+        fineness: fineness,
         inputWeight: goldInputDecimal ?? '1',
         inputWeightUnit: ZarGoldUnit.values.byName(
           goldInputUnit ?? ZarGoldUnit.gram.name,

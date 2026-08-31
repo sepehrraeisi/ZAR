@@ -26,7 +26,9 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   String? _operation;
   String? _asset;
   String? _currencyCode;
-  int _goldFineness = 750;
+  final TextEditingController _goldFineness = TextEditingController(
+    text: '750',
+  );
   ZarGoldUnit _goldWeightUnit = ZarGoldUnit.gram;
   ZarGoldUnit _goldPriceUnit = ZarGoldUnit.gram;
   AppPerson? _person;
@@ -49,10 +51,12 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
         _isSettlement ||
         (_tomanRate.text.trim().isNotEmpty &&
             (_asset == 'طلا' || _totalToman.text.trim().isNotEmpty));
+    final goldReady = _asset != 'طلا' || _goldFineness.text.trim().isNotEmpty;
     return _operation != null &&
         _asset != null &&
         _person != null &&
         currencyReady &&
+        goldReady &&
         pricingReady &&
         _amount.text.trim().isNotEmpty;
   }
@@ -63,6 +67,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     _note.dispose();
     _tomanRate.dispose();
     _totalToman.dispose();
+    _goldFineness.dispose();
     super.dispose();
   }
 
@@ -83,10 +88,10 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       reminder: _isSettlement ? _reminder : '',
       note: _note.text.trim(),
       currencyCode: _currencyCode,
-      goldFineness: !_isSettlement && _asset == 'طلا' ? _goldFineness : null,
-      goldInputUnit: !_isSettlement && _asset == 'طلا'
-          ? _goldWeightUnit.name
+      goldFineness: _asset == 'طلا'
+          ? normalizeGoldFineness(_goldFineness.text)
           : null,
+      goldInputUnit: _asset == 'طلا' ? _goldWeightUnit.name : null,
       goldPriceUnit: !_isSettlement && _asset == 'طلا'
           ? _goldPriceUnit.name
           : null,
@@ -117,7 +122,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       final rate = normalizeDecimal(_tomanRate.text);
       if (rate.contains('.')) return null;
       final pricing = ZarGoldDealPricing.calculate(
-        fineness: _goldFineness,
+        fineness: _goldFineness.text,
         inputWeight: _amount.text,
         inputWeightUnit: _goldWeightUnit,
         priceUnit: _goldPriceUnit,
@@ -249,7 +254,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                 ),
                 onChanged: (_) => setState(() {}),
               ),
-              if (!_isSettlement && _asset == 'طلا') ...[
+              if (_asset == 'طلا') ...[
                 const SizedBox(height: 8),
                 Text('واحد وزن', style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: 6),
@@ -269,24 +274,20 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                       .toList(growable: false),
                 ),
               ],
-              if (!_isSettlement && _asset == 'طلا') ...[
+              if (_asset == 'طلا') ...[
                 const SizedBox(height: 10),
-                Text('عیار طلا', style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  children: [750, 995, 999]
-                      .map(
-                        (value) => _chip(
-                          context,
-                          toPersianDigits(value.toString()),
-                          _goldFineness == value,
-                          _saving
-                              ? null
-                              : () => setState(() => _goldFineness = value),
-                        ),
-                      )
-                      .toList(growable: false),
+                TextField(
+                  controller: _goldFineness,
+                  enabled: !_saving,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.right,
+                  decoration: const InputDecoration(
+                    labelText: 'عیار (۱ تا ۱۰۰۰)',
+                  ),
+                  onChanged: (_) => setState(() {}),
                 ),
               ],
               if (!_isSettlement) ...[

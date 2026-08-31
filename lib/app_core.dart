@@ -6,6 +6,7 @@ import 'package:shamsi_date/shamsi_date.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'features/reminders/reminder_model.dart';
+import 'application/customer_position_projector.dart';
 
 void main() {
   runApp(const ZarPlusApp());
@@ -135,7 +136,7 @@ class AppRecord {
   final SettlementStatus status;
   final String? note;
   final List<String> linkedSettlementIds;
-  final int? goldFineness;
+  final String? goldFineness;
   final String? goldInputWeight;
   final String? goldInputUnit;
   final String? goldPriceUnit;
@@ -157,7 +158,7 @@ class AppRecord {
     bool clearTime = false,
     SettlementStatus? status,
     String? note,
-    int? goldFineness,
+    String? goldFineness,
     String? goldInputWeight,
     String? goldInputUnit,
     String? goldPriceUnit,
@@ -236,7 +237,7 @@ class QuickAddDraft {
   final String reminder;
   final String note;
   final String? currencyCode;
-  final int? goldFineness;
+  final String? goldFineness;
   final String? goldInputUnit;
   final String? goldPriceUnit;
   final String? tomanRate;
@@ -934,7 +935,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
 }
 
 class PersonDetailScreen extends StatelessWidget {
-  const PersonDetailScreen({super.key, required this.person, required this.records, required this.personName, required this.onTapRecord, required this.onEditPerson, required this.onArchivePerson});
+  const PersonDetailScreen({super.key, required this.person, required this.records, required this.personName, required this.onTapRecord, required this.onEditPerson, required this.onArchivePerson, this.position = const ZarCustomerPosition.empty()});
 
   final AppPerson person;
   final List<AppRecord> records;
@@ -942,6 +943,7 @@ class PersonDetailScreen extends StatelessWidget {
   final ValueChanged<AppRecord> onTapRecord;
   final ValueChanged<AppPerson> onEditPerson;
   final ValueChanged<String> onArchivePerson;
+  final ZarCustomerPosition position;
 
   @override
   Widget build(BuildContext context) {
@@ -983,22 +985,99 @@ class PersonDetailScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Text('تعهدهای باز', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          if (openItems.isEmpty)
-            const _ZEmptyRow(label: 'تعهد باز وجود ندارد.')
-          else
-            ...openItems.map((e) => SettlementRow(record: e, personName: personName(e.personId), onTap: () => onTapRecord(e))),
+          _customerCard(
+            context,
+            title: 'تعهدات باز',
+            children: [
+              _positionSide(context, 'باید دریافت کنم', position.receive),
+              const SizedBox(height: 12),
+              _positionSide(context, 'باید تحویل بدهم', position.deliver),
+              const Divider(height: 24),
+              if (openItems.isEmpty)
+                const _ZEmptyRow(label: 'تعهد باز وجود ندارد.')
+              else
+                ...openItems.map((e) => SettlementRow(record: e, personName: personName(e.personId), onTap: () => onTapRecord(e))),
+            ],
+          ),
           const SizedBox(height: 18),
-          Text('سوابق معاملات و تسویه‌ها', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          if (historyItems.isEmpty)
-            const _ZEmptyRow(label: 'معامله یا تسویه‌ای ثبت نشده است.')
-          else
-            ...historyItems.map((e) => SettlementRow(record: e, personName: personName(e.personId), onTap: () => onTapRecord(e))),
+          _customerCard(
+            context,
+            title: 'سوابق معاملات',
+            children: historyItems.isEmpty
+                ? const [_ZEmptyRow(label: 'معامله یا تسویه‌ای ثبت نشده است.')]
+                : historyItems.map((e) => SettlementRow(record: e, personName: personName(e.personId), onTap: () => onTapRecord(e))).toList(growable: false),
+          ),
+          const SizedBox(height: 18),
+          _customerCard(
+            context,
+            title: 'خلاصه فعالیت',
+            children: [
+              _activityRow('خرید', position.buyCount),
+              _activityRow('فروش', position.sellCount),
+              _activityRow('دریافت', position.receiveCount),
+              _activityRow('تحویل', position.deliverCount),
+              const Divider(height: 20),
+              Text('آخرین فعالیت: ${_lastActivityLabel(position.lastActivityAt)}'),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  Widget _customerCard(BuildContext context, {required String title, required List<Widget> children}) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      border: Border.all(color: Theme.of(context).dividerColor),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: Theme.of(context).textTheme.titleMedium), const SizedBox(height: 12), ...children]),
+  );
+
+  Widget _positionSide(BuildContext context, String title, List<ZarCustomerPositionItem> items) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title, style: Theme.of(context).textTheme.bodyLarge),
+      const SizedBox(height: 6),
+      if (items.isEmpty)
+        Text('موردی وجود ندارد.', style: Theme.of(context).textTheme.bodyMedium)
+      else
+        ...items.map((item) => Padding(padding: const EdgeInsets.only(bottom: 4), child: _positionItem(item))),
+    ],
+  );
+
+  Widget _positionItem(ZarCustomerPositionItem item) {
+    const gold = Color(0xFF9A6700);
+    const currency = Color(0xFF2F6F73);
+    return switch (item) {
+      ZarCustomerGoldPosition(:final fineness, :final grams) => Text(
+        'طلای ${fineness == null ? 'عیار نامشخص' : 'عیار ${toPersianDigits(fineness)}'}: ${_formatPositionDecimal(grams)} گرم',
+        style: const TextStyle(color: gold, fontWeight: FontWeight.w600),
+      ),
+      ZarCustomerCurrencyPosition(:final code, :final decimalAmount) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Text('${code == 'TOMAN' ? 'تومان' : code}: ${_formatPositionDecimal(decimalAmount)}', style: const TextStyle(color: currency, fontWeight: FontWeight.w600)),
+      ),
+    };
+  }
+
+  Widget _activityRow(String label, int count) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label), Text(toPersianDigits(count.toString()))]),
+  );
+
+  String _lastActivityLabel(DateTime? value) {
+    if (value == null) return 'ثبت نشده';
+    final local = value.toLocal();
+    final jalali = Jalali.fromDateTime(local);
+    return '${formatJalaliDate(jalali)}، ${toPersianDigits(local.hour.toString().padLeft(2, '0'))}:${toPersianDigits(local.minute.toString().padLeft(2, '0'))}';
+  }
+
+  String _formatPositionDecimal(String value) {
+    final parts = value.split('.');
+    final grouped = parts.first.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => '٬');
+    return toPersianDigits(parts.length == 1 ? grouped : '$grouped٫${parts[1]}');
   }
 }
 
