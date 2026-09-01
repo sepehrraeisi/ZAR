@@ -18,6 +18,7 @@ import 'domain/zar_domain_models.dart';
 import 'domain/zar_reminder_plan.dart';
 import 'features/editors/confirmed_editors.dart';
 import 'features/backup/backup_screen.dart';
+import 'features/coins/coin_catalog_screen.dart';
 import 'features/editors/confirmed_quick_add_sheet.dart';
 import 'features/notifications/native_notification_runtime.dart';
 import 'features/notifications/notification_center.dart';
@@ -374,6 +375,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
 
     final isSettlement =
         draft.operation == 'دریافت' || draft.operation == 'تحویل';
+    if (draft.asset == 'سکه') {
+      await _saveCoinQuickAdd(draft, isSettlement: isSettlement);
+      return;
+    }
     final isCurrency = draft.asset == 'ارز' || draft.asset == 'وجه نقد';
     final currencyCode = draft.currencyCode;
 
@@ -485,6 +490,75 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     }
   }
 
+  Future<void> _saveCoinQuickAdd(
+    QuickAddDraft draft, {
+    required bool isSettlement,
+  }) async {
+    if (draft.coinLines.isEmpty) {
+      throw const FormatException('Coin lines are required.');
+    }
+    final now = DateTime.now().toUtc();
+    final gregorian = draft.date.toGregorian();
+    final eventAt = DateTime(
+      gregorian.year,
+      gregorian.month,
+      gregorian.day,
+      draft.time?.hour ?? 12,
+      draft.time?.minute ?? 0,
+    ).toUtc();
+    final id = 'n${DateTime.now().microsecondsSinceEpoch}';
+    setState(() => _writing = true);
+    try {
+      if (isSettlement) {
+        final runtimePlan = reminderPlanFromLegacyLabel(draft.reminder);
+        await _store.saveCoinSettlement(
+          ZarSettlement(
+            id: id,
+            businessId: widget.businessId,
+            personId: draft.personId,
+            direction: draft.operation == 'دریافت'
+                ? ZarSettlementDirection.receive
+                : ZarSettlementDirection.deliver,
+            amount: ZarCoinBundleAmount(draft.coinLines),
+            scheduledAt: eventAt,
+            hasTime: draft.time != null,
+            reminderPlan: reminderPlanToDomain(runtimePlan),
+            coinValuation: draft.coinSettlementValuation,
+            note: draft.note.isEmpty ? null : draft.note,
+            createdBy: 'local-user',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      } else {
+        await _store.saveCoinDeal(
+          ZarDeal(
+            id: id,
+            businessId: widget.businessId,
+            type: draft.operation == 'خرید'
+                ? ZarDealType.buy
+                : ZarDealType.sell,
+            personId: draft.personId,
+            amount: ZarCoinBundleAmount(draft.coinLines),
+            pricing: draft.coinDealPricing,
+            dealAt: eventAt,
+            note: draft.note.isEmpty ? null : draft.note,
+            createdBy: 'local-user',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      }
+      final persisted = _store.recordById(id);
+      if (persisted?.isObligation == true) {
+        await _persistedReminders.reconcileRecord(persisted!);
+      }
+      if (mounted) setState(() {});
+    } finally {
+      if (mounted) setState(() => _writing = false);
+    }
+  }
+
   Future<void> _archivePerson(AppPerson person) async {
     final shouldArchive = await confirmArchiveWithOpenObligations(
       context,
@@ -537,6 +611,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       enableDrag: !_writing,
       builder: (_) => ConfirmedQuickAddSheet(
         people: _store.activePeople,
+        coinTypes: _store.coinTypes,
         onSave: _saveQuickAddDraftOrThrow,
         initialReminder: reminderPresetLabel(
           _notificationPreferences.defaultReminderMinutes,
@@ -826,9 +901,36 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
 
   Future<void> _openBackup() async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => BackupScreen(manager: _backupManager)),
+      MaterialPageRoute(
+        builder: (_) => BackupScreen(
+          manager: _backupManager,
+          onOpenCoinCatalog: _openCoinCatalog,
+        ),
+      ),
     );
     if (mounted) setState(() {});
+  }
+
+  Future<void> _openCoinCatalog() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CoinCatalogScreen(
+          types: _store.coinTypes,
+          onSave: (value) async {
+            await _store.saveCoinType(value);
+            if (mounted) setState(() {});
+          },
+          onArchive: (value) async {
+            await _store.archiveCoinType(value);
+            if (mounted) setState(() {});
+          },
+          onRestore: (value) async {
+            await _store.restoreCoinType(value);
+            if (mounted) setState(() {});
+          },
+        ),
+      ),
+    );
   }
 
   @override

@@ -11,10 +11,12 @@ class BackupScreen extends StatefulWidget {
     super.key,
     required this.manager,
     this.files = const PlatformBackupFileService(),
+    this.onOpenCoinCatalog,
   });
 
   final ZarBackupManager manager;
   final BackupFileService files;
+  final VoidCallback? onOpenCoinCatalog;
 
   @override
   State<BackupScreen> createState() => _BackupScreenState();
@@ -37,12 +39,19 @@ class _BackupScreenState extends State<BackupScreen> {
       if (share) {
         await widget.files.shareJson(fileName: name, contents: json);
       } else {
-        final saved = await widget.files.saveJson(fileName: name, contents: json);
+        final saved = await widget.files.saveJson(
+          fileName: name,
+          contents: json,
+        );
         if (!saved) return;
       }
       if (!mounted) return;
       setState(() => _lastExport = preview);
-      _message(share ? 'نسخه پشتیبان آماده اشتراک‌گذاری است.' : 'نسخه پشتیبان ذخیره شد.');
+      _message(
+        share
+            ? 'نسخه پشتیبان آماده اشتراک‌گذاری است.'
+            : 'نسخه پشتیبان ذخیره شد.',
+      );
     });
   }
 
@@ -116,12 +125,23 @@ class _BackupScreenState extends State<BackupScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text('نسخه پشتیبان کامل', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'نسخه پشتیبان کامل',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 8),
           const Text(
-            'افراد، خرید و فروش با قیمت‌گذاری تومان و واحد گرم/مثقال، دریافت و تحویل، وضعیت بایگانی و برنامه‌های یادآوری در فایل JSON نسخه ۴ نگهداری می‌شوند. فایل‌های نسخه ۲ و ۳ همچنان قابل بازیابی هستند.',
+            'افراد، معاملات طلا، سکه و ارز، دریافت و تحویل، وضعیت بایگانی و برنامه‌های یادآوری در فایل JSON نسخه ۵ نگهداری می‌شوند. فایل‌های نسخه ۲، ۳ و ۴ همچنان قابل بازیابی هستند.',
           ),
           const SizedBox(height: 20),
+          if (widget.onOpenCoinCatalog != null) ...[
+            OutlinedButton.icon(
+              onPressed: _busy ? null : widget.onOpenCoinCatalog,
+              icon: const Icon(CupertinoIcons.circle_grid_hex),
+              label: const Text('مدیریت انواع سکه'),
+            ),
+            const Divider(height: 40),
+          ],
           FilledButton.icon(
             onPressed: _busy ? null : () => _export(share: false),
             icon: const Icon(CupertinoIcons.arrow_down_doc),
@@ -138,7 +158,10 @@ class _BackupScreenState extends State<BackupScreen> {
             _BackupSummary(preview: _lastExport!),
           ],
           const Divider(height: 40),
-          Text('بازیابی اطلاعات', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'بازیابی اطلاعات',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 8),
           const Text(
             'فایل ابتدا بدون تغییر اطلاعات بررسی می‌شود. پس از نمایش خلاصه و تأیید شما، داده‌های فعلی به‌طور کامل جایگزین می‌شوند.',
@@ -174,7 +197,8 @@ class _BackupSummary extends StatelessWidget {
     final bundle = preview.bundle;
     final local = bundle.generatedAt.toLocal();
     final jalali = Jalali.fromDateTime(local);
-    final time = '${toPersianDigits(local.hour.toString().padLeft(2, '0'))}:'
+    final time =
+        '${toPersianDigits(local.hour.toString().padLeft(2, '0'))}:'
         '${toPersianDigits(local.minute.toString().padLeft(2, '0'))}';
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -183,9 +207,13 @@ class _BackupSummary extends StatelessWidget {
         Text('نسخه قالب: ${toPersianDigits(bundle.exportVersion.toString())}'),
         Text('زمان ساخت: ${formatJalaliDate(jalali)}، $time'),
         Text('افراد: ${toPersianDigits(preview.peopleCount.toString())}'),
-        Text('افراد بایگانی‌شده: ${toPersianDigits(preview.archivedPeopleCount.toString())}'),
+        Text(
+          'افراد بایگانی‌شده: ${toPersianDigits(preview.archivedPeopleCount.toString())}',
+        ),
         Text('خرید و فروش: ${toPersianDigits(preview.dealCount.toString())}'),
-        Text('دریافت و تحویل: ${toPersianDigits(preview.settlementCount.toString())}'),
+        Text(
+          'دریافت و تحویل: ${toPersianDigits(preview.settlementCount.toString())}',
+        ),
         Text(
           'تسویه‌های دارای یادآوری: ${toPersianDigits(preview.settlementReminderCount.toString())} '
           '(${toPersianDigits(preview.reminderRuleCount.toString())} یادآوری)',

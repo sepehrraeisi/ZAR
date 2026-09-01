@@ -69,6 +69,10 @@ class ZarLegacyPresentationBridge {
       goldFineness: settlement.amount is ZarGoldAssetAmount
           ? (settlement.amount as ZarGoldAssetAmount).value.purity
           : null,
+      coinLines: _coinLinesToUi(
+        settlement.amount,
+        settlement.coinValuation?.lines,
+      ),
     );
   }
 
@@ -158,9 +162,16 @@ class ZarLegacyPresentationBridge {
               .toString(),
         ZarCurrencyDealPricing() =>
           (deal.pricing! as ZarCurrencyDealPricing).tomanPerUnit,
+        ZarCoinDealPricing() => null,
         null => null,
       },
       totalToman: deal.pricing?.totalToman.wholeTomans,
+      coinLines: _coinLinesToUi(
+        deal.amount,
+        deal.pricing is ZarCoinDealPricing
+            ? (deal.pricing as ZarCoinDealPricing).lines
+            : null,
+      ),
     );
   }
 
@@ -266,11 +277,46 @@ class ZarLegacyPresentationBridge {
         return toPersianDigits(amount.value.decimal);
       case ZarCurrencyAssetAmount():
         return ZarAmountFormatter.currency(amount.value);
+      case ZarCoinBundleAmount(:final lines):
+        return lines
+            .map(
+              (line) =>
+                  '${toPersianDigits(line.quantity.toString())} × ${line.coinTypeNameSnapshot}',
+            )
+            .join(' • ');
     }
   }
 
-  String _assetLabel(ZarAssetAmount amount) =>
-      amount.assetType == ZarAssetType.gold ? 'گرم طلا' : 'ارز';
+  String _assetLabel(ZarAssetAmount amount) => switch (amount.assetType) {
+    ZarAssetType.gold => 'گرم طلا',
+    ZarAssetType.currency => 'ارز',
+    ZarAssetType.coin => 'سکه',
+  };
+
+  List<AppCoinLine> _coinLinesToUi(
+    ZarAssetAmount amount,
+    List<ZarCoinLinePricing>? pricing,
+  ) {
+    if (amount is! ZarCoinBundleAmount) return const [];
+    final byId = {
+      for (final item in pricing ?? const <ZarCoinLinePricing>[])
+        item.lineId: item,
+    };
+    return amount.lines
+        .map((line) {
+          final value = byId[line.id];
+          return AppCoinLine(
+            name: line.coinTypeNameSnapshot,
+            quantity: line.quantity,
+            weightGrams: line.weightPerPieceGrams,
+            fineness: line.fineness,
+            pricingMethod: value?.method.name,
+            unitPriceToman: value?.unitPriceToman.wholeTomans,
+            rowTotalToman: value?.rowTotalToman.wholeTomans,
+          );
+        })
+        .toList(growable: false);
+  }
 
   String? _currencyCode(ZarAssetAmount amount) =>
       amount is ZarCurrencyAssetAmount ? amount.value.code : null;

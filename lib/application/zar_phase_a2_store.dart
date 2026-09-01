@@ -36,6 +36,8 @@ class ZarPhaseA2Store {
   List<ZarSettlement> get settlements =>
       List.unmodifiable(_domainSettlements.values);
   List<ZarDeal> get deals => List.unmodifiable(_domainDeals.values);
+  List<ZarCoinType> _coinTypes = const [];
+  List<ZarCoinType> get coinTypes => List.unmodifiable(_coinTypes);
 
   List<AppPerson> get people =>
       List.unmodifiable(_domainPeople.values.map(_bridge.personToUi));
@@ -65,11 +67,18 @@ class ZarPhaseA2Store {
         _repository.loadArchivedPeople(limit: 250),
         _repository.loadRecentSettlements(limit: 500),
         _repository.loadRecentDeals(limit: 500),
+        if (_repository is ZarCoinCatalogRepository)
+          (_repository as ZarCoinCatalogRepository).loadCoinTypes(
+            includeArchived: true,
+          )
+        else
+          Future.value(<ZarCoinType>[]),
       ]);
       final active = result[0] as List<ZarPerson>;
       final archived = result[1] as List<ZarPerson>;
       final settlements = result[2] as List<ZarSettlement>;
       final deals = result[3] as List<ZarDeal>;
+      final coinTypes = result[4] as List<ZarCoinType>;
 
       _domainPeople
         ..clear()
@@ -82,6 +91,7 @@ class ZarPhaseA2Store {
       _domainDeals
         ..clear()
         ..addEntries(deals.map((item) => MapEntry(item.id, item)));
+      _coinTypes = coinTypes;
     } catch (error) {
       _lastError = error;
       rethrow;
@@ -150,11 +160,9 @@ class ZarPhaseA2Store {
   }) async {
     if (record.type == RecordType.settlement) {
       final existing = _domainSettlements[record.id];
-      var domain = _bridge.settlementFromUi(
-        record,
-        existing: existing,
-        now: _clock(),
-      );
+      var domain = existing?.amount is ZarCoinBundleAmount
+          ? _coinSettlementFromUi(record, existing!)
+          : _bridge.settlementFromUi(record, existing: existing, now: _clock());
       if (reminderPlan != null) {
         domain = _copySettlement(
           domain,
@@ -173,6 +181,50 @@ class ZarPhaseA2Store {
       await _repository.saveDeal(domain, auditAction: auditAction);
       _domainDeals[domain.id] = domain;
     }
+  }
+
+  Future<void> saveCoinDeal(ZarDeal deal) async {
+    await _repository.saveDeal(deal, auditAction: 'create');
+    _domainDeals[deal.id] = deal;
+  }
+
+  Future<void> saveCoinSettlement(ZarSettlement settlement) async {
+    await _repository.saveSettlement(settlement, auditAction: 'create');
+    _domainSettlements[settlement.id] = settlement;
+  }
+
+  Future<void> saveCoinType(ZarCoinType coinType) async {
+    final catalog = _repository;
+    if (catalog is! ZarCoinCatalogRepository) {
+      throw StateError('Coin catalog is unavailable.');
+    }
+    final coinCatalog = catalog as ZarCoinCatalogRepository;
+    await coinCatalog.saveCoinType(coinType);
+    await _refreshCoinTypes(coinCatalog);
+  }
+
+  Future<void> archiveCoinType(ZarCoinType coinType) async {
+    final catalog = _repository;
+    if (catalog is! ZarCoinCatalogRepository) {
+      throw StateError('Coin catalog is unavailable.');
+    }
+    final coinCatalog = catalog as ZarCoinCatalogRepository;
+    await coinCatalog.archiveCoinType(coinType);
+    await _refreshCoinTypes(coinCatalog);
+  }
+
+  Future<void> restoreCoinType(ZarCoinType coinType) async {
+    final catalog = _repository;
+    if (catalog is! ZarCoinCatalogRepository) {
+      throw StateError('Coin catalog is unavailable.');
+    }
+    final coinCatalog = catalog as ZarCoinCatalogRepository;
+    await coinCatalog.restoreCoinType(coinType);
+    await _refreshCoinTypes(coinCatalog);
+  }
+
+  Future<void> _refreshCoinTypes(ZarCoinCatalogRepository catalog) async {
+    _coinTypes = await catalog.loadCoinTypes(includeArchived: true);
   }
 
   ZarReminderPlan reminderPlanFor(String recordId) =>
@@ -242,6 +294,7 @@ class ZarPhaseA2Store {
     hasTime: source.hasTime,
     status: source.status,
     reminderPlan: reminderPlan ?? source.reminderPlan,
+    coinValuation: source.coinValuation,
     completedAt: source.completedAt,
     completedBy: source.completedBy,
     note: source.note,
@@ -249,6 +302,46 @@ class ZarPhaseA2Store {
     createdAt: source.createdAt,
     updatedAt: updatedAt ?? source.updatedAt,
   );
+
+  ZarSettlement _coinSettlementFromUi(AppRecord record, ZarSettlement source) {
+    final gregorian = record.date.toGregorian();
+    final scheduled = DateTime(
+      gregorian.year,
+      gregorian.month,
+      gregorian.day,
+      record.time?.hour ?? 12,
+      record.time?.minute ?? 0,
+    ).toUtc();
+    final status = switch (record.status) {
+      SettlementStatus.open => ZarSettlementStatus.open,
+      SettlementStatus.completed => ZarSettlementStatus.completed,
+      SettlementStatus.cancelled => ZarSettlementStatus.cancelled,
+    };
+    final now = _clock().toUtc();
+    return ZarSettlement(
+      id: source.id,
+      businessId: source.businessId,
+      dealId: source.dealId,
+      personId: record.personId,
+      direction: source.direction,
+      amount: source.amount,
+      scheduledAt: scheduled,
+      hasTime: record.time != null,
+      status: status,
+      reminderPlan: source.reminderPlan,
+      coinValuation: source.coinValuation,
+      completedAt: status == ZarSettlementStatus.completed
+          ? source.completedAt ?? now
+          : null,
+      completedBy: status == ZarSettlementStatus.completed
+          ? source.completedBy ?? 'local-user'
+          : null,
+      note: record.note,
+      createdBy: source.createdBy,
+      createdAt: source.createdAt,
+      updatedAt: now,
+    );
+  }
 
   int _compareRecordDescending(AppRecord a, AppRecord b) {
     final dateCompare = b.date.compareTo(a.date);

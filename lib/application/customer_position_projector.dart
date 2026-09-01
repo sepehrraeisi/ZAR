@@ -24,6 +24,17 @@ class ZarCustomerCurrencyPosition extends ZarCustomerPositionItem {
   final String decimalAmount;
 }
 
+class ZarCustomerCoinPosition extends ZarCustomerPositionItem {
+  const ZarCustomerCoinPosition({
+    required this.identity,
+    required this.displayName,
+    required this.quantity,
+  });
+  final String identity;
+  final String displayName;
+  final int quantity;
+}
+
 class ZarCustomerPosition {
   const ZarCustomerPosition({
     required this.receive,
@@ -117,6 +128,7 @@ class ZarCustomerPositionProjector {
   ) {
     final gold = <String?, ZarExactDecimal>{};
     final currencies = <String, _CurrencyAccumulator>{};
+    final coins = <String, _CoinAccumulator>{};
     for (final settlement in settlements) {
       switch (settlement.amount) {
         case ZarGoldAssetAmount(:final value):
@@ -133,6 +145,22 @@ class ZarCustomerPositionProjector {
           currencies
               .putIfAbsent(value.code, _CurrencyAccumulator.new)
               .add(value.minorUnits, value.minorUnitScale);
+        case ZarCoinBundleAmount(:final lines):
+          for (final line in lines) {
+            final identity =
+                '${line.coinTypeId}|${line.weightPerPieceGrams ?? ''}|${line.fineness ?? ''}';
+            coins
+                    .putIfAbsent(
+                      identity,
+                      () => _CoinAccumulator(
+                        line.coinTypeNameSnapshot,
+                        line.weightPerPieceGrams,
+                        line.fineness,
+                      ),
+                    )
+                    .quantity +=
+                line.quantity;
+          }
       }
     }
 
@@ -149,6 +177,13 @@ class ZarCustomerPositionProjector {
           decimalAmount: entry.value.decimal,
         ),
       ),
+      ...coins.entries.map(
+        (entry) => ZarCustomerCoinPosition(
+          identity: entry.key,
+          displayName: entry.value.label,
+          quantity: entry.value.quantity,
+        ),
+      ),
     ];
     result.sort((a, b) => _sortKey(a).compareTo(_sortKey(b)));
     return List.unmodifiable(result);
@@ -157,7 +192,21 @@ class ZarCustomerPositionProjector {
   String _sortKey(ZarCustomerPositionItem item) => switch (item) {
     ZarCustomerGoldPosition(:final fineness) => '0-${fineness ?? 'unknown'}',
     ZarCustomerCurrencyPosition(:final code) => '1-$code',
+    ZarCustomerCoinPosition(:final identity) => '2-$identity',
   };
+}
+
+class _CoinAccumulator {
+  _CoinAccumulator(this.name, this.weight, this.fineness);
+  final String name;
+  final String? weight;
+  final String? fineness;
+  int quantity = 0;
+  String get label => [
+    name,
+    if (weight != null) '$weight گرم',
+    if (fineness != null) 'عیار $fineness',
+  ].join(' ');
 }
 
 class _CurrencyAccumulator {

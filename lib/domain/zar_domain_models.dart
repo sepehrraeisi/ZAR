@@ -1,6 +1,6 @@
 import 'zar_reminder_plan.dart';
 
-enum ZarAssetType { gold, currency }
+enum ZarAssetType { gold, currency, coin }
 
 enum ZarDealType { buy, sell }
 
@@ -11,6 +11,10 @@ enum ZarSettlementDirection { receive, deliver }
 enum ZarSettlementStatus { open, completed, cancelled }
 
 enum ZarGoldUnit { gram, mesghal, coin, item }
+
+enum ZarCoinCategory { official, parsian, other }
+
+enum ZarCoinPricingMethod { perPiece, perGram }
 
 const String zarGramsPerMesghal = '4.6083';
 
@@ -144,6 +148,8 @@ sealed class ZarDealPricing {
         return ZarGoldDealPricing.fromMap(map);
       case 'currency':
         return ZarCurrencyDealPricing.fromMap(map);
+      case 'coin':
+        return ZarCoinDealPricing.fromMap(map);
       default:
         throw const FormatException('Unsupported deal pricing kind.');
     }
@@ -345,6 +351,330 @@ class ZarCurrencyDealPricing extends ZarDealPricing {
       );
 }
 
+class ZarCoinType {
+  ZarCoinType({
+    required this.id,
+    required String name,
+    required this.category,
+    String? defaultWeightGrams,
+    String? defaultFineness,
+    required this.defaultPricingMethod,
+    this.archived = false,
+    required this.createdAt,
+    required this.updatedAt,
+  }) : name = name.trim(),
+       defaultWeightGrams = defaultWeightGrams == null
+           ? null
+           : normalizeDecimal(defaultWeightGrams),
+       defaultFineness = defaultFineness == null
+           ? null
+           : normalizeGoldFineness(defaultFineness) {
+    if (id.trim().isEmpty || this.name.isEmpty) {
+      throw const FormatException('Coin type id and name are required.');
+    }
+  }
+
+  final String id;
+  final String name;
+  final ZarCoinCategory category;
+  final String? defaultWeightGrams;
+  final String? defaultFineness;
+  final ZarCoinPricingMethod defaultPricingMethod;
+  final bool archived;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  ZarCoinType copyWith({
+    String? name,
+    ZarCoinCategory? category,
+    String? defaultWeightGrams,
+    bool clearDefaultWeight = false,
+    String? defaultFineness,
+    bool clearDefaultFineness = false,
+    ZarCoinPricingMethod? defaultPricingMethod,
+    bool? archived,
+    DateTime? updatedAt,
+  }) => ZarCoinType(
+    id: id,
+    name: name ?? this.name,
+    category: category ?? this.category,
+    defaultWeightGrams: clearDefaultWeight
+        ? null
+        : defaultWeightGrams ?? this.defaultWeightGrams,
+    defaultFineness: clearDefaultFineness
+        ? null
+        : defaultFineness ?? this.defaultFineness,
+    defaultPricingMethod: defaultPricingMethod ?? this.defaultPricingMethod,
+    archived: archived ?? this.archived,
+    createdAt: createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+
+  Map<String, Object?> toMap() => {
+    'id': id,
+    'name': name,
+    'category': category.name,
+    'defaultWeightGrams': defaultWeightGrams,
+    'defaultFineness': defaultFineness,
+    'defaultPricingMethod': defaultPricingMethod.name,
+    'archived': archived,
+    'createdAt': createdAt.toUtc().toIso8601String(),
+    'updatedAt': updatedAt.toUtc().toIso8601String(),
+  };
+
+  factory ZarCoinType.fromMap(Map<String, Object?> map) => ZarCoinType(
+    id: map['id']! as String,
+    name: map['name']! as String,
+    category: ZarCoinCategory.values.byName(map['category']! as String),
+    defaultWeightGrams: map['defaultWeightGrams'] as String?,
+    defaultFineness: map['defaultFineness'] as String?,
+    defaultPricingMethod: ZarCoinPricingMethod.values.byName(
+      map['defaultPricingMethod']! as String,
+    ),
+    archived: map['archived'] as bool? ?? false,
+    createdAt: DateTime.parse(map['createdAt']! as String),
+    updatedAt: DateTime.parse(map['updatedAt']! as String),
+  );
+}
+
+List<ZarCoinType> zarInitialCoinTypes({DateTime? now}) {
+  final timestamp = (now ?? DateTime.now()).toUtc();
+  return [
+    ZarCoinType(
+      id: 'coin-emami',
+      name: 'سکه امامی',
+      category: ZarCoinCategory.official,
+      defaultPricingMethod: ZarCoinPricingMethod.perPiece,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCoinType(
+      id: 'coin-bahar-old',
+      name: 'سکه تمام طرح قدیم',
+      category: ZarCoinCategory.official,
+      defaultPricingMethod: ZarCoinPricingMethod.perPiece,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCoinType(
+      id: 'coin-half',
+      name: 'نیم‌سکه',
+      category: ZarCoinCategory.official,
+      defaultPricingMethod: ZarCoinPricingMethod.perPiece,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCoinType(
+      id: 'coin-quarter',
+      name: 'ربع‌سکه',
+      category: ZarCoinCategory.official,
+      defaultPricingMethod: ZarCoinPricingMethod.perPiece,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCoinType(
+      id: 'coin-one-gram',
+      name: 'سکه یک‌گرمی',
+      category: ZarCoinCategory.official,
+      defaultPricingMethod: ZarCoinPricingMethod.perPiece,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCoinType(
+      id: 'coin-parsian',
+      name: 'سکه پارسیان',
+      category: ZarCoinCategory.parsian,
+      defaultFineness: '750',
+      defaultPricingMethod: ZarCoinPricingMethod.perGram,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCoinType(
+      id: 'coin-other',
+      name: 'سایر سکه‌ها',
+      category: ZarCoinCategory.other,
+      defaultPricingMethod: ZarCoinPricingMethod.perPiece,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+  ];
+}
+
+class ZarCoinLine {
+  ZarCoinLine({
+    required this.id,
+    required this.coinTypeId,
+    required String coinTypeNameSnapshot,
+    required this.quantity,
+    String? weightPerPieceGrams,
+    String? fineness,
+  }) : coinTypeNameSnapshot = coinTypeNameSnapshot.trim(),
+       weightPerPieceGrams = weightPerPieceGrams == null
+           ? null
+           : normalizeDecimal(weightPerPieceGrams),
+       fineness = fineness == null ? null : normalizeGoldFineness(fineness) {
+    if (id.trim().isEmpty ||
+        coinTypeId.trim().isEmpty ||
+        this.coinTypeNameSnapshot.isEmpty ||
+        quantity <= 0) {
+      throw const FormatException('Invalid coin line.');
+    }
+  }
+  final String id;
+  final String coinTypeId;
+  final String coinTypeNameSnapshot;
+  final int quantity;
+  final String? weightPerPieceGrams;
+  final String? fineness;
+  Map<String, Object?> toMap() => {
+    'id': id,
+    'coinTypeId': coinTypeId,
+    'coinTypeNameSnapshot': coinTypeNameSnapshot,
+    'quantity': quantity,
+    'weightPerPieceGrams': weightPerPieceGrams,
+    'fineness': fineness,
+  };
+  factory ZarCoinLine.fromMap(Map<String, Object?> map) => ZarCoinLine(
+    id: map['id']! as String,
+    coinTypeId: map['coinTypeId']! as String,
+    coinTypeNameSnapshot: map['coinTypeNameSnapshot']! as String,
+    quantity: map['quantity']! as int,
+    weightPerPieceGrams: map['weightPerPieceGrams'] as String?,
+    fineness: map['fineness'] as String?,
+  );
+}
+
+class ZarCoinLinePricing {
+  ZarCoinLinePricing({
+    required this.lineId,
+    required this.method,
+    required this.unitPriceToman,
+    String? priceReferenceFineness,
+    required this.rowTotalToman,
+  }) : priceReferenceFineness = priceReferenceFineness == null
+           ? null
+           : normalizeGoldFineness(priceReferenceFineness);
+  factory ZarCoinLinePricing.calculate({
+    required ZarCoinLine line,
+    required ZarCoinPricingMethod method,
+    required ZarTomanAmount unitPriceToman,
+    String priceReferenceFineness = '750',
+  }) {
+    final quantity = ZarExactDecimal.parse(line.quantity.toString());
+    var total = quantity.multiply(
+      ZarExactDecimal.parse(unitPriceToman.wholeTomans.toString()),
+    );
+    String? reference;
+    if (method == ZarCoinPricingMethod.perGram) {
+      if (line.weightPerPieceGrams == null || line.fineness == null) {
+        throw const FormatException(
+          'Weighted coin pricing requires weight and fineness.',
+        );
+      }
+      reference = normalizeGoldFineness(priceReferenceFineness);
+      total = quantity
+          .multiply(ZarExactDecimal.parse(line.weightPerPieceGrams!))
+          .multiply(ZarExactDecimal.parse(line.fineness!))
+          .divide(ZarExactDecimal.parse(reference), decimalPlaces: 12)
+          .multiply(
+            ZarExactDecimal.parse(unitPriceToman.wholeTomans.toString()),
+          );
+    }
+    return ZarCoinLinePricing(
+      lineId: line.id,
+      method: method,
+      unitPriceToman: unitPriceToman,
+      priceReferenceFineness: reference,
+      rowTotalToman: ZarTomanAmount(total.roundToWhole()),
+    );
+  }
+  final String lineId;
+  final ZarCoinPricingMethod method;
+  final ZarTomanAmount unitPriceToman;
+  final String? priceReferenceFineness;
+  final ZarTomanAmount rowTotalToman;
+  Map<String, Object?> toMap() => {
+    'lineId': lineId,
+    'method': method.name,
+    'unitPriceToman': unitPriceToman.toMap(),
+    'priceReferenceFineness': priceReferenceFineness,
+    'rowTotalToman': rowTotalToman.toMap(),
+  };
+  factory ZarCoinLinePricing.fromMap(Map<String, Object?> map) =>
+      ZarCoinLinePricing(
+        lineId: map['lineId']! as String,
+        method: ZarCoinPricingMethod.values.byName(map['method']! as String),
+        unitPriceToman: ZarTomanAmount.fromMap(
+          Map<String, Object?>.from(map['unitPriceToman']! as Map),
+        ),
+        priceReferenceFineness: map['priceReferenceFineness'] as String?,
+        rowTotalToman: ZarTomanAmount.fromMap(
+          Map<String, Object?>.from(map['rowTotalToman']! as Map),
+        ),
+      );
+}
+
+class ZarCoinDealPricing extends ZarDealPricing {
+  ZarCoinDealPricing({required List<ZarCoinLinePricing> lines})
+    : lines = List.unmodifiable(lines),
+      totalToman = ZarTomanAmount(
+        lines.fold<int>(0, (sum, line) => sum + line.rowTotalToman.wholeTomans),
+      ) {
+    if (lines.isEmpty) {
+      throw const FormatException(
+        'Coin deal pricing requires at least one line.',
+      );
+    }
+  }
+  final List<ZarCoinLinePricing> lines;
+  @override
+  final ZarTomanAmount totalToman;
+  @override
+  Map<String, Object?> toMap() => {
+    'kind': 'coin',
+    'lines': lines.map((e) => e.toMap()).toList(),
+    'totalToman': totalToman.toMap(),
+  };
+  factory ZarCoinDealPricing.fromMap(Map<String, Object?> map) =>
+      ZarCoinDealPricing(
+        lines: (map['lines']! as List)
+            .map(
+              (e) => ZarCoinLinePricing.fromMap(
+                Map<String, Object?>.from(e as Map),
+              ),
+            )
+            .toList(),
+      );
+}
+
+class ZarCoinSettlementValuation {
+  ZarCoinSettlementValuation({required List<ZarCoinLinePricing> lines})
+    : lines = List.unmodifiable(lines),
+      totalToman = ZarTomanAmount(
+        lines.fold<int>(0, (sum, line) => sum + line.rowTotalToman.wholeTomans),
+      ) {
+    if (lines.isEmpty) {
+      throw const FormatException('Coin valuation requires at least one line.');
+    }
+  }
+  final List<ZarCoinLinePricing> lines;
+  final ZarTomanAmount totalToman;
+  Map<String, Object?> toMap() => {
+    'lines': lines.map((e) => e.toMap()).toList(),
+    'totalToman': totalToman.toMap(),
+  };
+  factory ZarCoinSettlementValuation.fromMap(Map<String, Object?> map) =>
+      ZarCoinSettlementValuation(
+        lines: (map['lines']! as List)
+            .map(
+              (e) => ZarCoinLinePricing.fromMap(
+                Map<String, Object?>.from(e as Map),
+              ),
+            )
+            .toList(),
+      );
+}
+
 /// Decimal-safe gold quantity. The canonical value is kept as a normalized
 /// decimal string so business math never depends on binary floating point.
 class ZarGoldQuantity {
@@ -454,8 +784,36 @@ sealed class ZarAssetAmount {
             Map<String, Object?>.from(map['currency']! as Map),
           ),
         );
+      case ZarAssetType.coin:
+        return ZarCoinBundleAmount(
+          (map['coinLines']! as List)
+              .map(
+                (item) =>
+                    ZarCoinLine.fromMap(Map<String, Object?>.from(item as Map)),
+              )
+              .toList(),
+        );
     }
   }
+}
+
+class ZarCoinBundleAmount extends ZarAssetAmount {
+  ZarCoinBundleAmount(List<ZarCoinLine> lines)
+    : lines = List.unmodifiable(lines) {
+    if (lines.isEmpty || lines.map((e) => e.id).toSet().length != lines.length) {
+      throw const FormatException(
+        'Coin bundle requires unique non-empty lines.',
+      );
+    }
+  }
+  final List<ZarCoinLine> lines;
+  @override
+  ZarAssetType get assetType => ZarAssetType.coin;
+  @override
+  Map<String, Object?> toMap() => {
+    'assetType': assetType.name,
+    'coinLines': lines.map((e) => e.toMap()).toList(),
+  };
 }
 
 class ZarGoldAssetAmount extends ZarAssetAmount {
@@ -550,6 +908,21 @@ class ZarDeal {
         'Currency pricing requires a currency deal amount.',
       );
     }
+    if (dealAmount is ZarCoinBundleAmount) {
+      if (dealPricing is! ZarCoinDealPricing) {
+        throw const FormatException('Coin deals require typed coin pricing.');
+      }
+      final amountIds = dealAmount.lines.map((e) => e.id).toSet();
+      final pricingIds = dealPricing.lines.map((e) => e.lineId).toSet();
+      if (amountIds.length != pricingIds.length ||
+          !amountIds.containsAll(pricingIds)) {
+        throw const FormatException(
+          'Coin deal pricing must cover every coin line exactly once.',
+        );
+      }
+    } else if (dealPricing is ZarCoinDealPricing) {
+      throw const FormatException('Coin pricing requires a coin bundle.');
+    }
   }
 
   final String id;
@@ -578,6 +951,7 @@ class ZarSettlement {
     required this.hasTime,
     this.status = ZarSettlementStatus.open,
     this.reminderPlan = const ZarReminderPlan(),
+    this.coinValuation,
     this.completedAt,
     String? completedBy,
     String? note,
@@ -596,6 +970,23 @@ class ZarSettlement {
         'Only completed settlements may have completedAt.',
       );
     }
+    if (coinValuation != null) {
+      if (amount is! ZarCoinBundleAmount) {
+        throw const FormatException(
+          'Coin valuation requires a coin settlement.',
+        );
+      }
+      final amountIds = (amount as ZarCoinBundleAmount).lines
+          .map((e) => e.id)
+          .toSet();
+      final pricingIds = coinValuation!.lines.map((e) => e.lineId).toSet();
+      if (!amountIds.containsAll(pricingIds) ||
+          pricingIds.length != coinValuation!.lines.length) {
+        throw const FormatException(
+          'Coin settlement valuation references an unknown line.',
+        );
+      }
+    }
   }
 
   final String id;
@@ -608,6 +999,7 @@ class ZarSettlement {
   final bool hasTime;
   final ZarSettlementStatus status;
   final ZarReminderPlan reminderPlan;
+  final ZarCoinSettlementValuation? coinValuation;
   final DateTime? completedAt;
   final String? completedBy;
   final String? note;

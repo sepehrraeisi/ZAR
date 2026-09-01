@@ -5,11 +5,13 @@ class ZarDomainSnapshot {
     required this.people,
     required this.deals,
     required this.settlements,
+    this.coinTypes = const [],
   });
 
   final List<ZarPerson> people;
   final List<ZarDeal> deals;
   final List<ZarSettlement> settlements;
+  final List<ZarCoinType> coinTypes;
 }
 
 /// Repository boundary used by the production application layer.
@@ -66,26 +68,42 @@ abstract interface class ZarDomainRepository {
   Future<void> restorePerson(ZarPerson person);
 }
 
-class InMemoryZarDomainRepository implements ZarDomainRepository {
+abstract interface class ZarCoinCatalogRepository {
+  Future<List<ZarCoinType>> loadCoinTypes({bool includeArchived = false});
+  Future<void> saveCoinType(ZarCoinType coinType);
+  Future<void> archiveCoinType(ZarCoinType coinType);
+  Future<void> restoreCoinType(ZarCoinType coinType);
+}
+
+class InMemoryZarDomainRepository
+    implements ZarDomainRepository, ZarCoinCatalogRepository {
   InMemoryZarDomainRepository({
     Iterable<ZarPerson> people = const [],
     Iterable<ZarDeal> deals = const [],
     Iterable<ZarSettlement> settlements = const [],
-  })  : _people = {for (final item in people) item.id: item},
-        _deals = {for (final item in deals) item.id: item},
-        _settlements = {for (final item in settlements) item.id: item};
+    Iterable<ZarCoinType>? coinTypes,
+  }) : _people = {for (final item in people) item.id: item},
+       _deals = {for (final item in deals) item.id: item},
+       _settlements = {for (final item in settlements) item.id: item},
+       _coinTypes = {
+         for (final item
+             in coinTypes ?? zarInitialCoinTypes(now: DateTime.utc(2026)))
+           item.id: item,
+       };
 
   final Map<String, ZarPerson> _people;
   final Map<String, ZarDeal> _deals;
   final Map<String, ZarSettlement> _settlements;
+  final Map<String, ZarCoinType> _coinTypes;
   final List<Map<String, Object?>> auditEvents = [];
 
   @override
   Future<ZarDomainSnapshot> loadCompleteSnapshot() async => ZarDomainSnapshot(
-        people: List.unmodifiable(_people.values),
-        deals: List.unmodifiable(_deals.values),
-        settlements: List.unmodifiable(_settlements.values),
-      );
+    people: List.unmodifiable(_people.values),
+    deals: List.unmodifiable(_deals.values),
+    settlements: List.unmodifiable(_settlements.values),
+    coinTypes: List.unmodifiable(_coinTypes.values),
+  );
 
   @override
   Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
@@ -94,6 +112,7 @@ class InMemoryZarDomainRepository implements ZarDomainRepository {
     final settlements = {
       for (final item in snapshot.settlements) item.id: item,
     };
+    final coinTypes = {for (final item in snapshot.coinTypes) item.id: item};
     _people
       ..clear()
       ..addAll(people);
@@ -103,17 +122,29 @@ class InMemoryZarDomainRepository implements ZarDomainRepository {
     _settlements
       ..clear()
       ..addAll(settlements);
+    _coinTypes
+      ..clear()
+      ..addAll(
+        coinTypes.isEmpty
+            ? {
+                for (final item in zarInitialCoinTypes(now: DateTime.utc(2026)))
+                  item.id: item,
+              }
+            : coinTypes,
+      );
     _audit('complete-backup', 'business', 'restore_replace');
   }
 
   @override
-  Future<List<ZarPerson>> loadActivePeople({int limit = 100}) async => _people.values
+  Future<List<ZarPerson>> loadActivePeople({int limit = 100}) async => _people
+      .values
       .where((item) => !item.archived)
       .take(limit)
       .toList(growable: false);
 
   @override
-  Future<List<ZarPerson>> loadArchivedPeople({int limit = 100}) async => _people.values
+  Future<List<ZarPerson>> loadArchivedPeople({int limit = 100}) async => _people
+      .values
       .where((item) => item.archived)
       .take(limit)
       .toList(growable: false);
@@ -124,12 +155,13 @@ class InMemoryZarDomainRepository implements ZarDomainRepository {
     required DateTime through,
     int limit = 250,
   }) async {
-    final result = _settlements.values
-        .where((item) => item.isOpen)
-        .where((item) => !item.scheduledAt.isBefore(from))
-        .where((item) => item.scheduledAt.isBefore(through))
-        .toList(growable: false)
-      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    final result =
+        _settlements.values
+            .where((item) => item.isOpen)
+            .where((item) => !item.scheduledAt.isBefore(from))
+            .where((item) => item.scheduledAt.isBefore(through))
+            .toList(growable: false)
+          ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
     return result.take(limit).toList(growable: false);
   }
 
@@ -138,10 +170,11 @@ class InMemoryZarDomainRepository implements ZarDomainRepository {
     required DateTime now,
     int limit = 100,
   }) async {
-    final result = _settlements.values
-        .where((item) => item.isOpen && item.scheduledAt.isBefore(now))
-        .toList(growable: false)
-      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    final result =
+        _settlements.values
+            .where((item) => item.isOpen && item.scheduledAt.isBefore(now))
+            .toList(growable: false)
+          ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
     return result.take(limit).toList(growable: false);
   }
 
@@ -160,14 +193,27 @@ class InMemoryZarDomainRepository implements ZarDomainRepository {
   }
 
   @override
+  Future<List<ZarCoinType>> loadCoinTypes({
+    bool includeArchived = false,
+  }) async {
+    final result =
+        _coinTypes.values
+            .where((item) => includeArchived || !item.archived)
+            .toList(growable: false)
+          ..sort((a, b) => a.name.compareTo(b.name));
+    return result;
+  }
+
+  @override
   Future<List<ZarSettlement>> loadPersonSettlements({
     required String personId,
     int limit = 100,
   }) async {
-    final result = _settlements.values
-        .where((item) => item.personId == personId)
-        .toList(growable: false)
-      ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
+    final result =
+        _settlements.values
+            .where((item) => item.personId == personId)
+            .toList(growable: false)
+          ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
     return result.take(limit).toList(growable: false);
   }
 
@@ -176,15 +222,19 @@ class InMemoryZarDomainRepository implements ZarDomainRepository {
     required String personId,
     int limit = 100,
   }) async {
-    final result = _deals.values
-        .where((item) => item.personId == personId)
-        .toList(growable: false)
-      ..sort((a, b) => b.dealAt.compareTo(a.dealAt));
+    final result =
+        _deals.values
+            .where((item) => item.personId == personId)
+            .toList(growable: false)
+          ..sort((a, b) => b.dealAt.compareTo(a.dealAt));
     return result.take(limit).toList(growable: false);
   }
 
   @override
-  Future<void> savePerson(ZarPerson person, {String auditAction = 'edit'}) async {
+  Future<void> savePerson(
+    ZarPerson person, {
+    String auditAction = 'edit',
+  }) async {
     final existed = _people.containsKey(person.id);
     _people[person.id] = person;
     _audit(person.id, 'person', existed ? auditAction : 'create');
@@ -208,16 +258,38 @@ class InMemoryZarDomainRepository implements ZarDomainRepository {
   }
 
   @override
+  Future<void> saveCoinType(ZarCoinType coinType) async {
+    _coinTypes[coinType.id] = coinType;
+  }
+
+  @override
+  Future<void> archiveCoinType(ZarCoinType coinType) => saveCoinType(
+    coinType.copyWith(archived: true, updatedAt: DateTime.now().toUtc()),
+  );
+
+  @override
+  Future<void> restoreCoinType(ZarCoinType coinType) => saveCoinType(
+    coinType.copyWith(archived: false, updatedAt: DateTime.now().toUtc()),
+  );
+
+  @override
   Future<void> archivePerson(ZarPerson person) async {
-    await savePerson(_copyPerson(person, archived: true), auditAction: 'archive');
+    await savePerson(
+      _copyPerson(person, archived: true),
+      auditAction: 'archive',
+    );
   }
 
   @override
   Future<void> restorePerson(ZarPerson person) async {
-    await savePerson(_copyPerson(person, archived: false), auditAction: 'restore');
+    await savePerson(
+      _copyPerson(person, archived: false),
+      auditAction: 'restore',
+    );
   }
 
-  ZarPerson _copyPerson(ZarPerson person, {required bool archived}) => ZarPerson(
+  ZarPerson _copyPerson(ZarPerson person, {required bool archived}) =>
+      ZarPerson(
         id: person.id,
         displayName: person.displayName,
         phone: person.phone,

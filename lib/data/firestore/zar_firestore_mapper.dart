@@ -170,6 +170,12 @@ class ZarFirestoreMapper {
           'currencyMinorUnits': value.minorUnits,
           'currencyMinorUnitScale': value.minorUnitScale,
         };
+      case ZarCoinBundleAmount(:final lines):
+        return {
+          'coinLines': lines
+              .map((item) => item.toMap())
+              .toList(growable: false),
+        };
     }
   }
 
@@ -191,6 +197,15 @@ class ZarFirestoreMapper {
             minorUnits: map['currencyMinorUnits']! as int,
             minorUnitScale: map['currencyMinorUnitScale'] as int? ?? 2,
           ),
+        );
+      case ZarAssetType.coin:
+        return ZarCoinBundleAmount(
+          (map['coinLines']! as List)
+              .map(
+                (item) =>
+                    ZarCoinLine.fromMap(Map<String, Object?>.from(item as Map)),
+              )
+              .toList(growable: false),
         );
     }
   }

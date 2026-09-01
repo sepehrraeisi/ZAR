@@ -101,6 +101,59 @@ class ZarReminderRules extends Table {
   Set<Column<Object>> get primaryKey => {settlementId, ruleId};
 }
 
+@DataClassName('LocalCoinTypeRow')
+class ZarCoinTypes extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get category => text()();
+  TextColumn get defaultWeightGrams => text().nullable()();
+  TextColumn get defaultFineness => text().nullable()();
+  TextColumn get defaultPricingMethod => text()();
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
+  IntColumn get createdAtMicros => integer()();
+  IntColumn get updatedAtMicros => integer()();
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('LocalDealCoinLineRow')
+class ZarDealCoinLines extends Table {
+  TextColumn get dealId =>
+      text().references(ZarDeals, #id, onDelete: KeyAction.cascade)();
+  TextColumn get lineId => text()();
+  IntColumn get position => integer()();
+  TextColumn get coinTypeId => text()();
+  TextColumn get coinTypeNameSnapshot => text()();
+  IntColumn get quantity => integer()();
+  TextColumn get weightPerPieceGrams => text().nullable()();
+  TextColumn get fineness => text().nullable()();
+  TextColumn get pricingMethod => text()();
+  IntColumn get unitPriceToman => integer()();
+  TextColumn get priceReferenceFineness => text().nullable()();
+  IntColumn get rowTotalToman => integer()();
+  @override
+  Set<Column<Object>> get primaryKey => {dealId, lineId};
+}
+
+@DataClassName('LocalSettlementCoinLineRow')
+class ZarSettlementCoinLines extends Table {
+  TextColumn get settlementId =>
+      text().references(ZarSettlements, #id, onDelete: KeyAction.cascade)();
+  TextColumn get lineId => text()();
+  IntColumn get position => integer()();
+  TextColumn get coinTypeId => text()();
+  TextColumn get coinTypeNameSnapshot => text()();
+  IntColumn get quantity => integer()();
+  TextColumn get weightPerPieceGrams => text().nullable()();
+  TextColumn get fineness => text().nullable()();
+  TextColumn get pricingMethod => text().nullable()();
+  IntColumn get unitPriceToman => integer().nullable()();
+  TextColumn get priceReferenceFineness => text().nullable()();
+  IntColumn get rowTotalToman => integer().nullable()();
+  @override
+  Set<Column<Object>> get primaryKey => {settlementId, lineId};
+}
+
 @DataClassName('LocalMetadataRow')
 class ZarLocalMetadata extends Table {
   TextColumn get key => text()();
@@ -117,6 +170,9 @@ class ZarLocalMetadata extends Table {
     ZarSettlements,
     ZarReminderRules,
     ZarLocalMetadata,
+    ZarCoinTypes,
+    ZarDealCoinLines,
+    ZarSettlementCoinLines,
   ],
 )
 class ZarLocalDatabase extends _$ZarLocalDatabase {
@@ -124,7 +180,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
 
   ZarLocalDatabase.defaults() : super(driftDatabase(name: 'zar_plus_local'));
 
-  static const currentSchemaVersion = 5;
+  static const currentSchemaVersion = 6;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -136,7 +192,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
       await into(zarLocalMetadata).insert(
         ZarLocalMetadataCompanion.insert(
           key: 'domain_schema_version',
-          value: '5',
+          value: '6',
         ),
       );
     },
@@ -205,6 +261,14 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
         await (update(zarLocalMetadata)
               ..where((row) => row.key.equals('domain_schema_version')))
             .write(const ZarLocalMetadataCompanion(value: Value('5')));
+      }
+      if (from < 6) {
+        await migrator.createTable(zarCoinTypes);
+        await migrator.createTable(zarDealCoinLines);
+        await migrator.createTable(zarSettlementCoinLines);
+        await (update(zarLocalMetadata)
+              ..where((row) => row.key.equals('domain_schema_version')))
+            .write(const ZarLocalMetadataCompanion(value: Value('6')));
       }
       if (to > currentSchemaVersion) {
         throw StateError(

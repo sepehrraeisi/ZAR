@@ -16,9 +16,9 @@ class ZarBackupPreview {
       .where((settlement) => !settlement.reminderPlan.isEmpty)
       .length;
   int get reminderRuleCount => bundle.settlements.fold(
-        0,
-        (sum, settlement) => sum + settlement.reminderPlan.rules.length,
-      );
+    0,
+    (sum, settlement) => sum + settlement.reminderPlan.rules.length,
+  );
 }
 
 class ZarRestoreReminderException implements Exception {
@@ -34,12 +34,12 @@ class ZarBackupManager {
     required Future<void> Function() reconcileRemindersAfterRestore,
     ZarDomainBackupCodec codec = const ZarDomainBackupCodec(),
     DateTime Function()? clock,
-  })  : _repository = repository,
-        _store = store,
-        _businessId = businessId,
-        _reconcileRemindersAfterRestore = reconcileRemindersAfterRestore,
-        _codec = codec,
-        _clock = clock ?? DateTime.now;
+  }) : _repository = repository,
+       _store = store,
+       _businessId = businessId,
+       _reconcileRemindersAfterRestore = reconcileRemindersAfterRestore,
+       _codec = codec,
+       _clock = clock ?? DateTime.now;
 
   final ZarDomainRepository _repository;
   final ZarPhaseA2Store _store;
@@ -57,6 +57,7 @@ class ZarBackupManager {
         people: snapshot.people,
         deals: snapshot.deals,
         settlements: snapshot.settlements,
+        coinTypes: snapshot.coinTypes,
       ),
     );
   }
@@ -76,6 +77,7 @@ class ZarBackupManager {
         people: bundle.people,
         deals: bundle.deals,
         settlements: bundle.settlements,
+        coinTypes: bundle.coinTypes,
       ),
     );
     await _store.refresh();

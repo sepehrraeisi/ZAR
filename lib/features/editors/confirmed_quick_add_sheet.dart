@@ -11,10 +11,12 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
     super.key,
     required this.people,
     required this.onSave,
+    this.coinTypes = const [],
     this.initialReminder = '۱۵ دقیقه',
   });
   final List<AppPerson> people;
   final Future<void> Function(QuickAddDraft draft) onSave;
+  final List<ZarCoinType> coinTypes;
   final String initialReminder;
   @override
   State<ConfirmedQuickAddSheet> createState() => _ConfirmedQuickAddSheetState();
@@ -38,17 +40,22 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   TimeOfDay? _time;
   late String _reminder = widget.initialReminder;
   String? _error;
+  final List<_CoinDraftRow> _coinRows = [];
 
   bool get _isSettlement => _operation == 'دریافت' || _operation == 'تحویل';
   bool get _isGold => _asset == 'طلا';
   bool get _isCash => _asset == 'وجه نقد';
   bool get _isCurrency => _asset == 'ارز' || _isCash;
+  bool get _isCoin => _asset == 'سکه';
   bool get _needsPricing => !_isSettlement || _settlementValue;
 
   @override
   void dispose() {
     for (final controller in [_amount, _fineness, _reference, _rate, _note]) {
       controller.dispose();
+    }
+    for (final row in _coinRows) {
+      row.dispose();
     }
     super.dispose();
   }
@@ -89,10 +96,10 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       _operation != null &&
       _asset != null &&
       _person != null &&
-      _amount.text.trim().isNotEmpty &&
+      (_isCoin ? _coinData() != null : _amount.text.trim().isNotEmpty) &&
       (!_isGold || _fineness.text.trim().isNotEmpty) &&
       (_asset != 'ارز' || _currencyCode != null) &&
-      (!_needsPricing || _isCash || _pricing() != null);
+      (!_needsPricing || _isCash || _isCoin || _pricing() != null);
 
   void _selectOperation(String value) => setState(() {
     _operation = value;
@@ -105,7 +112,62 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
         : value == 'وجه نقد'
         ? 'TOMAN'
         : null;
+    if (value == 'سکه' && _coinRows.isEmpty && widget.coinTypes.isNotEmpty) {
+      _coinRows.add(_CoinDraftRow(widget.coinTypes.first));
+    }
   });
+
+  ({
+    List<ZarCoinLine> lines,
+    ZarCoinDealPricing? dealPricing,
+    ZarCoinSettlementValuation? settlementValuation,
+  })?
+  _coinData() {
+    if (!_isCoin || _coinRows.isEmpty) return null;
+    try {
+      final lines = <ZarCoinLine>[];
+      final prices = <ZarCoinLinePricing>[];
+      for (final row in _coinRows) {
+        final type = row.type;
+        if (type == null) return null;
+        final line = ZarCoinLine(
+          id: row.id,
+          coinTypeId: type.id,
+          coinTypeNameSnapshot: type.name,
+          quantity: int.parse(normalizeDecimal(row.quantity.text)),
+          weightPerPieceGrams: row.weight.text.trim().isEmpty
+              ? type.defaultWeightGrams
+              : row.weight.text,
+          fineness: row.fineness.text.trim().isEmpty
+              ? type.defaultFineness
+              : row.fineness.text,
+        );
+        lines.add(line);
+        if (_needsPricing) {
+          prices.add(
+            ZarCoinLinePricing.calculate(
+              line: line,
+              method: row.method,
+              unitPriceToman: ZarTomanAmount(
+                int.parse(normalizeDecimal(row.price.text)),
+              ),
+              priceReferenceFineness: row.reference.text,
+            ),
+          );
+        }
+      }
+      return (
+        lines: lines,
+        dealPricing: !_isSettlement ? ZarCoinDealPricing(lines: prices) : null,
+        settlementValuation: _isSettlement && _settlementValue
+            ? ZarCoinSettlementValuation(lines: prices)
+            : null,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _selectPriceUnit(ZarGoldUnit value) => setState(() {
     _priceUnit = value;
     _reference.text = value == ZarGoldUnit.gram ? '750' : '705';
@@ -118,6 +180,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     });
     if (!_ready || _saving) return;
     final pricing = _pricing();
+    final coinData = _coinData();
     final draft = QuickAddDraft(
       operation: _operation!,
       asset: _asset!,
@@ -140,12 +203,17 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
           ? pricing.tomanPerUnit
           : null,
       totalToman: pricing?.totalToman.wholeTomans.toString(),
+      coinLines: coinData?.lines ?? const [],
+      coinDealPricing: coinData?.dealPricing,
+      coinSettlementValuation: coinData?.settlementValuation,
     );
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(_submitLabel),
-        content: Text(_confirmation(pricing)),
+        content: Text(
+          _isCoin ? _coinConfirmation(coinData!) : _confirmation(pricing),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -183,6 +251,25 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
         : (_currencyCode == 'TOMAN' ? 'تومان' : _currencyCode ?? '');
     return '${_person!.name}\n${toPersianDigits(normalizeDecimal(_amount.text))} $unit'
         '${pricing == null ? '' : '\nمبلغ کل: ${_toman(pricing.totalToman.wholeTomans)} تومان'}';
+  }
+
+  String _coinConfirmation(
+    ({
+      List<ZarCoinLine> lines,
+      ZarCoinDealPricing? dealPricing,
+      ZarCoinSettlementValuation? settlementValuation,
+    })
+    data,
+  ) {
+    final lines = data.lines
+        .map(
+          (line) =>
+              '${toPersianDigits(line.quantity.toString())} × ${line.coinTypeNameSnapshot}',
+        )
+        .join('\n');
+    final total =
+        data.dealPricing?.totalToman ?? data.settlementValuation?.totalToman;
+    return '${_person!.name}\n$lines${total == null ? '' : '\nجمع کل: ${_toman(total.wholeTomans)} تومان'}';
   }
 
   String? _summary() {
@@ -238,7 +325,9 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
               const SizedBox(height: 14),
               _label('موضوع'),
               _choices(
-                _isSettlement ? ['طلا', 'ارز', 'وجه نقد'] : ['طلا', 'ارز'],
+                _isSettlement
+                    ? ['طلا', 'سکه', 'ارز', 'وجه نقد']
+                    : ['طلا', 'سکه', 'ارز'],
                 _asset,
                 _selectAsset,
               ),
@@ -282,20 +371,23 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                       }
                     },
                   ),
-                TextField(
-                  controller: _amount,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                if (_isCoin)
+                  _coinEditor()
+                else
+                  TextField(
+                    controller: _amount,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.right,
+                    decoration: InputDecoration(
+                      labelText: _isGold ? 'وزن' : 'مقدار',
+                      errorText: _required(_amount.text),
+                    ),
+                    onChanged: (_) => setState(() {}),
                   ),
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.right,
-                  decoration: InputDecoration(
-                    labelText: _isGold ? 'وزن' : 'مقدار',
-                    errorText: _required(_amount.text),
-                  ),
-                  onChanged: (_) => setState(() {}),
-                ),
-                if (_isGold) ...[
+                if (_isGold && !_isCoin) ...[
                   const SizedBox(height: 12),
                   _label('واحد وزن'),
                   _units(
@@ -333,7 +425,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                   value: _settlementValue,
                   onChanged: (v) => setState(() => _settlementValue = v),
                 ),
-              if (_needsPricing && !_isCash) ...[
+              if (_needsPricing && !_isCash && !_isCoin) ...[
                 const SizedBox(height: 10),
                 _card([
                   if (_isGold) ...[
@@ -516,6 +608,176 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
         )
         .toList(),
   );
+
+  Widget _coinEditor() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      for (final (index, row) in _coinRows.indexed) ...[
+        if (index > 0) const Divider(height: 28),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'ردیف ${toPersianDigits((index + 1).toString())}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            if (_coinRows.length > 1)
+              IconButton(
+                onPressed: () => setState(() {
+                  _coinRows.removeAt(index).dispose();
+                }),
+                icon: const Icon(CupertinoIcons.delete),
+              ),
+          ],
+        ),
+        DropdownButtonFormField<ZarCoinType>(
+          initialValue: row.type,
+          decoration: const InputDecoration(labelText: 'نوع سکه'),
+          items: widget.coinTypes
+              .where((item) => !item.archived || item.id == row.type?.id)
+              .map(
+                (item) => DropdownMenuItem(value: item, child: Text(item.name)),
+              )
+              .toList(),
+          onChanged: (value) => setState(() => row.selectType(value)),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: row.quantity,
+          keyboardType: TextInputType.number,
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.right,
+          decoration: InputDecoration(
+            labelText: 'تعداد',
+            errorText: _submitted && row.quantity.text.trim().isEmpty
+                ? 'تعداد الزامی است.'
+                : null,
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        if (row.weighted) ...[
+          const SizedBox(height: 10),
+          TextField(
+            controller: row.weight,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.right,
+            decoration: const InputDecoration(labelText: 'وزن هر سکه (گرم)'),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: row.fineness,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.right,
+            decoration: const InputDecoration(labelText: 'عیار'),
+            onChanged: (_) => setState(() {}),
+          ),
+        ],
+        if (_needsPricing) ...[
+          const SizedBox(height: 10),
+          _choices(
+            row.weighted ? ['هر قطعه', 'هر گرم'] : ['هر قطعه'],
+            row.method == ZarCoinPricingMethod.perPiece ? 'هر قطعه' : 'هر گرم',
+            (value) => setState(
+              () => row.method = value == 'هر قطعه'
+                  ? ZarCoinPricingMethod.perPiece
+                  : ZarCoinPricingMethod.perGram,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: row.price,
+            keyboardType: TextInputType.number,
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.right,
+            decoration: InputDecoration(
+              labelText: row.method == ZarCoinPricingMethod.perPiece
+                  ? 'قیمت هر قطعه (تومان)'
+                  : 'قیمت هر گرم (تومان)',
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          if (row.method == ZarCoinPricingMethod.perGram) ...[
+            TextButton(
+              onPressed: () => setState(() => row.more = !row.more),
+              child: Text(row.more ? 'بستن جزئیات بیشتر' : 'جزئیات بیشتر'),
+            ),
+            if (row.more)
+              TextField(
+                controller: row.reference,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                textDirection: TextDirection.ltr,
+                textAlign: TextAlign.right,
+                decoration: const InputDecoration(labelText: 'عیار مرجع قیمت'),
+                onChanged: (_) => setState(() {}),
+              ),
+          ],
+          if (_coinRowTotal(row) case final total?)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                'جمع ردیف: ${_toman(total)} تومان',
+                style: const TextStyle(
+                  color: Color(0xFF9A6700),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+        ],
+      ],
+      const SizedBox(height: 8),
+      TextButton.icon(
+        onPressed: widget.coinTypes.where((e) => !e.archived).isEmpty
+            ? null
+            : () => setState(
+                () => _coinRows.add(
+                  _CoinDraftRow(
+                    widget.coinTypes.firstWhere((e) => !e.archived),
+                  ),
+                ),
+              ),
+        icon: const Icon(CupertinoIcons.add),
+        label: const Text('افزودن سکه دیگر'),
+      ),
+      if (_coinTotal() case final total?)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF9A6700).withValues(alpha: .08),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Text(
+            'جمع کل معامله: ${_toman(total)} تومان',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+    ],
+  );
+
+  int? _coinRowTotal(_CoinDraftRow row) {
+    try {
+      final data = _coinData();
+      final pricing =
+          data?.dealPricing?.lines ?? data?.settlementValuation?.lines;
+      if (pricing == null) return null;
+      for (final item in pricing) {
+        if (item.lineId == row.id) return item.rowTotalToman.wholeTomans;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int? _coinTotal() =>
+      _coinData()?.dealPricing?.totalToman.wholeTomans ??
+      _coinData()?.settlementValuation?.totalToman.wholeTomans;
   Widget _card(List<Widget> children) => Material(
     color: Theme.of(context).colorScheme.surface,
     shape: RoundedRectangleBorder(
@@ -534,4 +796,40 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     text,
     style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
   );
+}
+
+class _CoinDraftRow {
+  _CoinDraftRow(ZarCoinType type)
+    : id = 'coin-line-${DateTime.now().microsecondsSinceEpoch}',
+      type = type,
+      method = type.defaultPricingMethod,
+      weight = TextEditingController(text: type.defaultWeightGrams ?? ''),
+      fineness = TextEditingController(text: type.defaultFineness ?? '750');
+  final String id;
+  ZarCoinType? type;
+  ZarCoinPricingMethod method;
+  bool more = false;
+  final quantity = TextEditingController(text: '1');
+  final TextEditingController weight;
+  final TextEditingController fineness;
+  final price = TextEditingController();
+  final reference = TextEditingController(text: '750');
+  bool get weighted =>
+      type?.category == ZarCoinCategory.parsian ||
+      method == ZarCoinPricingMethod.perGram;
+  void selectType(ZarCoinType? value) {
+    type = value;
+    if (value == null) return;
+    method = value.defaultPricingMethod;
+    weight.text = value.defaultWeightGrams ?? '';
+    fineness.text = value.defaultFineness ?? '750';
+  }
+
+  void dispose() {
+    quantity.dispose();
+    weight.dispose();
+    fineness.dispose();
+    price.dispose();
+    reference.dispose();
+  }
 }

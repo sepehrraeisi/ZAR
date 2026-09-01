@@ -3998,6 +3998,2169 @@ class ZarLocalMetadataCompanion extends UpdateCompanion<LocalMetadataRow> {
   }
 }
 
+class $ZarCoinTypesTable extends ZarCoinTypes
+    with TableInfo<$ZarCoinTypesTable, LocalCoinTypeRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ZarCoinTypesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _defaultWeightGramsMeta =
+      const VerificationMeta('defaultWeightGrams');
+  @override
+  late final GeneratedColumn<String> defaultWeightGrams =
+      GeneratedColumn<String>(
+        'default_weight_grams',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _defaultFinenessMeta = const VerificationMeta(
+    'defaultFineness',
+  );
+  @override
+  late final GeneratedColumn<String> defaultFineness = GeneratedColumn<String>(
+    'default_fineness',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _defaultPricingMethodMeta =
+      const VerificationMeta('defaultPricingMethod');
+  @override
+  late final GeneratedColumn<String> defaultPricingMethod =
+      GeneratedColumn<String>(
+        'default_pricing_method',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _archivedMeta = const VerificationMeta(
+    'archived',
+  );
+  @override
+  late final GeneratedColumn<bool> archived = GeneratedColumn<bool>(
+    'archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMicrosMeta = const VerificationMeta(
+    'createdAtMicros',
+  );
+  @override
+  late final GeneratedColumn<int> createdAtMicros = GeneratedColumn<int>(
+    'created_at_micros',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMicrosMeta = const VerificationMeta(
+    'updatedAtMicros',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAtMicros = GeneratedColumn<int>(
+    'updated_at_micros',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    category,
+    defaultWeightGrams,
+    defaultFineness,
+    defaultPricingMethod,
+    archived,
+    createdAtMicros,
+    updatedAtMicros,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'zar_coin_types';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalCoinTypeRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('default_weight_grams')) {
+      context.handle(
+        _defaultWeightGramsMeta,
+        defaultWeightGrams.isAcceptableOrUnknown(
+          data['default_weight_grams']!,
+          _defaultWeightGramsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('default_fineness')) {
+      context.handle(
+        _defaultFinenessMeta,
+        defaultFineness.isAcceptableOrUnknown(
+          data['default_fineness']!,
+          _defaultFinenessMeta,
+        ),
+      );
+    }
+    if (data.containsKey('default_pricing_method')) {
+      context.handle(
+        _defaultPricingMethodMeta,
+        defaultPricingMethod.isAcceptableOrUnknown(
+          data['default_pricing_method']!,
+          _defaultPricingMethodMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_defaultPricingMethodMeta);
+    }
+    if (data.containsKey('archived')) {
+      context.handle(
+        _archivedMeta,
+        archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
+      );
+    }
+    if (data.containsKey('created_at_micros')) {
+      context.handle(
+        _createdAtMicrosMeta,
+        createdAtMicros.isAcceptableOrUnknown(
+          data['created_at_micros']!,
+          _createdAtMicrosMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMicrosMeta);
+    }
+    if (data.containsKey('updated_at_micros')) {
+      context.handle(
+        _updatedAtMicrosMeta,
+        updatedAtMicros.isAcceptableOrUnknown(
+          data['updated_at_micros']!,
+          _updatedAtMicrosMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMicrosMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalCoinTypeRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalCoinTypeRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      defaultWeightGrams: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}default_weight_grams'],
+      ),
+      defaultFineness: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}default_fineness'],
+      ),
+      defaultPricingMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}default_pricing_method'],
+      )!,
+      archived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}archived'],
+      )!,
+      createdAtMicros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at_micros'],
+      )!,
+      updatedAtMicros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at_micros'],
+      )!,
+    );
+  }
+
+  @override
+  $ZarCoinTypesTable createAlias(String alias) {
+    return $ZarCoinTypesTable(attachedDatabase, alias);
+  }
+}
+
+class LocalCoinTypeRow extends DataClass
+    implements Insertable<LocalCoinTypeRow> {
+  final String id;
+  final String name;
+  final String category;
+  final String? defaultWeightGrams;
+  final String? defaultFineness;
+  final String defaultPricingMethod;
+  final bool archived;
+  final int createdAtMicros;
+  final int updatedAtMicros;
+  const LocalCoinTypeRow({
+    required this.id,
+    required this.name,
+    required this.category,
+    this.defaultWeightGrams,
+    this.defaultFineness,
+    required this.defaultPricingMethod,
+    required this.archived,
+    required this.createdAtMicros,
+    required this.updatedAtMicros,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['category'] = Variable<String>(category);
+    if (!nullToAbsent || defaultWeightGrams != null) {
+      map['default_weight_grams'] = Variable<String>(defaultWeightGrams);
+    }
+    if (!nullToAbsent || defaultFineness != null) {
+      map['default_fineness'] = Variable<String>(defaultFineness);
+    }
+    map['default_pricing_method'] = Variable<String>(defaultPricingMethod);
+    map['archived'] = Variable<bool>(archived);
+    map['created_at_micros'] = Variable<int>(createdAtMicros);
+    map['updated_at_micros'] = Variable<int>(updatedAtMicros);
+    return map;
+  }
+
+  ZarCoinTypesCompanion toCompanion(bool nullToAbsent) {
+    return ZarCoinTypesCompanion(
+      id: Value(id),
+      name: Value(name),
+      category: Value(category),
+      defaultWeightGrams: defaultWeightGrams == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultWeightGrams),
+      defaultFineness: defaultFineness == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultFineness),
+      defaultPricingMethod: Value(defaultPricingMethod),
+      archived: Value(archived),
+      createdAtMicros: Value(createdAtMicros),
+      updatedAtMicros: Value(updatedAtMicros),
+    );
+  }
+
+  factory LocalCoinTypeRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalCoinTypeRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      category: serializer.fromJson<String>(json['category']),
+      defaultWeightGrams: serializer.fromJson<String?>(
+        json['defaultWeightGrams'],
+      ),
+      defaultFineness: serializer.fromJson<String?>(json['defaultFineness']),
+      defaultPricingMethod: serializer.fromJson<String>(
+        json['defaultPricingMethod'],
+      ),
+      archived: serializer.fromJson<bool>(json['archived']),
+      createdAtMicros: serializer.fromJson<int>(json['createdAtMicros']),
+      updatedAtMicros: serializer.fromJson<int>(json['updatedAtMicros']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'category': serializer.toJson<String>(category),
+      'defaultWeightGrams': serializer.toJson<String?>(defaultWeightGrams),
+      'defaultFineness': serializer.toJson<String?>(defaultFineness),
+      'defaultPricingMethod': serializer.toJson<String>(defaultPricingMethod),
+      'archived': serializer.toJson<bool>(archived),
+      'createdAtMicros': serializer.toJson<int>(createdAtMicros),
+      'updatedAtMicros': serializer.toJson<int>(updatedAtMicros),
+    };
+  }
+
+  LocalCoinTypeRow copyWith({
+    String? id,
+    String? name,
+    String? category,
+    Value<String?> defaultWeightGrams = const Value.absent(),
+    Value<String?> defaultFineness = const Value.absent(),
+    String? defaultPricingMethod,
+    bool? archived,
+    int? createdAtMicros,
+    int? updatedAtMicros,
+  }) => LocalCoinTypeRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    category: category ?? this.category,
+    defaultWeightGrams: defaultWeightGrams.present
+        ? defaultWeightGrams.value
+        : this.defaultWeightGrams,
+    defaultFineness: defaultFineness.present
+        ? defaultFineness.value
+        : this.defaultFineness,
+    defaultPricingMethod: defaultPricingMethod ?? this.defaultPricingMethod,
+    archived: archived ?? this.archived,
+    createdAtMicros: createdAtMicros ?? this.createdAtMicros,
+    updatedAtMicros: updatedAtMicros ?? this.updatedAtMicros,
+  );
+  LocalCoinTypeRow copyWithCompanion(ZarCoinTypesCompanion data) {
+    return LocalCoinTypeRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      category: data.category.present ? data.category.value : this.category,
+      defaultWeightGrams: data.defaultWeightGrams.present
+          ? data.defaultWeightGrams.value
+          : this.defaultWeightGrams,
+      defaultFineness: data.defaultFineness.present
+          ? data.defaultFineness.value
+          : this.defaultFineness,
+      defaultPricingMethod: data.defaultPricingMethod.present
+          ? data.defaultPricingMethod.value
+          : this.defaultPricingMethod,
+      archived: data.archived.present ? data.archived.value : this.archived,
+      createdAtMicros: data.createdAtMicros.present
+          ? data.createdAtMicros.value
+          : this.createdAtMicros,
+      updatedAtMicros: data.updatedAtMicros.present
+          ? data.updatedAtMicros.value
+          : this.updatedAtMicros,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCoinTypeRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('category: $category, ')
+          ..write('defaultWeightGrams: $defaultWeightGrams, ')
+          ..write('defaultFineness: $defaultFineness, ')
+          ..write('defaultPricingMethod: $defaultPricingMethod, ')
+          ..write('archived: $archived, ')
+          ..write('createdAtMicros: $createdAtMicros, ')
+          ..write('updatedAtMicros: $updatedAtMicros')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    category,
+    defaultWeightGrams,
+    defaultFineness,
+    defaultPricingMethod,
+    archived,
+    createdAtMicros,
+    updatedAtMicros,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalCoinTypeRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.category == this.category &&
+          other.defaultWeightGrams == this.defaultWeightGrams &&
+          other.defaultFineness == this.defaultFineness &&
+          other.defaultPricingMethod == this.defaultPricingMethod &&
+          other.archived == this.archived &&
+          other.createdAtMicros == this.createdAtMicros &&
+          other.updatedAtMicros == this.updatedAtMicros);
+}
+
+class ZarCoinTypesCompanion extends UpdateCompanion<LocalCoinTypeRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> category;
+  final Value<String?> defaultWeightGrams;
+  final Value<String?> defaultFineness;
+  final Value<String> defaultPricingMethod;
+  final Value<bool> archived;
+  final Value<int> createdAtMicros;
+  final Value<int> updatedAtMicros;
+  final Value<int> rowid;
+  const ZarCoinTypesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.category = const Value.absent(),
+    this.defaultWeightGrams = const Value.absent(),
+    this.defaultFineness = const Value.absent(),
+    this.defaultPricingMethod = const Value.absent(),
+    this.archived = const Value.absent(),
+    this.createdAtMicros = const Value.absent(),
+    this.updatedAtMicros = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ZarCoinTypesCompanion.insert({
+    required String id,
+    required String name,
+    required String category,
+    this.defaultWeightGrams = const Value.absent(),
+    this.defaultFineness = const Value.absent(),
+    required String defaultPricingMethod,
+    this.archived = const Value.absent(),
+    required int createdAtMicros,
+    required int updatedAtMicros,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       category = Value(category),
+       defaultPricingMethod = Value(defaultPricingMethod),
+       createdAtMicros = Value(createdAtMicros),
+       updatedAtMicros = Value(updatedAtMicros);
+  static Insertable<LocalCoinTypeRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? category,
+    Expression<String>? defaultWeightGrams,
+    Expression<String>? defaultFineness,
+    Expression<String>? defaultPricingMethod,
+    Expression<bool>? archived,
+    Expression<int>? createdAtMicros,
+    Expression<int>? updatedAtMicros,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (category != null) 'category': category,
+      if (defaultWeightGrams != null)
+        'default_weight_grams': defaultWeightGrams,
+      if (defaultFineness != null) 'default_fineness': defaultFineness,
+      if (defaultPricingMethod != null)
+        'default_pricing_method': defaultPricingMethod,
+      if (archived != null) 'archived': archived,
+      if (createdAtMicros != null) 'created_at_micros': createdAtMicros,
+      if (updatedAtMicros != null) 'updated_at_micros': updatedAtMicros,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ZarCoinTypesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? category,
+    Value<String?>? defaultWeightGrams,
+    Value<String?>? defaultFineness,
+    Value<String>? defaultPricingMethod,
+    Value<bool>? archived,
+    Value<int>? createdAtMicros,
+    Value<int>? updatedAtMicros,
+    Value<int>? rowid,
+  }) {
+    return ZarCoinTypesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      defaultWeightGrams: defaultWeightGrams ?? this.defaultWeightGrams,
+      defaultFineness: defaultFineness ?? this.defaultFineness,
+      defaultPricingMethod: defaultPricingMethod ?? this.defaultPricingMethod,
+      archived: archived ?? this.archived,
+      createdAtMicros: createdAtMicros ?? this.createdAtMicros,
+      updatedAtMicros: updatedAtMicros ?? this.updatedAtMicros,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (defaultWeightGrams.present) {
+      map['default_weight_grams'] = Variable<String>(defaultWeightGrams.value);
+    }
+    if (defaultFineness.present) {
+      map['default_fineness'] = Variable<String>(defaultFineness.value);
+    }
+    if (defaultPricingMethod.present) {
+      map['default_pricing_method'] = Variable<String>(
+        defaultPricingMethod.value,
+      );
+    }
+    if (archived.present) {
+      map['archived'] = Variable<bool>(archived.value);
+    }
+    if (createdAtMicros.present) {
+      map['created_at_micros'] = Variable<int>(createdAtMicros.value);
+    }
+    if (updatedAtMicros.present) {
+      map['updated_at_micros'] = Variable<int>(updatedAtMicros.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ZarCoinTypesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('category: $category, ')
+          ..write('defaultWeightGrams: $defaultWeightGrams, ')
+          ..write('defaultFineness: $defaultFineness, ')
+          ..write('defaultPricingMethod: $defaultPricingMethod, ')
+          ..write('archived: $archived, ')
+          ..write('createdAtMicros: $createdAtMicros, ')
+          ..write('updatedAtMicros: $updatedAtMicros, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ZarDealCoinLinesTable extends ZarDealCoinLines
+    with TableInfo<$ZarDealCoinLinesTable, LocalDealCoinLineRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ZarDealCoinLinesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _dealIdMeta = const VerificationMeta('dealId');
+  @override
+  late final GeneratedColumn<String> dealId = GeneratedColumn<String>(
+    'deal_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES zar_deals (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _lineIdMeta = const VerificationMeta('lineId');
+  @override
+  late final GeneratedColumn<String> lineId = GeneratedColumn<String>(
+    'line_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _coinTypeIdMeta = const VerificationMeta(
+    'coinTypeId',
+  );
+  @override
+  late final GeneratedColumn<String> coinTypeId = GeneratedColumn<String>(
+    'coin_type_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _coinTypeNameSnapshotMeta =
+      const VerificationMeta('coinTypeNameSnapshot');
+  @override
+  late final GeneratedColumn<String> coinTypeNameSnapshot =
+      GeneratedColumn<String>(
+        'coin_type_name_snapshot',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _weightPerPieceGramsMeta =
+      const VerificationMeta('weightPerPieceGrams');
+  @override
+  late final GeneratedColumn<String> weightPerPieceGrams =
+      GeneratedColumn<String>(
+        'weight_per_piece_grams',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _finenessMeta = const VerificationMeta(
+    'fineness',
+  );
+  @override
+  late final GeneratedColumn<String> fineness = GeneratedColumn<String>(
+    'fineness',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pricingMethodMeta = const VerificationMeta(
+    'pricingMethod',
+  );
+  @override
+  late final GeneratedColumn<String> pricingMethod = GeneratedColumn<String>(
+    'pricing_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _unitPriceTomanMeta = const VerificationMeta(
+    'unitPriceToman',
+  );
+  @override
+  late final GeneratedColumn<int> unitPriceToman = GeneratedColumn<int>(
+    'unit_price_toman',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _priceReferenceFinenessMeta =
+      const VerificationMeta('priceReferenceFineness');
+  @override
+  late final GeneratedColumn<String> priceReferenceFineness =
+      GeneratedColumn<String>(
+        'price_reference_fineness',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _rowTotalTomanMeta = const VerificationMeta(
+    'rowTotalToman',
+  );
+  @override
+  late final GeneratedColumn<int> rowTotalToman = GeneratedColumn<int>(
+    'row_total_toman',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    dealId,
+    lineId,
+    position,
+    coinTypeId,
+    coinTypeNameSnapshot,
+    quantity,
+    weightPerPieceGrams,
+    fineness,
+    pricingMethod,
+    unitPriceToman,
+    priceReferenceFineness,
+    rowTotalToman,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'zar_deal_coin_lines';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalDealCoinLineRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('deal_id')) {
+      context.handle(
+        _dealIdMeta,
+        dealId.isAcceptableOrUnknown(data['deal_id']!, _dealIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dealIdMeta);
+    }
+    if (data.containsKey('line_id')) {
+      context.handle(
+        _lineIdMeta,
+        lineId.isAcceptableOrUnknown(data['line_id']!, _lineIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lineIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('coin_type_id')) {
+      context.handle(
+        _coinTypeIdMeta,
+        coinTypeId.isAcceptableOrUnknown(
+          data['coin_type_id']!,
+          _coinTypeIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_coinTypeIdMeta);
+    }
+    if (data.containsKey('coin_type_name_snapshot')) {
+      context.handle(
+        _coinTypeNameSnapshotMeta,
+        coinTypeNameSnapshot.isAcceptableOrUnknown(
+          data['coin_type_name_snapshot']!,
+          _coinTypeNameSnapshotMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_coinTypeNameSnapshotMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quantityMeta);
+    }
+    if (data.containsKey('weight_per_piece_grams')) {
+      context.handle(
+        _weightPerPieceGramsMeta,
+        weightPerPieceGrams.isAcceptableOrUnknown(
+          data['weight_per_piece_grams']!,
+          _weightPerPieceGramsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fineness')) {
+      context.handle(
+        _finenessMeta,
+        fineness.isAcceptableOrUnknown(data['fineness']!, _finenessMeta),
+      );
+    }
+    if (data.containsKey('pricing_method')) {
+      context.handle(
+        _pricingMethodMeta,
+        pricingMethod.isAcceptableOrUnknown(
+          data['pricing_method']!,
+          _pricingMethodMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_pricingMethodMeta);
+    }
+    if (data.containsKey('unit_price_toman')) {
+      context.handle(
+        _unitPriceTomanMeta,
+        unitPriceToman.isAcceptableOrUnknown(
+          data['unit_price_toman']!,
+          _unitPriceTomanMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_unitPriceTomanMeta);
+    }
+    if (data.containsKey('price_reference_fineness')) {
+      context.handle(
+        _priceReferenceFinenessMeta,
+        priceReferenceFineness.isAcceptableOrUnknown(
+          data['price_reference_fineness']!,
+          _priceReferenceFinenessMeta,
+        ),
+      );
+    }
+    if (data.containsKey('row_total_toman')) {
+      context.handle(
+        _rowTotalTomanMeta,
+        rowTotalToman.isAcceptableOrUnknown(
+          data['row_total_toman']!,
+          _rowTotalTomanMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rowTotalTomanMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {dealId, lineId};
+  @override
+  LocalDealCoinLineRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalDealCoinLineRow(
+      dealId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deal_id'],
+      )!,
+      lineId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}line_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      coinTypeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}coin_type_id'],
+      )!,
+      coinTypeNameSnapshot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}coin_type_name_snapshot'],
+      )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity'],
+      )!,
+      weightPerPieceGrams: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}weight_per_piece_grams'],
+      ),
+      fineness: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}fineness'],
+      ),
+      pricingMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pricing_method'],
+      )!,
+      unitPriceToman: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}unit_price_toman'],
+      )!,
+      priceReferenceFineness: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}price_reference_fineness'],
+      ),
+      rowTotalToman: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}row_total_toman'],
+      )!,
+    );
+  }
+
+  @override
+  $ZarDealCoinLinesTable createAlias(String alias) {
+    return $ZarDealCoinLinesTable(attachedDatabase, alias);
+  }
+}
+
+class LocalDealCoinLineRow extends DataClass
+    implements Insertable<LocalDealCoinLineRow> {
+  final String dealId;
+  final String lineId;
+  final int position;
+  final String coinTypeId;
+  final String coinTypeNameSnapshot;
+  final int quantity;
+  final String? weightPerPieceGrams;
+  final String? fineness;
+  final String pricingMethod;
+  final int unitPriceToman;
+  final String? priceReferenceFineness;
+  final int rowTotalToman;
+  const LocalDealCoinLineRow({
+    required this.dealId,
+    required this.lineId,
+    required this.position,
+    required this.coinTypeId,
+    required this.coinTypeNameSnapshot,
+    required this.quantity,
+    this.weightPerPieceGrams,
+    this.fineness,
+    required this.pricingMethod,
+    required this.unitPriceToman,
+    this.priceReferenceFineness,
+    required this.rowTotalToman,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['deal_id'] = Variable<String>(dealId);
+    map['line_id'] = Variable<String>(lineId);
+    map['position'] = Variable<int>(position);
+    map['coin_type_id'] = Variable<String>(coinTypeId);
+    map['coin_type_name_snapshot'] = Variable<String>(coinTypeNameSnapshot);
+    map['quantity'] = Variable<int>(quantity);
+    if (!nullToAbsent || weightPerPieceGrams != null) {
+      map['weight_per_piece_grams'] = Variable<String>(weightPerPieceGrams);
+    }
+    if (!nullToAbsent || fineness != null) {
+      map['fineness'] = Variable<String>(fineness);
+    }
+    map['pricing_method'] = Variable<String>(pricingMethod);
+    map['unit_price_toman'] = Variable<int>(unitPriceToman);
+    if (!nullToAbsent || priceReferenceFineness != null) {
+      map['price_reference_fineness'] = Variable<String>(
+        priceReferenceFineness,
+      );
+    }
+    map['row_total_toman'] = Variable<int>(rowTotalToman);
+    return map;
+  }
+
+  ZarDealCoinLinesCompanion toCompanion(bool nullToAbsent) {
+    return ZarDealCoinLinesCompanion(
+      dealId: Value(dealId),
+      lineId: Value(lineId),
+      position: Value(position),
+      coinTypeId: Value(coinTypeId),
+      coinTypeNameSnapshot: Value(coinTypeNameSnapshot),
+      quantity: Value(quantity),
+      weightPerPieceGrams: weightPerPieceGrams == null && nullToAbsent
+          ? const Value.absent()
+          : Value(weightPerPieceGrams),
+      fineness: fineness == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fineness),
+      pricingMethod: Value(pricingMethod),
+      unitPriceToman: Value(unitPriceToman),
+      priceReferenceFineness: priceReferenceFineness == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priceReferenceFineness),
+      rowTotalToman: Value(rowTotalToman),
+    );
+  }
+
+  factory LocalDealCoinLineRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalDealCoinLineRow(
+      dealId: serializer.fromJson<String>(json['dealId']),
+      lineId: serializer.fromJson<String>(json['lineId']),
+      position: serializer.fromJson<int>(json['position']),
+      coinTypeId: serializer.fromJson<String>(json['coinTypeId']),
+      coinTypeNameSnapshot: serializer.fromJson<String>(
+        json['coinTypeNameSnapshot'],
+      ),
+      quantity: serializer.fromJson<int>(json['quantity']),
+      weightPerPieceGrams: serializer.fromJson<String?>(
+        json['weightPerPieceGrams'],
+      ),
+      fineness: serializer.fromJson<String?>(json['fineness']),
+      pricingMethod: serializer.fromJson<String>(json['pricingMethod']),
+      unitPriceToman: serializer.fromJson<int>(json['unitPriceToman']),
+      priceReferenceFineness: serializer.fromJson<String?>(
+        json['priceReferenceFineness'],
+      ),
+      rowTotalToman: serializer.fromJson<int>(json['rowTotalToman']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'dealId': serializer.toJson<String>(dealId),
+      'lineId': serializer.toJson<String>(lineId),
+      'position': serializer.toJson<int>(position),
+      'coinTypeId': serializer.toJson<String>(coinTypeId),
+      'coinTypeNameSnapshot': serializer.toJson<String>(coinTypeNameSnapshot),
+      'quantity': serializer.toJson<int>(quantity),
+      'weightPerPieceGrams': serializer.toJson<String?>(weightPerPieceGrams),
+      'fineness': serializer.toJson<String?>(fineness),
+      'pricingMethod': serializer.toJson<String>(pricingMethod),
+      'unitPriceToman': serializer.toJson<int>(unitPriceToman),
+      'priceReferenceFineness': serializer.toJson<String?>(
+        priceReferenceFineness,
+      ),
+      'rowTotalToman': serializer.toJson<int>(rowTotalToman),
+    };
+  }
+
+  LocalDealCoinLineRow copyWith({
+    String? dealId,
+    String? lineId,
+    int? position,
+    String? coinTypeId,
+    String? coinTypeNameSnapshot,
+    int? quantity,
+    Value<String?> weightPerPieceGrams = const Value.absent(),
+    Value<String?> fineness = const Value.absent(),
+    String? pricingMethod,
+    int? unitPriceToman,
+    Value<String?> priceReferenceFineness = const Value.absent(),
+    int? rowTotalToman,
+  }) => LocalDealCoinLineRow(
+    dealId: dealId ?? this.dealId,
+    lineId: lineId ?? this.lineId,
+    position: position ?? this.position,
+    coinTypeId: coinTypeId ?? this.coinTypeId,
+    coinTypeNameSnapshot: coinTypeNameSnapshot ?? this.coinTypeNameSnapshot,
+    quantity: quantity ?? this.quantity,
+    weightPerPieceGrams: weightPerPieceGrams.present
+        ? weightPerPieceGrams.value
+        : this.weightPerPieceGrams,
+    fineness: fineness.present ? fineness.value : this.fineness,
+    pricingMethod: pricingMethod ?? this.pricingMethod,
+    unitPriceToman: unitPriceToman ?? this.unitPriceToman,
+    priceReferenceFineness: priceReferenceFineness.present
+        ? priceReferenceFineness.value
+        : this.priceReferenceFineness,
+    rowTotalToman: rowTotalToman ?? this.rowTotalToman,
+  );
+  LocalDealCoinLineRow copyWithCompanion(ZarDealCoinLinesCompanion data) {
+    return LocalDealCoinLineRow(
+      dealId: data.dealId.present ? data.dealId.value : this.dealId,
+      lineId: data.lineId.present ? data.lineId.value : this.lineId,
+      position: data.position.present ? data.position.value : this.position,
+      coinTypeId: data.coinTypeId.present
+          ? data.coinTypeId.value
+          : this.coinTypeId,
+      coinTypeNameSnapshot: data.coinTypeNameSnapshot.present
+          ? data.coinTypeNameSnapshot.value
+          : this.coinTypeNameSnapshot,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      weightPerPieceGrams: data.weightPerPieceGrams.present
+          ? data.weightPerPieceGrams.value
+          : this.weightPerPieceGrams,
+      fineness: data.fineness.present ? data.fineness.value : this.fineness,
+      pricingMethod: data.pricingMethod.present
+          ? data.pricingMethod.value
+          : this.pricingMethod,
+      unitPriceToman: data.unitPriceToman.present
+          ? data.unitPriceToman.value
+          : this.unitPriceToman,
+      priceReferenceFineness: data.priceReferenceFineness.present
+          ? data.priceReferenceFineness.value
+          : this.priceReferenceFineness,
+      rowTotalToman: data.rowTotalToman.present
+          ? data.rowTotalToman.value
+          : this.rowTotalToman,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalDealCoinLineRow(')
+          ..write('dealId: $dealId, ')
+          ..write('lineId: $lineId, ')
+          ..write('position: $position, ')
+          ..write('coinTypeId: $coinTypeId, ')
+          ..write('coinTypeNameSnapshot: $coinTypeNameSnapshot, ')
+          ..write('quantity: $quantity, ')
+          ..write('weightPerPieceGrams: $weightPerPieceGrams, ')
+          ..write('fineness: $fineness, ')
+          ..write('pricingMethod: $pricingMethod, ')
+          ..write('unitPriceToman: $unitPriceToman, ')
+          ..write('priceReferenceFineness: $priceReferenceFineness, ')
+          ..write('rowTotalToman: $rowTotalToman')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    dealId,
+    lineId,
+    position,
+    coinTypeId,
+    coinTypeNameSnapshot,
+    quantity,
+    weightPerPieceGrams,
+    fineness,
+    pricingMethod,
+    unitPriceToman,
+    priceReferenceFineness,
+    rowTotalToman,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalDealCoinLineRow &&
+          other.dealId == this.dealId &&
+          other.lineId == this.lineId &&
+          other.position == this.position &&
+          other.coinTypeId == this.coinTypeId &&
+          other.coinTypeNameSnapshot == this.coinTypeNameSnapshot &&
+          other.quantity == this.quantity &&
+          other.weightPerPieceGrams == this.weightPerPieceGrams &&
+          other.fineness == this.fineness &&
+          other.pricingMethod == this.pricingMethod &&
+          other.unitPriceToman == this.unitPriceToman &&
+          other.priceReferenceFineness == this.priceReferenceFineness &&
+          other.rowTotalToman == this.rowTotalToman);
+}
+
+class ZarDealCoinLinesCompanion extends UpdateCompanion<LocalDealCoinLineRow> {
+  final Value<String> dealId;
+  final Value<String> lineId;
+  final Value<int> position;
+  final Value<String> coinTypeId;
+  final Value<String> coinTypeNameSnapshot;
+  final Value<int> quantity;
+  final Value<String?> weightPerPieceGrams;
+  final Value<String?> fineness;
+  final Value<String> pricingMethod;
+  final Value<int> unitPriceToman;
+  final Value<String?> priceReferenceFineness;
+  final Value<int> rowTotalToman;
+  final Value<int> rowid;
+  const ZarDealCoinLinesCompanion({
+    this.dealId = const Value.absent(),
+    this.lineId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.coinTypeId = const Value.absent(),
+    this.coinTypeNameSnapshot = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.weightPerPieceGrams = const Value.absent(),
+    this.fineness = const Value.absent(),
+    this.pricingMethod = const Value.absent(),
+    this.unitPriceToman = const Value.absent(),
+    this.priceReferenceFineness = const Value.absent(),
+    this.rowTotalToman = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ZarDealCoinLinesCompanion.insert({
+    required String dealId,
+    required String lineId,
+    required int position,
+    required String coinTypeId,
+    required String coinTypeNameSnapshot,
+    required int quantity,
+    this.weightPerPieceGrams = const Value.absent(),
+    this.fineness = const Value.absent(),
+    required String pricingMethod,
+    required int unitPriceToman,
+    this.priceReferenceFineness = const Value.absent(),
+    required int rowTotalToman,
+    this.rowid = const Value.absent(),
+  }) : dealId = Value(dealId),
+       lineId = Value(lineId),
+       position = Value(position),
+       coinTypeId = Value(coinTypeId),
+       coinTypeNameSnapshot = Value(coinTypeNameSnapshot),
+       quantity = Value(quantity),
+       pricingMethod = Value(pricingMethod),
+       unitPriceToman = Value(unitPriceToman),
+       rowTotalToman = Value(rowTotalToman);
+  static Insertable<LocalDealCoinLineRow> custom({
+    Expression<String>? dealId,
+    Expression<String>? lineId,
+    Expression<int>? position,
+    Expression<String>? coinTypeId,
+    Expression<String>? coinTypeNameSnapshot,
+    Expression<int>? quantity,
+    Expression<String>? weightPerPieceGrams,
+    Expression<String>? fineness,
+    Expression<String>? pricingMethod,
+    Expression<int>? unitPriceToman,
+    Expression<String>? priceReferenceFineness,
+    Expression<int>? rowTotalToman,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (dealId != null) 'deal_id': dealId,
+      if (lineId != null) 'line_id': lineId,
+      if (position != null) 'position': position,
+      if (coinTypeId != null) 'coin_type_id': coinTypeId,
+      if (coinTypeNameSnapshot != null)
+        'coin_type_name_snapshot': coinTypeNameSnapshot,
+      if (quantity != null) 'quantity': quantity,
+      if (weightPerPieceGrams != null)
+        'weight_per_piece_grams': weightPerPieceGrams,
+      if (fineness != null) 'fineness': fineness,
+      if (pricingMethod != null) 'pricing_method': pricingMethod,
+      if (unitPriceToman != null) 'unit_price_toman': unitPriceToman,
+      if (priceReferenceFineness != null)
+        'price_reference_fineness': priceReferenceFineness,
+      if (rowTotalToman != null) 'row_total_toman': rowTotalToman,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ZarDealCoinLinesCompanion copyWith({
+    Value<String>? dealId,
+    Value<String>? lineId,
+    Value<int>? position,
+    Value<String>? coinTypeId,
+    Value<String>? coinTypeNameSnapshot,
+    Value<int>? quantity,
+    Value<String?>? weightPerPieceGrams,
+    Value<String?>? fineness,
+    Value<String>? pricingMethod,
+    Value<int>? unitPriceToman,
+    Value<String?>? priceReferenceFineness,
+    Value<int>? rowTotalToman,
+    Value<int>? rowid,
+  }) {
+    return ZarDealCoinLinesCompanion(
+      dealId: dealId ?? this.dealId,
+      lineId: lineId ?? this.lineId,
+      position: position ?? this.position,
+      coinTypeId: coinTypeId ?? this.coinTypeId,
+      coinTypeNameSnapshot: coinTypeNameSnapshot ?? this.coinTypeNameSnapshot,
+      quantity: quantity ?? this.quantity,
+      weightPerPieceGrams: weightPerPieceGrams ?? this.weightPerPieceGrams,
+      fineness: fineness ?? this.fineness,
+      pricingMethod: pricingMethod ?? this.pricingMethod,
+      unitPriceToman: unitPriceToman ?? this.unitPriceToman,
+      priceReferenceFineness:
+          priceReferenceFineness ?? this.priceReferenceFineness,
+      rowTotalToman: rowTotalToman ?? this.rowTotalToman,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (dealId.present) {
+      map['deal_id'] = Variable<String>(dealId.value);
+    }
+    if (lineId.present) {
+      map['line_id'] = Variable<String>(lineId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (coinTypeId.present) {
+      map['coin_type_id'] = Variable<String>(coinTypeId.value);
+    }
+    if (coinTypeNameSnapshot.present) {
+      map['coin_type_name_snapshot'] = Variable<String>(
+        coinTypeNameSnapshot.value,
+      );
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (weightPerPieceGrams.present) {
+      map['weight_per_piece_grams'] = Variable<String>(
+        weightPerPieceGrams.value,
+      );
+    }
+    if (fineness.present) {
+      map['fineness'] = Variable<String>(fineness.value);
+    }
+    if (pricingMethod.present) {
+      map['pricing_method'] = Variable<String>(pricingMethod.value);
+    }
+    if (unitPriceToman.present) {
+      map['unit_price_toman'] = Variable<int>(unitPriceToman.value);
+    }
+    if (priceReferenceFineness.present) {
+      map['price_reference_fineness'] = Variable<String>(
+        priceReferenceFineness.value,
+      );
+    }
+    if (rowTotalToman.present) {
+      map['row_total_toman'] = Variable<int>(rowTotalToman.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ZarDealCoinLinesCompanion(')
+          ..write('dealId: $dealId, ')
+          ..write('lineId: $lineId, ')
+          ..write('position: $position, ')
+          ..write('coinTypeId: $coinTypeId, ')
+          ..write('coinTypeNameSnapshot: $coinTypeNameSnapshot, ')
+          ..write('quantity: $quantity, ')
+          ..write('weightPerPieceGrams: $weightPerPieceGrams, ')
+          ..write('fineness: $fineness, ')
+          ..write('pricingMethod: $pricingMethod, ')
+          ..write('unitPriceToman: $unitPriceToman, ')
+          ..write('priceReferenceFineness: $priceReferenceFineness, ')
+          ..write('rowTotalToman: $rowTotalToman, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ZarSettlementCoinLinesTable extends ZarSettlementCoinLines
+    with TableInfo<$ZarSettlementCoinLinesTable, LocalSettlementCoinLineRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ZarSettlementCoinLinesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _settlementIdMeta = const VerificationMeta(
+    'settlementId',
+  );
+  @override
+  late final GeneratedColumn<String> settlementId = GeneratedColumn<String>(
+    'settlement_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES zar_settlements (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _lineIdMeta = const VerificationMeta('lineId');
+  @override
+  late final GeneratedColumn<String> lineId = GeneratedColumn<String>(
+    'line_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _coinTypeIdMeta = const VerificationMeta(
+    'coinTypeId',
+  );
+  @override
+  late final GeneratedColumn<String> coinTypeId = GeneratedColumn<String>(
+    'coin_type_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _coinTypeNameSnapshotMeta =
+      const VerificationMeta('coinTypeNameSnapshot');
+  @override
+  late final GeneratedColumn<String> coinTypeNameSnapshot =
+      GeneratedColumn<String>(
+        'coin_type_name_snapshot',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _weightPerPieceGramsMeta =
+      const VerificationMeta('weightPerPieceGrams');
+  @override
+  late final GeneratedColumn<String> weightPerPieceGrams =
+      GeneratedColumn<String>(
+        'weight_per_piece_grams',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _finenessMeta = const VerificationMeta(
+    'fineness',
+  );
+  @override
+  late final GeneratedColumn<String> fineness = GeneratedColumn<String>(
+    'fineness',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pricingMethodMeta = const VerificationMeta(
+    'pricingMethod',
+  );
+  @override
+  late final GeneratedColumn<String> pricingMethod = GeneratedColumn<String>(
+    'pricing_method',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _unitPriceTomanMeta = const VerificationMeta(
+    'unitPriceToman',
+  );
+  @override
+  late final GeneratedColumn<int> unitPriceToman = GeneratedColumn<int>(
+    'unit_price_toman',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _priceReferenceFinenessMeta =
+      const VerificationMeta('priceReferenceFineness');
+  @override
+  late final GeneratedColumn<String> priceReferenceFineness =
+      GeneratedColumn<String>(
+        'price_reference_fineness',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _rowTotalTomanMeta = const VerificationMeta(
+    'rowTotalToman',
+  );
+  @override
+  late final GeneratedColumn<int> rowTotalToman = GeneratedColumn<int>(
+    'row_total_toman',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    settlementId,
+    lineId,
+    position,
+    coinTypeId,
+    coinTypeNameSnapshot,
+    quantity,
+    weightPerPieceGrams,
+    fineness,
+    pricingMethod,
+    unitPriceToman,
+    priceReferenceFineness,
+    rowTotalToman,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'zar_settlement_coin_lines';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalSettlementCoinLineRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('settlement_id')) {
+      context.handle(
+        _settlementIdMeta,
+        settlementId.isAcceptableOrUnknown(
+          data['settlement_id']!,
+          _settlementIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_settlementIdMeta);
+    }
+    if (data.containsKey('line_id')) {
+      context.handle(
+        _lineIdMeta,
+        lineId.isAcceptableOrUnknown(data['line_id']!, _lineIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lineIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('coin_type_id')) {
+      context.handle(
+        _coinTypeIdMeta,
+        coinTypeId.isAcceptableOrUnknown(
+          data['coin_type_id']!,
+          _coinTypeIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_coinTypeIdMeta);
+    }
+    if (data.containsKey('coin_type_name_snapshot')) {
+      context.handle(
+        _coinTypeNameSnapshotMeta,
+        coinTypeNameSnapshot.isAcceptableOrUnknown(
+          data['coin_type_name_snapshot']!,
+          _coinTypeNameSnapshotMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_coinTypeNameSnapshotMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quantityMeta);
+    }
+    if (data.containsKey('weight_per_piece_grams')) {
+      context.handle(
+        _weightPerPieceGramsMeta,
+        weightPerPieceGrams.isAcceptableOrUnknown(
+          data['weight_per_piece_grams']!,
+          _weightPerPieceGramsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fineness')) {
+      context.handle(
+        _finenessMeta,
+        fineness.isAcceptableOrUnknown(data['fineness']!, _finenessMeta),
+      );
+    }
+    if (data.containsKey('pricing_method')) {
+      context.handle(
+        _pricingMethodMeta,
+        pricingMethod.isAcceptableOrUnknown(
+          data['pricing_method']!,
+          _pricingMethodMeta,
+        ),
+      );
+    }
+    if (data.containsKey('unit_price_toman')) {
+      context.handle(
+        _unitPriceTomanMeta,
+        unitPriceToman.isAcceptableOrUnknown(
+          data['unit_price_toman']!,
+          _unitPriceTomanMeta,
+        ),
+      );
+    }
+    if (data.containsKey('price_reference_fineness')) {
+      context.handle(
+        _priceReferenceFinenessMeta,
+        priceReferenceFineness.isAcceptableOrUnknown(
+          data['price_reference_fineness']!,
+          _priceReferenceFinenessMeta,
+        ),
+      );
+    }
+    if (data.containsKey('row_total_toman')) {
+      context.handle(
+        _rowTotalTomanMeta,
+        rowTotalToman.isAcceptableOrUnknown(
+          data['row_total_toman']!,
+          _rowTotalTomanMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {settlementId, lineId};
+  @override
+  LocalSettlementCoinLineRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalSettlementCoinLineRow(
+      settlementId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}settlement_id'],
+      )!,
+      lineId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}line_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      coinTypeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}coin_type_id'],
+      )!,
+      coinTypeNameSnapshot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}coin_type_name_snapshot'],
+      )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity'],
+      )!,
+      weightPerPieceGrams: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}weight_per_piece_grams'],
+      ),
+      fineness: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}fineness'],
+      ),
+      pricingMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pricing_method'],
+      ),
+      unitPriceToman: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}unit_price_toman'],
+      ),
+      priceReferenceFineness: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}price_reference_fineness'],
+      ),
+      rowTotalToman: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}row_total_toman'],
+      ),
+    );
+  }
+
+  @override
+  $ZarSettlementCoinLinesTable createAlias(String alias) {
+    return $ZarSettlementCoinLinesTable(attachedDatabase, alias);
+  }
+}
+
+class LocalSettlementCoinLineRow extends DataClass
+    implements Insertable<LocalSettlementCoinLineRow> {
+  final String settlementId;
+  final String lineId;
+  final int position;
+  final String coinTypeId;
+  final String coinTypeNameSnapshot;
+  final int quantity;
+  final String? weightPerPieceGrams;
+  final String? fineness;
+  final String? pricingMethod;
+  final int? unitPriceToman;
+  final String? priceReferenceFineness;
+  final int? rowTotalToman;
+  const LocalSettlementCoinLineRow({
+    required this.settlementId,
+    required this.lineId,
+    required this.position,
+    required this.coinTypeId,
+    required this.coinTypeNameSnapshot,
+    required this.quantity,
+    this.weightPerPieceGrams,
+    this.fineness,
+    this.pricingMethod,
+    this.unitPriceToman,
+    this.priceReferenceFineness,
+    this.rowTotalToman,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['settlement_id'] = Variable<String>(settlementId);
+    map['line_id'] = Variable<String>(lineId);
+    map['position'] = Variable<int>(position);
+    map['coin_type_id'] = Variable<String>(coinTypeId);
+    map['coin_type_name_snapshot'] = Variable<String>(coinTypeNameSnapshot);
+    map['quantity'] = Variable<int>(quantity);
+    if (!nullToAbsent || weightPerPieceGrams != null) {
+      map['weight_per_piece_grams'] = Variable<String>(weightPerPieceGrams);
+    }
+    if (!nullToAbsent || fineness != null) {
+      map['fineness'] = Variable<String>(fineness);
+    }
+    if (!nullToAbsent || pricingMethod != null) {
+      map['pricing_method'] = Variable<String>(pricingMethod);
+    }
+    if (!nullToAbsent || unitPriceToman != null) {
+      map['unit_price_toman'] = Variable<int>(unitPriceToman);
+    }
+    if (!nullToAbsent || priceReferenceFineness != null) {
+      map['price_reference_fineness'] = Variable<String>(
+        priceReferenceFineness,
+      );
+    }
+    if (!nullToAbsent || rowTotalToman != null) {
+      map['row_total_toman'] = Variable<int>(rowTotalToman);
+    }
+    return map;
+  }
+
+  ZarSettlementCoinLinesCompanion toCompanion(bool nullToAbsent) {
+    return ZarSettlementCoinLinesCompanion(
+      settlementId: Value(settlementId),
+      lineId: Value(lineId),
+      position: Value(position),
+      coinTypeId: Value(coinTypeId),
+      coinTypeNameSnapshot: Value(coinTypeNameSnapshot),
+      quantity: Value(quantity),
+      weightPerPieceGrams: weightPerPieceGrams == null && nullToAbsent
+          ? const Value.absent()
+          : Value(weightPerPieceGrams),
+      fineness: fineness == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fineness),
+      pricingMethod: pricingMethod == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pricingMethod),
+      unitPriceToman: unitPriceToman == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unitPriceToman),
+      priceReferenceFineness: priceReferenceFineness == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priceReferenceFineness),
+      rowTotalToman: rowTotalToman == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rowTotalToman),
+    );
+  }
+
+  factory LocalSettlementCoinLineRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalSettlementCoinLineRow(
+      settlementId: serializer.fromJson<String>(json['settlementId']),
+      lineId: serializer.fromJson<String>(json['lineId']),
+      position: serializer.fromJson<int>(json['position']),
+      coinTypeId: serializer.fromJson<String>(json['coinTypeId']),
+      coinTypeNameSnapshot: serializer.fromJson<String>(
+        json['coinTypeNameSnapshot'],
+      ),
+      quantity: serializer.fromJson<int>(json['quantity']),
+      weightPerPieceGrams: serializer.fromJson<String?>(
+        json['weightPerPieceGrams'],
+      ),
+      fineness: serializer.fromJson<String?>(json['fineness']),
+      pricingMethod: serializer.fromJson<String?>(json['pricingMethod']),
+      unitPriceToman: serializer.fromJson<int?>(json['unitPriceToman']),
+      priceReferenceFineness: serializer.fromJson<String?>(
+        json['priceReferenceFineness'],
+      ),
+      rowTotalToman: serializer.fromJson<int?>(json['rowTotalToman']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'settlementId': serializer.toJson<String>(settlementId),
+      'lineId': serializer.toJson<String>(lineId),
+      'position': serializer.toJson<int>(position),
+      'coinTypeId': serializer.toJson<String>(coinTypeId),
+      'coinTypeNameSnapshot': serializer.toJson<String>(coinTypeNameSnapshot),
+      'quantity': serializer.toJson<int>(quantity),
+      'weightPerPieceGrams': serializer.toJson<String?>(weightPerPieceGrams),
+      'fineness': serializer.toJson<String?>(fineness),
+      'pricingMethod': serializer.toJson<String?>(pricingMethod),
+      'unitPriceToman': serializer.toJson<int?>(unitPriceToman),
+      'priceReferenceFineness': serializer.toJson<String?>(
+        priceReferenceFineness,
+      ),
+      'rowTotalToman': serializer.toJson<int?>(rowTotalToman),
+    };
+  }
+
+  LocalSettlementCoinLineRow copyWith({
+    String? settlementId,
+    String? lineId,
+    int? position,
+    String? coinTypeId,
+    String? coinTypeNameSnapshot,
+    int? quantity,
+    Value<String?> weightPerPieceGrams = const Value.absent(),
+    Value<String?> fineness = const Value.absent(),
+    Value<String?> pricingMethod = const Value.absent(),
+    Value<int?> unitPriceToman = const Value.absent(),
+    Value<String?> priceReferenceFineness = const Value.absent(),
+    Value<int?> rowTotalToman = const Value.absent(),
+  }) => LocalSettlementCoinLineRow(
+    settlementId: settlementId ?? this.settlementId,
+    lineId: lineId ?? this.lineId,
+    position: position ?? this.position,
+    coinTypeId: coinTypeId ?? this.coinTypeId,
+    coinTypeNameSnapshot: coinTypeNameSnapshot ?? this.coinTypeNameSnapshot,
+    quantity: quantity ?? this.quantity,
+    weightPerPieceGrams: weightPerPieceGrams.present
+        ? weightPerPieceGrams.value
+        : this.weightPerPieceGrams,
+    fineness: fineness.present ? fineness.value : this.fineness,
+    pricingMethod: pricingMethod.present
+        ? pricingMethod.value
+        : this.pricingMethod,
+    unitPriceToman: unitPriceToman.present
+        ? unitPriceToman.value
+        : this.unitPriceToman,
+    priceReferenceFineness: priceReferenceFineness.present
+        ? priceReferenceFineness.value
+        : this.priceReferenceFineness,
+    rowTotalToman: rowTotalToman.present
+        ? rowTotalToman.value
+        : this.rowTotalToman,
+  );
+  LocalSettlementCoinLineRow copyWithCompanion(
+    ZarSettlementCoinLinesCompanion data,
+  ) {
+    return LocalSettlementCoinLineRow(
+      settlementId: data.settlementId.present
+          ? data.settlementId.value
+          : this.settlementId,
+      lineId: data.lineId.present ? data.lineId.value : this.lineId,
+      position: data.position.present ? data.position.value : this.position,
+      coinTypeId: data.coinTypeId.present
+          ? data.coinTypeId.value
+          : this.coinTypeId,
+      coinTypeNameSnapshot: data.coinTypeNameSnapshot.present
+          ? data.coinTypeNameSnapshot.value
+          : this.coinTypeNameSnapshot,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      weightPerPieceGrams: data.weightPerPieceGrams.present
+          ? data.weightPerPieceGrams.value
+          : this.weightPerPieceGrams,
+      fineness: data.fineness.present ? data.fineness.value : this.fineness,
+      pricingMethod: data.pricingMethod.present
+          ? data.pricingMethod.value
+          : this.pricingMethod,
+      unitPriceToman: data.unitPriceToman.present
+          ? data.unitPriceToman.value
+          : this.unitPriceToman,
+      priceReferenceFineness: data.priceReferenceFineness.present
+          ? data.priceReferenceFineness.value
+          : this.priceReferenceFineness,
+      rowTotalToman: data.rowTotalToman.present
+          ? data.rowTotalToman.value
+          : this.rowTotalToman,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalSettlementCoinLineRow(')
+          ..write('settlementId: $settlementId, ')
+          ..write('lineId: $lineId, ')
+          ..write('position: $position, ')
+          ..write('coinTypeId: $coinTypeId, ')
+          ..write('coinTypeNameSnapshot: $coinTypeNameSnapshot, ')
+          ..write('quantity: $quantity, ')
+          ..write('weightPerPieceGrams: $weightPerPieceGrams, ')
+          ..write('fineness: $fineness, ')
+          ..write('pricingMethod: $pricingMethod, ')
+          ..write('unitPriceToman: $unitPriceToman, ')
+          ..write('priceReferenceFineness: $priceReferenceFineness, ')
+          ..write('rowTotalToman: $rowTotalToman')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    settlementId,
+    lineId,
+    position,
+    coinTypeId,
+    coinTypeNameSnapshot,
+    quantity,
+    weightPerPieceGrams,
+    fineness,
+    pricingMethod,
+    unitPriceToman,
+    priceReferenceFineness,
+    rowTotalToman,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalSettlementCoinLineRow &&
+          other.settlementId == this.settlementId &&
+          other.lineId == this.lineId &&
+          other.position == this.position &&
+          other.coinTypeId == this.coinTypeId &&
+          other.coinTypeNameSnapshot == this.coinTypeNameSnapshot &&
+          other.quantity == this.quantity &&
+          other.weightPerPieceGrams == this.weightPerPieceGrams &&
+          other.fineness == this.fineness &&
+          other.pricingMethod == this.pricingMethod &&
+          other.unitPriceToman == this.unitPriceToman &&
+          other.priceReferenceFineness == this.priceReferenceFineness &&
+          other.rowTotalToman == this.rowTotalToman);
+}
+
+class ZarSettlementCoinLinesCompanion
+    extends UpdateCompanion<LocalSettlementCoinLineRow> {
+  final Value<String> settlementId;
+  final Value<String> lineId;
+  final Value<int> position;
+  final Value<String> coinTypeId;
+  final Value<String> coinTypeNameSnapshot;
+  final Value<int> quantity;
+  final Value<String?> weightPerPieceGrams;
+  final Value<String?> fineness;
+  final Value<String?> pricingMethod;
+  final Value<int?> unitPriceToman;
+  final Value<String?> priceReferenceFineness;
+  final Value<int?> rowTotalToman;
+  final Value<int> rowid;
+  const ZarSettlementCoinLinesCompanion({
+    this.settlementId = const Value.absent(),
+    this.lineId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.coinTypeId = const Value.absent(),
+    this.coinTypeNameSnapshot = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.weightPerPieceGrams = const Value.absent(),
+    this.fineness = const Value.absent(),
+    this.pricingMethod = const Value.absent(),
+    this.unitPriceToman = const Value.absent(),
+    this.priceReferenceFineness = const Value.absent(),
+    this.rowTotalToman = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ZarSettlementCoinLinesCompanion.insert({
+    required String settlementId,
+    required String lineId,
+    required int position,
+    required String coinTypeId,
+    required String coinTypeNameSnapshot,
+    required int quantity,
+    this.weightPerPieceGrams = const Value.absent(),
+    this.fineness = const Value.absent(),
+    this.pricingMethod = const Value.absent(),
+    this.unitPriceToman = const Value.absent(),
+    this.priceReferenceFineness = const Value.absent(),
+    this.rowTotalToman = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : settlementId = Value(settlementId),
+       lineId = Value(lineId),
+       position = Value(position),
+       coinTypeId = Value(coinTypeId),
+       coinTypeNameSnapshot = Value(coinTypeNameSnapshot),
+       quantity = Value(quantity);
+  static Insertable<LocalSettlementCoinLineRow> custom({
+    Expression<String>? settlementId,
+    Expression<String>? lineId,
+    Expression<int>? position,
+    Expression<String>? coinTypeId,
+    Expression<String>? coinTypeNameSnapshot,
+    Expression<int>? quantity,
+    Expression<String>? weightPerPieceGrams,
+    Expression<String>? fineness,
+    Expression<String>? pricingMethod,
+    Expression<int>? unitPriceToman,
+    Expression<String>? priceReferenceFineness,
+    Expression<int>? rowTotalToman,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (settlementId != null) 'settlement_id': settlementId,
+      if (lineId != null) 'line_id': lineId,
+      if (position != null) 'position': position,
+      if (coinTypeId != null) 'coin_type_id': coinTypeId,
+      if (coinTypeNameSnapshot != null)
+        'coin_type_name_snapshot': coinTypeNameSnapshot,
+      if (quantity != null) 'quantity': quantity,
+      if (weightPerPieceGrams != null)
+        'weight_per_piece_grams': weightPerPieceGrams,
+      if (fineness != null) 'fineness': fineness,
+      if (pricingMethod != null) 'pricing_method': pricingMethod,
+      if (unitPriceToman != null) 'unit_price_toman': unitPriceToman,
+      if (priceReferenceFineness != null)
+        'price_reference_fineness': priceReferenceFineness,
+      if (rowTotalToman != null) 'row_total_toman': rowTotalToman,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ZarSettlementCoinLinesCompanion copyWith({
+    Value<String>? settlementId,
+    Value<String>? lineId,
+    Value<int>? position,
+    Value<String>? coinTypeId,
+    Value<String>? coinTypeNameSnapshot,
+    Value<int>? quantity,
+    Value<String?>? weightPerPieceGrams,
+    Value<String?>? fineness,
+    Value<String?>? pricingMethod,
+    Value<int?>? unitPriceToman,
+    Value<String?>? priceReferenceFineness,
+    Value<int?>? rowTotalToman,
+    Value<int>? rowid,
+  }) {
+    return ZarSettlementCoinLinesCompanion(
+      settlementId: settlementId ?? this.settlementId,
+      lineId: lineId ?? this.lineId,
+      position: position ?? this.position,
+      coinTypeId: coinTypeId ?? this.coinTypeId,
+      coinTypeNameSnapshot: coinTypeNameSnapshot ?? this.coinTypeNameSnapshot,
+      quantity: quantity ?? this.quantity,
+      weightPerPieceGrams: weightPerPieceGrams ?? this.weightPerPieceGrams,
+      fineness: fineness ?? this.fineness,
+      pricingMethod: pricingMethod ?? this.pricingMethod,
+      unitPriceToman: unitPriceToman ?? this.unitPriceToman,
+      priceReferenceFineness:
+          priceReferenceFineness ?? this.priceReferenceFineness,
+      rowTotalToman: rowTotalToman ?? this.rowTotalToman,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (settlementId.present) {
+      map['settlement_id'] = Variable<String>(settlementId.value);
+    }
+    if (lineId.present) {
+      map['line_id'] = Variable<String>(lineId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (coinTypeId.present) {
+      map['coin_type_id'] = Variable<String>(coinTypeId.value);
+    }
+    if (coinTypeNameSnapshot.present) {
+      map['coin_type_name_snapshot'] = Variable<String>(
+        coinTypeNameSnapshot.value,
+      );
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (weightPerPieceGrams.present) {
+      map['weight_per_piece_grams'] = Variable<String>(
+        weightPerPieceGrams.value,
+      );
+    }
+    if (fineness.present) {
+      map['fineness'] = Variable<String>(fineness.value);
+    }
+    if (pricingMethod.present) {
+      map['pricing_method'] = Variable<String>(pricingMethod.value);
+    }
+    if (unitPriceToman.present) {
+      map['unit_price_toman'] = Variable<int>(unitPriceToman.value);
+    }
+    if (priceReferenceFineness.present) {
+      map['price_reference_fineness'] = Variable<String>(
+        priceReferenceFineness.value,
+      );
+    }
+    if (rowTotalToman.present) {
+      map['row_total_toman'] = Variable<int>(rowTotalToman.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ZarSettlementCoinLinesCompanion(')
+          ..write('settlementId: $settlementId, ')
+          ..write('lineId: $lineId, ')
+          ..write('position: $position, ')
+          ..write('coinTypeId: $coinTypeId, ')
+          ..write('coinTypeNameSnapshot: $coinTypeNameSnapshot, ')
+          ..write('quantity: $quantity, ')
+          ..write('weightPerPieceGrams: $weightPerPieceGrams, ')
+          ..write('fineness: $fineness, ')
+          ..write('pricingMethod: $pricingMethod, ')
+          ..write('unitPriceToman: $unitPriceToman, ')
+          ..write('priceReferenceFineness: $priceReferenceFineness, ')
+          ..write('rowTotalToman: $rowTotalToman, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$ZarLocalDatabase extends GeneratedDatabase {
   _$ZarLocalDatabase(QueryExecutor e) : super(e);
   $ZarLocalDatabaseManager get managers => $ZarLocalDatabaseManager(this);
@@ -4010,6 +6173,12 @@ abstract class _$ZarLocalDatabase extends GeneratedDatabase {
   late final $ZarLocalMetadataTable zarLocalMetadata = $ZarLocalMetadataTable(
     this,
   );
+  late final $ZarCoinTypesTable zarCoinTypes = $ZarCoinTypesTable(this);
+  late final $ZarDealCoinLinesTable zarDealCoinLines = $ZarDealCoinLinesTable(
+    this,
+  );
+  late final $ZarSettlementCoinLinesTable zarSettlementCoinLines =
+      $ZarSettlementCoinLinesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4020,6 +6189,9 @@ abstract class _$ZarLocalDatabase extends GeneratedDatabase {
     zarSettlements,
     zarReminderRules,
     zarLocalMetadata,
+    zarCoinTypes,
+    zarDealCoinLines,
+    zarSettlementCoinLines,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4029,6 +6201,22 @@ abstract class _$ZarLocalDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('zar_reminder_rules', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'zar_deals',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('zar_deal_coin_lines', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'zar_settlements',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('zar_settlement_coin_lines', kind: UpdateKind.delete),
+      ],
     ),
   ]);
 }
@@ -4594,6 +6782,27 @@ final class $$ZarDealsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$ZarDealCoinLinesTable, List<LocalDealCoinLineRow>>
+  _zarDealCoinLinesRefsTable(_$ZarLocalDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.zarDealCoinLines,
+        aliasName: 'zar_deals__id__zar_deal_coin_lines__deal_id',
+      );
+
+  $$ZarDealCoinLinesTableProcessedTableManager get zarDealCoinLinesRefs {
+    final manager = $$ZarDealCoinLinesTableTableManager(
+      $_db,
+      $_db.zarDealCoinLines,
+    ).filter((f) => f.dealId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _zarDealCoinLinesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ZarDealsTableFilterComposer
@@ -4769,6 +6978,31 @@ class $$ZarDealsTableFilterComposer
           }) => $$ZarSettlementsTableFilterComposer(
             $db: $db,
             $table: $db.zarSettlements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> zarDealCoinLinesRefs(
+    Expression<bool> Function($$ZarDealCoinLinesTableFilterComposer f) f,
+  ) {
+    final $$ZarDealCoinLinesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.zarDealCoinLines,
+      getReferencedColumn: (t) => t.dealId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ZarDealCoinLinesTableFilterComposer(
+            $db: $db,
+            $table: $db.zarDealCoinLines,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -5104,6 +7338,31 @@ class $$ZarDealsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> zarDealCoinLinesRefs<T extends Object>(
+    Expression<T> Function($$ZarDealCoinLinesTableAnnotationComposer a) f,
+  ) {
+    final $$ZarDealCoinLinesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.zarDealCoinLines,
+      getReferencedColumn: (t) => t.dealId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ZarDealCoinLinesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.zarDealCoinLines,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ZarDealsTableTableManager
@@ -5119,7 +7378,11 @@ class $$ZarDealsTableTableManager
           $$ZarDealsTableUpdateCompanionBuilder,
           (LocalDealRow, $$ZarDealsTableReferences),
           LocalDealRow,
-          PrefetchHooks Function({bool personId, bool zarSettlementsRefs})
+          PrefetchHooks Function({
+            bool personId,
+            bool zarSettlementsRefs,
+            bool zarDealCoinLinesRefs,
+          })
         > {
   $$ZarDealsTableTableManager(_$ZarLocalDatabase db, $ZarDealsTable table)
     : super(
@@ -5259,11 +7522,16 @@ class $$ZarDealsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({personId = false, zarSettlementsRefs = false}) {
+              ({
+                personId = false,
+                zarSettlementsRefs = false,
+                zarDealCoinLinesRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (zarSettlementsRefs) db.zarSettlements,
+                    if (zarDealCoinLinesRefs) db.zarDealCoinLines,
                   ],
                   addJoins:
                       <
@@ -5320,6 +7588,27 @@ class $$ZarDealsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (zarDealCoinLinesRefs)
+                        await $_getPrefetchedData<
+                          LocalDealRow,
+                          $ZarDealsTable,
+                          LocalDealCoinLineRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ZarDealsTableReferences
+                              ._zarDealCoinLinesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ZarDealsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).zarDealCoinLinesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.dealId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -5340,7 +7629,11 @@ typedef $$ZarDealsTableProcessedTableManager =
       $$ZarDealsTableUpdateCompanionBuilder,
       (LocalDealRow, $$ZarDealsTableReferences),
       LocalDealRow,
-      PrefetchHooks Function({bool personId, bool zarSettlementsRefs})
+      PrefetchHooks Function({
+        bool personId,
+        bool zarSettlementsRefs,
+        bool zarDealCoinLinesRefs,
+      })
     >;
 typedef $$ZarSettlementsTableCreateCompanionBuilder =
     ZarSettlementsCompanion Function({
@@ -5457,6 +7750,32 @@ final class $$ZarSettlementsTableReferences
 
     final cache = $_typedResult.readTableOrNull(
       _zarReminderRulesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $ZarSettlementCoinLinesTable,
+    List<LocalSettlementCoinLineRow>
+  >
+  _zarSettlementCoinLinesRefsTable(_$ZarLocalDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.zarSettlementCoinLines,
+        aliasName:
+            'zar_settlements__id__zar_settlement_coin_lines__settlement_id',
+      );
+
+  $$ZarSettlementCoinLinesTableProcessedTableManager
+  get zarSettlementCoinLinesRefs {
+    final manager = $$ZarSettlementCoinLinesTableTableManager(
+      $_db,
+      $_db.zarSettlementCoinLines,
+    ).filter((f) => f.settlementId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _zarSettlementCoinLinesRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -5641,6 +7960,32 @@ class $$ZarSettlementsTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> zarSettlementCoinLinesRefs(
+    Expression<bool> Function($$ZarSettlementCoinLinesTableFilterComposer f) f,
+  ) {
+    final $$ZarSettlementCoinLinesTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.zarSettlementCoinLines,
+          getReferencedColumn: (t) => t.settlementId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ZarSettlementCoinLinesTableFilterComposer(
+                $db: $db,
+                $table: $db.zarSettlementCoinLines,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -5964,6 +8309,32 @@ class $$ZarSettlementsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> zarSettlementCoinLinesRefs<T extends Object>(
+    Expression<T> Function($$ZarSettlementCoinLinesTableAnnotationComposer a) f,
+  ) {
+    final $$ZarSettlementCoinLinesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.zarSettlementCoinLines,
+          getReferencedColumn: (t) => t.settlementId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ZarSettlementCoinLinesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.zarSettlementCoinLines,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ZarSettlementsTableTableManager
@@ -5983,6 +8354,7 @@ class $$ZarSettlementsTableTableManager
             bool dealId,
             bool personId,
             bool zarReminderRulesRefs,
+            bool zarSettlementCoinLinesRefs,
           })
         > {
   $$ZarSettlementsTableTableManager(
@@ -6111,11 +8483,13 @@ class $$ZarSettlementsTableTableManager
                 dealId = false,
                 personId = false,
                 zarReminderRulesRefs = false,
+                zarSettlementCoinLinesRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (zarReminderRulesRefs) db.zarReminderRules,
+                    if (zarSettlementCoinLinesRefs) db.zarSettlementCoinLines,
                   ],
                   addJoins:
                       <
@@ -6189,6 +8563,27 @@ class $$ZarSettlementsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (zarSettlementCoinLinesRefs)
+                        await $_getPrefetchedData<
+                          LocalSettlementRow,
+                          $ZarSettlementsTable,
+                          LocalSettlementCoinLineRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ZarSettlementsTableReferences
+                              ._zarSettlementCoinLinesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ZarSettlementsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).zarSettlementCoinLinesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.settlementId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -6213,6 +8608,7 @@ typedef $$ZarSettlementsTableProcessedTableManager =
         bool dealId,
         bool personId,
         bool zarReminderRulesRefs,
+        bool zarSettlementCoinLinesRefs,
       })
     >;
 typedef $$ZarReminderRulesTableCreateCompanionBuilder =
@@ -6741,6 +9137,1267 @@ typedef $$ZarLocalMetadataTableProcessedTableManager =
       LocalMetadataRow,
       PrefetchHooks Function()
     >;
+typedef $$ZarCoinTypesTableCreateCompanionBuilder =
+    ZarCoinTypesCompanion Function({
+      required String id,
+      required String name,
+      required String category,
+      Value<String?> defaultWeightGrams,
+      Value<String?> defaultFineness,
+      required String defaultPricingMethod,
+      Value<bool> archived,
+      required int createdAtMicros,
+      required int updatedAtMicros,
+      Value<int> rowid,
+    });
+typedef $$ZarCoinTypesTableUpdateCompanionBuilder =
+    ZarCoinTypesCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> category,
+      Value<String?> defaultWeightGrams,
+      Value<String?> defaultFineness,
+      Value<String> defaultPricingMethod,
+      Value<bool> archived,
+      Value<int> createdAtMicros,
+      Value<int> updatedAtMicros,
+      Value<int> rowid,
+    });
+
+class $$ZarCoinTypesTableFilterComposer
+    extends Composer<_$ZarLocalDatabase, $ZarCoinTypesTable> {
+  $$ZarCoinTypesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get defaultWeightGrams => $composableBuilder(
+    column: $table.defaultWeightGrams,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get defaultFineness => $composableBuilder(
+    column: $table.defaultFineness,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get defaultPricingMethod => $composableBuilder(
+    column: $table.defaultPricingMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAtMicros => $composableBuilder(
+    column: $table.createdAtMicros,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAtMicros => $composableBuilder(
+    column: $table.updatedAtMicros,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ZarCoinTypesTableOrderingComposer
+    extends Composer<_$ZarLocalDatabase, $ZarCoinTypesTable> {
+  $$ZarCoinTypesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get defaultWeightGrams => $composableBuilder(
+    column: $table.defaultWeightGrams,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get defaultFineness => $composableBuilder(
+    column: $table.defaultFineness,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get defaultPricingMethod => $composableBuilder(
+    column: $table.defaultPricingMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAtMicros => $composableBuilder(
+    column: $table.createdAtMicros,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAtMicros => $composableBuilder(
+    column: $table.updatedAtMicros,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ZarCoinTypesTableAnnotationComposer
+    extends Composer<_$ZarLocalDatabase, $ZarCoinTypesTable> {
+  $$ZarCoinTypesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get defaultWeightGrams => $composableBuilder(
+    column: $table.defaultWeightGrams,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get defaultFineness => $composableBuilder(
+    column: $table.defaultFineness,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get defaultPricingMethod => $composableBuilder(
+    column: $table.defaultPricingMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAtMicros => $composableBuilder(
+    column: $table.createdAtMicros,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get updatedAtMicros => $composableBuilder(
+    column: $table.updatedAtMicros,
+    builder: (column) => column,
+  );
+}
+
+class $$ZarCoinTypesTableTableManager
+    extends
+        RootTableManager<
+          _$ZarLocalDatabase,
+          $ZarCoinTypesTable,
+          LocalCoinTypeRow,
+          $$ZarCoinTypesTableFilterComposer,
+          $$ZarCoinTypesTableOrderingComposer,
+          $$ZarCoinTypesTableAnnotationComposer,
+          $$ZarCoinTypesTableCreateCompanionBuilder,
+          $$ZarCoinTypesTableUpdateCompanionBuilder,
+          (
+            LocalCoinTypeRow,
+            BaseReferences<
+              _$ZarLocalDatabase,
+              $ZarCoinTypesTable,
+              LocalCoinTypeRow
+            >,
+          ),
+          LocalCoinTypeRow,
+          PrefetchHooks Function()
+        > {
+  $$ZarCoinTypesTableTableManager(
+    _$ZarLocalDatabase db,
+    $ZarCoinTypesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ZarCoinTypesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ZarCoinTypesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ZarCoinTypesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<String?> defaultWeightGrams = const Value.absent(),
+                Value<String?> defaultFineness = const Value.absent(),
+                Value<String> defaultPricingMethod = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
+                Value<int> createdAtMicros = const Value.absent(),
+                Value<int> updatedAtMicros = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ZarCoinTypesCompanion(
+                id: id,
+                name: name,
+                category: category,
+                defaultWeightGrams: defaultWeightGrams,
+                defaultFineness: defaultFineness,
+                defaultPricingMethod: defaultPricingMethod,
+                archived: archived,
+                createdAtMicros: createdAtMicros,
+                updatedAtMicros: updatedAtMicros,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String category,
+                Value<String?> defaultWeightGrams = const Value.absent(),
+                Value<String?> defaultFineness = const Value.absent(),
+                required String defaultPricingMethod,
+                Value<bool> archived = const Value.absent(),
+                required int createdAtMicros,
+                required int updatedAtMicros,
+                Value<int> rowid = const Value.absent(),
+              }) => ZarCoinTypesCompanion.insert(
+                id: id,
+                name: name,
+                category: category,
+                defaultWeightGrams: defaultWeightGrams,
+                defaultFineness: defaultFineness,
+                defaultPricingMethod: defaultPricingMethod,
+                archived: archived,
+                createdAtMicros: createdAtMicros,
+                updatedAtMicros: updatedAtMicros,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ZarCoinTypesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ZarLocalDatabase,
+      $ZarCoinTypesTable,
+      LocalCoinTypeRow,
+      $$ZarCoinTypesTableFilterComposer,
+      $$ZarCoinTypesTableOrderingComposer,
+      $$ZarCoinTypesTableAnnotationComposer,
+      $$ZarCoinTypesTableCreateCompanionBuilder,
+      $$ZarCoinTypesTableUpdateCompanionBuilder,
+      (
+        LocalCoinTypeRow,
+        BaseReferences<
+          _$ZarLocalDatabase,
+          $ZarCoinTypesTable,
+          LocalCoinTypeRow
+        >,
+      ),
+      LocalCoinTypeRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ZarDealCoinLinesTableCreateCompanionBuilder =
+    ZarDealCoinLinesCompanion Function({
+      required String dealId,
+      required String lineId,
+      required int position,
+      required String coinTypeId,
+      required String coinTypeNameSnapshot,
+      required int quantity,
+      Value<String?> weightPerPieceGrams,
+      Value<String?> fineness,
+      required String pricingMethod,
+      required int unitPriceToman,
+      Value<String?> priceReferenceFineness,
+      required int rowTotalToman,
+      Value<int> rowid,
+    });
+typedef $$ZarDealCoinLinesTableUpdateCompanionBuilder =
+    ZarDealCoinLinesCompanion Function({
+      Value<String> dealId,
+      Value<String> lineId,
+      Value<int> position,
+      Value<String> coinTypeId,
+      Value<String> coinTypeNameSnapshot,
+      Value<int> quantity,
+      Value<String?> weightPerPieceGrams,
+      Value<String?> fineness,
+      Value<String> pricingMethod,
+      Value<int> unitPriceToman,
+      Value<String?> priceReferenceFineness,
+      Value<int> rowTotalToman,
+      Value<int> rowid,
+    });
+
+final class $$ZarDealCoinLinesTableReferences
+    extends
+        BaseReferences<
+          _$ZarLocalDatabase,
+          $ZarDealCoinLinesTable,
+          LocalDealCoinLineRow
+        > {
+  $$ZarDealCoinLinesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ZarDealsTable _dealIdTable(_$ZarLocalDatabase db) =>
+      db.zarDeals.createAlias('zar_deal_coin_lines__deal_id__zar_deals__id');
+
+  $$ZarDealsTableProcessedTableManager get dealId {
+    final $_column = $_itemColumn<String>('deal_id')!;
+
+    final manager = $$ZarDealsTableTableManager(
+      $_db,
+      $_db.zarDeals,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_dealIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ZarDealCoinLinesTableFilterComposer
+    extends Composer<_$ZarLocalDatabase, $ZarDealCoinLinesTable> {
+  $$ZarDealCoinLinesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get lineId => $composableBuilder(
+    column: $table.lineId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coinTypeId => $composableBuilder(
+    column: $table.coinTypeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coinTypeNameSnapshot => $composableBuilder(
+    column: $table.coinTypeNameSnapshot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get weightPerPieceGrams => $composableBuilder(
+    column: $table.weightPerPieceGrams,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fineness => $composableBuilder(
+    column: $table.fineness,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pricingMethod => $composableBuilder(
+    column: $table.pricingMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get unitPriceToman => $composableBuilder(
+    column: $table.unitPriceToman,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priceReferenceFineness => $composableBuilder(
+    column: $table.priceReferenceFineness,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rowTotalToman => $composableBuilder(
+    column: $table.rowTotalToman,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ZarDealsTableFilterComposer get dealId {
+    final $$ZarDealsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.dealId,
+      referencedTable: $db.zarDeals,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ZarDealsTableFilterComposer(
+            $db: $db,
+            $table: $db.zarDeals,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ZarDealCoinLinesTableOrderingComposer
+    extends Composer<_$ZarLocalDatabase, $ZarDealCoinLinesTable> {
+  $$ZarDealCoinLinesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get lineId => $composableBuilder(
+    column: $table.lineId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coinTypeId => $composableBuilder(
+    column: $table.coinTypeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coinTypeNameSnapshot => $composableBuilder(
+    column: $table.coinTypeNameSnapshot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get weightPerPieceGrams => $composableBuilder(
+    column: $table.weightPerPieceGrams,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fineness => $composableBuilder(
+    column: $table.fineness,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pricingMethod => $composableBuilder(
+    column: $table.pricingMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get unitPriceToman => $composableBuilder(
+    column: $table.unitPriceToman,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priceReferenceFineness => $composableBuilder(
+    column: $table.priceReferenceFineness,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rowTotalToman => $composableBuilder(
+    column: $table.rowTotalToman,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ZarDealsTableOrderingComposer get dealId {
+    final $$ZarDealsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.dealId,
+      referencedTable: $db.zarDeals,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ZarDealsTableOrderingComposer(
+            $db: $db,
+            $table: $db.zarDeals,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ZarDealCoinLinesTableAnnotationComposer
+    extends Composer<_$ZarLocalDatabase, $ZarDealCoinLinesTable> {
+  $$ZarDealCoinLinesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get lineId =>
+      $composableBuilder(column: $table.lineId, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get coinTypeId => $composableBuilder(
+    column: $table.coinTypeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coinTypeNameSnapshot => $composableBuilder(
+    column: $table.coinTypeNameSnapshot,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<String> get weightPerPieceGrams => $composableBuilder(
+    column: $table.weightPerPieceGrams,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fineness =>
+      $composableBuilder(column: $table.fineness, builder: (column) => column);
+
+  GeneratedColumn<String> get pricingMethod => $composableBuilder(
+    column: $table.pricingMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get unitPriceToman => $composableBuilder(
+    column: $table.unitPriceToman,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get priceReferenceFineness => $composableBuilder(
+    column: $table.priceReferenceFineness,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get rowTotalToman => $composableBuilder(
+    column: $table.rowTotalToman,
+    builder: (column) => column,
+  );
+
+  $$ZarDealsTableAnnotationComposer get dealId {
+    final $$ZarDealsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.dealId,
+      referencedTable: $db.zarDeals,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ZarDealsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.zarDeals,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ZarDealCoinLinesTableTableManager
+    extends
+        RootTableManager<
+          _$ZarLocalDatabase,
+          $ZarDealCoinLinesTable,
+          LocalDealCoinLineRow,
+          $$ZarDealCoinLinesTableFilterComposer,
+          $$ZarDealCoinLinesTableOrderingComposer,
+          $$ZarDealCoinLinesTableAnnotationComposer,
+          $$ZarDealCoinLinesTableCreateCompanionBuilder,
+          $$ZarDealCoinLinesTableUpdateCompanionBuilder,
+          (LocalDealCoinLineRow, $$ZarDealCoinLinesTableReferences),
+          LocalDealCoinLineRow,
+          PrefetchHooks Function({bool dealId})
+        > {
+  $$ZarDealCoinLinesTableTableManager(
+    _$ZarLocalDatabase db,
+    $ZarDealCoinLinesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ZarDealCoinLinesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ZarDealCoinLinesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ZarDealCoinLinesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> dealId = const Value.absent(),
+                Value<String> lineId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<String> coinTypeId = const Value.absent(),
+                Value<String> coinTypeNameSnapshot = const Value.absent(),
+                Value<int> quantity = const Value.absent(),
+                Value<String?> weightPerPieceGrams = const Value.absent(),
+                Value<String?> fineness = const Value.absent(),
+                Value<String> pricingMethod = const Value.absent(),
+                Value<int> unitPriceToman = const Value.absent(),
+                Value<String?> priceReferenceFineness = const Value.absent(),
+                Value<int> rowTotalToman = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ZarDealCoinLinesCompanion(
+                dealId: dealId,
+                lineId: lineId,
+                position: position,
+                coinTypeId: coinTypeId,
+                coinTypeNameSnapshot: coinTypeNameSnapshot,
+                quantity: quantity,
+                weightPerPieceGrams: weightPerPieceGrams,
+                fineness: fineness,
+                pricingMethod: pricingMethod,
+                unitPriceToman: unitPriceToman,
+                priceReferenceFineness: priceReferenceFineness,
+                rowTotalToman: rowTotalToman,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String dealId,
+                required String lineId,
+                required int position,
+                required String coinTypeId,
+                required String coinTypeNameSnapshot,
+                required int quantity,
+                Value<String?> weightPerPieceGrams = const Value.absent(),
+                Value<String?> fineness = const Value.absent(),
+                required String pricingMethod,
+                required int unitPriceToman,
+                Value<String?> priceReferenceFineness = const Value.absent(),
+                required int rowTotalToman,
+                Value<int> rowid = const Value.absent(),
+              }) => ZarDealCoinLinesCompanion.insert(
+                dealId: dealId,
+                lineId: lineId,
+                position: position,
+                coinTypeId: coinTypeId,
+                coinTypeNameSnapshot: coinTypeNameSnapshot,
+                quantity: quantity,
+                weightPerPieceGrams: weightPerPieceGrams,
+                fineness: fineness,
+                pricingMethod: pricingMethod,
+                unitPriceToman: unitPriceToman,
+                priceReferenceFineness: priceReferenceFineness,
+                rowTotalToman: rowTotalToman,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ZarDealCoinLinesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({dealId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (dealId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.dealId,
+                                referencedTable:
+                                    $$ZarDealCoinLinesTableReferences
+                                        ._dealIdTable(db),
+                                referencedColumn:
+                                    $$ZarDealCoinLinesTableReferences
+                                        ._dealIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ZarDealCoinLinesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ZarLocalDatabase,
+      $ZarDealCoinLinesTable,
+      LocalDealCoinLineRow,
+      $$ZarDealCoinLinesTableFilterComposer,
+      $$ZarDealCoinLinesTableOrderingComposer,
+      $$ZarDealCoinLinesTableAnnotationComposer,
+      $$ZarDealCoinLinesTableCreateCompanionBuilder,
+      $$ZarDealCoinLinesTableUpdateCompanionBuilder,
+      (LocalDealCoinLineRow, $$ZarDealCoinLinesTableReferences),
+      LocalDealCoinLineRow,
+      PrefetchHooks Function({bool dealId})
+    >;
+typedef $$ZarSettlementCoinLinesTableCreateCompanionBuilder =
+    ZarSettlementCoinLinesCompanion Function({
+      required String settlementId,
+      required String lineId,
+      required int position,
+      required String coinTypeId,
+      required String coinTypeNameSnapshot,
+      required int quantity,
+      Value<String?> weightPerPieceGrams,
+      Value<String?> fineness,
+      Value<String?> pricingMethod,
+      Value<int?> unitPriceToman,
+      Value<String?> priceReferenceFineness,
+      Value<int?> rowTotalToman,
+      Value<int> rowid,
+    });
+typedef $$ZarSettlementCoinLinesTableUpdateCompanionBuilder =
+    ZarSettlementCoinLinesCompanion Function({
+      Value<String> settlementId,
+      Value<String> lineId,
+      Value<int> position,
+      Value<String> coinTypeId,
+      Value<String> coinTypeNameSnapshot,
+      Value<int> quantity,
+      Value<String?> weightPerPieceGrams,
+      Value<String?> fineness,
+      Value<String?> pricingMethod,
+      Value<int?> unitPriceToman,
+      Value<String?> priceReferenceFineness,
+      Value<int?> rowTotalToman,
+      Value<int> rowid,
+    });
+
+final class $$ZarSettlementCoinLinesTableReferences
+    extends
+        BaseReferences<
+          _$ZarLocalDatabase,
+          $ZarSettlementCoinLinesTable,
+          LocalSettlementCoinLineRow
+        > {
+  $$ZarSettlementCoinLinesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ZarSettlementsTable _settlementIdTable(_$ZarLocalDatabase db) =>
+      db.zarSettlements.createAlias(
+        'zar_settlement_coin_lines__settlement_id__zar_settlements__id',
+      );
+
+  $$ZarSettlementsTableProcessedTableManager get settlementId {
+    final $_column = $_itemColumn<String>('settlement_id')!;
+
+    final manager = $$ZarSettlementsTableTableManager(
+      $_db,
+      $_db.zarSettlements,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_settlementIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ZarSettlementCoinLinesTableFilterComposer
+    extends Composer<_$ZarLocalDatabase, $ZarSettlementCoinLinesTable> {
+  $$ZarSettlementCoinLinesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get lineId => $composableBuilder(
+    column: $table.lineId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coinTypeId => $composableBuilder(
+    column: $table.coinTypeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coinTypeNameSnapshot => $composableBuilder(
+    column: $table.coinTypeNameSnapshot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get weightPerPieceGrams => $composableBuilder(
+    column: $table.weightPerPieceGrams,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fineness => $composableBuilder(
+    column: $table.fineness,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pricingMethod => $composableBuilder(
+    column: $table.pricingMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get unitPriceToman => $composableBuilder(
+    column: $table.unitPriceToman,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priceReferenceFineness => $composableBuilder(
+    column: $table.priceReferenceFineness,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rowTotalToman => $composableBuilder(
+    column: $table.rowTotalToman,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ZarSettlementsTableFilterComposer get settlementId {
+    final $$ZarSettlementsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.settlementId,
+      referencedTable: $db.zarSettlements,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ZarSettlementsTableFilterComposer(
+            $db: $db,
+            $table: $db.zarSettlements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ZarSettlementCoinLinesTableOrderingComposer
+    extends Composer<_$ZarLocalDatabase, $ZarSettlementCoinLinesTable> {
+  $$ZarSettlementCoinLinesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get lineId => $composableBuilder(
+    column: $table.lineId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coinTypeId => $composableBuilder(
+    column: $table.coinTypeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coinTypeNameSnapshot => $composableBuilder(
+    column: $table.coinTypeNameSnapshot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get weightPerPieceGrams => $composableBuilder(
+    column: $table.weightPerPieceGrams,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fineness => $composableBuilder(
+    column: $table.fineness,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pricingMethod => $composableBuilder(
+    column: $table.pricingMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get unitPriceToman => $composableBuilder(
+    column: $table.unitPriceToman,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priceReferenceFineness => $composableBuilder(
+    column: $table.priceReferenceFineness,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rowTotalToman => $composableBuilder(
+    column: $table.rowTotalToman,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ZarSettlementsTableOrderingComposer get settlementId {
+    final $$ZarSettlementsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.settlementId,
+      referencedTable: $db.zarSettlements,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ZarSettlementsTableOrderingComposer(
+            $db: $db,
+            $table: $db.zarSettlements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ZarSettlementCoinLinesTableAnnotationComposer
+    extends Composer<_$ZarLocalDatabase, $ZarSettlementCoinLinesTable> {
+  $$ZarSettlementCoinLinesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get lineId =>
+      $composableBuilder(column: $table.lineId, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get coinTypeId => $composableBuilder(
+    column: $table.coinTypeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coinTypeNameSnapshot => $composableBuilder(
+    column: $table.coinTypeNameSnapshot,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<String> get weightPerPieceGrams => $composableBuilder(
+    column: $table.weightPerPieceGrams,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fineness =>
+      $composableBuilder(column: $table.fineness, builder: (column) => column);
+
+  GeneratedColumn<String> get pricingMethod => $composableBuilder(
+    column: $table.pricingMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get unitPriceToman => $composableBuilder(
+    column: $table.unitPriceToman,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get priceReferenceFineness => $composableBuilder(
+    column: $table.priceReferenceFineness,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get rowTotalToman => $composableBuilder(
+    column: $table.rowTotalToman,
+    builder: (column) => column,
+  );
+
+  $$ZarSettlementsTableAnnotationComposer get settlementId {
+    final $$ZarSettlementsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.settlementId,
+      referencedTable: $db.zarSettlements,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ZarSettlementsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.zarSettlements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ZarSettlementCoinLinesTableTableManager
+    extends
+        RootTableManager<
+          _$ZarLocalDatabase,
+          $ZarSettlementCoinLinesTable,
+          LocalSettlementCoinLineRow,
+          $$ZarSettlementCoinLinesTableFilterComposer,
+          $$ZarSettlementCoinLinesTableOrderingComposer,
+          $$ZarSettlementCoinLinesTableAnnotationComposer,
+          $$ZarSettlementCoinLinesTableCreateCompanionBuilder,
+          $$ZarSettlementCoinLinesTableUpdateCompanionBuilder,
+          (LocalSettlementCoinLineRow, $$ZarSettlementCoinLinesTableReferences),
+          LocalSettlementCoinLineRow,
+          PrefetchHooks Function({bool settlementId})
+        > {
+  $$ZarSettlementCoinLinesTableTableManager(
+    _$ZarLocalDatabase db,
+    $ZarSettlementCoinLinesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ZarSettlementCoinLinesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ZarSettlementCoinLinesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ZarSettlementCoinLinesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> settlementId = const Value.absent(),
+                Value<String> lineId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<String> coinTypeId = const Value.absent(),
+                Value<String> coinTypeNameSnapshot = const Value.absent(),
+                Value<int> quantity = const Value.absent(),
+                Value<String?> weightPerPieceGrams = const Value.absent(),
+                Value<String?> fineness = const Value.absent(),
+                Value<String?> pricingMethod = const Value.absent(),
+                Value<int?> unitPriceToman = const Value.absent(),
+                Value<String?> priceReferenceFineness = const Value.absent(),
+                Value<int?> rowTotalToman = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ZarSettlementCoinLinesCompanion(
+                settlementId: settlementId,
+                lineId: lineId,
+                position: position,
+                coinTypeId: coinTypeId,
+                coinTypeNameSnapshot: coinTypeNameSnapshot,
+                quantity: quantity,
+                weightPerPieceGrams: weightPerPieceGrams,
+                fineness: fineness,
+                pricingMethod: pricingMethod,
+                unitPriceToman: unitPriceToman,
+                priceReferenceFineness: priceReferenceFineness,
+                rowTotalToman: rowTotalToman,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String settlementId,
+                required String lineId,
+                required int position,
+                required String coinTypeId,
+                required String coinTypeNameSnapshot,
+                required int quantity,
+                Value<String?> weightPerPieceGrams = const Value.absent(),
+                Value<String?> fineness = const Value.absent(),
+                Value<String?> pricingMethod = const Value.absent(),
+                Value<int?> unitPriceToman = const Value.absent(),
+                Value<String?> priceReferenceFineness = const Value.absent(),
+                Value<int?> rowTotalToman = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ZarSettlementCoinLinesCompanion.insert(
+                settlementId: settlementId,
+                lineId: lineId,
+                position: position,
+                coinTypeId: coinTypeId,
+                coinTypeNameSnapshot: coinTypeNameSnapshot,
+                quantity: quantity,
+                weightPerPieceGrams: weightPerPieceGrams,
+                fineness: fineness,
+                pricingMethod: pricingMethod,
+                unitPriceToman: unitPriceToman,
+                priceReferenceFineness: priceReferenceFineness,
+                rowTotalToman: rowTotalToman,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ZarSettlementCoinLinesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({settlementId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (settlementId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.settlementId,
+                                referencedTable:
+                                    $$ZarSettlementCoinLinesTableReferences
+                                        ._settlementIdTable(db),
+                                referencedColumn:
+                                    $$ZarSettlementCoinLinesTableReferences
+                                        ._settlementIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ZarSettlementCoinLinesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ZarLocalDatabase,
+      $ZarSettlementCoinLinesTable,
+      LocalSettlementCoinLineRow,
+      $$ZarSettlementCoinLinesTableFilterComposer,
+      $$ZarSettlementCoinLinesTableOrderingComposer,
+      $$ZarSettlementCoinLinesTableAnnotationComposer,
+      $$ZarSettlementCoinLinesTableCreateCompanionBuilder,
+      $$ZarSettlementCoinLinesTableUpdateCompanionBuilder,
+      (LocalSettlementCoinLineRow, $$ZarSettlementCoinLinesTableReferences),
+      LocalSettlementCoinLineRow,
+      PrefetchHooks Function({bool settlementId})
+    >;
 
 class $ZarLocalDatabaseManager {
   final _$ZarLocalDatabase _db;
@@ -6755,4 +10412,13 @@ class $ZarLocalDatabaseManager {
       $$ZarReminderRulesTableTableManager(_db, _db.zarReminderRules);
   $$ZarLocalMetadataTableTableManager get zarLocalMetadata =>
       $$ZarLocalMetadataTableTableManager(_db, _db.zarLocalMetadata);
+  $$ZarCoinTypesTableTableManager get zarCoinTypes =>
+      $$ZarCoinTypesTableTableManager(_db, _db.zarCoinTypes);
+  $$ZarDealCoinLinesTableTableManager get zarDealCoinLines =>
+      $$ZarDealCoinLinesTableTableManager(_db, _db.zarDealCoinLines);
+  $$ZarSettlementCoinLinesTableTableManager get zarSettlementCoinLines =>
+      $$ZarSettlementCoinLinesTableTableManager(
+        _db,
+        _db.zarSettlementCoinLines,
+      );
 }

@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'features/reminders/reminder_model.dart';
 import 'application/customer_position_projector.dart';
+import 'domain/zar_domain_models.dart';
 
 void main() {
   runApp(const ZarPlusApp());
@@ -123,6 +124,7 @@ class AppRecord {
     this.goldEquivalentPrice,
     this.tomanRate,
     this.totalToman,
+    this.coinLines = const [],
   });
 
   final String id;
@@ -146,6 +148,7 @@ class AppRecord {
   final String? goldEquivalentPrice;
   final String? tomanRate;
   final int? totalToman;
+  final List<AppCoinLine> coinLines;
 
   bool get isObligation => type == RecordType.settlement && (operationLabel == 'دریافت' || operationLabel == 'تحویل');
 
@@ -192,6 +195,7 @@ class AppRecord {
       goldEquivalentPrice: goldEquivalentPrice ?? this.goldEquivalentPrice,
       tomanRate: tomanRate ?? this.tomanRate,
       totalToman: totalToman ?? this.totalToman,
+      coinLines: coinLines,
     );
   }
 
@@ -214,6 +218,17 @@ class AppRecord {
   }
 }
 
+class AppCoinLine {
+  const AppCoinLine({required this.name, required this.quantity, this.weightGrams, this.fineness, this.pricingMethod, this.unitPriceToman, this.rowTotalToman});
+  final String name;
+  final int quantity;
+  final String? weightGrams;
+  final String? fineness;
+  final String? pricingMethod;
+  final int? unitPriceToman;
+  final int? rowTotalToman;
+}
+
 class QuickAddDraft {
   QuickAddDraft({
     required this.operation,
@@ -231,6 +246,9 @@ class QuickAddDraft {
     this.goldPriceUnit,
     this.tomanRate,
     this.totalToman,
+    this.coinLines = const [],
+    this.coinDealPricing,
+    this.coinSettlementValuation,
   });
 
   final String operation;
@@ -248,6 +266,9 @@ class QuickAddDraft {
   final String? goldPriceUnit;
   final String? tomanRate;
   final String? totalToman;
+  final List<ZarCoinLine> coinLines;
+  final ZarCoinDealPricing? coinDealPricing;
+  final ZarCoinSettlementValuation? coinSettlementValuation;
 }
 
 String formatJalaliDate(Jalali date) => '${toPersianDigits(date.day.toString())} ${monthName(date.month)} ${toPersianDigits(date.year.toString())}';
@@ -1065,6 +1086,10 @@ class PersonDetailScreen extends StatelessWidget {
         textDirection: TextDirection.rtl,
         child: Text('${code == 'TOMAN' ? 'تومان' : code}: ${_formatPositionDecimal(decimalAmount)}', style: const TextStyle(color: currency, fontWeight: FontWeight.w600)),
       ),
+      ZarCustomerCoinPosition(:final displayName, :final quantity) => Text(
+        '${toPersianDigits(quantity.toString())} عدد $displayName',
+        style: const TextStyle(color: gold, fontWeight: FontWeight.w600),
+      ),
     };
   }
 
@@ -1480,6 +1505,19 @@ class DealDetailSheet extends StatelessWidget {
               Text(record.timeLabel(), style: Theme.of(context).textTheme.bodyMedium),
             ],
           ),
+          if (record.coinLines.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ...record.coinLines.map((line) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${toPersianDigits(line.quantity.toString())} × ${line.name}', style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF9A6700))),
+                if (line.weightGrams != null || line.fineness != null)
+                  Text([if (line.weightGrams != null) '${toPersianDigits(line.weightGrams!)} گرم', if (line.fineness != null) 'عیار ${toPersianDigits(line.fineness!)}'].join(' • ')),
+                if (line.rowTotalToman != null)
+                  Text('جمع ردیف: ${toPersianDigits(NumberFormat.decimalPattern('en_US').format(line.rowTotalToman))} تومان'),
+              ]),
+            )),
+          ],
           if (record.goldFineness != null) ...[
             const SizedBox(height: 8),
             Text('عیار: ${toPersianDigits(record.goldFineness.toString())}', style: Theme.of(context).textTheme.bodyMedium),

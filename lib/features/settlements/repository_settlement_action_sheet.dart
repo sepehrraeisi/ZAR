@@ -74,6 +74,17 @@ class RepositorySettlementActionSheet extends StatelessWidget {
                 ],
               ],
             ),
+            if (record.coinLines.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              ...record.coinLines.map(
+                (line) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    '${toPersianDigits(line.quantity.toString())} × ${line.name}${line.weightGrams == null ? '' : ' • ${toPersianDigits(line.weightGrams!)} گرم'}${line.fineness == null ? '' : ' • عیار ${toPersianDigits(line.fineness!)}'}',
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 4),
             Wrap(
               spacing: 10,
@@ -113,7 +124,8 @@ class RepositorySettlementActionSheet extends StatelessWidget {
                 CupertinoIcons.check_mark_circled,
                 onComplete,
               ),
-              _action(context, 'ویرایش', CupertinoIcons.pencil, onEdit),
+              if (record.coinLines.isEmpty)
+                _action(context, 'ویرایش', CupertinoIcons.pencil, onEdit),
               _action(
                 context,
                 'زمان‌بندی مجدد',
