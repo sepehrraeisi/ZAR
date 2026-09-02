@@ -2,20 +2,26 @@ import '../domain/zar_domain_models.dart';
 
 enum ZarInventorySection { actual, pendingReceive, pendingDeliver }
 
+enum ZarInventoryMovementSource { deal, settlement }
+
 class ZarInventoryMovement {
   const ZarInventoryMovement({
-    required this.settlementId,
+    required this.recordId,
+    required this.source,
     required this.personId,
-    required this.direction,
     required this.occurredAt,
     required this.quantityLabel,
+    this.dealType,
+    this.direction,
   });
 
-  final String settlementId;
+  final String recordId;
+  final ZarInventoryMovementSource source;
   final String personId;
-  final ZarSettlementDirection direction;
   final DateTime occurredAt;
   final String quantityLabel;
+  final ZarDealType? dealType;
+  final ZarSettlementDirection? direction;
 }
 
 sealed class ZarOperationalInventoryItem {
@@ -82,33 +88,51 @@ class ZarOperationalInventoryProjection {
   final List<ZarOperationalInventoryItem> pendingDeliver;
 }
 
-/// Projects actual and pending operational quantities from settlement state.
-/// Deals never participate. Completed movements are summed from current stored
-/// state, so refresh/restart cannot apply a movement more than once.
+/// Projects the user's operational position from commercial deals plus
+/// standalone physical/payment movements.
+///
+/// A non-cancelled buy increases the position and a non-cancelled sell reduces
+/// it. Open settlements remain pending only. Completed standalone settlements
+/// affect the position, while settlements linked to a non-cancelled deal do not
+/// apply the quantity a second time.
 class ZarOperationalInventoryProjector {
   const ZarOperationalInventoryProjector();
 
   ZarOperationalInventoryProjection project({
+    Iterable<ZarDeal> deals = const [],
     required Iterable<ZarSettlement> settlements,
   }) {
     final actual = _InventoryAccumulator();
     final pendingReceive = _InventoryAccumulator();
     final pendingDeliver = _InventoryAccumulator();
+    final dealById = <String, ZarDeal>{for (final deal in deals) deal.id: deal};
+
+    for (final deal in deals) {
+      if (deal.status == ZarDealStatus.cancelled) continue;
+      actual.addDeal(deal, sign: deal.type == ZarDealType.buy ? 1 : -1);
+    }
 
     for (final settlement in settlements) {
       switch (settlement.status) {
         case ZarSettlementStatus.completed:
-          actual.add(
-            settlement,
-            sign: settlement.direction == ZarSettlementDirection.receive
-                ? 1
-                : -1,
-          );
+          final linkedDeal = settlement.dealId == null
+              ? null
+              : dealById[settlement.dealId!];
+          final alreadyRepresentedByDeal =
+              linkedDeal != null && linkedDeal.status != ZarDealStatus.cancelled;
+          if (!alreadyRepresentedByDeal) {
+            actual.addSettlement(
+              settlement,
+              sign: settlement.direction == ZarSettlementDirection.receive
+                  ? 1
+                  : -1,
+            );
+          }
         case ZarSettlementStatus.open:
           (settlement.direction == ZarSettlementDirection.receive
                   ? pendingReceive
                   : pendingDeliver)
-              .add(settlement, sign: 1);
+              .addSettlement(settlement, sign: 1);
         case ZarSettlementStatus.cancelled:
           break;
       }
@@ -138,28 +162,59 @@ class _InventoryAccumulator {
   final Map<String, _CoinAccumulator> _coins = {};
   final Map<String, List<ZarInventoryMovement>> _movements = {};
 
-  void add(ZarSettlement settlement, {required int sign}) {
-    switch (settlement.amount) {
+  void addDeal(ZarDeal deal, {required int sign}) {
+    _addAmount(
+      deal.amount,
+      sign: sign,
+      movementFor: (label) => ZarInventoryMovement(
+        recordId: deal.id,
+        source: ZarInventoryMovementSource.deal,
+        personId: deal.personId,
+        dealType: deal.type,
+        occurredAt: deal.dealAt,
+        quantityLabel: label,
+      ),
+    );
+  }
+
+  void addSettlement(ZarSettlement settlement, {required int sign}) {
+    _addAmount(
+      settlement.amount,
+      sign: sign,
+      movementFor: (label) => ZarInventoryMovement(
+        recordId: settlement.id,
+        source: ZarInventoryMovementSource.settlement,
+        personId: settlement.personId,
+        direction: settlement.direction,
+        occurredAt: settlement.completedAt ?? settlement.scheduledAt,
+        quantityLabel: label,
+      ),
+    );
+  }
+
+  void _addAmount(
+    ZarAssetAmount amount, {
+    required int sign,
+    required ZarInventoryMovement Function(String label) movementFor,
+  }) {
+    switch (amount) {
       case ZarGoldAssetAmount(:final value):
         final key = 'gold:${value.purity ?? 'unknown'}';
         final grams = zarGoldWeightInGrams(value.decimal, value.unit);
         _gold
             .putIfAbsent(value.purity, _DecimalAccumulator.new)
             .add(grams, sign);
-        _addMovement(settlement, key, '$grams گرم');
+        _addMovement(key, movementFor('$grams گرم'));
       case ZarCurrencyAssetAmount(:final value):
         final key = 'currency:${value.code}';
+        final decimal = _minorUnitsToDecimal(
+          value.minorUnits,
+          value.minorUnitScale,
+        );
         _currencies
             .putIfAbsent(value.code, _DecimalAccumulator.new)
-            .add(
-              _minorUnitsToDecimal(value.minorUnits, value.minorUnitScale),
-              sign,
-            );
-        _addMovement(
-          settlement,
-          key,
-          '${value.code} ${_minorUnitsToDecimal(value.minorUnits, value.minorUnitScale)}',
-        );
+            .add(decimal, sign);
+        _addMovement(key, movementFor('${value.code} $decimal'));
       case ZarCoinBundleAmount(:final lines):
         for (final line in lines) {
           final identity =
@@ -176,23 +231,13 @@ class _InventoryAccumulator {
                   )
                   .quantity +=
               sign * line.quantity;
-          _addMovement(settlement, key, '${line.quantity} عدد');
+          _addMovement(key, movementFor('${line.quantity} عدد'));
         }
     }
   }
 
-  void _addMovement(ZarSettlement settlement, String key, String label) {
-    _movements
-        .putIfAbsent(key, () => [])
-        .add(
-          ZarInventoryMovement(
-            settlementId: settlement.id,
-            personId: settlement.personId,
-            direction: settlement.direction,
-            occurredAt: settlement.completedAt ?? settlement.scheduledAt,
-            quantityLabel: label,
-          ),
-        );
+  void _addMovement(String key, ZarInventoryMovement movement) {
+    _movements.putIfAbsent(key, () => []).add(movement);
   }
 
   List<ZarOperationalInventoryItem> get items {
