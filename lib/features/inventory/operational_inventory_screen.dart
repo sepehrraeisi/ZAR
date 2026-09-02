@@ -10,12 +10,12 @@ class OperationalInventoryScreen extends StatelessWidget {
     super.key,
     required this.projection,
     required this.personName,
-    this.onOpenSettlement,
+    this.onOpenRecord,
   });
 
   final ZarOperationalInventoryProjection projection;
   final String Function(String personId) personName;
-  final ValueChanged<String>? onOpenSettlement;
+  final ValueChanged<String>? onOpenRecord;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -139,7 +139,7 @@ class OperationalInventoryScreen extends StatelessWidget {
           item: item,
           accent: accent,
           personName: personName,
-          onOpenSettlement: onOpenSettlement,
+          onOpenRecord: onOpenRecord,
         ),
       ),
     );
@@ -152,13 +152,13 @@ class OperationalInventoryDetailScreen extends StatelessWidget {
     required this.item,
     required this.accent,
     required this.personName,
-    this.onOpenSettlement,
+    this.onOpenRecord,
   });
 
   final ZarOperationalInventoryItem item;
   final Color accent;
   final String Function(String personId) personName;
-  final ValueChanged<String>? onOpenSettlement;
+  final ValueChanged<String>? onOpenRecord;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -193,12 +193,10 @@ class OperationalInventoryDetailScreen extends StatelessWidget {
           Card(
             elevation: 0,
             child: ListTile(
-              onTap: onOpenSettlement == null
+              onTap: onOpenRecord == null
                   ? null
-                  : () => onOpenSettlement!(movement.settlementId),
-              title: Text(
-                '${movement.direction == ZarSettlementDirection.receive ? 'دریافت از' : 'تحویل به'} ${personName(movement.personId)}',
-              ),
+                  : () => onOpenRecord!(movement.recordId),
+              title: Text(_movementTitle(movement)),
               subtitle: Text(_dateTime(movement.occurredAt)),
               trailing: Text(
                 toPersianDigits(movement.quantityLabel),
@@ -209,6 +207,18 @@ class OperationalInventoryDetailScreen extends StatelessWidget {
       ],
     ),
   );
+
+  String _movementTitle(ZarInventoryMovement movement) {
+    final name = personName(movement.personId);
+    if (movement.source == ZarInventoryMovementSource.deal) {
+      return movement.dealType == ZarDealType.buy
+          ? 'خرید از $name'
+          : 'فروش به $name';
+    }
+    return movement.direction == ZarSettlementDirection.receive
+        ? 'دریافت از $name'
+        : 'تحویل به $name';
+  }
 }
 
 String _title(ZarOperationalInventoryItem item) => switch (item) {
