@@ -423,7 +423,7 @@ bool isRecordOverdueAt(AppRecord record, DateTime now) =>
     dueDateTimeFromJalali(record.date, record.time).isBefore(now);
 
 class PhaseA2HomeScreen extends StatelessWidget {
-  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings, this.now});
+  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings, this.onOpenInventory, this.now});
 
   final List<AppRecord> records;
   final String Function(String) personName;
@@ -431,6 +431,7 @@ class PhaseA2HomeScreen extends StatelessWidget {
   final VoidCallback onOpenNotifications;
   final int unreadCount;
   final VoidCallback? onOpenSettings;
+  final VoidCallback? onOpenInventory;
   final DateTime? now;
 
   @override
@@ -460,7 +461,14 @@ class PhaseA2HomeScreen extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-            child: Text('امروز\n${formatJalaliDate(currentDate)}', style: Theme.of(context).textTheme.titleLarge),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: Text('امروز\n${formatJalaliDate(currentDate)}', style: Theme.of(context).textTheme.titleLarge)),
+                if (onOpenInventory != null)
+                  OutlinedButton.icon(onPressed: onOpenInventory, icon: const Icon(CupertinoIcons.cube_box), label: const Text('موجودی')),
+              ],
+            ),
           ),
         ),
         _section(context, 'عقب‌افتاده', overdue, overdue: true),

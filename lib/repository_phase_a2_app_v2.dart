@@ -7,6 +7,7 @@ import 'package:shamsi_date/shamsi_date.dart';
 
 import 'app_core.dart';
 import 'application/persisted_reminder_coordinator.dart';
+import 'application/operational_inventory_projector.dart';
 import 'application/zar_backup_manager.dart';
 import 'application/zar_legacy_presentation_bridge.dart';
 import 'application/zar_phase_a2_store.dart';
@@ -21,6 +22,7 @@ import 'features/backup/backup_screen.dart';
 import 'features/coins/coin_catalog_screen.dart';
 import 'features/editors/confirmed_quick_add_sheet.dart';
 import 'features/notifications/native_notification_runtime.dart';
+import 'features/inventory/operational_inventory_screen.dart';
 import 'features/notifications/notification_center.dart';
 import 'features/people/archived_people_screen.dart';
 import 'features/reminders/record_reminder_registry.dart';
@@ -933,6 +935,23 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     );
   }
 
+  Future<void> _openInventory() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OperationalInventoryScreen(
+          projection: const ZarOperationalInventoryProjector().project(
+            settlements: _store.settlements,
+          ),
+          personName: _store.personName,
+          onOpenSettlement: (id) {
+            final record = _store.recordById(id);
+            if (record != null) _openRecord(record);
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loadError != null && !_ready) {
@@ -963,6 +982,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         onTapRecord: _openRecord,
         onOpenNotifications: _openNotificationCenter,
         onOpenSettings: _openBackup,
+        onOpenInventory: _openInventory,
         unreadCount: openObligations.length,
       ),
       CalendarScreen(
