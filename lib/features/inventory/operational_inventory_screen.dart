@@ -11,11 +11,18 @@ class OperationalInventoryScreen extends StatelessWidget {
     required this.projection,
     required this.personName,
     this.onOpenRecord,
+    this.onOpenSettlement,
   });
 
   final ZarOperationalInventoryProjection projection;
   final String Function(String personId) personName;
   final ValueChanged<String>? onOpenRecord;
+
+  /// Backwards-compatible alias while the repository shell is migrated to the
+  /// deal-aware inventory API. New callers should use [onOpenRecord].
+  final ValueChanged<String>? onOpenSettlement;
+
+  ValueChanged<String>? get _recordOpener => onOpenRecord ?? onOpenSettlement;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -139,7 +146,7 @@ class OperationalInventoryScreen extends StatelessWidget {
           item: item,
           accent: accent,
           personName: personName,
-          onOpenRecord: onOpenRecord,
+          onOpenRecord: _recordOpener,
         ),
       ),
     );
