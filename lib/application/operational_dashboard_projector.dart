@@ -99,7 +99,10 @@ class ZarOperationalDashboardProjector {
       overdueSettlementIds: List.unmodifiable(overdue.map((item) => item.id)),
       pendingReceiveCount: pendingReceive,
       pendingDeliverCount: pendingDeliver,
-      inventory: inventoryProjector.project(settlements: settlements),
+      inventory: inventoryProjector.project(
+        deals: deals,
+        settlements: settlements,
+      ),
       recentActivities: List.unmodifiable(activity.take(recentLimit)),
     );
   }
