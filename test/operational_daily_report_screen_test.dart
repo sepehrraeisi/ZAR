@@ -6,39 +6,79 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 void main() {
-  testWidgets('daily report renders operational sections without financial totals', (
-    tester,
-  ) async {
+  testWidgets(
+    'daily report renders operational sections without financial totals',
+    (tester) async {
+      final day = DateTime(2026, 9, 2, 12);
+      final buy = deal('buy', ZarDealType.buy, DateTime(2026, 9, 2, 9));
+      final sell = deal('sell', ZarDealType.sell, DateTime(2026, 9, 2, 11));
+      final receive = settlement(
+        'receive',
+        ZarSettlementDirection.receive,
+        scheduledAt: DateTime(2026, 9, 1, 10),
+        status: ZarSettlementStatus.completed,
+        completedAt: DateTime(2026, 9, 2, 13),
+      );
+      final due = settlement(
+        'due',
+        ZarSettlementDirection.deliver,
+        scheduledAt: DateTime(2026, 9, 2, 15),
+      );
+
+      final records = [
+        appRecord('buy', 'خرید', RecordType.deal, day),
+        appRecord('sell', 'فروش', RecordType.deal, day),
+        appRecord(
+          'receive',
+          'دریافت',
+          RecordType.settlement,
+          day,
+          status: SettlementStatus.completed,
+        ),
+        appRecord('due', 'تحویل', RecordType.settlement, day),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OperationalDailyReportScreen(
+            deals: [buy, sell],
+            settlements: [receive, due],
+            records: records,
+            personName: (_) => 'علی',
+            onOpenRecord: (_) {},
+            initialDay: day,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('گزارش روزانه'), findsOneWidget);
+      expect(find.text('نیازمند اقدام'), findsOneWidget);
+      expect(find.text('خرید و فروش'), findsOneWidget);
+      expect(find.text('خرید'), findsOneWidget);
+      expect(find.text('فروش'), findsOneWidget);
+      expect(find.text('دریافت و تحویل انجام‌شده'), findsOneWidget);
+      expect(find.text('موعد این روز'), findsOneWidget);
+      expect(find.text('سود'), findsNothing);
+      expect(find.textContaining('زیان'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('daily report highlights overdue work separately', (tester) async {
     final day = DateTime(2026, 9, 2, 12);
-    final buy = deal('buy', ZarDealType.buy, DateTime(2026, 9, 2, 9));
-    final sell = deal('sell', ZarDealType.sell, DateTime(2026, 9, 2, 11));
-    final receive = settlement(
-      'receive',
+    final overdue = settlement(
+      'overdue',
       ZarSettlementDirection.receive,
       scheduledAt: DateTime(2026, 9, 1, 10),
-      status: ZarSettlementStatus.completed,
-      completedAt: DateTime(2026, 9, 2, 13),
     );
-    final due = settlement(
-      'due',
-      ZarSettlementDirection.deliver,
-      scheduledAt: DateTime(2026, 9, 2, 15),
-    );
-
-    final records = [
-      appRecord('buy', 'خرید', RecordType.deal, day),
-      appRecord('sell', 'فروش', RecordType.deal, day),
-      appRecord('receive', 'دریافت', RecordType.settlement, day,
-          status: SettlementStatus.completed),
-      appRecord('due', 'تحویل', RecordType.settlement, day),
-    ];
 
     await tester.pumpWidget(
       MaterialApp(
         home: OperationalDailyReportScreen(
-          deals: [buy, sell],
-          settlements: [receive, due],
-          records: records,
+          deals: const [],
+          settlements: [overdue],
+          records: [appRecord('overdue', 'دریافت', RecordType.settlement, day)],
           personName: (_) => 'علی',
           onOpenRecord: (_) {},
           initialDay: day,
@@ -47,14 +87,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('گزارش روزانه'), findsOneWidget);
-    expect(find.text('خریدها'), findsOneWidget);
-    expect(find.text('فروش‌ها'), findsOneWidget);
-    expect(find.text('دریافت‌های انجام‌شده'), findsOneWidget);
-    expect(find.text('تعهدهای همان روز'), findsOneWidget);
-    expect(find.text('سود'), findsNothing);
-    expect(find.textContaining('زیان'), findsNothing);
-    expect(find.text('۱'), findsNWidgets(3));
+    expect(find.text('عقب‌افتاده'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 }
