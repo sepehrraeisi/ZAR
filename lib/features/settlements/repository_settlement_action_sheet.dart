@@ -29,133 +29,128 @@ class RepositorySettlementActionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final isOpen = record.status == SettlementStatus.open;
     return SafeArea(
       top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Center(
               child: Container(
                 width: 42,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).dividerColor,
+                  color: theme.dividerColor,
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-            Text(
-              '${record.operationLabel} • $personName',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 18),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  record.assetLabel,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(width: 8),
-                AmountText(record.amountDisplay),
-                if (record.currencyCode != null) ...[
-                  const SizedBox(width: 8),
-                  Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: Text(
-                      record.currencyCode!,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(record.operationLabel, style: theme.textTheme.titleLarge),
+                      const SizedBox(height: 3),
+                      Text(personName, style: theme.textTheme.bodyMedium),
+                    ],
                   ),
-                ],
+                ),
+                _StatusPill(record: record),
               ],
             ),
-            if (record.coinLines.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              ...record.coinLines.map(
-                (line) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    '${toPersianDigits(line.quantity.toString())} × ${line.name}${line.weightGrams == null ? '' : ' • ${toPersianDigits(line.weightGrams!)} گرم'}${line.fineness == null ? '' : ' • عیار ${toPersianDigits(line.fineness!)}'}',
-                  ),
-                ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: theme.dividerColor),
               ),
-            ],
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 10,
-              runSpacing: 4,
-              children: [
-                Text(
-                  formatJalaliDate(record.date),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                Text(
-                  record.timeLabel(),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                Text(
-                  record.statusLabel(),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: isOpen
-                        ? null
-                        : record.status == SettlementStatus.completed
-                        ? const Color(0xFF2F7D4C)
-                        : const Color(0xFF9D3636),
-                    fontWeight: FontWeight.w600,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('دارایی', style: theme.textTheme.bodyMedium),
+                  const SizedBox(height: 4),
+                  _assetLine(context),
+                  if (record.coinLines.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    ...record.coinLines.map(
+                      (line) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '${toPersianDigits(line.quantity.toString())} × ${line.name}${line.weightGrams == null ? '' : ' • ${toPersianDigits(line.weightGrams!)} گرم'}${line.fineness == null ? '' : ' • عیار ${toPersianDigits(line.fineness!)}'}',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const Divider(height: 22),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 6,
+                    children: [
+                      _Meta(icon: CupertinoIcons.calendar, text: formatJalaliDate(record.date)),
+                      _Meta(icon: CupertinoIcons.clock, text: record.timeLabel(), ltr: true),
+                    ],
                   ),
-                ),
-              ],
+                  if (isOpen) ...[
+                    const SizedBox(height: 10),
+                    _Meta(icon: CupertinoIcons.bell, text: reminderSummary),
+                  ],
+                ],
+              ),
             ),
             if (isOpen) ...[
-              const SizedBox(height: 4),
-              Text(
-                reminderSummary,
-                style: Theme.of(context).textTheme.bodyMedium,
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: onComplete,
+                icon: const Icon(CupertinoIcons.check_mark_circled, size: 19),
+                label: const Text('انجام شد'),
               ),
               const SizedBox(height: 10),
-              _action(
-                context,
-                'انجام شد',
-                CupertinoIcons.check_mark_circled,
-                onComplete,
+              Row(
+                children: [
+                  if (record.coinLines.isEmpty) ...[
+                    Expanded(child: _secondary(context, 'ویرایش', CupertinoIcons.pencil, onEdit)),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(child: _secondary(context, 'زمان‌بندی', CupertinoIcons.calendar, onReschedule)),
+                ],
               ),
-              if (record.coinLines.isEmpty)
-                _action(context, 'ویرایش', CupertinoIcons.pencil, onEdit),
-              _action(
-                context,
-                'زمان‌بندی مجدد',
-                CupertinoIcons.calendar,
-                onReschedule,
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: _secondary(context, 'یادآوری‌ها', CupertinoIcons.bell, onEditReminders)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _secondary(context, 'بعداً', CupertinoIcons.moon_zzz, onSnooze)),
+                ],
               ),
-              _action(
-                context,
-                'مدیریت یادآوری‌ها',
-                CupertinoIcons.bell,
-                onEditReminders,
-              ),
-              _action(
-                context,
-                'یادآوری بعداً',
-                CupertinoIcons.moon_zzz,
-                onSnooze,
-              ),
-              _action(
-                context,
-                'لغو',
-                CupertinoIcons.xmark_circle,
-                onCancel,
-                destructive: true,
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: onCancel,
+                icon: Icon(CupertinoIcons.xmark_circle, size: 18, color: theme.colorScheme.error),
+                label: Text('لغو این تعهد', style: TextStyle(color: theme.colorScheme.error)),
               ),
             ] else ...[
-              const SizedBox(height: 14),
-              Text(
-                'این تسویه بسته شده و فقط برای مشاهده در سوابق نمایش داده می‌شود.',
-                style: Theme.of(context).textTheme.bodyMedium,
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: theme.dividerColor.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  'این تسویه بسته شده و فقط برای مشاهده در سوابق نمایش داده می‌شود.',
+                  style: theme.textTheme.bodyMedium,
+                ),
               ),
             ],
           ],
@@ -164,21 +159,75 @@ class RepositorySettlementActionSheet extends StatelessWidget {
     );
   }
 
-  Widget _action(
-    BuildContext context,
-    String text,
-    IconData icon,
-    VoidCallback onTap, {
-    bool destructive = false,
-  }) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: destructive ? Colors.red : null),
-      title: Text(
-        text,
-        style: TextStyle(color: destructive ? Colors.red : null),
-      ),
-      onTap: onTap,
+  Widget _assetLine(BuildContext context) {
+    final theme = Theme.of(context);
+    if (record.coinLines.isNotEmpty) {
+      final total = record.coinLines.fold<int>(0, (sum, line) => sum + line.quantity);
+      return Text('${toPersianDigits(total.toString())} عدد سکه', style: theme.textTheme.titleMedium);
+    }
+    return Wrap(
+      spacing: 7,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        AmountText(record.amountDisplay),
+        Text(record.assetLabel, style: theme.textTheme.bodyLarge),
+        if (record.goldFineness != null)
+          Text('عیار ${toPersianDigits(record.goldFineness!)}', style: theme.textTheme.bodyMedium),
+      ],
     );
   }
+
+  Widget _secondary(BuildContext context, String text, IconData icon, VoidCallback onTap) =>
+      OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 17),
+        label: Text(text, overflow: TextOverflow.ellipsis),
+      );
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.record});
+  final AppRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = switch (record.status) {
+      SettlementStatus.open => theme.colorScheme.primary,
+      SettlementStatus.completed => const Color(0xFF2F7D4C),
+      SettlementStatus.cancelled => theme.colorScheme.error,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        record.statusLabel(),
+        style: theme.textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+class _Meta extends StatelessWidget {
+  const _Meta({required this.icon, required this.text, this.ltr = false});
+  final IconData icon;
+  final String text;
+  final bool ltr;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: Theme.of(context).textTheme.bodyMedium?.color),
+          const SizedBox(width: 5),
+          Directionality(
+            textDirection: ltr ? TextDirection.ltr : TextDirection.rtl,
+            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
+          ),
+        ],
+      );
 }
