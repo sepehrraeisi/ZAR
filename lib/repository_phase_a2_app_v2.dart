@@ -7,6 +7,7 @@ import 'package:shamsi_date/shamsi_date.dart';
 
 import 'app_core.dart';
 import 'application/persisted_reminder_coordinator.dart';
+import 'application/operational_dashboard_projector.dart';
 import 'application/operational_inventory_projector.dart';
 import 'application/zar_backup_manager.dart';
 import 'application/zar_legacy_presentation_bridge.dart';
@@ -952,6 +953,29 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     );
   }
 
+  Future<void> _openPending(ZarSettlementDirection direction) async {
+    final filtered = openObligations
+        .where((record) => direction == ZarSettlementDirection.receive ? record.operationLabel == 'دریافت' : record.operationLabel == 'تحویل')
+        .toList(growable: false);
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(direction == ZarSettlementDirection.receive ? 'در انتظار دریافت' : 'در انتظار تحویل')),
+          body: filtered.isEmpty
+              ? const Center(child: Text('تعهد بازی وجود ندارد.'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: filtered.length,
+                  itemBuilder: (_, index) {
+                    final record = filtered[index];
+                    return SettlementRow(record: record, personName: _store.personName(record.personId), onTap: () => _openRecord(record));
+                  },
+                ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loadError != null && !_ready) {
@@ -975,6 +999,15 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       return const Scaffold(body: Center(child: CupertinoActivityIndicator()));
     }
 
+    final dashboard = const ZarOperationalDashboardProjector().project(
+      deals: _store.deals,
+      settlements: _store.settlements,
+      now: DateTime.now(),
+    );
+    final recentRecords = dashboard.recentActivities
+        .map((item) => _store.recordById(item.id))
+        .whereType<AppRecord>()
+        .toList(growable: false);
     final pages = [
       PhaseA2HomeScreen(
         records: openObligations,
@@ -983,6 +1016,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         onOpenNotifications: _openNotificationCenter,
         onOpenSettings: _openBackup,
         onOpenInventory: _openInventory,
+        dashboard: dashboard,
+        recentRecords: recentRecords,
+        onOpenPendingReceive: () => _openPending(ZarSettlementDirection.receive),
+        onOpenPendingDeliver: () => _openPending(ZarSettlementDirection.deliver),
         unreadCount: openObligations.length,
       ),
       CalendarScreen(

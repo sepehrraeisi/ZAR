@@ -6,6 +6,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 import 'app_core.dart';
+import 'application/operational_dashboard_projector.dart';
+import 'application/operational_inventory_projector.dart';
 import 'features/notifications/notification_center.dart';
 import 'features/people/archived_people_screen.dart';
 import 'features/reminders/record_reminder_registry.dart';
@@ -423,7 +425,7 @@ bool isRecordOverdueAt(AppRecord record, DateTime now) =>
     dueDateTimeFromJalali(record.date, record.time).isBefore(now);
 
 class PhaseA2HomeScreen extends StatelessWidget {
-  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings, this.onOpenInventory, this.now});
+  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings, this.onOpenInventory, this.dashboard, this.recentRecords = const [], this.onOpenPendingReceive, this.onOpenPendingDeliver, this.now});
 
   final List<AppRecord> records;
   final String Function(String) personName;
@@ -432,6 +434,10 @@ class PhaseA2HomeScreen extends StatelessWidget {
   final int unreadCount;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenInventory;
+  final ZarOperationalDashboardProjection? dashboard;
+  final List<AppRecord> recentRecords;
+  final VoidCallback? onOpenPendingReceive;
+  final VoidCallback? onOpenPendingDeliver;
   final DateTime? now;
 
   @override
@@ -471,15 +477,17 @@ class PhaseA2HomeScreen extends StatelessWidget {
             ),
           ),
         ),
-        _section(context, 'عقب‌افتاده', overdue, overdue: true),
-        _section(context, 'امروز', today),
-        _section(context, 'فردا', tomorrow),
+        _section(context, 'عقب‌افتاده', overdue, overdue: true, maxItems: 3, onViewAll: onOpenNotifications),
+        _section(context, 'امروز', today, maxItems: 3, onViewAll: onOpenNotifications),
+        if (dashboard != null) _dashboardSections(context, dashboard!),
+        _section(context, 'فردا', tomorrow, maxItems: 3, onViewAll: onOpenNotifications),
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
       ],
     );
   }
 
-  Widget _section(BuildContext context, String title, List<AppRecord> items, {bool overdue = false}) {
+  Widget _section(BuildContext context, String title, List<AppRecord> items, {bool overdue = false, int? maxItems, VoidCallback? onViewAll}) {
+    final visible = maxItems == null ? items : items.take(maxItems).toList(growable: false);
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -491,12 +499,126 @@ class PhaseA2HomeScreen extends StatelessWidget {
             if (items.isEmpty)
               const _PhaseA2EmptyRow(label: 'موردی ثبت نشده است.')
             else
-              ...items.map((item) => SettlementRow(record: item, personName: personName(item.personId), onTap: () => onTapRecord(item), showOverdueTone: overdue)),
+              ...visible.map((item) => SettlementRow(record: item, personName: personName(item.personId), onTap: () => onTapRecord(item), showOverdueTone: overdue)),
+            if (maxItems != null && items.length > maxItems && onViewAll != null)
+              Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: onViewAll, child: Text('مشاهده همه (${toPersianDigits(items.length.toString())})'))),
           ],
         ),
       ),
     );
   }
+
+  Widget _dashboardSections(BuildContext context, ZarOperationalDashboardProjection value) {
+    final inventory = value.inventory;
+    final cash = inventory.cashInventory.isEmpty ? null : inventory.cashInventory.first.decimalAmount;
+    final hasInventory = inventory.goldInventory.isNotEmpty || inventory.coinInventory.isNotEmpty || inventory.currencyInventory.isNotEmpty || inventory.cashInventory.isNotEmpty;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('در انتظار اقدام', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            if (value.pendingReceiveCount == 0 && value.pendingDeliverCount == 0)
+              const Card(elevation: 0, child: Padding(padding: EdgeInsets.all(16), child: Text('تعهد بازی وجود ندارد.')))
+            else
+              Row(children: [
+                Expanded(child: _DashboardSummaryCard(label: 'در انتظار دریافت', value: '${toPersianDigits(value.pendingReceiveCount.toString())} مورد', onTap: onOpenPendingReceive)),
+                const SizedBox(width: 8),
+                Expanded(child: _DashboardSummaryCard(label: 'در انتظار تحویل', value: '${toPersianDigits(value.pendingDeliverCount.toString())} مورد', onTap: onOpenPendingDeliver)),
+              ]),
+            if (inventory.pendingReceive.isNotEmpty) _pendingPreview(context, 'در انتظار دریافت', inventory.pendingReceive, onOpenPendingReceive),
+            if (inventory.pendingDeliver.isNotEmpty) _pendingPreview(context, 'در انتظار تحویل', inventory.pendingDeliver, onOpenPendingDeliver),
+            const SizedBox(height: 20),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('موجودی', style: Theme.of(context).textTheme.titleMedium),
+              if (onOpenInventory != null) TextButton(onPressed: onOpenInventory, child: const Text('مشاهده همه')),
+            ]),
+            if (!hasInventory)
+              const Card(elevation: 0, child: Padding(padding: EdgeInsets.all(16), child: Text('هنوز موجودی ثبت‌شده‌ای ندارید.')))
+            else GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 2.25,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              children: [
+                _DashboardSummaryCard(label: 'طلا', value: inventory.goldInventory.isEmpty ? 'ثبت نشده' : '${toPersianDigits(inventory.goldInventory.length.toString())} عیار', onTap: onOpenInventory),
+                _DashboardSummaryCard(label: 'سکه', value: inventory.coinInventory.isEmpty ? 'ثبت نشده' : '${toPersianDigits(inventory.coinInventory.length.toString())} نوع', onTap: onOpenInventory),
+                _DashboardSummaryCard(label: 'ارز', value: inventory.currencyInventory.isEmpty ? 'ثبت نشده' : '${toPersianDigits(inventory.currencyInventory.length.toString())} نوع ارز', onTap: onOpenInventory),
+                _DashboardSummaryCard(label: 'وجه نقد', value: cash == null ? 'ثبت نشده' : '${_dashboardDecimal(cash)} تومان', onTap: onOpenInventory),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text('فعالیت اخیر', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            if (recentRecords.isEmpty)
+              const _PhaseA2EmptyRow(label: 'هنوز فعالیتی ثبت نشده است.')
+            else
+              Card(
+                elevation: 0,
+                child: Column(children: recentRecords.map((record) => ListTile(
+                  title: Text('${record.operationLabel} ${record.assetLabel} ${record.type == RecordType.deal ? 'با' : record.operationLabel == 'دریافت' ? 'از' : 'به'} ${personName(record.personId)}'),
+                  subtitle: Text('${record.assetLabel} • ${record.amountDisplay}'),
+                  trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
+                  onTap: () => onTapRecord(record),
+                )).toList()),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pendingPreview(BuildContext context, String title, List<ZarOperationalInventoryItem> items, VoidCallback? onTap) => Card(
+    elevation: 0,
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(title, style: Theme.of(context).textTheme.bodyLarge),
+        const SizedBox(height: 4),
+        ...items.take(3).map((item) => Text(_dashboardInventoryLine(item), style: Theme.of(context).textTheme.bodyMedium)),
+        if (items.length > 3 || onTap != null) Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: onTap, child: const Text('مشاهده همه'))),
+      ]),
+    ),
+  );
+}
+
+class _DashboardSummaryCard extends StatelessWidget {
+  const _DashboardSummaryCard({required this.label, required this.value, this.onTap});
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) => Card(
+    elevation: 0,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Text(label, style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 3), Text(value, style: const TextStyle(fontWeight: FontWeight.w700))])),
+    ),
+  );
+}
+
+String _dashboardInventoryLine(ZarOperationalInventoryItem item) => switch (item) {
+  ZarGoldInventoryItem(:final fineness, :final grams) => 'طلای ${fineness == null ? 'عیار نامشخص' : toPersianDigits(fineness)} — ${_dashboardDecimal(grams)} گرم',
+  ZarCoinInventoryItem(:final displayName, :final quantity) => '${toPersianDigits(quantity.toString())} عدد ${toPersianDigits(displayName)}',
+  ZarCurrencyInventoryItem(:final code, :final decimalAmount) => code == 'TOMAN' ? '${_dashboardDecimal(decimalAmount)} تومان' : '$code ${_dashboardDecimal(decimalAmount)}',
+};
+
+String _dashboardDecimal(String value) {
+  final negative = value.startsWith('-');
+  final raw = negative ? value.substring(1) : value;
+  final parts = raw.split('.');
+  final digits = parts.first;
+  final grouped = <String>[];
+  for (var end = digits.length; end > 0; end -= 3) {
+    grouped.insert(0, digits.substring(end < 3 ? 0 : end - 3, end));
+  }
+  final number = parts.length == 1 ? grouped.join('٬') : '${grouped.join('٬')}٫${parts[1]}';
+  return toPersianDigits('${negative ? '-' : ''}$number');
 }
 
 class _NotificationBell extends StatelessWidget {
