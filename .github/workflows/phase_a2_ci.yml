@@ -1,0 +1,45 @@
+name: Phase A2 Flutter CI
+
+on:
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: phase-a2-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  flutter-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build default ZAR+ web preview
+        run: flutter build web --debug
+
+      - name: Upload ZAR+ web preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: zar-plus-phase-a2-web
+          path: build/web
+          if-no-files-found: error
+          retention-days: 7

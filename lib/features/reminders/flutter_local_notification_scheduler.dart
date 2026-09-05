@@ -1,0 +1,338 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
+
+import 'native_notification_capacity.dart';
+import 'reminder_model.dart';
+import 'reminder_scheduler.dart';
+
+class _NativeReminderSpec {
+  const _NativeReminderSpec({
+    required this.recordId,
+    required this.dueAt,
+    required this.plan,
+    required this.title,
+    required this.body,
+  });
+
+  final String recordId;
+  final DateTime dueAt;
+  final ReminderPlan plan;
+  final String title;
+  final String body;
+}
+
+class _NativeScheduledReminder {
+  const _NativeScheduledReminder({required this.spec, required this.fireAt});
+
+  final _NativeReminderSpec spec;
+  final DateTime fireAt;
+}
+
+/// Native iOS/Android implementation of [ReminderScheduler].
+///
+/// Permission prompts are intentionally deferred: [initialize] never asks for
+/// notification permission. The UI must call [requestPermission] only after an
+/// explicit user action such as «فعال‌کردن اعلان‌ها».
+class FlutterLocalNotificationScheduler implements ReminderScheduler {
+  FlutterLocalNotificationScheduler({
+    FlutterLocalNotificationsPlugin? plugin,
+    this.timeZoneName = 'Asia/Tehran',
+    bool enabled = true,
+    bool playSound = true,
+    bool enableVibration = true,
+    bool persistentAlarm = false,
+    this.onRecordTapped,
+    this.capacityPolicy = const NativeNotificationCapacityPolicy(),
+  }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+       _enabled = enabled,
+       _playSound = playSound,
+       _enableVibration = enableVibration,
+       _persistentAlarm = persistentAlarm;
+
+  static const _soundChannelId = 'zar_reminders_sound';
+  static const _silentChannelId = 'zar_reminders_silent';
+  static const _alarmSoundChannelId = 'zar_reminders_alarm_sound_v1';
+  static const _alarmSilentChannelId = 'zar_reminders_alarm_silent_v1';
+  static const _channelName = 'یادآوری‌های ZAR+';
+  static const _channelDescription = 'یادآوری تحویل، دریافت و تعهدات کاری';
+  static const _payloadPrefix = 'zar-record:';
+
+  final FlutterLocalNotificationsPlugin _plugin;
+  final String timeZoneName;
+  final ValueChanged<String>? onRecordTapped;
+  final NativeNotificationCapacityPolicy capacityPolicy;
+  final Map<String, _NativeReminderSpec> _specs = {};
+
+  bool _enabled;
+  bool _playSound;
+  bool _enableVibration;
+  bool _persistentAlarm;
+  bool _initialized = false;
+  late tz.Location _location;
+
+  bool get initialized => _initialized;
+  bool get enabled => _enabled;
+  bool get playSound => _playSound;
+  bool get enableVibration => _enableVibration;
+  bool get persistentAlarm => _persistentAlarm;
+  bool get _isIos => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  Future<void> configure({
+    required bool enabled,
+    required bool playSound,
+    required bool enableVibration,
+    bool persistentAlarm = false,
+  }) async {
+    _enabled = enabled;
+    _playSound = playSound;
+    _enableVibration = enableVibration;
+    _persistentAlarm = persistentAlarm;
+    if (kIsWeb) return;
+    await initialize();
+
+    if (!_enabled) {
+      await _cancelAllNative();
+      return;
+    }
+
+    if (_isIos) {
+      await _rebuildIosQueue();
+      return;
+    }
+
+    final specs = List<_NativeReminderSpec>.from(_specs.values);
+    await _cancelAllNative();
+    for (final spec in specs) {
+      await _scheduleSpec(spec);
+    }
+  }
+
+  Future<void> initialize() async {
+    if (_initialized || kIsWeb) return;
+
+    tzdata.initializeTimeZones();
+    _location = tz.getLocation(timeZoneName);
+
+    const android = AndroidInitializationSettings('ic_stat_zar');
+    const ios = IOSInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const windows = WindowsInitializationSettings(
+      appName: 'ZAR+',
+      appUserModelId: 'Com.ZarPlus.App',
+      guid: '0268d312-ca76-40ba-8c3d-ce0bb0b99407',
+    );
+
+    await _plugin.initialize(
+      settings: const InitializationSettings(
+        android: android,
+        iOS: ios,
+        windows: windows,
+      ),
+      onDidReceiveNotificationResponse: (response) {
+        if (response.id != null) {
+          _plugin.cancel(id: response.id!);
+        }
+        final recordId = _recordIdFromPayload(response.payload);
+        if (recordId != null) onRecordTapped?.call(recordId);
+      },
+    );
+    _initialized = true;
+  }
+
+  Future<bool> requestPermission() async {
+    if (kIsWeb) return false;
+    await initialize();
+
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
+    if (ios != null) {
+      return await ios.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: _playSound,
+          ) ??
+          false;
+    }
+
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (android != null) {
+      return await android.requestNotificationsPermission() ?? false;
+    }
+
+    return false;
+  }
+
+  Future<bool> openSystemNotificationSettings() async {
+    if (kIsWeb) return false;
+    await initialize();
+    if (defaultTargetPlatform == TargetPlatform.windows) return false;
+    return await _plugin.openAppNotificationSettings() ?? false;
+  }
+
+  Future<String?> initialRecordId() async {
+    if (kIsWeb) return null;
+    await initialize();
+    final details = await _plugin.getNotificationAppLaunchDetails();
+    return _recordIdFromPayload(details?.notificationResponse?.payload);
+  }
+
+  @override
+  Future<void> replaceForRecord({
+    required String recordId,
+    required DateTime dueAt,
+    required ReminderPlan plan,
+    required String title,
+    required String body,
+  }) async {
+    final spec = _NativeReminderSpec(
+      recordId: recordId,
+      dueAt: dueAt,
+      plan: plan,
+      title: title,
+      body: body,
+    );
+    _specs[recordId] = spec;
+    if (kIsWeb) return;
+    await initialize();
+
+    if (_isIos) {
+      await _rebuildIosQueue();
+      return;
+    }
+
+    await _cancelNativeForRecord(recordId);
+    if (_enabled) await _scheduleSpec(spec);
+  }
+
+  Future<void> _rebuildIosQueue() async {
+    await _plugin.cancelAllPendingNotifications();
+    if (!_enabled) return;
+
+    final now = DateTime.now().toUtc();
+    final candidates = <NativeReminderCandidate<_NativeScheduledReminder>>[];
+    for (final spec in _specs.values) {
+      for (final fireAt in spec.plan.resolveTimes(spec.dueAt)) {
+        final utc = fireAt.toUtc();
+        if (!utc.isAfter(now)) continue;
+        final scheduled = _NativeScheduledReminder(spec: spec, fireAt: utc);
+        candidates.add(NativeReminderCandidate(value: scheduled, fireAt: utc));
+      }
+    }
+
+    final selected = capacityPolicy.earliestForIos(candidates, now: now);
+    for (final candidate in selected) {
+      await _scheduleSingle(candidate.value.spec, candidate.value.fireAt);
+    }
+  }
+
+  Future<void> _cancelAllNative() async {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      await _plugin.cancelAll();
+      return;
+    }
+    await _plugin.cancelAllPendingNotifications();
+  }
+
+  Future<void> _scheduleSpec(_NativeReminderSpec spec) async {
+    final now = DateTime.now().toUtc();
+    for (final fireAt in spec.plan.resolveTimes(spec.dueAt)) {
+      final utc = fireAt.toUtc();
+      if (!utc.isAfter(now)) continue;
+      await _scheduleSingle(spec, utc);
+    }
+  }
+
+  Future<void> _scheduleSingle(_NativeReminderSpec spec, DateTime utc) async {
+    final channelId = _persistentAlarm
+        ? (_playSound ? _alarmSoundChannelId : _alarmSilentChannelId)
+        : _playSound
+        ? _soundChannelId
+        : _silentChannelId;
+    await _plugin.zonedSchedule(
+      id: _stableNotificationId(spec.recordId, utc),
+      title: spec.title,
+      body: spec.body,
+      scheduledDate: tz.TZDateTime.from(utc, _location),
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          channelId,
+          _channelName,
+          channelDescription: _channelDescription,
+          importance: _persistentAlarm ? Importance.max : Importance.high,
+          priority: _persistentAlarm ? Priority.max : Priority.high,
+          playSound: _playSound,
+          enableVibration: _enableVibration,
+          autoCancel: !_persistentAlarm,
+          ongoing: _persistentAlarm,
+          category: _persistentAlarm
+              ? AndroidNotificationCategory.alarm
+              : AndroidNotificationCategory.reminder,
+          audioAttributesUsage: _persistentAlarm
+              ? AudioAttributesUsage.alarm
+              : AudioAttributesUsage.notification,
+          icon: 'ic_stat_zar',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: _playSound,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      payload: '$_payloadPrefix${spec.recordId}',
+    );
+  }
+
+  @override
+  Future<void> cancelForRecord(String recordId) async {
+    _specs.remove(recordId);
+    if (kIsWeb) return;
+    await initialize();
+
+    if (_isIos) {
+      await _rebuildIosQueue();
+      return;
+    }
+
+    await _cancelNativeForRecord(recordId);
+  }
+
+  Future<void> _cancelNativeForRecord(String recordId) async {
+    final payload = '$_payloadPrefix$recordId';
+    final pending = await _plugin.pendingNotificationRequests();
+    for (final request in pending.where((item) => item.payload == payload)) {
+      await _plugin.cancel(id: request.id);
+    }
+  }
+
+  @override
+  Future<List<ScheduledReminder>> pendingForRecord(String recordId) async {
+    return const [];
+  }
+
+  static String? _recordIdFromPayload(String? payload) {
+    if (payload == null || !payload.startsWith(_payloadPrefix)) return null;
+    final id = payload.substring(_payloadPrefix.length);
+    return id.isEmpty ? null : id;
+  }
+
+  static int _stableNotificationId(String recordId, DateTime scheduledAt) {
+    var hash = 0x811c9dc5;
+    final value = '$recordId:${scheduledAt.toUtc().millisecondsSinceEpoch}';
+    for (final unit in value.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0x7fffffff;
+    }
+    return hash == 0 ? 1 : hash;
+  }
+}
