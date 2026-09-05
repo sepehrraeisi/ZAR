@@ -56,7 +56,9 @@ void main() {
       expect(find.text('نیازمند اقدام'), findsOneWidget);
       expect(find.text('خرید و فروش'), findsOneWidget);
       expect(find.text('خرید'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('فروش'), 200, scrollable: find.byType(Scrollable).first);
       expect(find.text('فروش'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('دریافت و تحویل انجام‌شده'), 200, scrollable: find.byType(Scrollable).first);
       expect(find.text('دریافت و تحویل انجام‌شده'), findsOneWidget);
       expect(find.text('موعد این روز'), findsOneWidget);
       expect(find.text('سود'), findsNothing);

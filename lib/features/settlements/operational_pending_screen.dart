@@ -230,14 +230,14 @@ String _assetSummary(AppRecord record) {
   }
   if (record.assetLabel == 'وجه نقد') {
     return record.amountDisplay.contains('تومان')
-        ? record.amountDisplay
-        : '${record.amountDisplay} تومان';
+        ? toPersianNumberText(record.amountDisplay)
+        : '${toPersianNumberText(record.amountDisplay)} تومان';
   }
   if (record.currencyCode != null) {
-    return record.amountDisplay;
+    return toPersianNumberText(record.amountDisplay);
   }
   if (record.goldFineness != null) {
-    return '${record.amountDisplay} گرم • عیار ${toPersianDigits(record.goldFineness!)}';
+    return '${toPersianNumberText(record.amountDisplay)} گرم • عیار ${toPersianNumberText(record.goldFineness!)}';
   }
-  return '${record.amountDisplay} ${record.assetLabel}';
+  return '${toPersianNumberText(record.amountDisplay)} ${record.assetLabel}';
 }

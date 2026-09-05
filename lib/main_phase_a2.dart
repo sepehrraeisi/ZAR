@@ -425,7 +425,7 @@ bool isRecordOverdueAt(AppRecord record, DateTime now) =>
     dueDateTimeFromJalali(record.date, record.time).isBefore(now);
 
 class PhaseA2HomeScreen extends StatelessWidget {
-  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings, this.onOpenInventory, this.dashboard, this.recentRecords = const [], this.onOpenPendingReceive, this.onOpenPendingDeliver, this.now});
+  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings, this.onOpenInventory, this.onOpenDailyReport, this.onOpenOverdue, this.dashboard, this.recentRecords = const [], this.onOpenPendingReceive, this.onOpenPendingDeliver, this.now});
 
   final List<AppRecord> records;
   final String Function(String) personName;
@@ -434,6 +434,8 @@ class PhaseA2HomeScreen extends StatelessWidget {
   final int unreadCount;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenInventory;
+  final VoidCallback? onOpenDailyReport;
+  final VoidCallback? onOpenOverdue;
   final ZarOperationalDashboardProjection? dashboard;
   final List<AppRecord> recentRecords;
   final VoidCallback? onOpenPendingReceive;
@@ -467,17 +469,25 @@ class PhaseA2HomeScreen extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: Text('امروز\n${formatJalaliDate(currentDate)}', style: Theme.of(context).textTheme.titleLarge)),
-                if (onOpenInventory != null)
-                  OutlinedButton.icon(onPressed: onOpenInventory, icon: const Icon(CupertinoIcons.cube_box), label: const Text('موجودی')),
+                Text('امروز\n${formatJalaliDate(currentDate)}', style: Theme.of(context).textTheme.titleLarge),
+                if (onOpenInventory != null || onOpenDailyReport != null) ...[
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    if (onOpenInventory != null)
+                      Expanded(child: OutlinedButton.icon(onPressed: onOpenInventory, icon: const Icon(CupertinoIcons.cube_box), label: const Text('موجودی'))),
+                    if (onOpenInventory != null && onOpenDailyReport != null) const SizedBox(width: 8),
+                    if (onOpenDailyReport != null)
+                      Expanded(child: OutlinedButton.icon(onPressed: onOpenDailyReport, icon: const Icon(CupertinoIcons.doc_text_search), label: const Text('گزارش روزانه'))),
+                  ]),
+                ],
               ],
             ),
           ),
         ),
-        _section(context, 'عقب‌افتاده', overdue, overdue: true, maxItems: 3, onViewAll: onOpenNotifications),
+        _section(context, 'عقب‌افتاده', overdue, overdue: true, maxItems: 3, onViewAll: onOpenOverdue ?? onOpenNotifications),
         _section(context, 'امروز', today, maxItems: 3, onViewAll: onOpenNotifications),
         if (dashboard != null) _dashboardSections(context, dashboard!),
         _section(context, 'فردا', tomorrow, maxItems: 3, onViewAll: onOpenNotifications),

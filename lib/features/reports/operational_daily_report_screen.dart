@@ -254,7 +254,7 @@ class _OperationalDailyReportScreenState
         borderRadius: BorderRadius.circular(18),
         side: BorderSide(
           color: emphasize
-              ? Theme.of(context).colorScheme.error.withOpacity(0.45)
+              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.45)
               : Theme.of(context).dividerColor,
         ),
       ),
@@ -317,7 +317,7 @@ class _OperationalDailyReportScreenState
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${record.assetLabel} • ${toPersianDigits(record.amountDisplay)}',
+                      '${record.assetLabel} • ${toPersianNumberText(record.amountDisplay)}',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],

@@ -328,10 +328,10 @@ String _assetLine(AppRecord record) {
     return '${toPersianDigits(record.coinLines.length.toString())} نوع سکه';
   }
   if (record.currencyCode != null || record.assetLabel == 'وجه نقد') {
-    return record.amountDisplay;
+    return toPersianNumberText(record.amountDisplay);
   }
   if (record.goldFineness != null) {
-    return '${record.amountDisplay} گرم • عیار ${toPersianDigits(record.goldFineness!)}';
+    return '${toPersianNumberText(record.amountDisplay)} گرم • عیار ${toPersianNumberText(record.goldFineness!)}';
   }
-  return '${record.amountDisplay} ${record.assetLabel}';
+  return '${toPersianNumberText(record.amountDisplay)} ${record.assetLabel}';
 }

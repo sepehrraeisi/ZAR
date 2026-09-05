@@ -22,16 +22,20 @@ import 'features/editors/confirmed_editors.dart';
 import 'features/backup/backup_screen.dart';
 import 'features/coins/coin_catalog_screen.dart';
 import 'features/editors/confirmed_quick_add_sheet.dart';
+import 'features/history/operational_history_screen.dart';
 import 'features/notifications/native_notification_runtime.dart';
 import 'features/inventory/operational_inventory_screen.dart';
 import 'features/notifications/notification_center.dart';
 import 'features/people/archived_people_screen.dart';
+import 'features/people/operational_people_screen.dart';
 import 'features/reminders/record_reminder_registry.dart';
 import 'features/reminders/reminder_model.dart';
 import 'features/reminders/reminder_plan_editor.dart';
+import 'features/reports/operational_daily_report_screen.dart';
+import 'features/settlements/operational_pending_screen.dart';
 import 'features/settlements/repository_settlement_action_sheet.dart';
 import 'main_phase_a2.dart'
-    show PhaseA2HomeScreen, PhaseA2PeopleScreen, isRecordOverdueAt;
+    show PhaseA2HomeScreen, isRecordOverdueAt;
 import 'repository_phase_a2_app.dart' show buildPhaseA2PreviewRepository;
 
 /// Phase A.2 live shell with persisted reminder editing and confirmed editor
@@ -941,10 +945,11 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       MaterialPageRoute(
         builder: (_) => OperationalInventoryScreen(
           projection: const ZarOperationalInventoryProjector().project(
+            deals: _store.deals,
             settlements: _store.settlements,
           ),
           personName: _store.personName,
-          onOpenSettlement: (id) {
+          onOpenRecord: (id) {
             final record = _store.recordById(id);
             if (record != null) _openRecord(record);
           },
@@ -957,20 +962,45 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     final filtered = openObligations
         .where((record) => direction == ZarSettlementDirection.receive ? record.operationLabel == 'دریافت' : record.operationLabel == 'تحویل')
         .toList(growable: false);
+    final now = DateTime.now();
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: Text(direction == ZarSettlementDirection.receive ? 'در انتظار دریافت' : 'در انتظار تحویل')),
-          body: filtered.isEmpty
-              ? const Center(child: Text('تعهد بازی وجود ندارد.'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: filtered.length,
-                  itemBuilder: (_, index) {
-                    final record = filtered[index];
-                    return SettlementRow(record: record, personName: _store.personName(record.personId), onTap: () => _openRecord(record));
-                  },
-                ),
+        builder: (_) => OperationalPendingScreen(
+          title: direction == ZarSettlementDirection.receive ? 'در انتظار دریافت' : 'در انتظار تحویل',
+          records: filtered,
+          personName: _store.personName,
+          onOpenRecord: _openRecord,
+          overdueRecordIds: filtered.where((record) => isRecordOverdueAt(record, now)).map((record) => record.id).toSet(),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openOverdue() async {
+    final now = DateTime.now();
+    final filtered = openObligations.where((record) => isRecordOverdueAt(record, now)).toList(growable: false);
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OperationalPendingScreen(
+          title: 'عقب‌افتاده',
+          records: filtered,
+          personName: _store.personName,
+          onOpenRecord: _openRecord,
+          overdueRecordIds: filtered.map((record) => record.id).toSet(),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDailyReport() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OperationalDailyReportScreen(
+          deals: _store.deals,
+          settlements: _store.settlements,
+          records: records,
+          personName: _store.personName,
+          onOpenRecord: _openRecord,
         ),
       ),
     );
@@ -1016,6 +1046,8 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         onOpenNotifications: _openNotificationCenter,
         onOpenSettings: _openBackup,
         onOpenInventory: _openInventory,
+        onOpenDailyReport: _openDailyReport,
+        onOpenOverdue: _openOverdue,
         dashboard: dashboard,
         recentRecords: recentRecords,
         onOpenPendingReceive: () => _openPending(ZarSettlementDirection.receive),
@@ -1028,7 +1060,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         onTapRecord: _openRecord,
       ),
       const SizedBox.shrink(),
-      PhaseA2PeopleScreen(
+      OperationalPeopleScreen(
         people: _store.activePeople,
         records: records,
         archivedCount: _store.archivedPeople.length,
@@ -1046,7 +1078,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         ).push(MaterialPageRoute(builder: (_) => _buildPersonDetail(person))),
         onOpenArchive: _openArchive,
       ),
-      HistoryScreen(
+      OperationalHistoryScreen(
         records: historyRecords,
         personName: _store.personName,
         onTapRecord: _openRecord,

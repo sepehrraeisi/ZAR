@@ -12,7 +12,7 @@ void main() {
         type: RecordType.settlement,
         operationLabel: 'دریافت',
         personId: 'p1',
-        amountDisplay: r'$۶٬۰۰۰',
+        amountDisplay: r'$6,000.50',
         assetLabel: 'ارز',
         currencyCode: 'USD',
         date: Jalali(1405, 6, 11),
@@ -48,8 +48,8 @@ void main() {
     expect(find.text('در انتظار'), findsOneWidget);
     expect(find.text('سپهر'), findsOneWidget);
     expect(find.text('روژیه'), findsOneWidget);
-    expect(find.text(r'$۶٬۰۰۰'), findsOneWidget);
-    expect(find.text('۵۰۰۰ گرم • عیار ۷۵۰'), findsOneWidget);
+    expect(find.text(r'$۶٬۰۰۰٫۵۰'), findsOneWidget);
+    expect(find.text('۵٬۰۰۰ گرم • عیار ۷۵۰'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

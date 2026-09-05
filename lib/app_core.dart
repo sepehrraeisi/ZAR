@@ -288,6 +288,31 @@ String toPersianDigits(String input) {
   return output;
 }
 
+/// Localizes and groups numeric runs for display without changing stored values.
+String toPersianNumberText(String input) {
+  return input.replaceAllMapped(
+    RegExp(r'[0-9۰-۹]+(?:[٬,][0-9۰-۹]+)*(?:[٫.][0-9۰-۹]+)?'),
+    (match) {
+      var raw = match.group(0)!;
+      const persian = '۰۱۲۳۴۵۶۷۸۹';
+      for (var index = 0; index < persian.length; index++) {
+        raw = raw.replaceAll(persian[index], index.toString());
+      }
+      raw = raw.replaceAll('٬', '').replaceAll(',', '').replaceAll('٫', '.');
+      final parts = raw.split('.');
+      final whole = parts.first;
+      final groups = <String>[];
+      for (var end = whole.length; end > 0; end -= 3) {
+        groups.insert(0, whole.substring(end < 3 ? 0 : end - 3, end));
+      }
+      final localized = parts.length == 1
+          ? groups.join('٬')
+          : '${groups.join('٬')}٫${parts.sublist(1).join()}';
+      return toPersianDigits(localized);
+    },
+  );
+}
+
 bool isSameJalali(Jalali a, Jalali b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
 String phoneToEnglishDigits(String input) {
@@ -1494,7 +1519,7 @@ class DealDetailSheet extends StatelessWidget {
             runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              AmountText(record.amountDisplay),
+              AmountText(toPersianNumberText(record.amountDisplay)),
               Text(record.assetLabel),
               if (record.currencyCode != null)
                 Directionality(
@@ -1514,7 +1539,7 @@ class DealDetailSheet extends StatelessWidget {
                 if (line.weightGrams != null || line.fineness != null)
                   Text([if (line.weightGrams != null) '${toPersianDigits(line.weightGrams!)} گرم', if (line.fineness != null) 'عیار ${toPersianDigits(line.fineness!)}'].join(' • ')),
                 if (line.rowTotalToman != null)
-                  Text('جمع ردیف: ${toPersianDigits(NumberFormat.decimalPattern('en_US').format(line.rowTotalToman))} تومان'),
+                  Text('جمع ردیف: ${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(line.rowTotalToman))} تومان'),
               ]),
             )),
           ],
@@ -1536,20 +1561,20 @@ class DealDetailSheet extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               record.assetLabel == 'ارز'
-                  ? 'نرخ هر واحد: ${toPersianDigits(record.tomanRate!)} تومان'
-                  : 'قیمت هر ${record.goldPriceUnit == 'mesghal' ? 'مثقال' : 'گرم'}: ${toPersianDigits(record.tomanRate!)} تومان',
+                  ? 'نرخ هر واحد: ${toPersianNumberText(record.tomanRate!)} تومان'
+                  : 'قیمت هر ${record.goldPriceUnit == 'mesghal' ? 'مثقال' : 'گرم'}: ${toPersianNumberText(record.tomanRate!)} تومان',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             if (record.goldEquivalentPrice != null)
               Text(
-                'قیمت معادل هر ${record.goldPriceUnit == 'mesghal' ? 'گرم' : 'مثقال'}: ${toPersianDigits(record.goldEquivalentPrice!)} تومان',
+                'قیمت معادل هر ${record.goldPriceUnit == 'mesghal' ? 'گرم' : 'مثقال'}: ${toPersianNumberText(record.goldEquivalentPrice!)} تومان',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
           ],
           if (record.totalToman != null) ...[
             const SizedBox(height: 6),
             Text(
-              'مبلغ کل: ${toPersianDigits(NumberFormat.decimalPattern('en_US').format(record.totalToman))} تومان',
+              'مبلغ کل: ${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(record.totalToman))} تومان',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
           ],

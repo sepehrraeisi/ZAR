@@ -46,10 +46,10 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('زمان‌بندی مجدد'), findsNothing);
-    expect(find.text('مدیریت یادآوری‌ها'), findsNothing);
-    expect(find.text('یادآوری بعداً'), findsNothing);
-    expect(find.text('لغو'), findsNothing);
+    expect(find.text('زمان‌بندی'), findsNothing);
+    expect(find.text('یادآوری‌ها'), findsNothing);
+    expect(find.text('بعداً'), findsNothing);
+    expect(find.text('لغو این تعهد'), findsNothing);
   });
 
   testWidgets('open settlement retains lifecycle actions', (tester) async {
@@ -57,10 +57,10 @@ void main() {
 
     expect(find.text('در انتظار'), findsOneWidget);
     expect(find.text('انجام شد'), findsOneWidget);
-    expect(find.text('زمان‌بندی مجدد'), findsOneWidget);
-    expect(find.text('مدیریت یادآوری‌ها'), findsOneWidget);
-    expect(find.text('یادآوری بعداً'), findsOneWidget);
-    expect(find.text('لغو'), findsOneWidget);
+    expect(find.text('زمان‌بندی'), findsOneWidget);
+    expect(find.text('یادآوری‌ها'), findsOneWidget);
+    expect(find.text('بعداً'), findsOneWidget);
+    expect(find.text('لغو این تعهد'), findsOneWidget);
   });
 
   testWidgets(
@@ -92,6 +92,7 @@ void main() {
       );
 
       expect(find.text('جزئیات معامله (خرید)'), findsOneWidget);
+      expect(find.text(r'$۱٬۲۵۰٫۲۵'), findsOneWidget);
       expect(find.text('USD'), findsOneWidget);
       expect(find.text('در انتظار'), findsNothing);
       expect(find.text('انجام شد'), findsNothing);
