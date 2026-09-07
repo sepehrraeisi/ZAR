@@ -92,6 +92,42 @@ void main() {
     expect(find.text('عقب‌افتاده'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('daily report chevrons keep their intended RTL direction',
+      (tester) async {
+    final day = DateTime(2026, 9, 2, 12);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: OperationalDailyReportScreen(
+            deals: [deal('buy', ZarDealType.buy, day)],
+            settlements: const [],
+            records: [appRecord('buy', 'خرید', RecordType.deal, day)],
+            personName: (_) => 'علی',
+            onOpenRecord: (_) {},
+            initialDay: day,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final rightPointing = find.byWidgetPredicate(
+      (widget) =>
+          widget is Icon &&
+          widget.icon == Icons.chevron_left &&
+          widget.textDirection == TextDirection.rtl,
+    );
+    final leftPointing = find.byWidgetPredicate(
+      (widget) =>
+          widget is Icon &&
+          widget.icon == Icons.chevron_right &&
+          widget.textDirection == TextDirection.rtl,
+    );
+    expect(rightPointing, findsNWidgets(2));
+    expect(leftPointing, findsOneWidget);
+  });
 }
 
 final _amount = ZarCurrencyAssetAmount(

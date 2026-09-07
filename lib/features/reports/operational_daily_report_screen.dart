@@ -151,7 +151,8 @@ class _OperationalDailyReportScreenState
               IconButton(
                 tooltip: 'روز قبل',
                 onPressed: () => _moveDay(-1),
-                icon: const Icon(Icons.chevron_right),
+                // The previous-day control is on the right in RTL.
+                icon: _rtlChevron(pointsRight: true),
               ),
               Expanded(
                 child: InkWell(
@@ -178,7 +179,8 @@ class _OperationalDailyReportScreenState
               IconButton(
                 tooltip: 'روز بعد',
                 onPressed: () => _moveDay(1),
-                icon: const Icon(Icons.chevron_left),
+                // The next-day control is on the left in RTL.
+                icon: _rtlChevron(pointsRight: false),
               ),
             ],
           ),
@@ -345,10 +347,19 @@ class _OperationalDailyReportScreenState
                 ],
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.chevron_left, size: 18),
+              _rtlChevron(pointsRight: true, size: 18),
             ],
           ),
         ),
+  );
+
+  /// Makes the intended visual direction explicit instead of relying on the
+  /// ambient directionality of a directional Material glyph.
+  static Widget _rtlChevron({required bool pointsRight, double size = 24}) =>
+      Icon(
+        pointsRight ? Icons.chevron_left : Icons.chevron_right,
+        size: size,
+        textDirection: TextDirection.rtl,
       );
 }
 
