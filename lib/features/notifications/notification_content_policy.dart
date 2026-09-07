@@ -24,13 +24,13 @@ class ZarNotificationContentPolicy {
     switch (privacy) {
       case NotificationPrivacy.full:
         return ZarNotificationContent(
-          title: '${record.operationLabel} • $personName',
+          title: '${record.operationDisplayLabel} • $personName',
           body: '${record.assetLabel} • ${record.amountDisplay}',
         );
       case NotificationPrivacy.limited:
         return ZarNotificationContent(
-          title: 'یادآوری ${record.operationLabel}',
-          body: '${record.operationLabel} برای $personName',
+          title: 'یادآوری ${record.operationDisplayLabel}',
+          body: '${record.operationDisplayLabel} برای $personName',
         );
       case NotificationPrivacy.private:
         return const ZarNotificationContent(

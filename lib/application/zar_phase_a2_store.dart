@@ -4,6 +4,8 @@ import '../domain/zar_domain_models.dart';
 import '../domain/zar_reminder_plan.dart';
 import 'zar_legacy_presentation_bridge.dart';
 import 'customer_position_projector.dart';
+import '../domain/zar_payment_allocation.dart';
+import 'customer_operational_balance_projector.dart';
 
 /// Repository-backed presentation store for the current Phase A.2 widgets.
 ///
@@ -37,6 +39,33 @@ class ZarPhaseA2Store {
       List.unmodifiable(_domainSettlements.values);
   List<ZarDeal> get deals => List.unmodifiable(_domainDeals.values);
   List<ZarCoinType> _coinTypes = const [];
+  List<ZarPaymentAllocation> _allocations = const [];
+  List<ZarPaymentAllocation> get paymentAllocations =>
+      List.unmodifiable(_allocations);
+
+  ZarCustomerOperationalBalance balanceFor(String personId) =>
+      const ZarCustomerOperationalBalanceProjector().project(
+        personId: personId,
+        deals: deals,
+        settlements: settlements,
+        allocations: _allocations,
+      );
+
+  Future<void> savePaymentAllocations(
+    String sourceId,
+    List<ZarPaymentAllocation> rows,
+  ) async {
+    final repository = _repository;
+    if (repository is! ZarPaymentAllocationRepository) {
+      throw UnsupportedError('Explicit allocations require local storage.');
+    }
+    await (repository as ZarPaymentAllocationRepository).savePaymentAllocations(
+      sourceId,
+      rows,
+    );
+    await refresh();
+  }
+
   List<ZarCoinType> get coinTypes => List.unmodifiable(_coinTypes);
 
   List<AppPerson> get people =>
@@ -62,29 +91,15 @@ class ZarPhaseA2Store {
     _loading = true;
     _lastError = null;
     try {
-      final result = await Future.wait<Object>([
-        _repository.loadActivePeople(limit: 250),
-        _repository.loadArchivedPeople(limit: 250),
-        _repository.loadRecentSettlements(limit: 500),
-        _repository.loadRecentDeals(limit: 500),
-        if (_repository is ZarCoinCatalogRepository)
-          (_repository as ZarCoinCatalogRepository).loadCoinTypes(
-            includeArchived: true,
-          )
-        else
-          Future.value(<ZarCoinType>[]),
-      ]);
-      final active = result[0] as List<ZarPerson>;
-      final archived = result[1] as List<ZarPerson>;
-      final settlements = result[2] as List<ZarSettlement>;
-      final deals = result[3] as List<ZarDeal>;
-      final coinTypes = result[4] as List<ZarCoinType>;
+      // Operational totals must never be truncated to the latest 500 records.
+      final snapshot = await _repository.loadCompleteSnapshot();
+      final settlements = snapshot.settlements;
+      final deals = snapshot.deals;
+      final coinTypes = snapshot.coinTypes;
 
       _domainPeople
         ..clear()
-        ..addEntries(
-          [...active, ...archived].map((item) => MapEntry(item.id, item)),
-        );
+        ..addEntries(snapshot.people.map((item) => MapEntry(item.id, item)));
       _domainSettlements
         ..clear()
         ..addEntries(settlements.map((item) => MapEntry(item.id, item)));
@@ -92,6 +107,7 @@ class ZarPhaseA2Store {
         ..clear()
         ..addEntries(deals.map((item) => MapEntry(item.id, item)));
       _coinTypes = coinTypes;
+      _allocations = snapshot.paymentAllocations;
     } catch (error) {
       _lastError = error;
       rethrow;
@@ -277,6 +293,26 @@ class ZarPhaseA2Store {
   }
 
   ZarSettlement? settlementById(String id) => _domainSettlements[id];
+  BigInt? remainingSettlementToman(String id) {
+    final source = _domainSettlements[id];
+    if (source == null) return null;
+    final total = zarWholeToman(source.amount);
+    if (total == null) return null;
+    final paid = _allocations
+        .where(
+          (row) =>
+              row.targetType == ZarPaymentAllocationTarget.settlement &&
+              row.targetId == id &&
+              _domainSettlements[row.settlementId]?.status ==
+                  ZarSettlementStatus.completed,
+        )
+        .fold(
+          BigInt.zero,
+          (sum, row) => sum + BigInt.from(row.amount.wholeTomans),
+        );
+    return total - paid;
+  }
+
   ZarDeal? dealById(String id) => _domainDeals[id];
 
   ZarSettlement _copySettlement(

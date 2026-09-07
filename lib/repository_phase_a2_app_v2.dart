@@ -18,6 +18,9 @@ import 'domain/zar_amount_formatter.dart';
 import 'domain/zar_amount_parser.dart';
 import 'domain/zar_domain_models.dart';
 import 'domain/zar_reminder_plan.dart';
+import 'domain/zar_payment_allocation.dart';
+import 'application/customer_operational_balance_projector.dart';
+import 'features/settlements/payment_allocation_sheet.dart';
 import 'features/editors/confirmed_editors.dart';
 import 'features/backup/backup_screen.dart';
 import 'features/coins/coin_catalog_screen.dart';
@@ -34,8 +37,7 @@ import 'features/reminders/reminder_plan_editor.dart';
 import 'features/reports/operational_daily_report_screen.dart';
 import 'features/settlements/operational_pending_screen.dart';
 import 'features/settlements/repository_settlement_action_sheet.dart';
-import 'main_phase_a2.dart'
-    show PhaseA2HomeScreen, isRecordOverdueAt;
+import 'main_phase_a2.dart' show PhaseA2HomeScreen, isRecordOverdueAt;
 import 'repository_phase_a2_app.dart' show buildPhaseA2PreviewRepository;
 
 /// Phase A.2 live shell with persisted reminder editing and confirmed editor
@@ -377,7 +379,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     }
   }
 
-  Future<void> _saveQuickAddDraftOrThrow(QuickAddDraft draft) async {
+  Future<void> _saveQuickAddDraftOrThrow(
+    QuickAddDraft draft, {
+    ValueChanged<String>? onSaved,
+  }) async {
     if (_writing) throw StateError('Write already in progress.');
 
     final isSettlement =
@@ -491,6 +496,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           }
         }
       }
+      onSaved?.call(record.id);
       if (mounted) setState(() {});
     } finally {
       if (mounted) setState(() => _writing = false);
@@ -610,7 +616,8 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
   }
 
   Future<void> _openQuickAdd() async {
-    await showModalBottomSheet<QuickAddDraft>(
+    String? savedRecordId;
+    final result = await showModalBottomSheet<QuickAddDraft>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -619,12 +626,23 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       builder: (_) => ConfirmedQuickAddSheet(
         people: _store.activePeople,
         coinTypes: _store.coinTypes,
-        onSave: _saveQuickAddDraftOrThrow,
+        onSave: (draft) => _saveQuickAddDraftOrThrow(
+          draft,
+          onSaved: (id) => savedRecordId = id,
+        ),
         initialReminder: reminderPresetLabel(
           _notificationPreferences.defaultReminderMinutes,
         ),
       ),
     );
+    if (!mounted || result == null || savedRecordId == null) return;
+    final record = _store.recordById(savedRecordId!);
+    final source = _store.settlementById(savedRecordId!);
+    if (record != null &&
+        source != null &&
+        zarWholeToman(source.amount) != null) {
+      await _openAllocation(record);
+    }
   }
 
   String _reminderSummary(AppRecord record) {
@@ -685,6 +703,80 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     }
   }
 
+  Future<void> _openAllocation(AppRecord record) async {
+    final source = _store.settlementById(record.id);
+    if (source == null ||
+        zarWholeToman(source.amount) == null ||
+        source.status == ZarSettlementStatus.cancelled) {
+      return;
+    }
+    final initial = _store.paymentAllocations
+        .where((row) => row.settlementId == record.id)
+        .toList();
+    final others = _store.paymentAllocations
+        .where((row) => row.settlementId != record.id)
+        .toList();
+    final projection = const ZarCustomerOperationalBalanceProjector().project(
+      personId: source.personId,
+      deals: _store.deals,
+      settlements: _store.settlements,
+      allocations: others,
+    );
+    final targets = projection.obligations
+        .where(
+          (target) =>
+              target.direction == source.direction &&
+              !(target.targetType == ZarPaymentAllocationTarget.settlement &&
+                  (target.targetId == source.id ||
+                      others.any(
+                        (row) => row.settlementId == target.targetId,
+                      ))) &&
+              target.remainingToman > BigInt.zero,
+        )
+        .toList();
+    // Do not silently discard a relationship whose target has since closed.
+    for (final row in initial) {
+      if (!targets.any(
+        (target) =>
+            target.targetType == row.targetType &&
+            target.targetId == row.targetId,
+      )) {
+        targets.add(
+          ZarCustomerTomanObligation(
+            targetType: row.targetType,
+            targetId: row.targetId,
+            direction: source.direction,
+            originalToman: BigInt.from(row.amount.wholeTomans),
+            allocatedToman: BigInt.zero,
+          ),
+        );
+      }
+    }
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => PaymentAllocationSheet(
+        source: source,
+        targets: targets,
+        initial: initial,
+        targetLabel: (target) {
+          final item = _store.recordById(target.targetId);
+          return item == null
+              ? 'تعهد قبلی'
+              : '${item.operationDisplayLabel} ${item.assetLabel} — ${formatJalaliDate(item.date)}';
+        },
+        onSave: (rows) async {
+          final saved = await _runWrite(
+            () => _store.savePaymentAllocations(record.id, rows),
+          );
+          if (!saved) throw StateError('Allocation was not persisted.');
+        },
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
   Future<void> _openRecord(AppRecord record) async {
     if (record.type == RecordType.deal) {
       await showModalBottomSheet<void>(
@@ -714,7 +806,52 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         record: record,
         personName: _store.personName(record.personId),
         reminderSummary: _reminderSummary(record),
+        allocationSummary:
+            _store.settlementById(record.id) != null &&
+                zarWholeToman(_store.settlementById(record.id)!.amount) != null
+            ? (_store.paymentAllocations.any(
+                    (row) => row.settlementId == record.id,
+                  )
+                  ? 'تخصیص صریح ثبت شده است'
+                  : '${record.operationDisplayLabel} آزاد — بدون تخصیص')
+            : null,
+        onAllocate:
+            _store.settlementById(record.id) != null &&
+                zarWholeToman(_store.settlementById(record.id)!.amount) !=
+                    null &&
+                record.status != SettlementStatus.cancelled
+            ? () async {
+                Navigator.of(context).pop();
+                await _openAllocation(record);
+              }
+            : null,
         onComplete: () async {
+          final remaining = _store.remainingSettlementToman(record.id);
+          final original = _store.settlementById(record.id);
+          if (remaining != null &&
+              original != null &&
+              remaining != zarWholeToman(original.amount)) {
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                title: const Text('انجام باقی‌مانده تعهد'),
+                content: Text(
+                  'فقط ${ZarAmountFormatter.toman(remaining)} باقی‌مانده ${record.operationDisplayLabel} می‌شود. بخش‌های قبلی دوباره محاسبه نمی‌شوند.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: const Text('بازگشت'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: const Text('تأیید انجام باقی‌مانده'),
+                  ),
+                ],
+              ),
+            );
+            if (confirmed != true) return;
+          }
           final saved = await _updateRecord(
             record.copyWith(status: SettlementStatus.completed),
             action: 'complete',
@@ -821,6 +958,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     person: person,
     records: records,
     position: _store.customerPositionFor(person.id),
+    balance: _store.balanceFor(person.id),
     personName: _store.personName,
     onTapRecord: _openRecord,
     onEditPerson: (target) async {
@@ -846,12 +984,12 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           id: 'notification-${record.id}',
           recordId: record.id,
           title:
-              '${record.operationLabel} • ${_store.personName(record.personId)}',
+              '${record.operationDisplayLabel} • ${_store.personName(record.personId)}',
           subtitle:
               _notificationPreferences.privacy == NotificationPrivacy.private
               ? 'یک یادآوری کاری دارید.'
               : _notificationPreferences.privacy == NotificationPrivacy.limited
-              ? '${record.operationLabel} برای ${_store.personName(record.personId)}'
+              ? '${record.operationDisplayLabel} برای ${_store.personName(record.personId)}'
               : '${record.assetLabel} • ${record.amountDisplay}',
           timeLabel: record.timeLabel(),
           isOverdue: overdue,
@@ -947,6 +1085,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           projection: const ZarOperationalInventoryProjector().project(
             deals: _store.deals,
             settlements: _store.settlements,
+            allocations: _store.paymentAllocations,
           ),
           personName: _store.personName,
           onOpenRecord: (id) {
@@ -960,17 +1099,26 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
 
   Future<void> _openPending(ZarSettlementDirection direction) async {
     final filtered = openObligations
-        .where((record) => direction == ZarSettlementDirection.receive ? record.operationLabel == 'دریافت' : record.operationLabel == 'تحویل')
+        .where(
+          (record) => direction == ZarSettlementDirection.receive
+              ? record.operationLabel == 'دریافت'
+              : record.operationLabel == 'تحویل',
+        )
         .toList(growable: false);
     final now = DateTime.now();
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => OperationalPendingScreen(
-          title: direction == ZarSettlementDirection.receive ? 'در انتظار دریافت' : 'در انتظار تحویل',
+          title: direction == ZarSettlementDirection.receive
+              ? 'در انتظار دریافت'
+              : 'در انتظار پرداخت',
           records: filtered,
           personName: _store.personName,
           onOpenRecord: _openRecord,
-          overdueRecordIds: filtered.where((record) => isRecordOverdueAt(record, now)).map((record) => record.id).toSet(),
+          overdueRecordIds: filtered
+              .where((record) => isRecordOverdueAt(record, now))
+              .map((record) => record.id)
+              .toSet(),
         ),
       ),
     );
@@ -978,7 +1126,9 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
 
   Future<void> _openOverdue() async {
     final now = DateTime.now();
-    final filtered = openObligations.where((record) => isRecordOverdueAt(record, now)).toList(growable: false);
+    final filtered = openObligations
+        .where((record) => isRecordOverdueAt(record, now))
+        .toList(growable: false);
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => OperationalPendingScreen(
@@ -1030,6 +1180,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     }
 
     final dashboard = const ZarOperationalDashboardProjector().project(
+      allocations: _store.paymentAllocations,
       deals: _store.deals,
       settlements: _store.settlements,
       now: DateTime.now(),
@@ -1050,8 +1201,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         onOpenOverdue: _openOverdue,
         dashboard: dashboard,
         recentRecords: recentRecords,
-        onOpenPendingReceive: () => _openPending(ZarSettlementDirection.receive),
-        onOpenPendingDeliver: () => _openPending(ZarSettlementDirection.deliver),
+        onOpenPendingReceive: () =>
+            _openPending(ZarSettlementDirection.receive),
+        onOpenPendingDeliver: () =>
+            _openPending(ZarSettlementDirection.deliver),
         unreadCount: openObligations.length,
       ),
       CalendarScreen(
@@ -1061,6 +1214,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       ),
       const SizedBox.shrink(),
       OperationalPeopleScreen(
+        balanceFor: _store.balanceFor,
         people: _store.activePeople,
         records: records,
         archivedCount: _store.archivedPeople.length,

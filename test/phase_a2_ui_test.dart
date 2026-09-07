@@ -17,8 +17,8 @@ void main() {
             ZarNotificationItem(
               id: 'n1',
               recordId: 's1',
-              title: 'تحویل • رضا محمدی',
-              subtitle: r'$10,000',
+              title: 'پرداخت • رضا محمدی',
+              subtitle: r'$۱۰٬۰۰۰',
               timeLabel: '۱۱:۰۰',
               isOverdue: true,
             ),
@@ -33,7 +33,7 @@ void main() {
 
     expect(find.text('اعلان‌ها'), findsOneWidget);
     expect(find.text('عقب‌افتاده'), findsOneWidget);
-    expect(find.text('تحویل • رضا محمدی'), findsOneWidget);
+    expect(find.text('پرداخت • رضا محمدی'), findsOneWidget);
     expect(find.byIcon(Icons.settings), findsNothing); // Cupertino gear is used instead.
   });
 

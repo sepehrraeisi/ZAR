@@ -6161,6 +6161,349 @@ class ZarSettlementCoinLinesCompanion
   }
 }
 
+class $ZarPaymentAllocationsTable extends ZarPaymentAllocations
+    with TableInfo<$ZarPaymentAllocationsTable, LocalPaymentAllocationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ZarPaymentAllocationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _settlementIdMeta = const VerificationMeta(
+    'settlementId',
+  );
+  @override
+  late final GeneratedColumn<String> settlementId = GeneratedColumn<String>(
+    'settlement_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES zar_settlements (id)',
+    ),
+  );
+  static const VerificationMeta _targetTypeMeta = const VerificationMeta(
+    'targetType',
+  );
+  @override
+  late final GeneratedColumn<String> targetType = GeneratedColumn<String>(
+    'target_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetIdMeta = const VerificationMeta(
+    'targetId',
+  );
+  @override
+  late final GeneratedColumn<String> targetId = GeneratedColumn<String>(
+    'target_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountTomanMeta = const VerificationMeta(
+    'amountToman',
+  );
+  @override
+  late final GeneratedColumn<int> amountToman = GeneratedColumn<int>(
+    'amount_toman',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    settlementId,
+    targetType,
+    targetId,
+    amountToman,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'zar_payment_allocations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalPaymentAllocationRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('settlement_id')) {
+      context.handle(
+        _settlementIdMeta,
+        settlementId.isAcceptableOrUnknown(
+          data['settlement_id']!,
+          _settlementIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_settlementIdMeta);
+    }
+    if (data.containsKey('target_type')) {
+      context.handle(
+        _targetTypeMeta,
+        targetType.isAcceptableOrUnknown(data['target_type']!, _targetTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetTypeMeta);
+    }
+    if (data.containsKey('target_id')) {
+      context.handle(
+        _targetIdMeta,
+        targetId.isAcceptableOrUnknown(data['target_id']!, _targetIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetIdMeta);
+    }
+    if (data.containsKey('amount_toman')) {
+      context.handle(
+        _amountTomanMeta,
+        amountToman.isAcceptableOrUnknown(
+          data['amount_toman']!,
+          _amountTomanMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountTomanMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {settlementId, targetType, targetId};
+  @override
+  LocalPaymentAllocationRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalPaymentAllocationRow(
+      settlementId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}settlement_id'],
+      )!,
+      targetType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_type'],
+      )!,
+      targetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_id'],
+      )!,
+      amountToman: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_toman'],
+      )!,
+    );
+  }
+
+  @override
+  $ZarPaymentAllocationsTable createAlias(String alias) {
+    return $ZarPaymentAllocationsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalPaymentAllocationRow extends DataClass
+    implements Insertable<LocalPaymentAllocationRow> {
+  final String settlementId;
+  final String targetType;
+  final String targetId;
+  final int amountToman;
+  const LocalPaymentAllocationRow({
+    required this.settlementId,
+    required this.targetType,
+    required this.targetId,
+    required this.amountToman,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['settlement_id'] = Variable<String>(settlementId);
+    map['target_type'] = Variable<String>(targetType);
+    map['target_id'] = Variable<String>(targetId);
+    map['amount_toman'] = Variable<int>(amountToman);
+    return map;
+  }
+
+  ZarPaymentAllocationsCompanion toCompanion(bool nullToAbsent) {
+    return ZarPaymentAllocationsCompanion(
+      settlementId: Value(settlementId),
+      targetType: Value(targetType),
+      targetId: Value(targetId),
+      amountToman: Value(amountToman),
+    );
+  }
+
+  factory LocalPaymentAllocationRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalPaymentAllocationRow(
+      settlementId: serializer.fromJson<String>(json['settlementId']),
+      targetType: serializer.fromJson<String>(json['targetType']),
+      targetId: serializer.fromJson<String>(json['targetId']),
+      amountToman: serializer.fromJson<int>(json['amountToman']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'settlementId': serializer.toJson<String>(settlementId),
+      'targetType': serializer.toJson<String>(targetType),
+      'targetId': serializer.toJson<String>(targetId),
+      'amountToman': serializer.toJson<int>(amountToman),
+    };
+  }
+
+  LocalPaymentAllocationRow copyWith({
+    String? settlementId,
+    String? targetType,
+    String? targetId,
+    int? amountToman,
+  }) => LocalPaymentAllocationRow(
+    settlementId: settlementId ?? this.settlementId,
+    targetType: targetType ?? this.targetType,
+    targetId: targetId ?? this.targetId,
+    amountToman: amountToman ?? this.amountToman,
+  );
+  LocalPaymentAllocationRow copyWithCompanion(
+    ZarPaymentAllocationsCompanion data,
+  ) {
+    return LocalPaymentAllocationRow(
+      settlementId: data.settlementId.present
+          ? data.settlementId.value
+          : this.settlementId,
+      targetType: data.targetType.present
+          ? data.targetType.value
+          : this.targetType,
+      targetId: data.targetId.present ? data.targetId.value : this.targetId,
+      amountToman: data.amountToman.present
+          ? data.amountToman.value
+          : this.amountToman,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalPaymentAllocationRow(')
+          ..write('settlementId: $settlementId, ')
+          ..write('targetType: $targetType, ')
+          ..write('targetId: $targetId, ')
+          ..write('amountToman: $amountToman')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(settlementId, targetType, targetId, amountToman);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalPaymentAllocationRow &&
+          other.settlementId == this.settlementId &&
+          other.targetType == this.targetType &&
+          other.targetId == this.targetId &&
+          other.amountToman == this.amountToman);
+}
+
+class ZarPaymentAllocationsCompanion
+    extends UpdateCompanion<LocalPaymentAllocationRow> {
+  final Value<String> settlementId;
+  final Value<String> targetType;
+  final Value<String> targetId;
+  final Value<int> amountToman;
+  final Value<int> rowid;
+  const ZarPaymentAllocationsCompanion({
+    this.settlementId = const Value.absent(),
+    this.targetType = const Value.absent(),
+    this.targetId = const Value.absent(),
+    this.amountToman = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ZarPaymentAllocationsCompanion.insert({
+    required String settlementId,
+    required String targetType,
+    required String targetId,
+    required int amountToman,
+    this.rowid = const Value.absent(),
+  }) : settlementId = Value(settlementId),
+       targetType = Value(targetType),
+       targetId = Value(targetId),
+       amountToman = Value(amountToman);
+  static Insertable<LocalPaymentAllocationRow> custom({
+    Expression<String>? settlementId,
+    Expression<String>? targetType,
+    Expression<String>? targetId,
+    Expression<int>? amountToman,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (settlementId != null) 'settlement_id': settlementId,
+      if (targetType != null) 'target_type': targetType,
+      if (targetId != null) 'target_id': targetId,
+      if (amountToman != null) 'amount_toman': amountToman,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ZarPaymentAllocationsCompanion copyWith({
+    Value<String>? settlementId,
+    Value<String>? targetType,
+    Value<String>? targetId,
+    Value<int>? amountToman,
+    Value<int>? rowid,
+  }) {
+    return ZarPaymentAllocationsCompanion(
+      settlementId: settlementId ?? this.settlementId,
+      targetType: targetType ?? this.targetType,
+      targetId: targetId ?? this.targetId,
+      amountToman: amountToman ?? this.amountToman,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (settlementId.present) {
+      map['settlement_id'] = Variable<String>(settlementId.value);
+    }
+    if (targetType.present) {
+      map['target_type'] = Variable<String>(targetType.value);
+    }
+    if (targetId.present) {
+      map['target_id'] = Variable<String>(targetId.value);
+    }
+    if (amountToman.present) {
+      map['amount_toman'] = Variable<int>(amountToman.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ZarPaymentAllocationsCompanion(')
+          ..write('settlementId: $settlementId, ')
+          ..write('targetType: $targetType, ')
+          ..write('targetId: $targetId, ')
+          ..write('amountToman: $amountToman, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$ZarLocalDatabase extends GeneratedDatabase {
   _$ZarLocalDatabase(QueryExecutor e) : super(e);
   $ZarLocalDatabaseManager get managers => $ZarLocalDatabaseManager(this);
@@ -6179,6 +6522,8 @@ abstract class _$ZarLocalDatabase extends GeneratedDatabase {
   );
   late final $ZarSettlementCoinLinesTable zarSettlementCoinLines =
       $ZarSettlementCoinLinesTable(this);
+  late final $ZarPaymentAllocationsTable zarPaymentAllocations =
+      $ZarPaymentAllocationsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6192,6 +6537,7 @@ abstract class _$ZarLocalDatabase extends GeneratedDatabase {
     zarCoinTypes,
     zarDealCoinLines,
     zarSettlementCoinLines,
+    zarPaymentAllocations,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -7781,6 +8127,32 @@ final class $$ZarSettlementsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $ZarPaymentAllocationsTable,
+    List<LocalPaymentAllocationRow>
+  >
+  _zarPaymentAllocationsRefsTable(_$ZarLocalDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.zarPaymentAllocations,
+        aliasName:
+            'zar_settlements__id__zar_payment_allocations__settlement_id',
+      );
+
+  $$ZarPaymentAllocationsTableProcessedTableManager
+  get zarPaymentAllocationsRefs {
+    final manager = $$ZarPaymentAllocationsTableTableManager(
+      $_db,
+      $_db.zarPaymentAllocations,
+    ).filter((f) => f.settlementId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _zarPaymentAllocationsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ZarSettlementsTableFilterComposer
@@ -7980,6 +8352,32 @@ class $$ZarSettlementsTableFilterComposer
               }) => $$ZarSettlementCoinLinesTableFilterComposer(
                 $db: $db,
                 $table: $db.zarSettlementCoinLines,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> zarPaymentAllocationsRefs(
+    Expression<bool> Function($$ZarPaymentAllocationsTableFilterComposer f) f,
+  ) {
+    final $$ZarPaymentAllocationsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.zarPaymentAllocations,
+          getReferencedColumn: (t) => t.settlementId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ZarPaymentAllocationsTableFilterComposer(
+                $db: $db,
+                $table: $db.zarPaymentAllocations,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -8335,6 +8733,32 @@ class $$ZarSettlementsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> zarPaymentAllocationsRefs<T extends Object>(
+    Expression<T> Function($$ZarPaymentAllocationsTableAnnotationComposer a) f,
+  ) {
+    final $$ZarPaymentAllocationsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.zarPaymentAllocations,
+          getReferencedColumn: (t) => t.settlementId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ZarPaymentAllocationsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.zarPaymentAllocations,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ZarSettlementsTableTableManager
@@ -8355,6 +8779,7 @@ class $$ZarSettlementsTableTableManager
             bool personId,
             bool zarReminderRulesRefs,
             bool zarSettlementCoinLinesRefs,
+            bool zarPaymentAllocationsRefs,
           })
         > {
   $$ZarSettlementsTableTableManager(
@@ -8484,12 +8909,14 @@ class $$ZarSettlementsTableTableManager
                 personId = false,
                 zarReminderRulesRefs = false,
                 zarSettlementCoinLinesRefs = false,
+                zarPaymentAllocationsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (zarReminderRulesRefs) db.zarReminderRules,
                     if (zarSettlementCoinLinesRefs) db.zarSettlementCoinLines,
+                    if (zarPaymentAllocationsRefs) db.zarPaymentAllocations,
                   ],
                   addJoins:
                       <
@@ -8584,6 +9011,27 @@ class $$ZarSettlementsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (zarPaymentAllocationsRefs)
+                        await $_getPrefetchedData<
+                          LocalSettlementRow,
+                          $ZarSettlementsTable,
+                          LocalPaymentAllocationRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ZarSettlementsTableReferences
+                              ._zarPaymentAllocationsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ZarSettlementsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).zarPaymentAllocationsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.settlementId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -8609,6 +9057,7 @@ typedef $$ZarSettlementsTableProcessedTableManager =
         bool personId,
         bool zarReminderRulesRefs,
         bool zarSettlementCoinLinesRefs,
+        bool zarPaymentAllocationsRefs,
       })
     >;
 typedef $$ZarReminderRulesTableCreateCompanionBuilder =
@@ -10398,6 +10847,332 @@ typedef $$ZarSettlementCoinLinesTableProcessedTableManager =
       LocalSettlementCoinLineRow,
       PrefetchHooks Function({bool settlementId})
     >;
+typedef $$ZarPaymentAllocationsTableCreateCompanionBuilder =
+    ZarPaymentAllocationsCompanion Function({
+      required String settlementId,
+      required String targetType,
+      required String targetId,
+      required int amountToman,
+      Value<int> rowid,
+    });
+typedef $$ZarPaymentAllocationsTableUpdateCompanionBuilder =
+    ZarPaymentAllocationsCompanion Function({
+      Value<String> settlementId,
+      Value<String> targetType,
+      Value<String> targetId,
+      Value<int> amountToman,
+      Value<int> rowid,
+    });
+
+final class $$ZarPaymentAllocationsTableReferences
+    extends
+        BaseReferences<
+          _$ZarLocalDatabase,
+          $ZarPaymentAllocationsTable,
+          LocalPaymentAllocationRow
+        > {
+  $$ZarPaymentAllocationsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ZarSettlementsTable _settlementIdTable(_$ZarLocalDatabase db) =>
+      db.zarSettlements.createAlias(
+        'zar_payment_allocations__settlement_id__zar_settlements__id',
+      );
+
+  $$ZarSettlementsTableProcessedTableManager get settlementId {
+    final $_column = $_itemColumn<String>('settlement_id')!;
+
+    final manager = $$ZarSettlementsTableTableManager(
+      $_db,
+      $_db.zarSettlements,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_settlementIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ZarPaymentAllocationsTableFilterComposer
+    extends Composer<_$ZarLocalDatabase, $ZarPaymentAllocationsTable> {
+  $$ZarPaymentAllocationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountToman => $composableBuilder(
+    column: $table.amountToman,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ZarSettlementsTableFilterComposer get settlementId {
+    final $$ZarSettlementsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.settlementId,
+      referencedTable: $db.zarSettlements,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ZarSettlementsTableFilterComposer(
+            $db: $db,
+            $table: $db.zarSettlements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ZarPaymentAllocationsTableOrderingComposer
+    extends Composer<_$ZarLocalDatabase, $ZarPaymentAllocationsTable> {
+  $$ZarPaymentAllocationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountToman => $composableBuilder(
+    column: $table.amountToman,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ZarSettlementsTableOrderingComposer get settlementId {
+    final $$ZarSettlementsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.settlementId,
+      referencedTable: $db.zarSettlements,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ZarSettlementsTableOrderingComposer(
+            $db: $db,
+            $table: $db.zarSettlements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ZarPaymentAllocationsTableAnnotationComposer
+    extends Composer<_$ZarLocalDatabase, $ZarPaymentAllocationsTable> {
+  $$ZarPaymentAllocationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetId =>
+      $composableBuilder(column: $table.targetId, builder: (column) => column);
+
+  GeneratedColumn<int> get amountToman => $composableBuilder(
+    column: $table.amountToman,
+    builder: (column) => column,
+  );
+
+  $$ZarSettlementsTableAnnotationComposer get settlementId {
+    final $$ZarSettlementsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.settlementId,
+      referencedTable: $db.zarSettlements,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ZarSettlementsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.zarSettlements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ZarPaymentAllocationsTableTableManager
+    extends
+        RootTableManager<
+          _$ZarLocalDatabase,
+          $ZarPaymentAllocationsTable,
+          LocalPaymentAllocationRow,
+          $$ZarPaymentAllocationsTableFilterComposer,
+          $$ZarPaymentAllocationsTableOrderingComposer,
+          $$ZarPaymentAllocationsTableAnnotationComposer,
+          $$ZarPaymentAllocationsTableCreateCompanionBuilder,
+          $$ZarPaymentAllocationsTableUpdateCompanionBuilder,
+          (LocalPaymentAllocationRow, $$ZarPaymentAllocationsTableReferences),
+          LocalPaymentAllocationRow,
+          PrefetchHooks Function({bool settlementId})
+        > {
+  $$ZarPaymentAllocationsTableTableManager(
+    _$ZarLocalDatabase db,
+    $ZarPaymentAllocationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ZarPaymentAllocationsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ZarPaymentAllocationsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ZarPaymentAllocationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> settlementId = const Value.absent(),
+                Value<String> targetType = const Value.absent(),
+                Value<String> targetId = const Value.absent(),
+                Value<int> amountToman = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ZarPaymentAllocationsCompanion(
+                settlementId: settlementId,
+                targetType: targetType,
+                targetId: targetId,
+                amountToman: amountToman,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String settlementId,
+                required String targetType,
+                required String targetId,
+                required int amountToman,
+                Value<int> rowid = const Value.absent(),
+              }) => ZarPaymentAllocationsCompanion.insert(
+                settlementId: settlementId,
+                targetType: targetType,
+                targetId: targetId,
+                amountToman: amountToman,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ZarPaymentAllocationsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({settlementId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (settlementId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.settlementId,
+                                referencedTable:
+                                    $$ZarPaymentAllocationsTableReferences
+                                        ._settlementIdTable(db),
+                                referencedColumn:
+                                    $$ZarPaymentAllocationsTableReferences
+                                        ._settlementIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ZarPaymentAllocationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ZarLocalDatabase,
+      $ZarPaymentAllocationsTable,
+      LocalPaymentAllocationRow,
+      $$ZarPaymentAllocationsTableFilterComposer,
+      $$ZarPaymentAllocationsTableOrderingComposer,
+      $$ZarPaymentAllocationsTableAnnotationComposer,
+      $$ZarPaymentAllocationsTableCreateCompanionBuilder,
+      $$ZarPaymentAllocationsTableUpdateCompanionBuilder,
+      (LocalPaymentAllocationRow, $$ZarPaymentAllocationsTableReferences),
+      LocalPaymentAllocationRow,
+      PrefetchHooks Function({bool settlementId})
+    >;
 
 class $ZarLocalDatabaseManager {
   final _$ZarLocalDatabase _db;
@@ -10421,4 +11196,6 @@ class $ZarLocalDatabaseManager {
         _db,
         _db.zarSettlementCoinLines,
       );
+  $$ZarPaymentAllocationsTableTableManager get zarPaymentAllocations =>
+      $$ZarPaymentAllocationsTableTableManager(_db, _db.zarPaymentAllocations);
 }

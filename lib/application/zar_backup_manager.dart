@@ -58,6 +58,7 @@ class ZarBackupManager {
         deals: snapshot.deals,
         settlements: snapshot.settlements,
         coinTypes: snapshot.coinTypes,
+        paymentAllocations: snapshot.paymentAllocations,
       ),
     );
   }
@@ -78,6 +79,7 @@ class ZarBackupManager {
         deals: bundle.deals,
         settlements: bundle.settlements,
         coinTypes: bundle.coinTypes,
+        paymentAllocations: bundle.paymentAllocations,
       ),
     );
     await _store.refresh();

@@ -26,7 +26,7 @@ class ZarCsvExport {
       buffer.writeln(_row([
         record.id,
         record.type == RecordType.deal ? 'معامله' : 'تسویه/تعهد',
-        record.operationLabel,
+        record.operationDisplayLabel,
         personName(record.personId),
         record.amountDisplay,
         record.assetLabel,

@@ -130,11 +130,49 @@ settlement reminder plans are stored as typed domain fields. Currency is stored
 as integer minor units and scale; gold is stored as its normalized decimal text.
 No `AppRecord` or calculated presentation value is stored.
 
-JSON V4 is the portable backup format for exact Toman deal pricing and original
-Iranian gold-market gram/mithqal inputs. Existing V2 and V3 backups remain
+JSON V6 is the portable backup format, including exact Toman deal pricing,
+gold-market gram/mithqal inputs, coin bundles, and explicit payment allocations.
+Existing V2, V3, V4 and V5 backups remain
 importable. Restore validates the complete
 typed snapshot before opening one replacement transaction; a validation or
 database failure rolls the transaction back. Native reminders are reconciled
 only after persistence succeeds. Schema upgrades must be implemented as
 explicit migrations—the app never deletes or recreates a user database as an
 automatic recovery step.
+
+### Customer operational position and explicit allocation
+
+Priced purchases create Toman payable; priced sales create Toman receivable.
+Unpriced legacy deals never invent a value. Free completed receive/payment
+movements do not reduce either amount. Users explicitly choose destinations in
+the allocation sheet after saving a Toman movement, or from its detail sheet.
+Only completed, non-cancelled allocated movements reduce the chosen obligation.
+Open allocated movements reserve their amount but do not discharge the target.
+
+Drift schema 7 adds only `zar_payment_allocations`: source settlement ID,
+typed target kind/ID, and whole-Toman allocation amount. The composite primary
+key prevents duplicate source/target allocations. Validation rejects mismatched
+person/business/direction, missing targets, over-allocation and allocation chains.
+No balances, inventory totals or accounting entries are persisted. `deliver`
+remains the stored enum; its UI label is «پرداخت».
+
+When a partially fulfilled original settlement is completed, inventory includes
+only its remaining amount in addition to the separate completed movements.
+Deals still move their own assets; linked settlements representing those same
+asset identities/direction do not count again. A Toman payment for a foreign
+currency/gold/coin deal remains an independent Toman inventory movement.
+
+### Android reminder limitations
+
+Normal and alarm-style reminders use versioned Android channels separated by
+sound and vibration preferences. Old channels are retained; existing Android
+user choices are not modified. The new channels use a stable record tag so an
+already displayed alarm-style notification can be cancelled when the record is
+acted upon. Old displayed notifications without this tag may need dismissal.
+
+Scheduling remains `inexactAllowWhileIdle`. No exact-alarm or full-screen
+permission is requested. Persistent/high-priority notification is not continuous
+Clock-style ringing. Android notification permission, channel settings, Doze,
+Samsung battery policy and force-stop can prevent or delay delivery. Changing
+in-app preferences cannot override a system-muted channel. Verify foreground,
+background, locked-screen, tap, snooze and cancellation behavior on the device.

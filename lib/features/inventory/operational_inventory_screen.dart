@@ -70,7 +70,7 @@ class OperationalInventoryScreen extends StatelessWidget {
         ),
         _section(
           context,
-          'در انتظار تحویل',
+          'در انتظار پرداخت',
           projection.pendingDeliver,
           const Color(0xFF9D5D36),
         ),
@@ -224,7 +224,7 @@ class OperationalInventoryDetailScreen extends StatelessWidget {
     }
     return movement.direction == ZarSettlementDirection.receive
         ? 'دریافت از $name'
-        : 'تحویل به $name';
+        : 'پرداخت به $name';
   }
 }
 

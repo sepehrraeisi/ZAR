@@ -1,4 +1,5 @@
 import '../domain/zar_domain_models.dart';
+import '../domain/zar_payment_allocation.dart';
 import 'operational_inventory_projector.dart';
 
 enum ZarDashboardActivityType { deal, settlement }
@@ -50,6 +51,7 @@ class ZarOperationalDashboardProjector {
     required Iterable<ZarDeal> deals,
     required Iterable<ZarSettlement> settlements,
     required DateTime now,
+    Iterable<ZarPaymentAllocation> allocations = const [],
     int recentLimit = 5,
   }) {
     final localNow = now.toLocal();
@@ -102,6 +104,7 @@ class ZarOperationalDashboardProjector {
       inventory: inventoryProjector.project(
         deals: deals,
         settlements: settlements,
+        allocations: allocations,
       ),
       recentActivities: List.unmodifiable(activity.take(recentLimit)),
     );

@@ -1,4 +1,5 @@
 import '../domain/zar_domain_models.dart';
+import '../domain/zar_payment_allocation.dart';
 
 enum ZarInventorySection { actual, pendingReceive, pendingDeliver }
 
@@ -101,11 +102,28 @@ class ZarOperationalInventoryProjector {
   ZarOperationalInventoryProjection project({
     Iterable<ZarDeal> deals = const [],
     required Iterable<ZarSettlement> settlements,
+    Iterable<ZarPaymentAllocation> allocations = const [],
   }) {
+    validateZarPaymentAllocations(
+      deals: deals,
+      settlements: settlements,
+      allocations: allocations,
+    );
     final actual = _InventoryAccumulator();
     final pendingReceive = _InventoryAccumulator();
     final pendingDeliver = _InventoryAccumulator();
     final dealById = <String, ZarDeal>{for (final deal in deals) deal.id: deal};
+    final settlementById = {for (final item in settlements) item.id: item};
+    final paidToObligation = <String, BigInt>{};
+    for (final row in allocations) {
+      if (row.targetType == ZarPaymentAllocationTarget.settlement &&
+          settlementById[row.settlementId]?.status ==
+              ZarSettlementStatus.completed) {
+        paidToObligation[row.targetId] =
+            (paidToObligation[row.targetId] ?? BigInt.zero) +
+            BigInt.from(row.amount.wholeTomans);
+      }
+    }
 
     for (final deal in deals) {
       if (deal.status == ZarDealStatus.cancelled) continue;
@@ -113,16 +131,40 @@ class ZarOperationalInventoryProjector {
     }
 
     for (final settlement in settlements) {
+      ZarAssetAmount movementAmount = settlement.amount;
+      final alreadyPaid = paidToObligation[settlement.id];
+      if (alreadyPaid != null) {
+        final remainder = zarWholeToman(settlement.amount)! - alreadyPaid;
+        if (remainder == BigInt.zero) continue;
+        movementAmount = ZarCurrencyAssetAmount(
+          ZarCurrencyAmount(
+            code: 'TOMAN',
+            minorUnits: remainder.toInt(),
+            minorUnitScale: 0,
+          ),
+        );
+      }
       switch (settlement.status) {
         case ZarSettlementStatus.completed:
           final linkedDeal = settlement.dealId == null
               ? null
               : dealById[settlement.dealId!];
           final alreadyRepresentedByDeal =
-              linkedDeal != null && linkedDeal.status != ZarDealStatus.cancelled;
-          if (!alreadyRepresentedByDeal) {
+              linkedDeal != null &&
+              linkedDeal.status != ZarDealStatus.cancelled &&
+              linkedDeal.personId == settlement.personId &&
+              linkedDeal.businessId == settlement.businessId &&
+              (linkedDeal.type == ZarDealType.buy
+                      ? ZarSettlementDirection.receive
+                      : ZarSettlementDirection.deliver) ==
+                  settlement.direction;
+          {
             actual.addSettlement(
               settlement,
+              amount: movementAmount,
+              excludedIdentities: alreadyRepresentedByDeal
+                  ? _assetIdentities(linkedDeal.amount)
+                  : const {},
               sign: settlement.direction == ZarSettlementDirection.receive
                   ? 1
                   : -1,
@@ -132,7 +174,7 @@ class ZarOperationalInventoryProjector {
           (settlement.direction == ZarSettlementDirection.receive
                   ? pendingReceive
                   : pendingDeliver)
-              .addSettlement(settlement, sign: 1);
+              .addSettlement(settlement, amount: movementAmount, sign: 1);
         case ZarSettlementStatus.cancelled:
           break;
       }
@@ -156,6 +198,15 @@ class ZarOperationalInventoryProjector {
   }
 }
 
+Set<String> _assetIdentities(ZarAssetAmount amount) => switch (amount) {
+  ZarGoldAssetAmount(:final value) => {'gold:${value.purity ?? 'unknown'}'},
+  ZarCurrencyAssetAmount(:final value) => {'currency:${value.code}'},
+  ZarCoinBundleAmount(:final lines) => {
+    for (final line in lines)
+      'coin:${line.coinTypeId}|${line.weightPerPieceGrams ?? ''}|${line.fineness ?? ''}',
+  },
+};
+
 class _InventoryAccumulator {
   final Map<String?, _DecimalAccumulator> _gold = {};
   final Map<String, _DecimalAccumulator> _currencies = {};
@@ -177,10 +228,16 @@ class _InventoryAccumulator {
     );
   }
 
-  void addSettlement(ZarSettlement settlement, {required int sign}) {
+  void addSettlement(
+    ZarSettlement settlement, {
+    required int sign,
+    ZarAssetAmount? amount,
+    Set<String> excludedIdentities = const {},
+  }) {
     _addAmount(
-      settlement.amount,
+      amount ?? settlement.amount,
       sign: sign,
+      excludedIdentities: excludedIdentities,
       movementFor: (label) => ZarInventoryMovement(
         recordId: settlement.id,
         source: ZarInventoryMovementSource.settlement,
@@ -196,10 +253,12 @@ class _InventoryAccumulator {
     ZarAssetAmount amount, {
     required int sign,
     required ZarInventoryMovement Function(String label) movementFor,
+    Set<String> excludedIdentities = const {},
   }) {
     switch (amount) {
       case ZarGoldAssetAmount(:final value):
         final key = 'gold:${value.purity ?? 'unknown'}';
+        if (excludedIdentities.contains(key)) return;
         final grams = zarGoldWeightInGrams(value.decimal, value.unit);
         _gold
             .putIfAbsent(value.purity, _DecimalAccumulator.new)
@@ -207,6 +266,7 @@ class _InventoryAccumulator {
         _addMovement(key, movementFor('$grams گرم'));
       case ZarCurrencyAssetAmount(:final value):
         final key = 'currency:${value.code}';
+        if (excludedIdentities.contains(key)) return;
         final decimal = _minorUnitsToDecimal(
           value.minorUnits,
           value.minorUnitScale,
@@ -220,6 +280,7 @@ class _InventoryAccumulator {
           final identity =
               '${line.coinTypeId}|${line.weightPerPieceGrams ?? ''}|${line.fineness ?? ''}';
           final key = 'coin:$identity';
+          if (excludedIdentities.contains(key)) continue;
           _coins
                   .putIfAbsent(
                     identity,

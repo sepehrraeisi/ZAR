@@ -143,7 +143,7 @@ class RecordReminderRegistry {
     String personName,
   ) =>
       ReminderNotificationContent(
-        title: '${record.operationLabel} • $personName',
+        title: '${record.operationDisplayLabel} • $personName',
         body: '${record.assetLabel} • ${record.amountDisplay}',
       );
 }

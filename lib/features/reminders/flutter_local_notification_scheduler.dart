@@ -51,12 +51,17 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
        _enableVibration = enableVibration,
        _persistentAlarm = persistentAlarm;
 
-  static const _soundChannelId = 'zar_reminders_sound';
-  static const _silentChannelId = 'zar_reminders_silent';
-  static const _alarmSoundChannelId = 'zar_reminders_alarm_sound_v1';
-  static const _alarmSilentChannelId = 'zar_reminders_alarm_silent_v1';
+  // Android channel sound/vibration are immutable after channel creation.
+  // One versioned channel per complete preference profile; old channels are
+  // retained, and no system permission or user setting is changed here.
+  static String androidChannelId({
+    required bool alarm,
+    required bool sound,
+    required bool vibration,
+  }) =>
+      'zar_reminders_v2_${alarm ? 'alarm' : 'normal'}_${sound ? 'sound' : 'silent'}_${vibration ? 'vibrate' : 'quiet'}';
   static const _channelName = 'یادآوری‌های ZAR+';
-  static const _channelDescription = 'یادآوری تحویل، دریافت و تعهدات کاری';
+  static const _channelDescription = 'یادآوری پرداخت، دریافت و تعهدات کاری';
   static const _payloadPrefix = 'zar-record:';
 
   final FlutterLocalNotificationsPlugin _plugin;
@@ -134,10 +139,14 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
         windows: windows,
       ),
       onDidReceiveNotificationResponse: (response) {
+        final recordId = _recordIdFromPayload(response.payload);
         if (response.id != null) {
           _plugin.cancel(id: response.id!);
+          if (defaultTargetPlatform == TargetPlatform.android &&
+              recordId != null) {
+            _plugin.cancel(id: response.id!, tag: '$_payloadPrefix$recordId');
+          }
         }
-        final recordId = _recordIdFromPayload(response.payload);
         if (recordId != null) onRecordTapped?.call(recordId);
       },
     );
@@ -253,11 +262,11 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   }
 
   Future<void> _scheduleSingle(_NativeReminderSpec spec, DateTime utc) async {
-    final channelId = _persistentAlarm
-        ? (_playSound ? _alarmSoundChannelId : _alarmSilentChannelId)
-        : _playSound
-        ? _soundChannelId
-        : _silentChannelId;
+    final channelId = androidChannelId(
+      alarm: _persistentAlarm,
+      sound: _playSound,
+      vibration: _enableVibration,
+    );
     await _plugin.zonedSchedule(
       id: _stableNotificationId(spec.recordId, utc),
       title: spec.title,
@@ -274,6 +283,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
           enableVibration: _enableVibration,
           autoCancel: !_persistentAlarm,
           ongoing: _persistentAlarm,
+          tag: '$_payloadPrefix${spec.recordId}',
           category: _persistentAlarm
               ? AndroidNotificationCategory.alarm
               : AndroidNotificationCategory.reminder,
@@ -312,6 +322,17 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     final pending = await _plugin.pendingNotificationRequests();
     for (final request in pending.where((item) => item.payload == payload)) {
       await _plugin.cancel(id: request.id);
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        await _plugin.cancel(id: request.id, tag: payload);
+      }
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final active = await _plugin.getActiveNotifications();
+      for (final notification in active.where((item) => item.tag == payload)) {
+        if (notification.id != null) {
+          await _plugin.cancel(id: notification.id!, tag: payload);
+        }
+      }
     }
   }
 

@@ -3,6 +3,7 @@ import 'zar_domain_models.dart';
 /// Formats exact currency minor units without converting through `double`.
 class ZarAmountFormatter {
   const ZarAmountFormatter._();
+  static String toman(BigInt amount) => '${_persianDigits(_group(amount.toString())).replaceAll(',', '٬')} تومان';
 
   static String currency(ZarCurrencyAmount value) {
     final scale = value.minorUnitScale;

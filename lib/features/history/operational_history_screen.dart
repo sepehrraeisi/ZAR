@@ -32,7 +32,7 @@ class _OperationalHistoryScreenState extends State<OperationalHistoryScreen> {
           if (normalized.isEmpty) return true;
           final searchable = <String>[
             widget.personName(record.personId),
-            record.operationLabel,
+            record.operationDisplayLabel,
             record.assetLabel,
             record.amountDisplay,
             record.currencyCode ?? '',
@@ -69,7 +69,7 @@ class _OperationalHistoryScreenState extends State<OperationalHistoryScreen> {
                       _chip('خرید', HistoryFilter.buy),
                       _chip('فروش', HistoryFilter.sell),
                       _chip('دریافت', HistoryFilter.receive),
-                      _chip('تحویل', HistoryFilter.deliver),
+                      _chip('پرداخت', HistoryFilter.deliver),
                       _chip('انجام‌شده', HistoryFilter.completed),
                       _chip('لغوشده', HistoryFilter.cancelled),
                     ],
@@ -264,7 +264,7 @@ class _OperationPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(99),
       ),
       child: Text(
-        record.operationLabel,
+        record.operationDisplayLabel,
         style: theme.textTheme.bodyMedium?.copyWith(
           color: color,
           fontWeight: FontWeight.w700,

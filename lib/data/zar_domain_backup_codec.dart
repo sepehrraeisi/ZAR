@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../domain/zar_domain_models.dart';
+import '../domain/zar_payment_allocation.dart';
 import '../domain/zar_reminder_plan.dart';
 
 /// Lossless backup format for production business data.
@@ -16,7 +17,8 @@ class ZarDomainBackupBundle {
     required this.deals,
     required this.settlements,
     this.coinTypes = const [],
-    this.exportVersion = 5,
+    this.exportVersion = 6,
+    this.paymentAllocations = const [],
   });
 
   final int exportVersion;
@@ -26,13 +28,14 @@ class ZarDomainBackupBundle {
   final List<ZarDeal> deals;
   final List<ZarSettlement> settlements;
   final List<ZarCoinType> coinTypes;
+  final List<ZarPaymentAllocation> paymentAllocations;
 }
 
 class ZarDomainBackupCodec {
   const ZarDomainBackupCodec();
 
-  static const supportedVersion = 5;
-  static const supportedImportVersions = {2, 3, 4, 5};
+  static const supportedVersion = 6;
+  static const supportedImportVersions = {2, 3, 4, 5, 6};
 
   String encodeJson(ZarDomainBackupBundle bundle) {
     if (bundle.exportVersion != supportedVersion) {
@@ -43,6 +46,11 @@ class ZarDomainBackupCodec {
     if (bundle.businessId.trim().isEmpty) {
       throw const FormatException('Backup businessId is required.');
     }
+    validateZarPaymentAllocations(
+      deals: bundle.deals,
+      settlements: bundle.settlements,
+      allocations: bundle.paymentAllocations,
+    );
 
     final payload = <String, Object?>{
       'app': 'ZAR+',
@@ -50,6 +58,9 @@ class ZarDomainBackupCodec {
       'exportVersion': bundle.exportVersion,
       'businessId': bundle.businessId,
       'generatedAt': bundle.generatedAt.toUtc().toIso8601String(),
+      'paymentAllocations': bundle.paymentAllocations
+          .map((row) => row.toMap())
+          .toList(),
       'people': bundle.people.map(_personToMap).toList(growable: false),
       'deals': bundle.deals.map(_dealToMap).toList(growable: false),
       'settlements': bundle.settlements
@@ -92,6 +103,20 @@ class ZarDomainBackupCodec {
     final coinTypes = version >= 5
         ? _mapList(raw['coinTypes'], ZarCoinType.fromMap)
         : const <ZarCoinType>[];
+    final allocations = version >= 6
+        ? _mapList(raw['paymentAllocations'], ZarPaymentAllocation.fromMap)
+        : const <ZarPaymentAllocation>[];
+    if (version < 6 &&
+        raw.containsKey('paymentAllocations') &&
+        (raw['paymentAllocations'] is! List ||
+            (raw['paymentAllocations']! as List).isNotEmpty)) {
+      throw const FormatException('Allocation data requires backup version 6.');
+    }
+    validateZarPaymentAllocations(
+      deals: deals,
+      settlements: settlements,
+      allocations: allocations,
+    );
 
     _validateReferences(
       people: people,
@@ -103,6 +128,7 @@ class ZarDomainBackupCodec {
 
     return ZarDomainBackupBundle(
       exportVersion: version,
+      paymentAllocations: allocations,
       businessId: businessId,
       generatedAt: _date(raw['generatedAt'], 'generatedAt'),
       people: people,

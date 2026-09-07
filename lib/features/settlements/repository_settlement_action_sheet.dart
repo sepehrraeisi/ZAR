@@ -15,6 +15,8 @@ class RepositorySettlementActionSheet extends StatelessWidget {
     required this.onEditReminders,
     required this.onSnooze,
     required this.onCancel,
+    this.onAllocate,
+    this.allocationSummary,
   });
 
   final AppRecord record;
@@ -26,6 +28,8 @@ class RepositorySettlementActionSheet extends StatelessWidget {
   final VoidCallback onEditReminders;
   final VoidCallback onSnooze;
   final VoidCallback onCancel;
+  final VoidCallback? onAllocate;
+  final String? allocationSummary;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +61,7 @@ class RepositorySettlementActionSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(record.operationLabel, style: theme.textTheme.titleLarge),
+                      Text(record.operationDisplayLabel, style: theme.textTheme.titleLarge),
                       const SizedBox(height: 3),
                       Text(personName, style: theme.textTheme.bodyMedium),
                     ],
@@ -108,6 +112,8 @@ class RepositorySettlementActionSheet extends StatelessWidget {
                 ],
               ),
             ),
+            if (allocationSummary != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(allocationSummary!)),
+            if (onAllocate != null) OutlinedButton(onPressed: onAllocate, child: const Text('انتخاب / ویرایش مقصد تسویه')),
             if (isOpen) ...[
               const SizedBox(height: 18),
               FilledButton.icon(

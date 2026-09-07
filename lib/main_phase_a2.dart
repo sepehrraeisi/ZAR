@@ -320,11 +320,11 @@ class _PhaseA2ShellState extends State<PhaseA2Shell> {
           (r) => ZarNotificationItem(
             id: 'notification-${r.id}',
             recordId: r.id,
-            title: '${r.operationLabel} • ${personName(r.personId)}',
+            title: '${r.operationDisplayLabel} • ${personName(r.personId)}',
             subtitle: _notificationPreferences.privacy == NotificationPrivacy.private
                 ? 'یک یادآوری کاری دارید.'
                 : _notificationPreferences.privacy == NotificationPrivacy.limited
-                ? '${r.operationLabel} برای ${personName(r.personId)}'
+                ? '${r.operationDisplayLabel} برای ${personName(r.personId)}'
                 : '${r.assetLabel} • ${r.amountDisplay}',
             timeLabel: r.timeLabel(),
             isOverdue: overdue,
@@ -536,10 +536,10 @@ class PhaseA2HomeScreen extends StatelessWidget {
               Row(children: [
                 Expanded(child: _DashboardSummaryCard(label: 'در انتظار دریافت', value: '${toPersianDigits(value.pendingReceiveCount.toString())} مورد', onTap: onOpenPendingReceive)),
                 const SizedBox(width: 8),
-                Expanded(child: _DashboardSummaryCard(label: 'در انتظار تحویل', value: '${toPersianDigits(value.pendingDeliverCount.toString())} مورد', onTap: onOpenPendingDeliver)),
+                Expanded(child: _DashboardSummaryCard(label: 'در انتظار پرداخت', value: '${toPersianDigits(value.pendingDeliverCount.toString())} مورد', onTap: onOpenPendingDeliver)),
               ]),
             if (inventory.pendingReceive.isNotEmpty) _pendingPreview(context, 'در انتظار دریافت', inventory.pendingReceive, onOpenPendingReceive),
-            if (inventory.pendingDeliver.isNotEmpty) _pendingPreview(context, 'در انتظار تحویل', inventory.pendingDeliver, onOpenPendingDeliver),
+            if (inventory.pendingDeliver.isNotEmpty) _pendingPreview(context, 'در انتظار پرداخت', inventory.pendingDeliver, onOpenPendingDeliver),
             const SizedBox(height: 20),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Text('موجودی', style: Theme.of(context).textTheme.titleMedium),
@@ -570,7 +570,7 @@ class PhaseA2HomeScreen extends StatelessWidget {
               Card(
                 elevation: 0,
                 child: Column(children: recentRecords.map((record) => ListTile(
-                  title: Text('${record.operationLabel} ${record.assetLabel} ${record.type == RecordType.deal ? 'با' : record.operationLabel == 'دریافت' ? 'از' : 'به'} ${personName(record.personId)}'),
+                  title: Text('${record.operationDisplayLabel} ${record.assetLabel} ${record.type == RecordType.deal ? 'با' : record.operationLabel == 'دریافت' ? 'از' : 'به'} ${personName(record.personId)}'),
                   subtitle: Text('${record.assetLabel} • ${record.amountDisplay}'),
                   trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
                   onTap: () => onTapRecord(record),

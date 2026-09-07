@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../app_core.dart';
+import '../../application/customer_operational_balance_projector.dart';
+import 'customer_balance_card.dart';
 
 class OperationalPeopleScreen extends StatefulWidget {
   const OperationalPeopleScreen({
@@ -12,6 +14,7 @@ class OperationalPeopleScreen extends StatefulWidget {
     required this.onAddPerson,
     required this.onOpenPerson,
     required this.onOpenArchive,
+    this.balanceFor,
   });
 
   final List<AppPerson> people;
@@ -20,6 +23,7 @@ class OperationalPeopleScreen extends StatefulWidget {
   final VoidCallback onAddPerson;
   final ValueChanged<AppPerson> onOpenPerson;
   final VoidCallback onOpenArchive;
+  final ZarCustomerOperationalBalance Function(String)? balanceFor;
 
   @override
   State<OperationalPeopleScreen> createState() => _OperationalPeopleScreenState();
@@ -109,6 +113,7 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
                       final last = _lastActivity(person.id);
                       return _PersonCard(
                         person: person,
+                        balance: widget.balanceFor?.call(person.id),
                         openCount: open,
                         dealCount: deals,
                         lastActivity: last,
@@ -142,6 +147,7 @@ class _PersonCard extends StatelessWidget {
     required this.openCount,
     required this.dealCount,
     required this.lastActivity,
+    this.balance,
     required this.onTap,
   });
 
@@ -149,6 +155,7 @@ class _PersonCard extends StatelessWidget {
   final int openCount;
   final int dealCount;
   final AppRecord? lastActivity;
+  final ZarCustomerOperationalBalance? balance;
   final VoidCallback onTap;
 
   @override
@@ -196,10 +203,14 @@ class _PersonCard extends StatelessWidget {
                         _CountPill(label: 'تعهد باز', count: openCount, emphasize: openCount > 0),
                       ],
                     ),
+                    if (balance != null) ...[
+                      const SizedBox(height: 10),
+                      CustomerBalanceCard(balance: balance!, compact: true),
+                    ],
                     if (lastActivity != null) ...[
                       const SizedBox(height: 8),
                       Text(
-                        'آخرین فعالیت: ${lastActivity!.operationLabel} • ${formatJalaliDate(lastActivity!.date)}',
+                        'آخرین فعالیت: ${lastActivity!.operationDisplayLabel} • ${formatJalaliDate(lastActivity!.date)}',
                         style: theme.textTheme.bodyMedium,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

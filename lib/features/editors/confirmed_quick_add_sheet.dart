@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' show NumberFormat;
 import 'package:shamsi_date/shamsi_date.dart';
 
 import '../../app_core.dart';
+import 'persian_numeric_input_formatter.dart';
 import '../../domain/zar_domain_models.dart';
 
 class ConfirmedQuickAddSheet extends StatefulWidget {
@@ -26,8 +27,8 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   String? _operation, _asset, _currencyCode;
   AppPerson? _person;
   final _amount = TextEditingController();
-  final _fineness = TextEditingController(text: '750');
-  final _reference = TextEditingController(text: '750');
+  final _fineness = TextEditingController(text: '۷۵۰');
+  final _reference = TextEditingController(text: '۷۵۰');
   final _rate = TextEditingController();
   final _note = TextEditingController();
   ZarGoldUnit _weightUnit = ZarGoldUnit.gram;
@@ -170,7 +171,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
 
   void _selectPriceUnit(ZarGoldUnit value) => setState(() {
     _priceUnit = value;
-    _reference.text = value == ZarGoldUnit.gram ? '750' : '705';
+    _reference.text = value == ZarGoldUnit.gram ? '۷۵۰' : '۷۰۵';
   });
 
   Future<void> _save() async {
@@ -242,7 +243,9 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     }
   }
 
-  String get _submitLabel => 'ثبت ${_operation ?? ''} ${_asset ?? ''}'.trim();
+  String get _submitLabel =>
+      'ثبت ${_operation == 'تحویل' ? 'پرداخت' : _operation ?? ''} ${_asset ?? ''}'
+          .trim();
   String _toman(int value) =>
       toPersianDigits(NumberFormat.decimalPattern('en_US').format(value));
   String _confirmation(ZarDealPricing? pricing) {
@@ -376,6 +379,12 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                 else
                   TextField(
                     controller: _amount,
+                    inputFormatters: [
+                      PersianNumericInputFormatter(
+                        decimal: !_isCash,
+                        group: !_isGold,
+                      ),
+                    ],
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -398,6 +407,9 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _fineness,
+                    inputFormatters: [
+                      PersianNumericInputFormatter(group: false),
+                    ],
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -413,7 +425,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                   _choices(
                     ['705', '740', '750', '875', '916', '999.9'],
                     _fineness.text,
-                    (v) => setState(() => _fineness.text = v),
+                    (v) => setState(() => _fineness.text = toPersianNumberText(v)),
                   ),
                 ],
               ]),
@@ -435,6 +447,9 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                   const SizedBox(height: 10),
                   TextField(
                     controller: _rate,
+                    inputFormatters: [
+                      PersianNumericInputFormatter(decimal: !_isGold),
+                    ],
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -458,6 +473,9 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
                     if (_more)
                       TextField(
                         controller: _reference,
+                        inputFormatters: [
+                          PersianNumericInputFormatter(group: false),
+                        ],
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
@@ -579,8 +597,8 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     children: values
         .map(
           (v) => ChoiceChip(
-            label: Text(toPersianDigits(v)),
-            selected: selected == v,
+            label: Text(toPersianDigits(v == 'تحویل' ? 'پرداخت' : v)),
+            selected: toPersianNumberText(selected ?? '') == toPersianNumberText(v),
             showCheckmark: false,
             onSelected: _saving ? null : (_) => changed(v),
           ),
@@ -645,6 +663,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
         const SizedBox(height: 10),
         TextField(
           controller: row.quantity,
+          inputFormatters: [PersianNumericInputFormatter(decimal: false)],
           keyboardType: TextInputType.number,
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.right,
@@ -660,6 +679,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
           const SizedBox(height: 10),
           TextField(
             controller: row.weight,
+            inputFormatters: [PersianNumericInputFormatter(group: false)],
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.right,
@@ -669,6 +689,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
           const SizedBox(height: 10),
           TextField(
             controller: row.fineness,
+            inputFormatters: [PersianNumericInputFormatter(group: false)],
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.right,
@@ -690,6 +711,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
           const SizedBox(height: 10),
           TextField(
             controller: row.price,
+            inputFormatters: [PersianNumericInputFormatter(decimal: false)],
             keyboardType: TextInputType.number,
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.right,
@@ -708,6 +730,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
             if (row.more)
               TextField(
                 controller: row.reference,
+                inputFormatters: [PersianNumericInputFormatter(group: false)],
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
@@ -803,17 +826,17 @@ class _CoinDraftRow {
     : id = 'coin-line-${DateTime.now().microsecondsSinceEpoch}',
       type = type,
       method = type.defaultPricingMethod,
-      weight = TextEditingController(text: type.defaultWeightGrams ?? ''),
-      fineness = TextEditingController(text: type.defaultFineness ?? '750');
+      weight = TextEditingController(text: toPersianNumberText(type.defaultWeightGrams ?? '')),
+      fineness = TextEditingController(text: toPersianNumberText(type.defaultFineness ?? '750'));
   final String id;
   ZarCoinType? type;
   ZarCoinPricingMethod method;
   bool more = false;
-  final quantity = TextEditingController(text: '1');
+  final quantity = TextEditingController(text: '۱');
   final TextEditingController weight;
   final TextEditingController fineness;
   final price = TextEditingController();
-  final reference = TextEditingController(text: '750');
+  final reference = TextEditingController(text: '۷۵۰');
   bool get weighted =>
       type?.category == ZarCoinCategory.parsian ||
       method == ZarCoinPricingMethod.perGram;
@@ -821,8 +844,8 @@ class _CoinDraftRow {
     type = value;
     if (value == null) return;
     method = value.defaultPricingMethod;
-    weight.text = value.defaultWeightGrams ?? '';
-    fineness.text = value.defaultFineness ?? '750';
+    weight.text = toPersianNumberText(value.defaultWeightGrams ?? '');
+    fineness.text = toPersianNumberText(value.defaultFineness ?? '750');
   }
 
   void dispose() {

@@ -109,7 +109,7 @@ class _OperationalDailyReportScreenState
           ],
           const SizedBox(height: 22),
           _sectionHeader(
-            'دریافت و تحویل انجام‌شده',
+            'دریافت و پرداخت انجام‌شده',
             report.completedMovementCount,
           ),
           const SizedBox(height: 8),
@@ -128,7 +128,7 @@ class _OperationalDailyReportScreenState
               ),
             if (report.completedDeliverIds.isNotEmpty)
               _section(
-                'تحویل',
+                'پرداخت',
                 report.completedDeliverIds,
                 emptyText: '',
               ),
@@ -312,7 +312,7 @@ class _OperationalDailyReportScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${record.operationLabel} • ${widget.personName(record.personId)}',
+                      '${record.operationDisplayLabel} • ${widget.personName(record.personId)}',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 4),

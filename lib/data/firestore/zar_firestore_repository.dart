@@ -59,6 +59,9 @@ class ZarFirestoreRepository implements ZarDomainRepository {
 
   @override
   Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
+    if (snapshot.paymentAllocations.isNotEmpty) {
+      throw UnsupportedError('Explicit payment allocations currently require local storage.');
+    }
     final existing = await Future.wait([_people.get(), _deals.get(), _settlements.get()]);
     final replacementIds = [
       snapshot.people.map((item) => item.id).toSet(),

@@ -178,7 +178,7 @@ void main() {
     await repo.close();
   });
 
-  test('Backup V5 round-trips catalog and one logical multi-line deal', () {
+  test('Backup V6 round-trips catalog and one logical multi-line deal', () {
     const codec = ZarDomainBackupCodec();
     final catalog = zarInitialCoinTypes(now: DateTime.utc(2026));
     final pricing = ZarCoinDealPricing(
@@ -203,7 +203,7 @@ void main() {
       coinTypes: catalog,
     );
     final restored = codec.decodeJson(codec.encodeJson(source));
-    expect(restored.exportVersion, 5);
+    expect(restored.exportVersion, 6);
     expect(restored.coinTypes, hasLength(7));
     expect(
       (restored.deals.single.amount as ZarCoinBundleAmount)

@@ -552,12 +552,12 @@ class _RepositoryPhaseA2ShellState extends State<RepositoryPhaseA2Shell> {
           id: 'notification-${record.id}',
           recordId: record.id,
           title:
-              '${record.operationLabel} • ${_store.personName(record.personId)}',
+              '${record.operationDisplayLabel} • ${_store.personName(record.personId)}',
           subtitle:
               _notificationPreferences.privacy == NotificationPrivacy.private
               ? 'یک یادآوری کاری دارید.'
               : _notificationPreferences.privacy == NotificationPrivacy.limited
-              ? '${record.operationLabel} برای ${_store.personName(record.personId)}'
+              ? '${record.operationDisplayLabel} برای ${_store.personName(record.personId)}'
               : '${record.assetLabel} • ${record.amountDisplay}',
           timeLabel: record.timeLabel(),
           isOverdue: overdue,

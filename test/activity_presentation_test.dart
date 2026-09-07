@@ -138,7 +138,7 @@ void main() {
       expect(find.textContaining('USD'), findsOneWidget);
       expect(find.text('خرید'), findsOneWidget);
       expect(find.text('دریافت'), findsOneWidget);
-      expect(find.text('تحویل'), findsOneWidget);
+      expect(find.text('پرداخت'), findsOneWidget);
       expect(find.text('در انتظار'), findsOneWidget);
       expect(find.text('انجام شد'), findsOneWidget);
       await tester.scrollUntilVisible(

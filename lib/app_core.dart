@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'application/customer_operational_balance_projector.dart';
+import 'features/people/customer_balance_card.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import 'package:shamsi_date/shamsi_date.dart';
@@ -130,6 +132,8 @@ class AppRecord {
   final String id;
   final RecordType type;
   final String operationLabel;
+  // Keep legacy presentation/backup values stable; localize only at display.
+  String get operationDisplayLabel => operationLabel == 'تحویل' ? 'پرداخت' : operationLabel;
   final String personId;
   final String amountDisplay;
   final String assetLabel;
@@ -987,7 +991,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
 }
 
 class PersonDetailScreen extends StatelessWidget {
-  const PersonDetailScreen({super.key, required this.person, required this.records, required this.personName, required this.onTapRecord, required this.onEditPerson, required this.onArchivePerson, this.position = const ZarCustomerPosition.empty()});
+  const PersonDetailScreen({super.key, required this.person, required this.records, required this.personName, required this.onTapRecord, required this.onEditPerson, required this.onArchivePerson, this.position = const ZarCustomerPosition.empty(), this.balance});
 
   final AppPerson person;
   final List<AppRecord> records;
@@ -996,6 +1000,7 @@ class PersonDetailScreen extends StatelessWidget {
   final ValueChanged<AppPerson> onEditPerson;
   final ValueChanged<String> onArchivePerson;
   final ZarCustomerPosition position;
+  final ZarCustomerOperationalBalance? balance;
 
   @override
   Widget build(BuildContext context) {
@@ -1037,13 +1042,17 @@ class PersonDetailScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+          if (balance != null) ...[
+            CustomerBalanceCard(balance: balance!),
+            const SizedBox(height: 16),
+          ],
           _customerCard(
             context,
             title: 'تعهدات باز',
             children: [
-              _positionSide(context, 'باید دریافت کنم', position.receive),
+              _positionSide(context, 'باید دریافت کنم', position.receive.where((item) => balance == null || item is! ZarCustomerCurrencyPosition || item.code != 'TOMAN').toList()),
               const SizedBox(height: 12),
-              _positionSide(context, 'باید تحویل بدهم', position.deliver),
+              _positionSide(context, 'باید پرداخت کنم', position.deliver.where((item) => balance == null || item is! ZarCustomerCurrencyPosition || item.code != 'TOMAN').toList()),
               const Divider(height: 24),
               if (openItems.isEmpty)
                 const _ZEmptyRow(label: 'تعهد باز وجود ندارد.')
@@ -1067,7 +1076,7 @@ class PersonDetailScreen extends StatelessWidget {
               _activityRow('خرید', position.buyCount),
               _activityRow('فروش', position.sellCount),
               _activityRow('دریافت', position.receiveCount),
-              _activityRow('تحویل', position.deliverCount),
+              _activityRow('پرداخت', position.deliverCount),
               const Divider(height: 20),
               Text('آخرین فعالیت: ${_lastActivityLabel(position.lastActivityAt)}'),
             ],
@@ -1162,7 +1171,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               if (normalizedQuery.isEmpty) return true;
               final searchable = <String>[
                 widget.personName(record.personId),
-                record.operationLabel,
+                record.operationDisplayLabel,
                 record.assetLabel,
                 record.amountDisplay,
                 record.currencyCode ?? '',
@@ -1193,7 +1202,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   _filterChip(context, 'خرید', HistoryFilter.buy),
                   _filterChip(context, 'فروش', HistoryFilter.sell),
                   _filterChip(context, 'دریافت', HistoryFilter.receive),
-                  _filterChip(context, 'تحویل', HistoryFilter.deliver),
+                  _filterChip(context, 'پرداخت', HistoryFilter.deliver),
                   _filterChip(context, 'انجام‌شده', HistoryFilter.completed),
                   _filterChip(context, 'لغوشده', HistoryFilter.cancelled),
                 ],
@@ -1291,7 +1300,7 @@ class HistoryRecordRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(record.operationLabel, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(record.operationDisplayLabel, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(personName, style: theme.textTheme.bodyMedium),
                   const SizedBox(height: 5),
@@ -1372,7 +1381,7 @@ class SettlementRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(record.operationLabel, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(record.operationDisplayLabel, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(personName, style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.84))),
                   const SizedBox(height: 4),
@@ -1470,7 +1479,7 @@ class SettlementActionSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${record.operationLabel} • $personName', style: Theme.of(context).textTheme.titleMedium),
+          Text('${record.operationDisplayLabel} • $personName', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           Text('${record.assetLabel} • ${record.amountDisplay}', style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 12),
@@ -1510,7 +1519,7 @@ class DealDetailSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('جزئیات معامله (${record.operationLabel})', style: Theme.of(context).textTheme.titleMedium),
+          Text('جزئیات معامله (${record.operationDisplayLabel})', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
           Text(personName, style: Theme.of(context).textTheme.bodyLarge),
           const SizedBox(height: 4),

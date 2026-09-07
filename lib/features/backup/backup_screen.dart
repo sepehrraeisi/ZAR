@@ -131,7 +131,7 @@ class _BackupScreenState extends State<BackupScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'افراد، معاملات طلا، سکه و ارز، دریافت و تحویل، وضعیت بایگانی و برنامه‌های یادآوری در فایل JSON نسخه ۵ نگهداری می‌شوند. فایل‌های نسخه ۲، ۳ و ۴ همچنان قابل بازیابی هستند.',
+            'افراد، معاملات طلا، سکه و ارز، دریافت و پرداخت، وضعیت بایگانی و برنامه‌های یادآوری در فایل JSON نسخه ۶ نگهداری می‌شوند. فایل‌های نسخه ۲، ۳، ۴ و ۵ همچنان قابل بازیابی هستند.',
           ),
           const SizedBox(height: 20),
           if (widget.onOpenCoinCatalog != null) ...[
@@ -212,7 +212,7 @@ class _BackupSummary extends StatelessWidget {
         ),
         Text('خرید و فروش: ${toPersianDigits(preview.dealCount.toString())}'),
         Text(
-          'دریافت و تحویل: ${toPersianDigits(preview.settlementCount.toString())}',
+          'دریافت و پرداخت: ${toPersianDigits(preview.settlementCount.toString())}',
         ),
         Text(
           'تسویه‌های دارای یادآوری: ${toPersianDigits(preview.settlementReminderCount.toString())} '

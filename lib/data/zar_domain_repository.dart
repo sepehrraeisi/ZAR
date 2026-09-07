@@ -1,4 +1,5 @@
 import '../domain/zar_domain_models.dart';
+import '../domain/zar_payment_allocation.dart';
 
 class ZarDomainSnapshot {
   const ZarDomainSnapshot({
@@ -6,12 +7,22 @@ class ZarDomainSnapshot {
     required this.deals,
     required this.settlements,
     this.coinTypes = const [],
+    this.paymentAllocations = const [],
   });
 
   final List<ZarPerson> people;
   final List<ZarDeal> deals;
   final List<ZarSettlement> settlements;
   final List<ZarCoinType> coinTypes;
+  final List<ZarPaymentAllocation> paymentAllocations;
+}
+
+abstract interface class ZarPaymentAllocationRepository {
+  /// Replaces the explicit destinations for one movement atomically.
+  Future<void> savePaymentAllocations(
+    String settlementId,
+    List<ZarPaymentAllocation> allocations,
+  );
 }
 
 /// Repository boundary used by the production application layer.
@@ -76,7 +87,10 @@ abstract interface class ZarCoinCatalogRepository {
 }
 
 class InMemoryZarDomainRepository
-    implements ZarDomainRepository, ZarCoinCatalogRepository {
+    implements
+        ZarDomainRepository,
+        ZarCoinCatalogRepository,
+        ZarPaymentAllocationRepository {
   InMemoryZarDomainRepository({
     Iterable<ZarPerson> people = const [],
     Iterable<ZarDeal> deals = const [],
@@ -96,6 +110,28 @@ class InMemoryZarDomainRepository
   final Map<String, ZarSettlement> _settlements;
   final Map<String, ZarCoinType> _coinTypes;
   final List<Map<String, Object?>> auditEvents = [];
+  List<ZarPaymentAllocation> _paymentAllocations = [];
+
+  @override
+  Future<void> savePaymentAllocations(
+    String settlementId,
+    List<ZarPaymentAllocation> allocations,
+  ) async {
+    if (!_settlements.containsKey(settlementId) ||
+        allocations.any((row) => row.settlementId != settlementId)) {
+      throw const FormatException('Allocation source mismatch.');
+    }
+    final next = [
+      ..._paymentAllocations.where((row) => row.settlementId != settlementId),
+      ...allocations,
+    ];
+    validateZarPaymentAllocations(
+      deals: _deals.values,
+      settlements: _settlements.values,
+      allocations: next,
+    );
+    _paymentAllocations = List.unmodifiable(next);
+  }
 
   @override
   Future<ZarDomainSnapshot> loadCompleteSnapshot() async => ZarDomainSnapshot(
@@ -103,10 +139,16 @@ class InMemoryZarDomainRepository
     deals: List.unmodifiable(_deals.values),
     settlements: List.unmodifiable(_settlements.values),
     coinTypes: List.unmodifiable(_coinTypes.values),
+    paymentAllocations: List.unmodifiable(_paymentAllocations),
   );
 
   @override
   Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
+    validateZarPaymentAllocations(
+      deals: snapshot.deals,
+      settlements: snapshot.settlements,
+      allocations: snapshot.paymentAllocations,
+    );
     final people = {for (final item in snapshot.people) item.id: item};
     final deals = {for (final item in snapshot.deals) item.id: item};
     final settlements = {
@@ -133,6 +175,7 @@ class InMemoryZarDomainRepository
             : coinTypes,
       );
     _audit('complete-backup', 'business', 'restore_replace');
+    _paymentAllocations = List.unmodifiable(snapshot.paymentAllocations);
   }
 
   @override
@@ -242,6 +285,11 @@ class InMemoryZarDomainRepository
 
   @override
   Future<void> saveDeal(ZarDeal deal, {String auditAction = 'edit'}) async {
+    validateZarPaymentAllocations(
+      deals: [..._deals.values.where((item) => item.id != deal.id), deal],
+      settlements: _settlements.values,
+      allocations: _paymentAllocations,
+    );
     final existed = _deals.containsKey(deal.id);
     _deals[deal.id] = deal;
     _audit(deal.id, 'deal', existed ? auditAction : 'create');
@@ -253,6 +301,14 @@ class InMemoryZarDomainRepository
     String auditAction = 'edit',
   }) async {
     final existed = _settlements.containsKey(settlement.id);
+    validateZarPaymentAllocations(
+      deals: _deals.values,
+      settlements: [
+        ..._settlements.values.where((item) => item.id != settlement.id),
+        settlement,
+      ],
+      allocations: _paymentAllocations,
+    );
     _settlements[settlement.id] = settlement;
     _audit(settlement.id, 'settlement', existed ? auditAction : 'create');
   }

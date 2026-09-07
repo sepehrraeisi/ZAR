@@ -563,9 +563,9 @@ class _NotificationSettingsScreenState
   String _privacyExample(NotificationPrivacy privacy) {
     switch (privacy) {
       case NotificationPrivacy.full:
-        return 'ساعت ۱۱ باید مبلغ/مقدار مشخصی به شخص موردنظر تحویل دهید.';
+        return 'ساعت ۱۱ باید مبلغ/مقدار مشخصی به شخص موردنظر پرداخت کنید.';
       case NotificationPrivacy.limited:
-        return 'ساعت ۱۱ یک تحویل برای شخص موردنظر دارید.';
+        return 'ساعت ۱۱ یک پرداخت برای شخص موردنظر دارید.';
       case NotificationPrivacy.private:
         return 'ساعت ۱۱ یک یادآوری کاری دارید.';
     }

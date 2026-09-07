@@ -163,6 +163,17 @@ class ZarLocalMetadata extends Table {
   Set<Column<Object>> get primaryKey => {key};
 }
 
+@DataClassName('LocalPaymentAllocationRow')
+class ZarPaymentAllocations extends Table {
+  TextColumn get settlementId => text().references(ZarSettlements, #id)();
+  TextColumn get targetType => text()();
+  TextColumn get targetId => text()();
+  IntColumn get amountToman => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {settlementId, targetType, targetId};
+}
+
 @DriftDatabase(
   tables: [
     ZarPeople,
@@ -173,6 +184,7 @@ class ZarLocalMetadata extends Table {
     ZarCoinTypes,
     ZarDealCoinLines,
     ZarSettlementCoinLines,
+    ZarPaymentAllocations,
   ],
 )
 class ZarLocalDatabase extends _$ZarLocalDatabase {
@@ -180,7 +192,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
 
   ZarLocalDatabase.defaults() : super(driftDatabase(name: 'zar_plus_local'));
 
-  static const currentSchemaVersion = 6;
+  static const currentSchemaVersion = 7;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -192,7 +204,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
       await into(zarLocalMetadata).insert(
         ZarLocalMetadataCompanion.insert(
           key: 'domain_schema_version',
-          value: '6',
+          value: '7',
         ),
       );
     },
@@ -269,6 +281,12 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
         await (update(zarLocalMetadata)
               ..where((row) => row.key.equals('domain_schema_version')))
             .write(const ZarLocalMetadataCompanion(value: Value('6')));
+      }
+      if (from < 7) {
+        await migrator.createTable(zarPaymentAllocations);
+        await (update(zarLocalMetadata)
+              ..where((row) => row.key.equals('domain_schema_version')))
+            .write(const ZarLocalMetadataCompanion(value: Value('7')));
       }
       if (to > currentSchemaVersion) {
         throw StateError(

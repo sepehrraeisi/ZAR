@@ -1,12 +1,16 @@
 import 'package:drift/drift.dart';
 
 import '../../domain/zar_domain_models.dart';
+import '../../domain/zar_payment_allocation.dart';
 import '../../domain/zar_reminder_plan.dart';
 import '../zar_domain_repository.dart';
 import 'zar_local_database.dart';
 
 class ZarLocalRepository
-    implements ZarDomainRepository, ZarCoinCatalogRepository {
+    implements
+        ZarDomainRepository,
+        ZarCoinCatalogRepository,
+        ZarPaymentAllocationRepository {
   ZarLocalRepository(this.database);
 
   final ZarLocalDatabase database;
@@ -18,51 +22,116 @@ class ZarLocalRepository
 
   Future<void> close() => database.close();
 
-  @override
-  Future<ZarDomainSnapshot> loadCompleteSnapshot() async {
-    final people = await database.select(database.zarPeople).get();
-    final deals = await database.select(database.zarDeals).get();
-    final settlements = await database.select(database.zarSettlements).get();
-    final allRulesQuery = database.select(database.zarReminderRules)
-      ..orderBy([
-        (row) => OrderingTerm.asc(row.settlementId),
-        (row) => OrderingTerm.asc(row.position),
-      ]);
-    final rules = await allRulesQuery.get();
-    final rulesBySettlement = _groupRules(rules);
-    final dealCoinLines = _groupDealCoinLines(
-      await (database.select(
-        database.zarDealCoinLines,
-      )..orderBy([(row) => OrderingTerm.asc(row.position)])).get(),
-    );
-    final settlementCoinLines = _groupSettlementCoinLines(
-      await (database.select(
-        database.zarSettlementCoinLines,
-      )..orderBy([(row) => OrderingTerm.asc(row.position)])).get(),
-    );
-    final coinTypes = await database.select(database.zarCoinTypes).get();
-    return ZarDomainSnapshot(
-      people: people.map(_personFromRow).toList(growable: false),
-      deals: deals
-          .map((row) => _dealFromRow(row, dealCoinLines[row.id]))
-          .toList(growable: false),
-      settlements: settlements
-          .map(
-            (row) => _settlementFromRow(
-              row,
-              rulesBySettlement[row.id],
-              settlementCoinLines[row.id],
+  Future<void> _insertAllocations(Iterable<ZarPaymentAllocation> rows) async {
+    for (final row in rows) {
+      await database
+          .into(database.zarPaymentAllocations)
+          .insert(
+            ZarPaymentAllocationsCompanion.insert(
+              settlementId: row.settlementId,
+              targetType: row.targetType.name,
+              targetId: row.targetId,
+              amountToman: row.amount.wholeTomans,
             ),
-          )
-          .toList(growable: false),
-      coinTypes: coinTypes.map(_coinTypeFromRow).toList(growable: false),
-    );
+          );
+    }
   }
+
+  @override
+  Future<void> savePaymentAllocations(
+    String settlementId,
+    List<ZarPaymentAllocation> allocations,
+  ) => database.transaction(() async {
+    if (allocations.any((row) => row.settlementId != settlementId)) {
+      throw const FormatException('Allocation source mismatch.');
+    }
+    final snapshot = await loadCompleteSnapshot();
+    if (!snapshot.settlements.any((item) => item.id == settlementId)) {
+      throw const FormatException('Allocation source is missing.');
+    }
+    final next = [
+      ...snapshot.paymentAllocations.where(
+        (row) => row.settlementId != settlementId,
+      ),
+      ...allocations,
+    ];
+    validateZarPaymentAllocations(
+      deals: snapshot.deals,
+      settlements: snapshot.settlements,
+      allocations: next,
+    );
+    await (database.delete(
+      database.zarPaymentAllocations,
+    )..where((row) => row.settlementId.equals(settlementId))).go();
+    await _insertAllocations(allocations);
+  });
+
+  @override
+  Future<ZarDomainSnapshot> loadCompleteSnapshot() => database.transaction(
+    () async {
+      final people = await database.select(database.zarPeople).get();
+      final deals = await database.select(database.zarDeals).get();
+      final settlements = await database.select(database.zarSettlements).get();
+      final allRulesQuery = database.select(database.zarReminderRules)
+        ..orderBy([
+          (row) => OrderingTerm.asc(row.settlementId),
+          (row) => OrderingTerm.asc(row.position),
+        ]);
+      final rules = await allRulesQuery.get();
+      final rulesBySettlement = _groupRules(rules);
+      final dealCoinLines = _groupDealCoinLines(
+        await (database.select(
+          database.zarDealCoinLines,
+        )..orderBy([(row) => OrderingTerm.asc(row.position)])).get(),
+      );
+      final settlementCoinLines = _groupSettlementCoinLines(
+        await (database.select(
+          database.zarSettlementCoinLines,
+        )..orderBy([(row) => OrderingTerm.asc(row.position)])).get(),
+      );
+      final coinTypes = await database.select(database.zarCoinTypes).get();
+      return ZarDomainSnapshot(
+        people: people.map(_personFromRow).toList(growable: false),
+        deals: deals
+            .map((row) => _dealFromRow(row, dealCoinLines[row.id]))
+            .toList(growable: false),
+        settlements: settlements
+            .map(
+              (row) => _settlementFromRow(
+                row,
+                rulesBySettlement[row.id],
+                settlementCoinLines[row.id],
+              ),
+            )
+            .toList(growable: false),
+        coinTypes: coinTypes.map(_coinTypeFromRow).toList(growable: false),
+        paymentAllocations:
+            (await database.select(database.zarPaymentAllocations).get())
+                .map(
+                  (row) => ZarPaymentAllocation(
+                    settlementId: row.settlementId,
+                    targetType: ZarPaymentAllocationTarget.values.byName(
+                      row.targetType,
+                    ),
+                    targetId: row.targetId,
+                    amount: ZarTomanAmount(row.amountToman),
+                  ),
+                )
+                .toList(),
+      );
+    },
+  );
 
   @override
   Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
     _validateSnapshot(snapshot);
+    validateZarPaymentAllocations(
+      deals: snapshot.deals,
+      settlements: snapshot.settlements,
+      allocations: snapshot.paymentAllocations,
+    );
     await database.transaction(() async {
+      await database.delete(database.zarPaymentAllocations).go();
       await database.delete(database.zarReminderRules).go();
       await database.delete(database.zarSettlementCoinLines).go();
       await database.delete(database.zarDealCoinLines).go();
@@ -79,6 +148,7 @@ class ZarLocalRepository
       for (final settlement in snapshot.settlements) {
         await _insertSettlement(settlement);
       }
+      await _insertAllocations(snapshot.paymentAllocations);
       final catalog = snapshot.coinTypes.isEmpty
           ? zarInitialCoinTypes()
           : snapshot.coinTypes;
@@ -185,13 +255,30 @@ class ZarLocalRepository
 
   @override
   Future<void> saveDeal(ZarDeal deal, {String auditAction = 'edit'}) =>
-      database.transaction(() => _upsertDeal(deal));
+      database.transaction(() async {
+        final snapshot = await loadCompleteSnapshot();
+        validateZarPaymentAllocations(
+          deals: [...snapshot.deals.where((item) => item.id != deal.id), deal],
+          settlements: snapshot.settlements,
+          allocations: snapshot.paymentAllocations,
+        );
+        await _upsertDeal(deal);
+      });
 
   @override
   Future<void> saveSettlement(
     ZarSettlement settlement, {
     String auditAction = 'edit',
   }) => database.transaction(() async {
+    final snapshot = await loadCompleteSnapshot();
+    validateZarPaymentAllocations(
+      deals: snapshot.deals,
+      settlements: [
+        ...snapshot.settlements.where((item) => item.id != settlement.id),
+        settlement,
+      ],
+      allocations: snapshot.paymentAllocations,
+    );
     await database
         .into(database.zarSettlements)
         .insertOnConflictUpdate(_settlementToRow(settlement));

@@ -84,7 +84,7 @@ class _PendingRecordCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          record.operationLabel,
+                          record.operationDisplayLabel,
                           style: theme.textTheme.titleMedium,
                         ),
                         const SizedBox(height: 2),
@@ -210,7 +210,7 @@ class _PendingEmptyState extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'موارد جدیدی که نیاز به دریافت یا تحویل داشته باشند اینجا نمایش داده می‌شوند.',
+                'موارد جدیدی که نیاز به دریافت یا پرداخت داشته باشند اینجا نمایش داده می‌شوند.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
