@@ -3,7 +3,8 @@ import 'zar_domain_models.dart';
 /// Formats exact currency minor units without converting through `double`.
 class ZarAmountFormatter {
   const ZarAmountFormatter._();
-  static String toman(BigInt amount) => '${_persianDigits(_group(amount.toString())).replaceAll(',', '٬')} تومان';
+  static String toman(BigInt amount) =>
+      '${_persianDigits(_group(amount.toString())).replaceAll(',', '٬')} تومان';
 
   static String currency(ZarCurrencyAmount value) {
     final scale = value.minorUnitScale;
@@ -13,19 +14,15 @@ class ZarAmountFormatter {
     final groupedWhole = _group(whole);
     final hasFraction =
         fraction.isNotEmpty && RegExp(r'[1-9]').hasMatch(fraction);
-    final number = hasFraction ? '$groupedWhole.$fraction' : groupedWhole;
+    final number = hasFraction ? '$groupedWhole٫$fraction' : groupedWhole;
 
-    final formatted = switch (value.code) {
-      'USD' => '\$$number',
-      'EUR' => '€$number',
-      'GBP' => '£$number',
-      'TRY' => '₺$number',
-      'AED' => 'AED $number',
-      'CAD' => 'CAD $number',
-      'TOMAN' => '$number تومان',
-      final code => '$code $number',
-    };
-    return _persianDigits(formatted);
+    // Keep the numeric value first and the unit/code second. Callers place
+    // this string in an explicit LTR span when it is mixed with Persian text,
+    // so bidi reordering cannot turn `۱۰٬۰۰۰ USD` into an ambiguous display.
+    final formatted = value.code == 'TOMAN'
+        ? '$number تومان'
+        : '$number ${value.code}';
+    return _persianDigits(formatted).replaceAll(',', '٬');
   }
 
   static String _group(String digits) {

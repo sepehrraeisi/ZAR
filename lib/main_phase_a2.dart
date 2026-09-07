@@ -615,7 +615,7 @@ class _DashboardSummaryCard extends StatelessWidget {
 String _dashboardInventoryLine(ZarOperationalInventoryItem item) => switch (item) {
   ZarGoldInventoryItem(:final fineness, :final grams) => 'طلای ${fineness == null ? 'عیار نامشخص' : toPersianDigits(fineness)} — ${_dashboardDecimal(grams)} گرم',
   ZarCoinInventoryItem(:final displayName, :final quantity) => '${toPersianDigits(quantity.toString())} عدد ${toPersianDigits(displayName)}',
-  ZarCurrencyInventoryItem(:final code, :final decimalAmount) => code == 'TOMAN' ? '${_dashboardDecimal(decimalAmount)} تومان' : '$code ${_dashboardDecimal(decimalAmount)}',
+  ZarCurrencyInventoryItem(:final code, :final decimalAmount) => code == 'TOMAN' ? '${_dashboardDecimal(decimalAmount)} تومان' : '${_dashboardDecimal(decimalAmount)} $code',
 };
 
 String _dashboardDecimal(String value) {

@@ -990,12 +990,25 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
               ? 'یک یادآوری کاری دارید.'
               : _notificationPreferences.privacy == NotificationPrivacy.limited
               ? '${record.operationDisplayLabel} برای ${_store.personName(record.personId)}'
-              : '${record.assetLabel} • ${record.amountDisplay}',
+              : _recordAmountLabel(record),
           timeLabel: record.timeLabel(),
           isOverdue: overdue,
         ),
       )
       .toList(growable: false);
+
+  String _recordAmountLabel(AppRecord record) {
+    if (record.coinLines.isNotEmpty) return record.amountDisplay;
+    final numeric =
+        RegExp(
+          r'[-+]?[0-9۰-۹٬,٫.]+',
+        ).firstMatch(record.amountDisplay)?.group(0) ??
+        record.amountDisplay;
+    final amount = toPersianNumberText(numeric);
+    if (record.currencyCode != null) return '$amount ${record.currencyCode}';
+    if (record.assetLabel == 'وجه نقد') return '$amount تومان';
+    return '$amount ${record.assetLabel}';
+  }
 
   Future<void> _openNotificationCenter() async {
     final currentTime = DateTime.now();

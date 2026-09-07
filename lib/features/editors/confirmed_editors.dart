@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../app_core.dart';
 import '../../domain/zar_amount_formatter.dart';
 import '../../domain/zar_amount_parser.dart';
+import 'persian_numeric_input_formatter.dart';
 
 /// Person editor that owns the persistence attempt. It never dismisses the
 /// sheet until the supplied async save callback succeeds.
@@ -234,6 +235,14 @@ class _ConfirmedRecordEditorSheetState
           TextField(
             controller: _amount,
             enabled: !_saving,
+            inputFormatters: [
+              PersianNumericInputFormatter(
+                decimal: true,
+                group:
+                    widget.record.assetLabel == 'ارز' ||
+                    widget.record.assetLabel == 'وجه نقد',
+              ),
+            ],
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.right,

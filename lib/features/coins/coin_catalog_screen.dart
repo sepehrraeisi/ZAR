@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_core.dart';
 import '../../domain/zar_domain_models.dart';
+import '../editors/persian_numeric_input_formatter.dart';
 
 class CoinCatalogScreen extends StatefulWidget {
   const CoinCatalogScreen({
@@ -146,6 +147,9 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
                 const SizedBox(height: 10),
                 TextField(
                   controller: weight,
+                  inputFormatters: [
+                    const PersianNumericInputFormatter(group: false),
+                  ],
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
@@ -156,6 +160,9 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
                 const SizedBox(height: 10),
                 TextField(
                   controller: fineness,
+                  inputFormatters: [
+                    const PersianNumericInputFormatter(group: false),
+                  ],
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
