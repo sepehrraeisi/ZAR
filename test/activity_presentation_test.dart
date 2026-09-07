@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app_core.dart';
 import 'package:flutter_app/application/customer_position_projector.dart';
+import 'package:flutter_app/application/customer_operational_balance_projector.dart';
+import 'package:flutter_app/domain/zar_payment_allocation.dart';
+import 'package:flutter_app/domain/zar_domain_models.dart';
 import 'package:flutter_app/main_phase_a2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shamsi_date/shamsi_date.dart';
@@ -122,6 +125,15 @@ void main() {
               deliverCount: 1,
               lastActivityAt: null,
             ),
+            balance: ZarCustomerOperationalBalance([
+              ZarCustomerTomanObligation(
+                targetType: ZarPaymentAllocationTarget.deal,
+                targetId: 'd1',
+                direction: ZarSettlementDirection.deliver,
+                originalToman: BigInt.from(500000000),
+                allocatedToman: BigInt.zero,
+              ),
+            ]),
             personName: (_) => 'سهیل',
             onTapRecord: (_) {},
             onEditPerson: (_) {},
@@ -132,13 +144,22 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('تعهدات باز'), findsOneWidget);
+      expect(find.text('بدهکارم به او'), findsOneWidget);
+      expect(find.text('بستانکارم از او'), findsOneWidget);
+      expect(find.text('۵۰۰٬۰۰۰٬۰۰۰ تومان'), findsWidgets);
+      await tester.scrollUntilVisible(
+        find.text('سوابق معاملات'),
+        300,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
       expect(find.text('سوابق معاملات'), findsOneWidget);
       expect(find.textContaining('طلای عیار ۷۵۰'), findsOneWidget);
       expect(find.textContaining('عیار نامشخص'), findsOneWidget);
       expect(find.textContaining('USD'), findsOneWidget);
-      expect(find.text('خرید'), findsOneWidget);
-      expect(find.text('دریافت'), findsOneWidget);
-      expect(find.text('پرداخت'), findsOneWidget);
+      expect(find.text('خرید'), findsWidgets);
+      expect(find.text('دریافت'), findsWidgets);
+      expect(find.text('پرداخت'), findsWidgets);
       expect(find.text('در انتظار'), findsOneWidget);
       expect(find.text('انجام شد'), findsOneWidget);
       await tester.scrollUntilVisible(

@@ -1113,12 +1113,17 @@ class PersonDetailScreen extends StatelessWidget {
     const currency = Color(0xFF2F6F73);
     return switch (item) {
       ZarCustomerGoldPosition(:final fineness, :final grams) => Text(
-        'طلای ${fineness == null ? 'عیار نامشخص' : 'عیار ${toPersianDigits(fineness)}'}: ${_formatPositionDecimal(grams)} گرم',
+        '${_formatPositionDecimal(grams)} گرم طلای ${fineness == null ? 'عیار نامشخص' : 'عیار ${toPersianDigits(fineness)}'}',
         style: const TextStyle(color: gold, fontWeight: FontWeight.w600),
       ),
       ZarCustomerCurrencyPosition(:final code, :final decimalAmount) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: Text('${code == 'TOMAN' ? 'تومان' : code}: ${_formatPositionDecimal(decimalAmount)}', style: const TextStyle(color: currency, fontWeight: FontWeight.w600)),
+        textDirection: TextDirection.ltr,
+        child: Text(
+          code == 'TOMAN'
+              ? '${_formatPositionDecimal(decimalAmount)} تومان'
+              : '${_formatPositionDecimal(decimalAmount)} $code',
+          style: const TextStyle(color: currency, fontWeight: FontWeight.w600),
+        ),
       ),
       ZarCustomerCoinPosition(:final displayName, :final quantity) => Text(
         '${toPersianDigits(quantity.toString())} عدد $displayName',
