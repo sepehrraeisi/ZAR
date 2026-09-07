@@ -233,6 +233,11 @@ void main() {
           amount: currency('TOMAN', 320000000, 0),
           status: ZarSettlementStatus.completed,
         ),
+        settlement(
+          'usd-ui',
+          amount: currency('USD', 400, 0),
+          status: ZarSettlementStatus.completed,
+        ),
       ],
     );
     await tester.pumpWidget(
@@ -245,6 +250,16 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('۳۲۰٬۰۰۰٬۰۰۰ تومان'), findsOneWidget);
+    expect(find.text('۴۰۰ USD'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Icon &&
+            widget.icon == Icons.chevron_left &&
+            widget.textDirection == TextDirection.rtl,
+      ),
+      findsNWidgets(2),
+    );
     expect(tester.takeException(), isNull);
   });
 }

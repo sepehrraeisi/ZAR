@@ -122,7 +122,7 @@ class OperationalInventoryScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(Icons.chevron_left, size: 20),
+                        _rtlChevron(pointsRight: true, size: 20),
                       ],
                     ),
                   ),
@@ -134,6 +134,13 @@ class OperationalInventoryScreen extends StatelessWidget {
       ),
     );
   }
+
+  static Widget _rtlChevron({required bool pointsRight, double size = 24}) =>
+      Icon(
+        pointsRight ? Icons.chevron_left : Icons.chevron_right,
+        size: size,
+        textDirection: TextDirection.rtl,
+      );
 
   void _openDetail(
     BuildContext context,
@@ -243,7 +250,7 @@ String _value(ZarOperationalInventoryItem item) => switch (item) {
   ZarCurrencyInventoryItem(:final code, :final decimalAmount) =>
     code == 'TOMAN'
         ? '${_formatDecimal(decimalAmount)} تومان'
-        : '$code ${_formatDecimal(decimalAmount)}',
+        : '${_formatDecimal(decimalAmount)} $code',
 };
 
 String _formatInteger(int value) =>

@@ -318,10 +318,7 @@ class _OperationalDailyReportScreenState
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      '${record.assetLabel} • ${toPersianNumberText(record.amountDisplay)}',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                    _recordAmount(record),
                   ],
                 ),
               ),
@@ -361,6 +358,24 @@ class _OperationalDailyReportScreenState
         size: size,
         textDirection: TextDirection.rtl,
       );
+
+  Widget _recordAmount(AppRecord record) {
+    final numeric = RegExp(r'[-+]?[0-9۰-۹٬,٫.]+')
+            .firstMatch(record.amountDisplay)
+            ?.group(0) ??
+        toPersianNumberText(record.amountDisplay);
+    final amount = toPersianNumberText(numeric);
+    final label = record.currencyCode == null
+        ? '$amount ${record.assetLabel}'
+        : '$amount ${record.currencyCode}';
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+      ),
+    );
+  }
 }
 
 class _DailyEmptyState extends StatelessWidget {
