@@ -9,6 +9,7 @@ import 'package:flutter_app/domain/zar_domain_models.dart';
 import 'package:flutter_app/main_phase_a2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 
 void main() {
   const projector = ZarOperationalDashboardProjector();
@@ -217,9 +218,87 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('۱ مورد'), findsNWidgets(2));
+      final receiveCard = tester.getSize(
+        find.byKey(const ValueKey('home-obligation-باید دریافت کنم')),
+      );
+      final deliverCard = tester.getSize(
+        find.byKey(const ValueKey('home-obligation-باید پرداخت کنم')),
+      );
+      expect(receiveCard.height, deliverCard.height);
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('Home activity rows retain complete asset units', (tester) async {
+    final gold = AppRecord(
+      id: 'home-gold',
+      type: RecordType.deal,
+      operationLabel: 'خرید',
+      personId: 'person',
+      amountDisplay: '۲۵۰',
+      assetLabel: 'گرم طلا',
+      goldFineness: '750',
+      goldInputUnit: ZarGoldUnit.gram.name,
+      date: Jalali.now(),
+    );
+    final currency = AppRecord(
+      id: 'home-currency',
+      type: RecordType.deal,
+      operationLabel: 'فروش',
+      personId: 'person',
+      amountDisplay: '۲۰٬۰۰۰ USD',
+      assetLabel: 'ارز',
+      currencyCode: 'USD',
+      date: Jalali.now(),
+    );
+    final coin = AppRecord(
+      id: 'home-coin',
+      type: RecordType.settlement,
+      operationLabel: 'دریافت',
+      personId: 'person',
+      amountDisplay: '۲۵ × ربع‌سکه',
+      assetLabel: 'سکه',
+      coinLines: const [AppCoinLine(name: 'ربع‌سکه', quantity: 25)],
+      date: Jalali.now(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhaseA2HomeScreen(
+          records: const <AppRecord>[],
+          personName: (_) => 'علی',
+          onTapRecord: (_) {},
+          onOpenNotifications: () {},
+          unreadCount: 0,
+          dashboard: projector.project(
+            deals: const [],
+            settlements: const [],
+            now: DateTime.now(),
+          ),
+          recentRecords: [gold, currency, coin],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is RichText && widget.text.toPlainText() == '۲۵۰ گرم طلا • عیار ۷۵۰',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is RichText && widget.text.toPlainText() == '۲۰٬۰۰۰ USD',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is RichText && widget.text.toPlainText() == '۲۵ عدد ربع‌سکه',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
 
 ZarPerson person() => ZarPerson(

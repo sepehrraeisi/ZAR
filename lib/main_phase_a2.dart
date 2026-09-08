@@ -12,6 +12,7 @@ import 'features/notifications/notification_center.dart';
 import 'features/people/archived_people_screen.dart';
 import 'features/reminders/record_reminder_registry.dart';
 import 'features/reminders/reminder_model.dart';
+import 'domain/zar_domain_models.dart';
 
 void main() {
   runApp(const ZarPlusPhaseA2App());
@@ -530,11 +531,13 @@ class PhaseA2HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Expanded(child: _HomeObligationCard(title: 'باید دریافت کنم', count: value.pendingReceiveCount, items: inventory.pendingReceive, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onOpenPendingReceive, accent: const Color(0xFF9A6700))),
               const SizedBox(width: 8),
               Expanded(child: _HomeObligationCard(title: 'باید پرداخت کنم', count: value.pendingDeliverCount, items: inventory.pendingDeliver, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onOpenPendingDeliver, accent: const Color(0xFF6C5A42))),
-            ]),
+              ]),
+            ),
             const SizedBox(height: 16),
             _HomeSectionHeading(title: 'موجودی واقعی', onTap: onOpenInventory, actionLabel: 'مشاهده همه'),
             const SizedBox(height: 8),
@@ -580,11 +583,13 @@ class _HomeObligationCard extends StatelessWidget {
   final Color accent;
 
   @override
-  Widget build(BuildContext context) => _HomeContainer(
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+  Widget build(BuildContext context) => KeyedSubtree(
+    key: ValueKey('home-obligation-$title'),
+    child: _HomeContainer(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15)),
         const SizedBox(height: 2),
         Text('${toPersianDigits(count.toString())} مورد', style: TextStyle(color: accent, fontSize: 13, fontWeight: FontWeight.w700)),
@@ -624,7 +629,8 @@ class _HomeObligationCard extends StatelessWidget {
           if (items.length > 3 || onTap != null)
             Align(alignment: AlignmentDirectional.centerStart, child: TextButton(onPressed: onTap, child: const Text('مشاهده همه'))),
         ],
-      ]),
+        ]),
+      ),
     ),
   );
 }
@@ -737,19 +743,57 @@ class _HomeRecentActivity extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (records.isEmpty) return const _HomeContainer(child: Padding(padding: EdgeInsets.all(16), child: Text('هنوز فعالیتی ثبت نشده است.')));
-    return _HomeContainer(child: Column(children: records.map((record) {
-      final relation = record.type == RecordType.deal ? 'با' : record.operationLabel == 'دریافت' ? 'از' : 'به';
-      return Material(
-        color: Colors.transparent,
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-          title: Text('${record.operationDisplayLabel} ${record.assetLabel} $relation ${personName(record.personId)}'),
-          subtitle: Padding(padding: const EdgeInsets.only(top: 3), child: Directionality(textDirection: TextDirection.ltr, child: Text(record.amountDisplay))),
-          trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
-          onTap: () => onTap(record),
+    return _HomeContainer(
+      child: Column(
+        children: [
+          for (var index = 0; index < records.length; index++) ...[
+            _HomeRecentRow(record: records[index], personName: personName, onTap: onTap),
+            if (index < records.length - 1) const Divider(height: 1, indent: 12, endIndent: 12),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeRecentRow extends StatelessWidget {
+  const _HomeRecentRow({required this.record, required this.personName, required this.onTap});
+  final AppRecord record;
+  final String Function(String) personName;
+  final ValueChanged<AppRecord> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final relation = record.type == RecordType.deal ? 'با' : record.operationLabel == 'دریافت' ? 'از' : 'به';
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => onTap(record),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(12, 7, 12, 7),
+          child: Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: Text(
+                  '${record.operationDisplayLabel} ${record.assetLabel} $relation ${personName(record.personId)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                fit: FlexFit.loose,
+                child: _HomeRecordAmountText(record: record, color: Theme.of(context).colorScheme.onSurface),
+              ),
+              const SizedBox(width: 6),
+              const Icon(CupertinoIcons.chevron_left, size: 17),
+            ],
+          ),
         ),
-      );
-    }).toList()));
+      ),
+    );
   }
 }
 
@@ -809,7 +853,7 @@ class _HomeActionRow extends StatelessWidget {
           ])),
           const SizedBox(width: 8),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Directionality(textDirection: TextDirection.ltr, child: Text(record.amountDisplay, style: TextStyle(color: overdue ? const Color(0xFF9D3636) : const Color(0xFF9A6700), fontWeight: FontWeight.w700, fontSize: 14))),
+            _HomeRecordAmountText(record: record, color: overdue ? const Color(0xFF9D3636) : const Color(0xFF9A6700), fontSize: 14),
             const SizedBox(height: 1),
             Row(mainAxisSize: MainAxisSize.min, children: [
               Text(record.timeLabel(), style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11)),
@@ -823,6 +867,59 @@ class _HomeActionRow extends StatelessWidget {
       ),
     ),
   );
+}
+
+_HomeAmountParts _homeRecordParts(AppRecord record) {
+  if (record.coinLines.isNotEmpty) {
+    if (record.coinLines.length == 1) {
+      final line = record.coinLines.single;
+      return _HomeAmountParts(toPersianDigits(line.quantity.toString()), 'عدد ${line.name}', null);
+    }
+    return _HomeAmountParts(toPersianDigits(record.coinLines.length.toString()), 'نوع سکه', null);
+  }
+  if (record.currencyCode != null) {
+    final numeric = RegExp(r'[-+]?[0-9۰-۹٬,٫.]+').firstMatch(record.amountDisplay)?.group(0) ?? record.amountDisplay;
+    return _HomeAmountParts(toPersianNumberText(numeric), record.currencyCode!, null);
+  }
+  if (record.assetLabel == 'وجه نقد') {
+    final numeric = RegExp(r'[-+]?[0-9۰-۹٬,٫.]+').firstMatch(record.amountDisplay)?.group(0) ?? record.amountDisplay;
+    return _HomeAmountParts(toPersianNumberText(numeric), 'تومان', null);
+  }
+  if (record.assetLabel == 'گرم طلا' || record.goldFineness != null) {
+    final numeric = RegExp(r'[-+]?[0-9۰-۹٬,٫.]+').firstMatch(record.amountDisplay)?.group(0) ?? record.amountDisplay;
+    final unit = record.goldInputUnit == ZarGoldUnit.mesghal.name ? 'مثقال طلا' : 'گرم طلا';
+    final purity = record.goldFineness == null ? null : 'عیار ${toPersianNumberText(record.goldFineness!)}';
+    return _HomeAmountParts(toPersianNumberText(numeric), unit, purity);
+  }
+  return _HomeAmountParts(toPersianNumberText(record.amountDisplay), record.assetLabel, null);
+}
+
+class _HomeRecordAmountText extends StatelessWidget {
+  const _HomeRecordAmountText({required this.record, required this.color, this.fontSize = 13});
+  final AppRecord record;
+  final Color color;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final display = _homeRecordParts(record);
+    final baseStyle = Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: fontSize);
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: RichText(
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        text: TextSpan(
+          style: baseStyle,
+          children: [
+            TextSpan(text: display.amount, style: TextStyle(color: color, fontWeight: FontWeight.w700)),
+            TextSpan(text: ' ${display.unit}'),
+            if (display.detail != null) TextSpan(text: ' • ${display.detail}'),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 String _dashboardDecimal(String value) {
