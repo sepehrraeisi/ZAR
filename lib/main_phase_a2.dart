@@ -503,18 +503,18 @@ class PhaseA2HomeScreen extends StatelessWidget {
     final visible = maxItems == null ? items : items.take(maxItems).toList(growable: false);
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: overdue ? const Color(0xFF9D3636) : null)),
+            Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 16, color: overdue ? const Color(0xFF9D3636) : null)),
             const SizedBox(height: 8),
             if (items.isEmpty)
-              const _PhaseA2EmptyRow(label: 'موردی ثبت نشده است.')
+              _HomeContainer(child: const Padding(padding: EdgeInsets.all(12), child: Text('موردی ثبت نشده است.')))
             else
-              ...visible.map((item) => SettlementRow(record: item, personName: personName(item.personId), onTap: () => onTapRecord(item), showOverdueTone: overdue)),
+              _HomeActionList(items: visible, personName: personName, onTap: onTapRecord, overdue: overdue),
             if (maxItems != null && items.length > maxItems && onViewAll != null)
-              Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: onViewAll, child: Text('مشاهده همه (${toPersianDigits(items.length.toString())})'))),
+              Align(alignment: AlignmentDirectional.centerStart, child: TextButton(onPressed: onViewAll, child: Text('مشاهده همه (${toPersianDigits(items.length.toString())})'))),
           ],
         ),
       ),
@@ -530,14 +530,16 @@ class PhaseA2HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _HomeObligationCard(title: 'باید دریافت کنم', count: value.pendingReceiveCount, items: inventory.pendingReceive, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onOpenPendingReceive, accent: const Color(0xFF9A6700)),
-            const SizedBox(height: 10),
-            _HomeObligationCard(title: 'باید پرداخت کنم', count: value.pendingDeliverCount, items: inventory.pendingDeliver, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onOpenPendingDeliver, accent: const Color(0xFF6C5A42)),
-            const SizedBox(height: 20),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: _HomeObligationCard(title: 'باید دریافت کنم', count: value.pendingReceiveCount, items: inventory.pendingReceive, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onOpenPendingReceive, accent: const Color(0xFF9A6700))),
+              const SizedBox(width: 8),
+              Expanded(child: _HomeObligationCard(title: 'باید پرداخت کنم', count: value.pendingDeliverCount, items: inventory.pendingDeliver, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onOpenPendingDeliver, accent: const Color(0xFF6C5A42))),
+            ]),
+            const SizedBox(height: 16),
             _HomeSectionHeading(title: 'موجودی واقعی', onTap: onOpenInventory, actionLabel: 'مشاهده همه'),
             const SizedBox(height: 8),
             _HomeInventoryCard(inventory: inventory, hasInventory: hasInventory, onTap: onOpenInventory),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             _HomeSectionHeading(title: 'فعالیت اخیر', onTap: recentRecords.isEmpty ? null : onOpenHistory, actionLabel: recentRecords.isEmpty ? null : 'مشاهده همه'),
             const SizedBox(height: 8),
             _HomeRecentActivity(records: recentRecords.take(5).toList(growable: false), personName: personName, onTap: onTapRecord),
@@ -581,13 +583,12 @@ class _HomeObligationCard extends StatelessWidget {
   Widget build(BuildContext context) => _HomeContainer(
     onTap: onTap,
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          Text('${toPersianDigits(count.toString())} مورد', style: TextStyle(color: accent, fontWeight: FontWeight.w700)),
-        ]),
-        const SizedBox(height: 8),
+        Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15)),
+        const SizedBox(height: 2),
+        Text('${toPersianDigits(count.toString())} مورد', style: TextStyle(color: accent, fontSize: 13, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
         if (items.isEmpty)
           const _PhaseA2EmptyRow(label: 'موردی ثبت نشده است.')
         else ...[
@@ -605,16 +606,16 @@ class _HomeObligationCard extends StatelessWidget {
               if (matchedRecord != null) names.putIfAbsent(personName(movement.personId), () => matchedRecord);
             }
             return Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: 4),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 _HomeInventoryLine(item: item, accent: accent),
                 if (names.isNotEmpty)
                   Row(mainAxisAlignment: MainAxisAlignment.start, children: [
-                    Text(title.contains('دریافت') ? 'از' : 'به', style: Theme.of(context).textTheme.bodySmall),
+                    Text(title.contains('دریافت') ? 'از' : 'به', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11)),
                     const SizedBox(width: 4),
                     ...names.entries.take(2).map((entry) => Padding(
                       padding: const EdgeInsetsDirectional.only(end: 6),
-                      child: InkWell(onTap: () => onTapRecord(entry.value), child: Text(entry.key, style: Theme.of(context).textTheme.bodySmall)),
+                      child: InkWell(onTap: () => onTapRecord(entry.value), child: Text(entry.key, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11))),
                     )),
                   ]),
               ]),
@@ -665,7 +666,12 @@ class _HomeInventoryGroup extends StatelessWidget {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
       Text(title, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
-      if (onTap != null) IconButton(onPressed: onTap, tooltip: 'مشاهده موجودی', icon: const Icon(CupertinoIcons.chevron_left, size: 18)),
+      if (onTap != null)
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: const Padding(padding: EdgeInsets.all(6), child: Icon(CupertinoIcons.chevron_left, size: 16)),
+        ),
     ]),
     ...items.take(3).map((item) => Padding(padding: const EdgeInsets.only(bottom: 5), child: _HomeInventoryLine(item: item, accent: accent))),
     if (items.length > 3) TextButton(onPressed: onTap, child: const Text('مشاهده همه')),
@@ -712,10 +718,10 @@ class _HomeAmountText extends StatelessWidget {
     textDirection: TextDirection.ltr,
     child: RichText(
       text: TextSpan(
-        style: Theme.of(context).textTheme.bodyLarge,
+        style: Theme.of(context).textTheme.bodyMedium,
         children: [
           TextSpan(text: amount, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
-          TextSpan(text: ' $unit', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontWeight: FontWeight.w500)),
+          TextSpan(text: ' $unit', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.w500)),
         ],
       ),
     ),
@@ -761,6 +767,62 @@ class _HomeContainer extends StatelessWidget {
     );
     return onTap == null ? decorated : InkWell(borderRadius: BorderRadius.circular(16), onTap: onTap, child: decorated);
   }
+}
+
+class _HomeActionList extends StatelessWidget {
+  const _HomeActionList({required this.items, required this.personName, required this.onTap, required this.overdue});
+  final List<AppRecord> items;
+  final String Function(String) personName;
+  final ValueChanged<AppRecord> onTap;
+  final bool overdue;
+
+  @override
+  Widget build(BuildContext context) => _HomeContainer(
+    child: Column(children: [
+      for (var index = 0; index < items.length; index++) ...[
+        _HomeActionRow(record: items[index], person: personName(items[index].personId), overdue: overdue, onTap: () => onTap(items[index])),
+        if (index < items.length - 1) const Divider(height: 1, indent: 12, endIndent: 12),
+      ],
+    ]),
+  );
+}
+
+class _HomeActionRow extends StatelessWidget {
+  const _HomeActionRow({required this.record, required this.person, required this.overdue, required this.onTap});
+  final AppRecord record;
+  final String person;
+  final bool overdue;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(record.operationDisplayLabel, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700, fontSize: 15)),
+            const SizedBox(height: 1),
+            Text(person, style: Theme.of(context).textTheme.bodySmall),
+          ])),
+          const SizedBox(width: 8),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Directionality(textDirection: TextDirection.ltr, child: Text(record.amountDisplay, style: TextStyle(color: overdue ? const Color(0xFF9D3636) : const Color(0xFF9A6700), fontWeight: FontWeight.w700, fontSize: 14))),
+            const SizedBox(height: 1),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(record.timeLabel(), style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11)),
+              const SizedBox(width: 4),
+              Text(record.statusLabel(), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: overdue ? const Color(0xFF9D3636) : null, fontSize: 11)),
+            ]),
+          ]),
+          const SizedBox(width: 6),
+          const Icon(CupertinoIcons.chevron_left, size: 17),
+        ]),
+      ),
+    ),
+  );
 }
 
 String _dashboardDecimal(String value) {

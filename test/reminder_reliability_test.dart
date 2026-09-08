@@ -120,8 +120,8 @@ void main() {
       ),
     );
 
-    final rows = tester.widgetList<SettlementRow>(find.byType(SettlementRow));
-    expect(rows, hasLength(1));
-    expect(rows.single.showOverdueTone, isTrue);
+    expect(find.text('عقب‌افتاده'), findsOneWidget);
+    expect(find.text('رضا'), findsOneWidget);
+    expect(find.text('در انتظار'), findsOneWidget);
   });
 }
