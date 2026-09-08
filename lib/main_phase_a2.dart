@@ -498,70 +498,21 @@ class PhaseA2HomeScreen extends StatelessWidget {
 
     return CustomScrollView(
       slivers: [
-        SliverAppBar(
-          pinned: true,
-          toolbarHeight: 48,
-          title: const Directionality(
-            textDirection: TextDirection.ltr,
-            child: Text('ZAR+', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.2)),
-          ),
-          actions: [
-            if (onOpenSettings != null)
-              IconButton(
-                tooltip: 'تنظیمات و داده‌ها',
-                onPressed: onOpenSettings,
-                constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-                padding: EdgeInsets.zero,
-                iconSize: 21,
-                icon: const Icon(CupertinoIcons.settings),
-              ),
-            _NotificationBell(count: unreadCount, onTap: onOpenNotifications),
-            const SizedBox(width: 8),
-          ],
-        ),
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 2),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('امروز', style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 2),
-                Text(formatJalaliDate(currentDate), style: Theme.of(context).textTheme.bodyMedium),
-                if (onOpenInventory != null || onOpenDailyReport != null) ...[
-                  const SizedBox(height: 10),
-                  Row(children: [
-                    if (onOpenInventory != null)
-                      Expanded(
-                        child: SizedBox(
-                          height: 40,
-                          child: OutlinedButton.icon(
-                            onPressed: onOpenInventory,
-                            icon: const Icon(CupertinoIcons.cube_box),
-                            label: const Text('موجودی'),
-                            style: _homeQuickActionStyle(context),
-                          ),
-                        ),
-                      ),
-                    if (onOpenInventory != null && onOpenDailyReport != null) const SizedBox(width: 8),
-                    if (onOpenDailyReport != null)
-                      Expanded(
-                        child: SizedBox(
-                          height: 40,
-                          child: OutlinedButton.icon(
-                            onPressed: onOpenDailyReport,
-                            icon: const Icon(CupertinoIcons.doc_text_search),
-                            label: const Text('گزارش روزانه'),
-                            style: _homeQuickActionStyle(context),
-                          ),
-                        ),
-                      ),
-                  ]),
-                ],
-              ],
+          child: _HomeHeader(
+            currentDate: currentDate,
+            unreadCount: unreadCount,
+            onOpenNotifications: onOpenNotifications,
+            onOpenSettings: onOpenSettings,
+          ),
+        ),
+        if (onOpenInventory != null || onOpenDailyReport != null)
+          SliverToBoxAdapter(
+            child: _HomeQuickActions(
+              onOpenInventory: onOpenInventory,
+              onOpenDailyReport: onOpenDailyReport,
             ),
           ),
-        ),
         if (dashboard != null) _dashboardSections(context, dashboard!, currentTime),
         if (overdue.isNotEmpty) _section(context, 'عقب‌افتاده', overdue, overdue: true, maxItems: 3, onViewAll: onOpenOverdue ?? onOpenNotifications, now: currentTime),
         if (recentRecords.isNotEmpty) _recentSection(context, currentTime),
@@ -652,6 +603,171 @@ class PhaseA2HomeScreen extends StatelessWidget {
     );
   }
 
+}
+
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
+    required this.currentDate,
+    required this.unreadCount,
+    required this.onOpenNotifications,
+    required this.onOpenSettings,
+  });
+
+  final Jalali currentDate;
+  final int unreadCount;
+  final VoidCallback onOpenNotifications;
+  final VoidCallback? onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      key: const ValueKey('home-header'),
+      color: theme.scaffoldBackgroundColor,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              key: const ValueKey('home-header-top-row'),
+              height: 44,
+              child: Row(
+                textDirection: TextDirection.rtl,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      'ZAR+',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                        letterSpacing: 0.35,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  if (onOpenSettings != null)
+                    _HomeHeaderIconButton(
+                      buttonKey: const ValueKey('home-settings-button'),
+                      tooltip: 'تنظیمات و داده‌ها',
+                      onPressed: onOpenSettings!,
+                      icon: CupertinoIcons.gear,
+                    ),
+                  _NotificationBell(count: unreadCount, onTap: onOpenNotifications),
+                ],
+              ),
+            ),
+            const SizedBox(height: 2),
+            Align(
+              key: const ValueKey('home-header-today'),
+              alignment: AlignmentDirectional.centerStart,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                textDirection: TextDirection.rtl,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'امروز',
+                    textAlign: TextAlign.right,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    formatJalaliDate(currentDate),
+                    textAlign: TextAlign.right,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeHeaderIconButton extends StatelessWidget {
+  const _HomeHeaderIconButton({
+    required this.buttonKey,
+    required this.tooltip,
+    required this.onPressed,
+    required this.icon,
+  });
+
+  final Key buttonKey;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    key: buttonKey,
+    tooltip: tooltip,
+    onPressed: onPressed,
+    constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+    padding: EdgeInsets.zero,
+    iconSize: 21,
+    style: IconButton.styleFrom(
+      fixedSize: const Size(44, 44),
+      minimumSize: const Size(44, 44),
+      maximumSize: const Size(44, 44),
+      padding: EdgeInsets.zero,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    ),
+    icon: Icon(icon),
+  );
+}
+
+class _HomeQuickActions extends StatelessWidget {
+  const _HomeQuickActions({this.onOpenInventory, this.onOpenDailyReport});
+
+  final VoidCallback? onOpenInventory;
+  final VoidCallback? onOpenDailyReport;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    key: const ValueKey('home-quick-actions'),
+    padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 0),
+    child: Row(
+      children: [
+        if (onOpenInventory != null)
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: OutlinedButton.icon(
+                onPressed: onOpenInventory,
+                icon: const Icon(CupertinoIcons.cube_box),
+                label: const Text('موجودی'),
+                style: _homeQuickActionStyle(context),
+              ),
+            ),
+          ),
+        if (onOpenInventory != null && onOpenDailyReport != null)
+          const SizedBox(width: 8),
+        if (onOpenDailyReport != null)
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: OutlinedButton.icon(
+                onPressed: onOpenDailyReport,
+                icon: const Icon(CupertinoIcons.doc_text_search),
+                label: const Text('گزارش روزانه'),
+                style: _homeQuickActionStyle(context),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 ButtonStyle _homeQuickActionStyle(BuildContext context) {
@@ -1076,33 +1192,60 @@ class _NotificationBell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
+    final badgeLabel = toPersianDigits(count > 99 ? '99+' : count.toString());
+    final singleDigit = count < 10;
+    return SizedBox(
+      key: const ValueKey('home-notification-bell'),
+      width: 44,
+      height: 44,
+      child: Stack(
       children: [
-        IconButton(
-          tooltip: 'اعلان‌ها',
-          onPressed: onTap,
-          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-          padding: EdgeInsets.zero,
-          iconSize: 21,
-          icon: const Icon(CupertinoIcons.bell),
+        Positioned.fill(
+          child: IconButton(
+            tooltip: 'اعلان‌ها',
+            onPressed: onTap,
+            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+            padding: EdgeInsets.zero,
+            iconSize: 21,
+            style: IconButton.styleFrom(
+              fixedSize: const Size(44, 44),
+              minimumSize: const Size(44, 44),
+              maximumSize: const Size(44, 44),
+              padding: EdgeInsets.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: const Icon(CupertinoIcons.bell),
+          ),
         ),
         if (count > 0)
           Positioned(
-            top: 5,
-            left: 5,
+            top: 4,
+            left: 3,
             child: Container(
-              constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              key: const ValueKey('home-notification-badge'),
+              width: singleDigit ? 16 : null,
+              height: 16,
+              constraints: const BoxConstraints(minWidth: 16),
+              padding: singleDigit ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 3),
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: const Color(0xFF9D3636), borderRadius: BorderRadius.circular(20)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF9D3636),
+                shape: singleDigit ? BoxShape.circle : BoxShape.rectangle,
+                borderRadius: singleDigit ? null : BorderRadius.circular(20),
+              ),
               child: Text(
-                toPersianDigits(count > 99 ? '99+' : count.toString()),
-                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700, height: 1),
+                badgeLabel,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
+                ),
               ),
             ),
           ),
       ],
+      ),
     );
   }
 }

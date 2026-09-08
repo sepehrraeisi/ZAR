@@ -305,6 +305,69 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Home header is one compact two-row surface at phone width', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() async => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: PhaseA2HomeScreen(
+            records: const <AppRecord>[],
+            personName: (_) => 'علی',
+            onTapRecord: (_) {},
+            onOpenNotifications: () {},
+            onOpenSettings: () {},
+            unreadCount: 7,
+            onOpenInventory: () {},
+            onOpenDailyReport: () {},
+            now: now,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final headerRect = tester.getRect(find.byKey(const ValueKey('home-header')));
+    final topRowRect = tester.getRect(
+      find.byKey(const ValueKey('home-header-top-row')),
+    );
+    final todayRect = tester.getRect(
+      find.byKey(const ValueKey('home-header-today')),
+    );
+    final quickActionsRect = tester.getRect(
+      find.byKey(const ValueKey('home-quick-actions')),
+    );
+    final bellRect = tester.getRect(
+      find.byKey(const ValueKey('home-notification-bell')),
+    );
+    final settingsRect = tester.getRect(
+      find.byKey(const ValueKey('home-settings-button')),
+    );
+    final badgeRect = tester.getRect(
+      find.byKey(const ValueKey('home-notification-badge')),
+    );
+
+    expect(find.text('ZAR+'), findsOneWidget);
+    expect(find.text('امروز'), findsOneWidget);
+    expect(find.text(formatJalaliDate(Jalali.fromDateTime(now))), findsOneWidget);
+    expect(topRowRect.height, 44);
+    expect(bellRect.size, const Size(44, 44));
+    expect(settingsRect.size, const Size(44, 44));
+    expect(tester.getRect(find.byTooltip('اعلان‌ها')).size, const Size(44, 44));
+    expect(tester.getRect(find.byTooltip('تنظیمات و داده‌ها')).size, const Size(44, 44));
+    expect(badgeRect.width, lessThan(bellRect.width));
+    expect(badgeRect.height, lessThan(bellRect.height));
+    expect(badgeRect.left, greaterThanOrEqualTo(bellRect.left));
+    expect(badgeRect.top, greaterThanOrEqualTo(bellRect.top));
+    expect(badgeRect.right, lessThanOrEqualTo(bellRect.right));
+    expect(badgeRect.bottom, lessThanOrEqualTo(bellRect.bottom));
+    expect(todayRect.top - topRowRect.bottom, inInclusiveRange(0, 4));
+    expect(quickActionsRect.top - todayRect.bottom, inInclusiveRange(16, 22));
+    expect(headerRect.bottom, lessThanOrEqualTo(quickActionsRect.top));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Home amount display keeps unit physically before number in RTL', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
