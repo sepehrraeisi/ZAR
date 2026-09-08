@@ -7,6 +7,7 @@ import 'package:flutter_app/data/local/zar_local_database.dart';
 import 'package:flutter_app/data/local/zar_local_repository.dart';
 import 'package:flutter_app/domain/zar_domain_models.dart';
 import 'package:flutter_app/main_phase_a2.dart';
+import 'package:flutter_app/widgets/zar_amount_display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shamsi_date/shamsi_date.dart';
@@ -292,25 +293,72 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(
-      find.byWidgetPredicate(
-        (widget) => widget is RichText && widget.text.toPlainText() == '۲۵۰ گرم طلا • عیار ۷۵۰',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('۲۵۰'), findsOneWidget);
+    expect(find.text('گرم طلا'), findsOneWidget);
+    expect(find.text('عیار ۷۵۰'), findsOneWidget);
     expect(find.text('امروز ۱۶:۴۵'), findsOneWidget);
-    expect(
-      find.byWidgetPredicate(
-        (widget) => widget is RichText && widget.text.toPlainText() == '۲۰٬۰۰۰ USD',
+    expect(find.text('۲۰٬۰۰۰'), findsOneWidget);
+    expect(find.text('USD'), findsOneWidget);
+    expect(find.text('۲۵'), findsOneWidget);
+    expect(find.text('عدد ربع‌سکه'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home amount display keeps unit physically before number in RTL', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Center(
+            child: ZarAmountDisplay(amount: '۲۰٬۰۰۰', unit: 'USD', purity: 'عیار ۷۵۰'),
+          ),
+        ),
       ),
-      findsOneWidget,
     );
-    expect(
-      find.byWidgetPredicate(
-        (widget) => widget is RichText && widget.text.toPlainText() == '۲۵ عدد ربع‌سکه',
+    final unitRect = tester.getRect(find.text('USD'));
+    final amountRect = tester.getRect(find.text('۲۰٬۰۰۰'));
+    expect(unitRect.left, lessThan(amountRect.left));
+    expect(find.text('عیار ۷۵۰'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home amount display covers currency, gold, and negative values', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: SizedBox(
+            width: 320,
+            child: Column(
+              children: [
+                ZarAmountDisplay(amount: '۲۰٬۰۰۰', unit: 'USD'),
+                ZarAmountDisplay(amount: '۴۵٬۰۰۰', unit: 'EUR'),
+                ZarAmountDisplay(amount: '۶۰٬۰۰۰', unit: 'AED'),
+                ZarAmountDisplay(amount: '۶۰۰', unit: 'GBP'),
+                ZarAmountDisplay(amount: '۶۵۰٬۰۰۰', unit: 'TRY'),
+                ZarAmountDisplay(amount: '۱٬۴۸۰', unit: 'گرم طلا'),
+                ZarAmountDisplay(amount: '۵۶۰', unit: 'گرم طلا'),
+                ZarAmountDisplay(amount: '۵۰۰', unit: 'USD', negative: true),
+              ],
+            ),
+          ),
+        ),
       ),
-      findsOneWidget,
     );
+    for (final pair in const [
+      ('USD', '۲۰٬۰۰۰'),
+      ('EUR', '۴۵٬۰۰۰'),
+      ('AED', '۶۰٬۰۰۰'),
+      ('GBP', '۶۰۰'),
+      ('TRY', '۶۵۰٬۰۰۰'),
+      ('گرم طلا', '۱٬۴۸۰'),
+    ]) {
+      final unitRect = tester.getRect(find.text(pair.$1).first);
+      final amountRect = tester.getRect(find.text(pair.$2));
+      expect(unitRect.left, lessThan(amountRect.left));
+    }
+    expect(find.text('۵۶۰'), findsOneWidget);
+    expect(find.text('-۵۰۰'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -339,8 +387,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-دریافتنی‌ها'))).height, 184);
-    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-پرداختنی‌ها'))).height, 184);
+    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-دریافتنی‌ها'))).height, 176);
+    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-پرداختنی‌ها'))).height, 176);
     expect(tester.takeException(), isNull);
   });
 

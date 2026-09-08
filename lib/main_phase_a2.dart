@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 import 'app_core.dart';
+import 'widgets/zar_amount_display.dart';
 import 'application/operational_dashboard_projector.dart';
 import 'application/operational_inventory_projector.dart';
 import 'features/notifications/notification_center.dart';
@@ -458,6 +459,7 @@ String _homeActivityTimestamp(AppRecord record, DateTime now) {
 
 const _homeSecondaryColor = Color(0xFF6F6A62);
 const _homeOverdueColor = Color(0xFF9D3636);
+const _homeAmountColor = Color(0xFF9A6700);
 
 IconData _homeActivityIcon(AppRecord record) {
   if (record.type == RecordType.deal) {
@@ -594,18 +596,18 @@ class PhaseA2HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            Widget card({required String title, required int count, required List<ZarOperationalInventoryItem> items, required VoidCallback? onTap}) => _HomeObligationCard(title: title, count: count, items: items, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onTap, accent: _homeSecondaryColor, now: currentTime);
+            Widget card({required String title, required int count, required List<ZarOperationalInventoryItem> items, required VoidCallback? onTap}) => _HomeObligationCard(title: title, count: count, items: items, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onTap, accent: _homeAmountColor, now: currentTime);
             final receive = card(title: 'دریافتنی‌ها', count: value.pendingReceiveCount, items: value.inventory.pendingReceive, onTap: onOpenPendingReceive);
             final deliver = card(title: 'پرداختنی‌ها', count: value.pendingDeliverCount, items: value.inventory.pendingDeliver, onTap: onOpenPendingDeliver);
             if (constraints.maxWidth < 560) {
               return Column(children: [
-                SizedBox(height: 184, child: receive),
+                SizedBox(height: 176, child: receive),
                 const SizedBox(height: 8),
-                SizedBox(height: 184, child: deliver),
+                SizedBox(height: 176, child: deliver),
               ]);
             }
             return SizedBox(
-              height: 184,
+              height: 176,
               child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Expanded(child: receive),
                 const SizedBox(width: 8),
@@ -692,7 +694,7 @@ class _HomeObligationCard extends StatelessWidget {
     child: _HomeContainer(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 7),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15)),
           const SizedBox(height: 2),
@@ -721,14 +723,10 @@ class _HomeObligationCard extends StatelessWidget {
                       _HomeInventoryLine(item: item, accent: accent),
                       if (people.isNotEmpty || matchedRecord != null)
                         Row(mainAxisAlignment: MainAxisAlignment.start, children: [
-                          if (people.isNotEmpty) ...[
-                            Text(title == 'دریافتنی‌ها' ? 'از' : 'به', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11, color: _homeSecondaryColor)),
-                            const SizedBox(width: 4),
-                            ...people.take(1).map((name) => Padding(
-                              padding: const EdgeInsetsDirectional.only(end: 6),
-                              child: GestureDetector(onTap: matchedRecord == null ? null : () => onTapRecord(matchedRecord!), child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11, fontWeight: FontWeight.w600))),
-                            )),
-                          ],
+                          if (people.isNotEmpty) ...people.take(1).map((name) => Padding(
+                            padding: const EdgeInsetsDirectional.only(end: 6),
+                            child: GestureDetector(onTap: matchedRecord == null ? null : () => onTapRecord(matchedRecord!), child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11, fontWeight: FontWeight.w600))),
+                          )),
                           if (matchedRecord != null)
                             Flexible(child: Text(_homeDueLabel(matchedRecord, now), maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10, color: _homeSecondaryColor))),
                         ]),
@@ -739,7 +737,7 @@ class _HomeObligationCard extends StatelessWidget {
             ]),
           ),
           if (onTap != null && items.isNotEmpty)
-            Align(alignment: AlignmentDirectional.centerEnd, child: TextButton(onPressed: onTap, style: TextButton.styleFrom(minimumSize: Size.zero, padding: EdgeInsets.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap, visualDensity: VisualDensity.compact), child: const Text('مشاهده همه'))),
+            Align(alignment: AlignmentDirectional.centerEnd, child: TextButton(onPressed: onTap, style: TextButton.styleFrom(foregroundColor: _homeAmountColor, minimumSize: Size.zero, padding: EdgeInsets.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap, visualDensity: VisualDensity.compact), child: const Text('مشاهده همه'))),
         ]),
       ),
     ),
@@ -754,17 +752,11 @@ class _HomeInventoryLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final display = switch (item) {
-      ZarGoldInventoryItem(:final fineness, :final grams) => _HomeAmountParts(_dashboardDecimal(grams), 'گرم طلا', fineness == null ? 'عیار نامشخص' : 'عیار ${toPersianDigits(fineness)}'),
+      ZarGoldInventoryItem(:final fineness, :final grams) => _HomeAmountParts(toPersianNumberText(grams), 'گرم طلا', fineness == null ? 'عیار نامشخص' : 'عیار ${toPersianDigits(fineness)}'),
       ZarCoinInventoryItem(:final displayName, :final quantity) => _HomeAmountParts(toPersianDigits(quantity.toString()), 'عدد ${toPersianDigits(displayName)}', null),
-      ZarCurrencyInventoryItem(:final code, :final decimalAmount) => _HomeAmountParts(_dashboardDecimal(decimalAmount), code == 'TOMAN' ? 'تومان' : code, null),
+      ZarCurrencyInventoryItem(:final code, :final decimalAmount) => _HomeAmountParts(toPersianNumberText(decimalAmount), code == 'TOMAN' ? 'تومان' : code, null),
     };
-    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Expanded(child: _HomeAmountText(amount: display.amount, unit: display.unit, color: accent)),
-      if (display.detail != null) ...[
-        const SizedBox(width: 8),
-        Text(display.detail!, style: Theme.of(context).textTheme.bodySmall),
-      ],
-    ]);
+    return _HomeAmountText(amount: display.amount, unit: display.unit, color: accent, purity: display.detail);
   }
 }
 
@@ -776,23 +768,19 @@ class _HomeAmountParts {
 }
 
 class _HomeAmountText extends StatelessWidget {
-  const _HomeAmountText({required this.amount, required this.unit, required this.color});
+  const _HomeAmountText({required this.amount, required this.unit, required this.color, this.purity});
   final String amount;
   final String unit;
   final Color color;
+  final String? purity;
 
   @override
-  Widget build(BuildContext context) => Directionality(
-    textDirection: TextDirection.ltr,
-    child: RichText(
-      text: TextSpan(
-        style: Theme.of(context).textTheme.bodyMedium,
-        children: [
-          TextSpan(text: amount, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
-          TextSpan(text: ' $unit', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.w500)),
-        ],
-      ),
-    ),
+  Widget build(BuildContext context) => ZarAmountDisplay(
+    amount: amount,
+    unit: unit,
+    purity: purity,
+    amountStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w700),
+    unitStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
   );
 }
 
@@ -805,7 +793,9 @@ class _HomeRecentActivity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (records.isEmpty) return const _HomeContainer(child: Padding(padding: EdgeInsets.all(16), child: Text('هنوز فعالیتی ثبت نشده است.')));
+    if (records.isEmpty) {
+      return const _HomeContainer(child: Padding(padding: EdgeInsets.all(16), child: Text('هنوز فعالیتی ثبت نشده است.')));
+    }
     return _HomeContainer(
       child: Column(
         children: [
@@ -999,35 +989,14 @@ class _HomeRecordAmountText extends StatelessWidget {
   Widget build(BuildContext context) {
     final display = _homeRecordParts(record);
     final baseStyle = Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: fontSize);
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: RichText(
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        text: TextSpan(
-          style: baseStyle,
-          children: [
-            TextSpan(text: display.amount, style: TextStyle(color: color, fontWeight: FontWeight.w700)),
-            TextSpan(text: ' ${display.unit}'),
-            if (display.detail != null) TextSpan(text: ' • ${display.detail}'),
-          ],
-        ),
-      ),
+    return ZarAmountDisplay(
+      amount: display.amount,
+      unit: display.unit,
+      purity: display.detail,
+      amountStyle: baseStyle?.copyWith(color: color, fontWeight: FontWeight.w700),
+      unitStyle: baseStyle?.copyWith(fontWeight: FontWeight.w600),
     );
   }
-}
-
-String _dashboardDecimal(String value) {
-  final negative = value.startsWith('-');
-  final raw = negative ? value.substring(1) : value;
-  final parts = raw.split('.');
-  final digits = parts.first;
-  final grouped = <String>[];
-  for (var end = digits.length; end > 0; end -= 3) {
-    grouped.insert(0, digits.substring(end < 3 ? 0 : end - 3, end));
-  }
-  final number = parts.length == 1 ? grouped.join('٬') : '${grouped.join('٬')}٫${parts[1]}';
-  return toPersianDigits('${negative ? '-' : ''}$number');
 }
 
 class _NotificationBell extends StatelessWidget {
