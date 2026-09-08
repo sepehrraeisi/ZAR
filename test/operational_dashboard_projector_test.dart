@@ -314,6 +314,36 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Home dashboard remains readable at compact phone width', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() async => tester.binding.setSurfaceSize(null));
+    final dashboard = projector.project(
+      deals: const [],
+      settlements: [
+        settlement('compact-r', now.add(const Duration(days: 1))),
+        settlement('compact-d', now.add(const Duration(days: 2)), direction: ZarSettlementDirection.deliver),
+      ],
+      now: now,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhaseA2HomeScreen(
+          records: const <AppRecord>[],
+          personName: (_) => 'علی',
+          onTapRecord: (_) {},
+          onOpenNotifications: () {},
+          unreadCount: 0,
+          dashboard: dashboard,
+          now: now,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-دریافتنی‌ها'))).height, 184);
+    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-پرداختنی‌ها'))).height, 184);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Home shows same-day overdue context after its due time', (tester) async {
     final now = DateTime(2026, 9, 2, 12);
     final overdue = AppRecord(
@@ -342,7 +372,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('عقب‌افتاده'), findsNWidgets(2));
-    expect(find.text('در انتظار'), findsOneWidget);
+    expect(find.text('در انتظار'), findsNothing);
   });
 }
 

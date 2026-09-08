@@ -122,6 +122,6 @@ void main() {
 
     expect(find.text('عقب‌افتاده'), findsWidgets);
     expect(find.text('رضا'), findsOneWidget);
-    expect(find.text('در انتظار'), findsOneWidget);
+    expect(find.text('در انتظار'), findsNothing);
   });
 }
