@@ -1212,6 +1212,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         onOpenInventory: _openInventory,
         onOpenDailyReport: _openDailyReport,
         onOpenOverdue: _openOverdue,
+        onOpenHistory: () => setState(() => _index = 4),
         dashboard: dashboard,
         recentRecords: recentRecords,
         onOpenPendingReceive: () =>

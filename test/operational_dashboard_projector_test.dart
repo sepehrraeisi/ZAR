@@ -154,8 +154,12 @@ void main() {
       final dashboard = projector.project(
         deals: const [],
         settlements: [
-          completed('gold-750', gold('10', '750')),
+          completed('gold-740', gold('10', '740')),
           completed('gold-995', gold('20', '995')),
+          completed('usd', currency('USD', 20000, 0)),
+          completed('aed', currency('AED', 60000, 0)),
+          completed('toman', currency('TOMAN', 350000000, 0)),
+          completed('gold-large', gold('1480', '750')),
           settlement('pending-r', now.add(const Duration(days: 1))),
           settlement(
             'pending-d',
@@ -178,12 +182,40 @@ void main() {
           ),
         ),
       );
-      await tester.scrollUntilVisible(
-        find.text('۲ عیار'),
-        300,
-        scrollable: find.byType(Scrollable).first,
+      await tester.pumpAndSettle();
+      expect(find.text('موجودی واقعی'), findsOneWidget);
+      expect(find.text('باید دریافت کنم'), findsOneWidget);
+      expect(find.text('باید پرداخت کنم'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is RichText && widget.text.toPlainText() == '۱۰ گرم طلا',
+        ),
+        findsOneWidget,
       );
-      expect(find.text('۲ عیار'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is RichText && widget.text.toPlainText() == '۲۰٬۰۰۰ USD',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is RichText && widget.text.toPlainText() == '۶۰٬۰۰۰ AED',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is RichText && widget.text.toPlainText() == '۱٬۴۸۰ گرم طلا',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is RichText && widget.text.toPlainText() == '۳۵۰٬۰۰۰٬۰۰۰ تومان',
+        ),
+        findsOneWidget,
+      );
       expect(find.text('۱ مورد'), findsNWidgets(2));
       expect(tester.takeException(), isNull);
     },

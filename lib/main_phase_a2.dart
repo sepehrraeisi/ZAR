@@ -425,7 +425,7 @@ bool isRecordOverdueAt(AppRecord record, DateTime now) =>
     dueDateTimeFromJalali(record.date, record.time).isBefore(now);
 
 class PhaseA2HomeScreen extends StatelessWidget {
-  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings, this.onOpenInventory, this.onOpenDailyReport, this.onOpenOverdue, this.dashboard, this.recentRecords = const [], this.onOpenPendingReceive, this.onOpenPendingDeliver, this.now});
+  const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings, this.onOpenInventory, this.onOpenDailyReport, this.onOpenOverdue, this.onOpenHistory, this.dashboard, this.recentRecords = const [], this.onOpenPendingReceive, this.onOpenPendingDeliver, this.now});
 
   final List<AppRecord> records;
   final String Function(String) personName;
@@ -436,6 +436,7 @@ class PhaseA2HomeScreen extends StatelessWidget {
   final VoidCallback? onOpenInventory;
   final VoidCallback? onOpenDailyReport;
   final VoidCallback? onOpenOverdue;
+  final VoidCallback? onOpenHistory;
   final ZarOperationalDashboardProjection? dashboard;
   final List<AppRecord> recentRecords;
   final VoidCallback? onOpenPendingReceive;
@@ -468,11 +469,13 @@ class PhaseA2HomeScreen extends StatelessWidget {
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('امروز\n${formatJalaliDate(currentDate)}', style: Theme.of(context).textTheme.titleLarge),
+                Text('امروز', style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 2),
+                Text(formatJalaliDate(currentDate), style: Theme.of(context).textTheme.bodyMedium),
                 if (onOpenInventory != null || onOpenDailyReport != null) ...[
                   const SizedBox(height: 12),
                   Row(children: [
@@ -487,10 +490,10 @@ class PhaseA2HomeScreen extends StatelessWidget {
             ),
           ),
         ),
-        _section(context, 'عقب‌افتاده', overdue, overdue: true, maxItems: 3, onViewAll: onOpenOverdue ?? onOpenNotifications),
-        _section(context, 'امروز', today, maxItems: 3, onViewAll: onOpenNotifications),
         if (dashboard != null) _dashboardSections(context, dashboard!),
-        _section(context, 'فردا', tomorrow, maxItems: 3, onViewAll: onOpenNotifications),
+        if (overdue.isNotEmpty) _section(context, 'عقب‌افتاده', overdue, overdue: true, maxItems: 3, onViewAll: onOpenOverdue ?? onOpenNotifications),
+        if (today.isNotEmpty) _section(context, 'امروز', today, maxItems: 3, onViewAll: onOpenNotifications),
+        if (tomorrow.isNotEmpty) _section(context, 'فردا', tomorrow, maxItems: 3, onViewAll: onOpenNotifications),
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
       ],
     );
@@ -520,103 +523,245 @@ class PhaseA2HomeScreen extends StatelessWidget {
 
   Widget _dashboardSections(BuildContext context, ZarOperationalDashboardProjection value) {
     final inventory = value.inventory;
-    final cash = inventory.cashInventory.isEmpty ? null : inventory.cashInventory.first.decimalAmount;
     final hasInventory = inventory.goldInventory.isNotEmpty || inventory.coinInventory.isNotEmpty || inventory.currencyInventory.isNotEmpty || inventory.cashInventory.isNotEmpty;
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('در انتظار اقدام', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            if (value.pendingReceiveCount == 0 && value.pendingDeliverCount == 0)
-              const Card(elevation: 0, child: Padding(padding: EdgeInsets.all(16), child: Text('تعهد بازی وجود ندارد.')))
-            else
-              Row(children: [
-                Expanded(child: _DashboardSummaryCard(label: 'در انتظار دریافت', value: '${toPersianDigits(value.pendingReceiveCount.toString())} مورد', onTap: onOpenPendingReceive)),
-                const SizedBox(width: 8),
-                Expanded(child: _DashboardSummaryCard(label: 'در انتظار پرداخت', value: '${toPersianDigits(value.pendingDeliverCount.toString())} مورد', onTap: onOpenPendingDeliver)),
-              ]),
-            if (inventory.pendingReceive.isNotEmpty) _pendingPreview(context, 'در انتظار دریافت', inventory.pendingReceive, onOpenPendingReceive),
-            if (inventory.pendingDeliver.isNotEmpty) _pendingPreview(context, 'در انتظار پرداخت', inventory.pendingDeliver, onOpenPendingDeliver),
+            _HomeObligationCard(title: 'باید دریافت کنم', count: value.pendingReceiveCount, items: inventory.pendingReceive, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onOpenPendingReceive, accent: const Color(0xFF9A6700)),
+            const SizedBox(height: 10),
+            _HomeObligationCard(title: 'باید پرداخت کنم', count: value.pendingDeliverCount, items: inventory.pendingDeliver, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onOpenPendingDeliver, accent: const Color(0xFF6C5A42)),
             const SizedBox(height: 20),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('موجودی', style: Theme.of(context).textTheme.titleMedium),
-              if (onOpenInventory != null) TextButton(onPressed: onOpenInventory, child: const Text('مشاهده همه')),
-            ]),
-            if (!hasInventory)
-              const Card(elevation: 0, child: Padding(padding: EdgeInsets.all(16), child: Text('هنوز موجودی ثبت‌شده‌ای ندارید.')))
-            else GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 2.25,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              children: [
-                _DashboardSummaryCard(label: 'طلا', value: inventory.goldInventory.isEmpty ? 'ثبت نشده' : '${toPersianDigits(inventory.goldInventory.length.toString())} عیار', onTap: onOpenInventory),
-                _DashboardSummaryCard(label: 'سکه', value: inventory.coinInventory.isEmpty ? 'ثبت نشده' : '${toPersianDigits(inventory.coinInventory.length.toString())} نوع', onTap: onOpenInventory),
-                _DashboardSummaryCard(label: 'ارز', value: inventory.currencyInventory.isEmpty ? 'ثبت نشده' : '${toPersianDigits(inventory.currencyInventory.length.toString())} نوع ارز', onTap: onOpenInventory),
-                _DashboardSummaryCard(label: 'وجه نقد', value: cash == null ? 'ثبت نشده' : '${_dashboardDecimal(cash)} تومان', onTap: onOpenInventory),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text('فعالیت اخیر', style: Theme.of(context).textTheme.titleMedium),
+            _HomeSectionHeading(title: 'موجودی واقعی', onTap: onOpenInventory, actionLabel: 'مشاهده همه'),
             const SizedBox(height: 8),
-            if (recentRecords.isEmpty)
-              const _PhaseA2EmptyRow(label: 'هنوز فعالیتی ثبت نشده است.')
-            else
-              Card(
-                elevation: 0,
-                child: Column(children: recentRecords.map((record) => ListTile(
-                  title: Text('${record.operationDisplayLabel} ${record.assetLabel} ${record.type == RecordType.deal ? 'با' : record.operationLabel == 'دریافت' ? 'از' : 'به'} ${personName(record.personId)}'),
-                  subtitle: Text('${record.assetLabel} • ${record.amountDisplay}'),
-                  trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
-                  onTap: () => onTapRecord(record),
-                )).toList()),
-              ),
+            _HomeInventoryCard(inventory: inventory, hasInventory: hasInventory, onTap: onOpenInventory),
+            const SizedBox(height: 20),
+            _HomeSectionHeading(title: 'فعالیت اخیر', onTap: recentRecords.isEmpty ? null : onOpenHistory, actionLabel: recentRecords.isEmpty ? null : 'مشاهده همه'),
+            const SizedBox(height: 8),
+            _HomeRecentActivity(records: recentRecords.take(5).toList(growable: false), personName: personName, onTap: onTapRecord),
           ],
         ),
       ),
     );
   }
 
-  Widget _pendingPreview(BuildContext context, String title, List<ZarOperationalInventoryItem> items, VoidCallback? onTap) => Card(
-    elevation: 0,
+}
+
+class _HomeSectionHeading extends StatelessWidget {
+  const _HomeSectionHeading({required this.title, this.onTap, this.actionLabel});
+  final String title;
+  final VoidCallback? onTap;
+  final String? actionLabel;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(title, style: Theme.of(context).textTheme.titleMedium),
+      if (onTap != null && actionLabel != null)
+        TextButton(onPressed: onTap, child: Text(actionLabel!)),
+    ],
+  );
+}
+
+class _HomeObligationCard extends StatelessWidget {
+  const _HomeObligationCard({required this.title, required this.count, required this.items, required this.records, required this.personName, required this.onTapRecord, required this.onTap, required this.accent});
+  final String title;
+  final int count;
+  final List<ZarOperationalInventoryItem> items;
+  final List<AppRecord> records;
+  final String Function(String) personName;
+  final ValueChanged<AppRecord> onTapRecord;
+  final VoidCallback? onTap;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) => _HomeContainer(
+    onTap: onTap,
     child: Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(title, style: Theme.of(context).textTheme.bodyLarge),
-        const SizedBox(height: 4),
-        ...items.take(3).map((item) => Text(_dashboardInventoryLine(item), style: Theme.of(context).textTheme.bodyMedium)),
-        if (items.length > 3 || onTap != null) Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: onTap, child: const Text('مشاهده همه'))),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          Text('${toPersianDigits(count.toString())} مورد', style: TextStyle(color: accent, fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 8),
+        if (items.isEmpty)
+          const _PhaseA2EmptyRow(label: 'موردی ثبت نشده است.')
+        else ...[
+          ...items.take(3).map((item) {
+            final names = <String, AppRecord>{};
+            for (final movement in item.movements) {
+              AppRecord? record;
+              for (final candidate in records) {
+                if (candidate.id == movement.recordId) {
+                  record = candidate;
+                  break;
+                }
+              }
+              final matchedRecord = record;
+              if (matchedRecord != null) names.putIfAbsent(personName(movement.personId), () => matchedRecord);
+            }
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                _HomeInventoryLine(item: item, accent: accent),
+                if (names.isNotEmpty)
+                  Row(mainAxisAlignment: MainAxisAlignment.start, children: [
+                    Text(title.contains('دریافت') ? 'از' : 'به', style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(width: 4),
+                    ...names.entries.take(2).map((entry) => Padding(
+                      padding: const EdgeInsetsDirectional.only(end: 6),
+                      child: InkWell(onTap: () => onTapRecord(entry.value), child: Text(entry.key, style: Theme.of(context).textTheme.bodySmall)),
+                    )),
+                  ]),
+              ]),
+            );
+          }),
+          if (items.length > 3 || onTap != null)
+            Align(alignment: AlignmentDirectional.centerStart, child: TextButton(onPressed: onTap, child: const Text('مشاهده همه'))),
+        ],
       ]),
     ),
   );
 }
 
-class _DashboardSummaryCard extends StatelessWidget {
-  const _DashboardSummaryCard({required this.label, required this.value, this.onTap});
-  final String label;
-  final String value;
+class _HomeInventoryCard extends StatelessWidget {
+  const _HomeInventoryCard({required this.inventory, required this.hasInventory, this.onTap});
+  final ZarOperationalInventoryProjection inventory;
+  final bool hasInventory;
   final VoidCallback? onTap;
+
   @override
-  Widget build(BuildContext context) => Card(
-    elevation: 0,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Text(label, style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 3), Text(value, style: const TextStyle(fontWeight: FontWeight.w700))])),
+  Widget build(BuildContext context) {
+    if (!hasInventory) {
+      return _HomeContainer(child: const Padding(padding: EdgeInsets.all(16), child: Text('هنوز موجودی ثبت‌شده‌ای ندارید.')));
+    }
+    final sections = <Widget>[
+      if (inventory.goldInventory.isNotEmpty) _HomeInventoryGroup(title: 'طلا', items: inventory.goldInventory, accent: const Color(0xFF9A6700), onTap: onTap),
+      if (inventory.coinInventory.isNotEmpty) _HomeInventoryGroup(title: 'سکه', items: inventory.coinInventory, accent: const Color(0xFF6D5A8A), onTap: onTap),
+      if (inventory.currencyInventory.isNotEmpty) _HomeInventoryGroup(title: 'ارز', items: inventory.currencyInventory, accent: const Color(0xFF386C68), onTap: onTap),
+      if (inventory.cashInventory.isNotEmpty) _HomeInventoryGroup(title: 'وجه نقد', items: inventory.cashInventory, accent: const Color(0xFF4D4D4D), onTap: onTap),
+    ];
+    return _HomeContainer(child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
+      for (var i = 0; i < sections.length; i++) ...[
+        sections[i],
+        if (i < sections.length - 1) const Divider(height: 20),
+      ],
+    ])));
+  }
+}
+
+class _HomeInventoryGroup extends StatelessWidget {
+  const _HomeInventoryGroup({required this.title, required this.items, required this.accent, this.onTap});
+  final String title;
+  final List<ZarOperationalInventoryItem> items;
+  final Color accent;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      Text(title, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+      if (onTap != null) IconButton(onPressed: onTap, tooltip: 'مشاهده موجودی', icon: const Icon(CupertinoIcons.chevron_left, size: 18)),
+    ]),
+    ...items.take(3).map((item) => Padding(padding: const EdgeInsets.only(bottom: 5), child: _HomeInventoryLine(item: item, accent: accent))),
+    if (items.length > 3) TextButton(onPressed: onTap, child: const Text('مشاهده همه')),
+  ]);
+}
+
+class _HomeInventoryLine extends StatelessWidget {
+  const _HomeInventoryLine({required this.item, required this.accent});
+  final ZarOperationalInventoryItem item;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final display = switch (item) {
+      ZarGoldInventoryItem(:final fineness, :final grams) => _HomeAmountParts(_dashboardDecimal(grams), 'گرم طلا', fineness == null ? 'عیار نامشخص' : 'عیار ${toPersianDigits(fineness)}'),
+      ZarCoinInventoryItem(:final displayName, :final quantity) => _HomeAmountParts(toPersianDigits(quantity.toString()), 'عدد ${toPersianDigits(displayName)}', null),
+      ZarCurrencyInventoryItem(:final code, :final decimalAmount) => _HomeAmountParts(_dashboardDecimal(decimalAmount), code == 'TOMAN' ? 'تومان' : code, null),
+    };
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Expanded(child: _HomeAmountText(amount: display.amount, unit: display.unit, color: accent)),
+      if (display.detail != null) ...[
+        const SizedBox(width: 8),
+        Text(display.detail!, style: Theme.of(context).textTheme.bodySmall),
+      ],
+    ]);
+  }
+}
+
+class _HomeAmountParts {
+  const _HomeAmountParts(this.amount, this.unit, this.detail);
+  final String amount;
+  final String unit;
+  final String? detail;
+}
+
+class _HomeAmountText extends StatelessWidget {
+  const _HomeAmountText({required this.amount, required this.unit, required this.color});
+  final String amount;
+  final String unit;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.ltr,
+    child: RichText(
+      text: TextSpan(
+        style: Theme.of(context).textTheme.bodyLarge,
+        children: [
+          TextSpan(text: amount, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
+          TextSpan(text: ' $unit', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontWeight: FontWeight.w500)),
+        ],
+      ),
     ),
   );
 }
 
-String _dashboardInventoryLine(ZarOperationalInventoryItem item) => switch (item) {
-  ZarGoldInventoryItem(:final fineness, :final grams) => 'طلای ${fineness == null ? 'عیار نامشخص' : toPersianDigits(fineness)} — ${_dashboardDecimal(grams)} گرم',
-  ZarCoinInventoryItem(:final displayName, :final quantity) => '${toPersianDigits(quantity.toString())} عدد ${toPersianDigits(displayName)}',
-  ZarCurrencyInventoryItem(:final code, :final decimalAmount) => code == 'TOMAN' ? '${_dashboardDecimal(decimalAmount)} تومان' : '${_dashboardDecimal(decimalAmount)} $code',
-};
+class _HomeRecentActivity extends StatelessWidget {
+  const _HomeRecentActivity({required this.records, required this.personName, required this.onTap});
+  final List<AppRecord> records;
+  final String Function(String) personName;
+  final ValueChanged<AppRecord> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (records.isEmpty) return const _HomeContainer(child: Padding(padding: EdgeInsets.all(16), child: Text('هنوز فعالیتی ثبت نشده است.')));
+    return _HomeContainer(child: Column(children: records.map((record) {
+      final relation = record.type == RecordType.deal ? 'با' : record.operationLabel == 'دریافت' ? 'از' : 'به';
+      return Material(
+        color: Colors.transparent,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+          title: Text('${record.operationDisplayLabel} ${record.assetLabel} $relation ${personName(record.personId)}'),
+          subtitle: Padding(padding: const EdgeInsets.only(top: 3), child: Directionality(textDirection: TextDirection.ltr, child: Text(record.amountDisplay))),
+          trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
+          onTap: () => onTap(record),
+        ),
+      );
+    }).toList()));
+  }
+}
+
+class _HomeContainer extends StatelessWidget {
+  const _HomeContainer({required this.child, this.onTap});
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final decorated = Container(
+      decoration: BoxDecoration(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: theme.dividerColor)),
+      child: child,
+    );
+    return onTap == null ? decorated : InkWell(borderRadius: BorderRadius.circular(16), onTap: onTap, child: decorated);
+  }
+}
 
 String _dashboardDecimal(String value) {
   final negative = value.startsWith('-');
