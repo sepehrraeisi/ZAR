@@ -32,6 +32,22 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
 
+# Firebase's Windows plugins depend on the native Firebase C++ SDK. Keep those
+# plugins out of ordinary local UI builds while production Firebase remains
+# disabled. Set ZAR_ENABLE_FIREBASE_NATIVE=ON explicitly in the build
+# environment to restore Flutter's generated Firebase plugin path.
+set(ZAR_ENABLE_FIREBASE_NATIVE OFF)
+if(DEFINED ENV{ZAR_ENABLE_FIREBASE_NATIVE})
+  string(TOUPPER "$ENV{ZAR_ENABLE_FIREBASE_NATIVE}" ZAR_FIREBASE_NATIVE_VALUE)
+  if(ZAR_FIREBASE_NATIVE_VALUE STREQUAL "1" OR
+     ZAR_FIREBASE_NATIVE_VALUE STREQUAL "ON" OR
+     ZAR_FIREBASE_NATIVE_VALUE STREQUAL "TRUE" OR
+     ZAR_FIREBASE_NATIVE_VALUE STREQUAL "YES")
+    set(ZAR_ENABLE_FIREBASE_NATIVE ON)
+  endif()
+endif()
+message(STATUS "ZAR Firebase native Windows plugins: ${ZAR_ENABLE_FIREBASE_NATIVE}")
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by
@@ -55,7 +71,11 @@ add_subdirectory("runner")
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
-include(flutter/generated_plugins.cmake)
+if(ZAR_ENABLE_FIREBASE_NATIVE)
+  include(flutter/generated_plugins.cmake)
+else()
+  include(flutter/local_plugins.cmake)
+endif()
 
 
 # === Installation ===

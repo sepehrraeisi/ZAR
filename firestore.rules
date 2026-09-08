@@ -1,0 +1,88 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function membershipPath(businessId, userId) {
+      return /databases/$(database)/documents/businesses/$(businessId)/memberships/$(userId);
+    }
+
+    function isMember(businessId) {
+      return signedIn() && exists(membershipPath(businessId, request.auth.uid));
+    }
+
+    function isOwner(businessId) {
+      return isMember(businessId)
+        && get(membershipPath(businessId, request.auth.uid)).data.role == 'owner';
+    }
+
+    match /users/{userId} {
+      allow read, create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    match /businesses/{businessId} {
+      allow read: if isMember(businessId);
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isOwner(businessId);
+      allow delete: if false;
+
+      match /memberships/{userId} {
+        allow read: if isMember(businessId);
+
+        // Bootstrap the owner's own membership immediately after creating a
+        // business. The business document must identify the same owner UID.
+        allow create: if signedIn() && (
+          isOwner(businessId)
+          || (
+            request.auth.uid == userId
+            && request.resource.data.role == 'owner'
+            && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerUid == request.auth.uid
+          )
+        );
+        allow update, delete: if isOwner(businessId);
+      }
+
+      match /people/{personId} {
+        allow read, create, update: if isMember(businessId);
+        allow delete: if false;
+      }
+
+      match /deals/{dealId} {
+        allow read, create, update: if isMember(businessId);
+        allow delete: if false;
+      }
+
+      match /settlements/{settlementId} {
+        allow read, create, update: if isMember(businessId);
+        allow delete: if false;
+      }
+
+      match /reminders/{reminderId} {
+        allow read, create, update, delete: if isMember(businessId);
+      }
+
+      match /settings/{settingId} {
+        allow read: if isMember(businessId);
+        allow create, update: if isOwner(businessId);
+        allow delete: if false;
+      }
+
+      match /auditLogs/{auditId} {
+        allow read: if isMember(businessId);
+        allow create: if isMember(businessId)
+          && request.resource.data.actorUid == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    // Deny anything not explicitly covered above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

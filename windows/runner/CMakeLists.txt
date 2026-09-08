@@ -6,12 +6,19 @@ project(runner LANGUAGES CXX)
 # work.
 #
 # Any new source files that you add to the application should be added here.
+if(ZAR_ENABLE_FIREBASE_NATIVE)
+  set(ZAR_PLUGIN_REGISTRANT
+    "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc")
+else()
+  set(ZAR_PLUGIN_REGISTRANT "local_plugin_registrant.cc")
+endif()
+
 add_executable(${BINARY_NAME} WIN32
   "flutter_window.cpp"
   "main.cpp"
   "utils.cpp"
   "win32_window.cpp"
-  "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
+  "${ZAR_PLUGIN_REGISTRANT}"
   "Runner.rc"
   "runner.exe.manifest"
 )
