@@ -450,7 +450,7 @@ String _homeDueLabel(AppRecord record, DateTime now) {
 String _homeActivityTimestamp(AppRecord record, DateTime now) {
   final current = Jalali.fromDateTime(now);
   final time = record.time == null ? null : record.timeLabel();
-  final suffix = time == null ? '' : ' $time';
+  final suffix = time == null ? '' : ' · $time';
   if (isSameJalali(record.date, current)) return 'امروز$suffix';
   if (isSameJalali(record.date, current.addDays(-1))) return 'دیروز$suffix';
   if (isSameJalali(record.date, current.addDays(1))) return 'فردا$suffix';
@@ -460,10 +460,11 @@ String _homeActivityTimestamp(AppRecord record, DateTime now) {
 const _homeSecondaryColor = Color(0xFF6F6A62);
 const _homeOverdueColor = Color(0xFF9D3636);
 const _homeAmountColor = Color(0xFF9A6700);
+const _homeNeutralAmountColor = Color(0xFF2A2927);
 
 IconData _homeActivityIcon(AppRecord record) {
   if (record.type == RecordType.deal) {
-    return record.operationLabel == 'خرید' ? CupertinoIcons.arrow_down_circle : CupertinoIcons.arrow_up_circle;
+    return CupertinoIcons.arrow_2_squarepath;
   }
   return record.operationLabel == 'دریافت' ? CupertinoIcons.arrow_down_circle : CupertinoIcons.arrow_up_circle;
 }
@@ -499,13 +500,19 @@ class PhaseA2HomeScreen extends StatelessWidget {
       slivers: [
         SliverAppBar(
           pinned: true,
-          toolbarHeight: 50,
-          title: const Directionality(textDirection: TextDirection.ltr, child: Text('ZAR+')),
+          toolbarHeight: 48,
+          title: const Directionality(
+            textDirection: TextDirection.ltr,
+            child: Text('ZAR+', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.2)),
+          ),
           actions: [
             if (onOpenSettings != null)
               IconButton(
                 tooltip: 'تنظیمات و داده‌ها',
                 onPressed: onOpenSettings,
+                constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+                padding: EdgeInsets.zero,
+                iconSize: 21,
                 icon: const Icon(CupertinoIcons.settings),
               ),
             _NotificationBell(count: unreadCount, onTap: onOpenNotifications),
@@ -514,7 +521,7 @@ class PhaseA2HomeScreen extends StatelessWidget {
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 2),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -596,18 +603,18 @@ class PhaseA2HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            Widget card({required String title, required int count, required List<ZarOperationalInventoryItem> items, required VoidCallback? onTap}) => _HomeObligationCard(title: title, count: count, items: items, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onTap, accent: _homeAmountColor, now: currentTime);
+            Widget card({required String title, required int count, required List<ZarOperationalInventoryItem> items, required VoidCallback? onTap}) => _HomeObligationCard(title: title, count: count, items: items, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onTap, accent: _homeNeutralAmountColor, now: currentTime);
             final receive = card(title: 'دریافتنی‌ها', count: value.pendingReceiveCount, items: value.inventory.pendingReceive, onTap: onOpenPendingReceive);
             final deliver = card(title: 'پرداختنی‌ها', count: value.pendingDeliverCount, items: value.inventory.pendingDeliver, onTap: onOpenPendingDeliver);
             if (constraints.maxWidth < 560) {
               return Column(children: [
-                SizedBox(height: 176, child: receive),
+                SizedBox(height: 160, child: receive),
                 const SizedBox(height: 8),
-                SizedBox(height: 176, child: deliver),
+                SizedBox(height: 160, child: deliver),
               ]);
             }
             return SizedBox(
-              height: 176,
+              height: 160,
               child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Expanded(child: receive),
                 const SizedBox(width: 8),
@@ -671,7 +678,15 @@ class _HomeSectionHeading extends StatelessWidget {
     children: [
       Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: titleColor)),
       if (onTap != null && actionLabel != null)
-        TextButton(onPressed: onTap, child: Text(actionLabel!)),
+        TextButton(
+          onPressed: onTap,
+          style: TextButton.styleFrom(
+            foregroundColor: _homeAmountColor,
+            textStyle: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+            visualDensity: VisualDensity.compact,
+          ),
+          child: Text(actionLabel!),
+        ),
     ],
   );
 }
@@ -719,25 +734,73 @@ class _HomeObligationCard extends StatelessWidget {
                   }
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 6),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      _HomeInventoryLine(item: item, accent: accent),
-                      if (people.isNotEmpty || matchedRecord != null)
-                        Row(mainAxisAlignment: MainAxisAlignment.start, children: [
-                          if (people.isNotEmpty) ...people.take(1).map((name) => Padding(
-                            padding: const EdgeInsetsDirectional.only(end: 6),
-                            child: GestureDetector(onTap: matchedRecord == null ? null : () => onTapRecord(matchedRecord!), child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11, fontWeight: FontWeight.w600))),
-                          )),
-                          if (matchedRecord != null)
-                            Flexible(child: Text(_homeDueLabel(matchedRecord, now), maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10, color: _homeSecondaryColor))),
-                        ]),
-                    ]),
+                    child: Row(
+                      textDirection: TextDirection.rtl,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (people.isNotEmpty)
+                                ...people.take(1).map(
+                                  (name) => GestureDetector(
+                                    onTap: matchedRecord == null
+                                        ? null
+                                        : () => onTapRecord(matchedRecord!),
+                                    child: Text(
+                                      name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              if (matchedRecord != null)
+                                Text(
+                                  _homeDueLabel(matchedRecord, now),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        fontSize: 10,
+                                        color: _homeSecondaryColor,
+                                      ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 132,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: _HomeInventoryLine(
+                              item: item,
+                              accent: accent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }),
               const Spacer(),
             ]),
           ),
           if (onTap != null && items.isNotEmpty)
-            Align(alignment: AlignmentDirectional.centerEnd, child: TextButton(onPressed: onTap, style: TextButton.styleFrom(foregroundColor: _homeAmountColor, minimumSize: Size.zero, padding: EdgeInsets.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap, visualDensity: VisualDensity.compact), child: const Text('مشاهده همه'))),
+            Align(alignment: AlignmentDirectional.centerEnd, child: TextButton(onPressed: onTap, style: TextButton.styleFrom(foregroundColor: _homeAmountColor, textStyle: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600), minimumSize: Size.zero, padding: EdgeInsets.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap, visualDensity: VisualDensity.compact), child: const Text('مشاهده همه'))),
         ]),
       ),
     ),
@@ -780,7 +843,7 @@ class _HomeAmountText extends StatelessWidget {
     unit: unit,
     purity: purity,
     amountStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w700),
-    unitStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+    unitStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
   );
 }
 
@@ -827,6 +890,7 @@ class _HomeRecentRow extends StatelessWidget {
           padding: const EdgeInsetsDirectional.fromSTEB(12, 7, 12, 7),
           child: Row(
             textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Row(
@@ -839,7 +903,10 @@ class _HomeRecentRow extends StatelessWidget {
                         '${record.operationDisplayLabel} ${record.assetLabel} $relation ${personName(record.personId)}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
@@ -849,13 +916,16 @@ class _HomeRecentRow extends StatelessWidget {
               SizedBox(
                 width: 132,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _HomeRecordAmountText(record: record, color: Theme.of(context).colorScheme.onSurface),
+                    _HomeRecordAmountText(record: record, color: _homeNeutralAmountColor),
                     const SizedBox(height: 2),
-                    Text(
-                      _homeActivityTimestamp(record, now),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _homeActivityTimestamp(record, now),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
+                      ),
                     ),
                   ],
                 ),
@@ -928,15 +998,15 @@ class _HomeActionRow extends StatelessWidget {
       onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text(record.operationDisplayLabel, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700, fontSize: 15)),
+            Text(record.operationDisplayLabel, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700, fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 1),
             Text(person, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ])),
           const SizedBox(width: 8),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            _HomeRecordAmountText(record: record, color: overdue ? const Color(0xFF9D3636) : const Color(0xFF9A6700), fontSize: 14),
+            _HomeRecordAmountText(record: record, color: overdue ? _homeOverdueColor : _homeNeutralAmountColor, fontSize: 14),
             const SizedBox(height: 1),
             Row(mainAxisSize: MainAxisSize.min, children: [
               if (!overdue) ...[
@@ -994,7 +1064,7 @@ class _HomeRecordAmountText extends StatelessWidget {
       unit: display.unit,
       purity: display.detail,
       amountStyle: baseStyle?.copyWith(color: color, fontWeight: FontWeight.w700),
-      unitStyle: baseStyle?.copyWith(fontWeight: FontWeight.w600),
+      unitStyle: baseStyle?.copyWith(color: color, fontWeight: FontWeight.w600),
     );
   }
 }
@@ -1009,7 +1079,14 @@ class _NotificationBell extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        IconButton(tooltip: 'اعلان‌ها', onPressed: onTap, icon: const Icon(CupertinoIcons.bell)),
+        IconButton(
+          tooltip: 'اعلان‌ها',
+          onPressed: onTap,
+          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+          padding: EdgeInsets.zero,
+          iconSize: 21,
+          icon: const Icon(CupertinoIcons.bell),
+        ),
         if (count > 0)
           Positioned(
             top: 5,
