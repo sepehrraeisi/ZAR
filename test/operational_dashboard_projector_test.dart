@@ -178,53 +178,64 @@ void main() {
             onTapRecord: (_) {},
             onOpenNotifications: () {},
             unreadCount: 0,
+            onOpenInventory: () {},
+            onOpenDailyReport: () {},
             dashboard: dashboard,
             now: now,
           ),
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('موجودی واقعی'), findsOneWidget);
-      expect(find.text('باید دریافت کنم'), findsOneWidget);
-      expect(find.text('باید پرداخت کنم'), findsOneWidget);
+      expect(find.text('موجودی واقعی'), findsNothing);
+      expect(find.text('موجودی'), findsOneWidget);
+      expect(find.text('گزارش روزانه'), findsOneWidget);
+      expect(find.text('دریافتنی‌ها'), findsOneWidget);
+      expect(find.text('پرداختنی‌ها'), findsOneWidget);
       expect(
         find.byWidgetPredicate(
           (widget) => widget is RichText && widget.text.toPlainText() == '۱۰ گرم طلا',
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         find.byWidgetPredicate(
           (widget) => widget is RichText && widget.text.toPlainText() == '۲۰٬۰۰۰ USD',
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         find.byWidgetPredicate(
           (widget) => widget is RichText && widget.text.toPlainText() == '۶۰٬۰۰۰ AED',
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         find.byWidgetPredicate(
           (widget) => widget is RichText && widget.text.toPlainText() == '۱٬۴۸۰ گرم طلا',
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         find.byWidgetPredicate(
           (widget) => widget is RichText && widget.text.toPlainText() == '۳۵۰٬۰۰۰٬۰۰۰ تومان',
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(find.text('۱ مورد'), findsNWidgets(2));
       final receiveCard = tester.getSize(
-        find.byKey(const ValueKey('home-obligation-باید دریافت کنم')),
+        find.byKey(const ValueKey('home-obligation-دریافتنی‌ها')),
       );
       final deliverCard = tester.getSize(
-        find.byKey(const ValueKey('home-obligation-باید پرداخت کنم')),
+        find.byKey(const ValueKey('home-obligation-پرداختنی‌ها')),
       );
       expect(receiveCard.height, deliverCard.height);
+      final inventoryButton = tester.getSize(
+        find.widgetWithText(OutlinedButton, 'موجودی'),
+      );
+      final reportButton = tester.getSize(
+        find.widgetWithText(OutlinedButton, 'گزارش روزانه'),
+      );
+      expect(inventoryButton, reportButton);
       expect(tester.takeException(), isNull);
     },
   );
@@ -240,6 +251,7 @@ void main() {
       goldFineness: '750',
       goldInputUnit: ZarGoldUnit.gram.name,
       date: Jalali.now(),
+      time: const TimeOfDay(hour: 16, minute: 45),
     );
     final currency = AppRecord(
       id: 'home-currency',
@@ -275,6 +287,7 @@ void main() {
             now: DateTime.now(),
           ),
           recentRecords: [gold, currency, coin],
+          now: DateTime.now(),
         ),
       ),
     );
@@ -285,6 +298,7 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(find.text('امروز ۱۶:۴۵'), findsOneWidget);
     expect(
       find.byWidgetPredicate(
         (widget) => widget is RichText && widget.text.toPlainText() == '۲۰٬۰۰۰ USD',
@@ -298,6 +312,37 @@ void main() {
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home shows same-day overdue context after its due time', (tester) async {
+    final now = DateTime(2026, 9, 2, 12);
+    final overdue = AppRecord(
+      id: 'home-overdue',
+      type: RecordType.settlement,
+      operationLabel: 'دریافت',
+      personId: 'person',
+      amountDisplay: '۵۰۰',
+      assetLabel: 'گرم طلا',
+      goldFineness: '750',
+      date: Jalali.fromDateTime(now),
+      time: const TimeOfDay(hour: 10, minute: 0),
+      status: SettlementStatus.open,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhaseA2HomeScreen(
+          records: [overdue],
+          personName: (_) => 'علی',
+          onTapRecord: (_) {},
+          onOpenNotifications: () {},
+          unreadCount: 0,
+          now: now,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('عقب‌افتاده'), findsNWidgets(2));
+    expect(find.text('در انتظار'), findsOneWidget);
   });
 }
 

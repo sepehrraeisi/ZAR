@@ -738,17 +738,21 @@ class ZBottomBar extends StatelessWidget {
                   navItem(index: 4, icon: CupertinoIcons.clock, label: 'سوابق'),
                 ],
               ),
-              GestureDetector(
-                onTap: () => onTap(2),
-                child: Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: active,
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: active.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 6))],
+              Semantics(
+                button: true,
+                label: 'ثبت معامله جدید',
+                child: GestureDetector(
+                  onTap: () => onTap(2),
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: active,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: active.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 6))],
+                    ),
+                    child: const Icon(CupertinoIcons.add, color: Colors.white, size: 22),
                   ),
-                  child: const Icon(CupertinoIcons.add, color: Colors.white, size: 22),
                 ),
               ),
             ],
