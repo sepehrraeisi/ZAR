@@ -305,7 +305,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home header is one compact two-row surface at phone width', (tester) async {
+  testWidgets('Home header is one compact row at phone width', (tester) async {
     await tester.binding.setSurfaceSize(const Size(360, 800));
     addTearDown(() async => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
@@ -329,8 +329,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final headerRect = tester.getRect(find.byKey(const ValueKey('home-header')));
-    final topRowRect = tester.getRect(
-      find.byKey(const ValueKey('home-header-top-row')),
+    final headerRowRect = tester.getRect(
+      find.byKey(const ValueKey('home-header-row')),
     );
     final todayRect = tester.getRect(
       find.byKey(const ValueKey('home-header-today')),
@@ -350,8 +350,10 @@ void main() {
 
     expect(find.text('ZAR+'), findsOneWidget);
     expect(find.text('امروز'), findsOneWidget);
+    expect(find.text('·'), findsOneWidget);
     expect(find.text(formatJalaliDate(Jalali.fromDateTime(now))), findsOneWidget);
-    expect(topRowRect.height, 44);
+    expect(headerRect.height, lessThanOrEqualTo(60));
+    expect(headerRowRect.height, 44);
     expect(bellRect.size, const Size(44, 44));
     expect(settingsRect.size, const Size(44, 44));
     expect(tester.getRect(find.byTooltip('اعلان‌ها')).size, const Size(44, 44));
@@ -362,8 +364,9 @@ void main() {
     expect(badgeRect.top, greaterThanOrEqualTo(bellRect.top));
     expect(badgeRect.right, lessThanOrEqualTo(bellRect.right));
     expect(badgeRect.bottom, lessThanOrEqualTo(bellRect.bottom));
-    expect(todayRect.top - topRowRect.bottom, inInclusiveRange(0, 4));
-    expect(quickActionsRect.top - todayRect.bottom, inInclusiveRange(16, 22));
+    expect(todayRect.height, lessThanOrEqualTo(headerRowRect.height));
+    expect(todayRect.center.dy, closeTo(headerRowRect.center.dy, 4));
+    expect(quickActionsRect.top - headerRowRect.bottom, inInclusiveRange(16, 22));
     expect(headerRect.bottom, lessThanOrEqualTo(quickActionsRect.top));
     expect(tester.takeException(), isNull);
   });

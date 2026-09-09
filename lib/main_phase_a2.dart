@@ -626,69 +626,74 @@ class _HomeHeader extends StatelessWidget {
       color: theme.scaffoldBackgroundColor,
       child: Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              key: const ValueKey('home-header-top-row'),
-              height: 44,
-              child: Row(
-                textDirection: TextDirection.rtl,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: Text(
-                      'ZAR+',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                        letterSpacing: 0.35,
-                      ),
-                    ),
+        child: SizedBox(
+          key: const ValueKey('home-header-row'),
+          height: 44,
+          child: Row(
+            textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(
+                  'ZAR+',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                    letterSpacing: 0.35,
                   ),
-                  const Spacer(),
-                  if (onOpenSettings != null)
-                    _HomeHeaderIconButton(
-                      buttonKey: const ValueKey('home-settings-button'),
-                      tooltip: 'تنظیمات و داده‌ها',
-                      onPressed: onOpenSettings!,
-                      icon: CupertinoIcons.gear,
-                    ),
-                  _NotificationBell(count: unreadCount, onTap: onOpenNotifications),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Align(
-              key: const ValueKey('home-header-today'),
-              alignment: AlignmentDirectional.centerStart,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                textDirection: TextDirection.rtl,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    'امروز',
-                    textAlign: TextAlign.right,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
+              Expanded(
+                child: Center(
+                  child: FittedBox(
+                    key: const ValueKey('home-header-today'),
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      textDirection: TextDirection.rtl,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'امروز',
+                          textAlign: TextAlign.right,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '·',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          formatJalaliDate(currentDate),
+                          textAlign: TextAlign.right,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    formatJalaliDate(currentDate),
-                    textAlign: TextAlign.right,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+              if (onOpenSettings != null)
+                _HomeHeaderIconButton(
+                  buttonKey: const ValueKey('home-settings-button'),
+                  tooltip: 'تنظیمات و داده‌ها',
+                  onPressed: onOpenSettings!,
+                  icon: CupertinoIcons.gear,
+                ),
+              _NotificationBell(count: unreadCount, onTap: onOpenNotifications),
+            ],
+          ),
         ),
       ),
     );
