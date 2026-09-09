@@ -634,7 +634,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     return true;
   }
 
-  Future<void> _openQuickAdd() async {
+  Future<void> _openQuickAdd({String? initialOperation}) async {
     String? savedRecordId;
     final recentPeople = <AppPerson>[];
     final seenPeople = <String>{};
@@ -655,6 +655,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         people: _store.activePeople,
         recentPeople: recentPeople,
         coinTypes: _store.coinTypes,
+        initialOperation: initialOperation,
         onSave: (draft) => _saveQuickAddDraftOrThrow(
           draft,
           onSaved: (id) => savedRecordId = id,
@@ -1134,6 +1135,11 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             final record = _store.recordById(id);
             if (record != null) _openRecord(record);
           },
+          onQuickAction: (operation) => unawaited(
+            _openQuickAdd(
+              initialOperation: operation == 'پرداخت' ? 'تحویل' : operation,
+            ),
+          ),
         ),
       ),
     );

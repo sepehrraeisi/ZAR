@@ -17,6 +17,7 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
     this.initialReminder = '۱۵ دقیقه',
     this.recentPeople = const [],
     this.preferenceStore,
+    this.initialOperation,
   });
   final List<AppPerson> people;
   final Future<void> Function(QuickAddDraft draft) onSave;
@@ -24,6 +25,7 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
   final String initialReminder;
   final List<AppPerson> recentPeople;
   final QuickEntryPreferenceStore? preferenceStore;
+  final String? initialOperation;
   @override
   State<ConfirmedQuickAddSheet> createState() => _ConfirmedQuickAddSheetState();
 }
@@ -81,6 +83,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     final now = DateTime.now();
     _date = Jalali.fromDateTime(now);
     _time = TimeOfDay.fromDateTime(now);
+    _operation = widget.initialOperation;
     _preferenceStore =
         widget.preferenceStore ?? SharedPreferencesQuickEntryPreferenceStore();
     _loadPreferences();
@@ -89,7 +92,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   Future<void> _loadPreferences() async {
     try {
       final preferences = await _preferenceStore.load();
-      if (!mounted || _startedInput || _operation != null) return;
+      if (!mounted || _startedInput) return;
       setState(() {
         _weightUnit = preferences.weightUnit;
         _priceUnit = preferences.priceUnit;

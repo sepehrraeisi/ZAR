@@ -61,7 +61,10 @@ class RepositorySettlementActionSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(record.operationDisplayLabel, style: theme.textTheme.titleLarge),
+                      Text(
+                        record.operationDisplayLabel,
+                        style: theme.textTheme.titleLarge,
+                      ),
                       const SizedBox(height: 3),
                       Text(personName, style: theme.textTheme.bodyMedium),
                     ],
@@ -101,19 +104,37 @@ class RepositorySettlementActionSheet extends StatelessWidget {
                     spacing: 12,
                     runSpacing: 6,
                     children: [
-                      _Meta(icon: CupertinoIcons.calendar, text: formatJalaliDate(record.date)),
-                      _Meta(icon: CupertinoIcons.clock, text: record.timeLabel(), ltr: true),
+                      _Meta(
+                        icon: CupertinoIcons.calendar,
+                        text: formatJalaliDate(record.date),
+                      ),
+                      _Meta(
+                        icon: CupertinoIcons.clock,
+                        text: record.timeLabel(),
+                        ltr: true,
+                      ),
+                      _Meta(icon: CupertinoIcons.bell, text: reminderSummary),
                     ],
                   ),
-                  if (isOpen) ...[
-                    const SizedBox(height: 10),
-                    _Meta(icon: CupertinoIcons.bell, text: reminderSummary),
+                  if ((record.note ?? '').trim().isNotEmpty) ...[
+                    const Divider(height: 22),
+                    Text('یادداشت', style: theme.textTheme.bodyMedium),
+                    const SizedBox(height: 4),
+                    Text(record.note!, style: theme.textTheme.bodyLarge),
                   ],
                 ],
               ),
             ),
-            if (allocationSummary != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(allocationSummary!)),
-            if (onAllocate != null) OutlinedButton(onPressed: onAllocate, child: const Text('انتخاب / ویرایش مقصد تسویه')),
+            if (allocationSummary != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(allocationSummary!),
+              ),
+            if (onAllocate != null)
+              OutlinedButton(
+                onPressed: onAllocate,
+                child: const Text('انتخاب / ویرایش مقصد تسویه'),
+              ),
             if (isOpen) ...[
               const SizedBox(height: 18),
               FilledButton.icon(
@@ -125,25 +146,60 @@ class RepositorySettlementActionSheet extends StatelessWidget {
               Row(
                 children: [
                   if (record.coinLines.isEmpty) ...[
-                    Expanded(child: _secondary(context, 'ویرایش', CupertinoIcons.pencil, onEdit)),
+                    Expanded(
+                      child: _secondary(
+                        context,
+                        'ویرایش',
+                        CupertinoIcons.pencil,
+                        onEdit,
+                      ),
+                    ),
                     const SizedBox(width: 8),
                   ],
-                  Expanded(child: _secondary(context, 'زمان‌بندی', CupertinoIcons.calendar, onReschedule)),
+                  Expanded(
+                    child: _secondary(
+                      context,
+                      'زمان‌بندی',
+                      CupertinoIcons.calendar,
+                      onReschedule,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Expanded(child: _secondary(context, 'یادآوری‌ها', CupertinoIcons.bell, onEditReminders)),
+                  Expanded(
+                    child: _secondary(
+                      context,
+                      'یادآوری‌ها',
+                      CupertinoIcons.bell,
+                      onEditReminders,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _secondary(context, 'بعداً', CupertinoIcons.moon_zzz, onSnooze)),
+                  Expanded(
+                    child: _secondary(
+                      context,
+                      'بعداً',
+                      CupertinoIcons.moon_zzz,
+                      onSnooze,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
               TextButton.icon(
                 onPressed: onCancel,
-                icon: Icon(CupertinoIcons.xmark_circle, size: 18, color: theme.colorScheme.error),
-                label: Text('لغو این تعهد', style: TextStyle(color: theme.colorScheme.error)),
+                icon: Icon(
+                  CupertinoIcons.xmark_circle,
+                  size: 18,
+                  color: theme.colorScheme.error,
+                ),
+                label: Text(
+                  'لغو این تعهد',
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
               ),
             ] else ...[
               const SizedBox(height: 16),
@@ -168,8 +224,14 @@ class RepositorySettlementActionSheet extends StatelessWidget {
   Widget _assetLine(BuildContext context) {
     final theme = Theme.of(context);
     if (record.coinLines.isNotEmpty) {
-      final total = record.coinLines.fold<int>(0, (sum, line) => sum + line.quantity);
-      return Text('${toPersianDigits(total.toString())} عدد سکه', style: theme.textTheme.titleMedium);
+      final total = record.coinLines.fold<int>(
+        0,
+        (sum, line) => sum + line.quantity,
+      );
+      return Text(
+        '${toPersianDigits(total.toString())} عدد سکه',
+        style: theme.textTheme.titleMedium,
+      );
     }
     return Wrap(
       spacing: 7,
@@ -179,17 +241,24 @@ class RepositorySettlementActionSheet extends StatelessWidget {
         AmountText(record.amountDisplay),
         Text(record.assetLabel, style: theme.textTheme.bodyLarge),
         if (record.goldFineness != null)
-          Text('عیار ${toPersianDigits(record.goldFineness!)}', style: theme.textTheme.bodyMedium),
+          Text(
+            'عیار ${toPersianDigits(record.goldFineness!)}',
+            style: theme.textTheme.bodyMedium,
+          ),
       ],
     );
   }
 
-  Widget _secondary(BuildContext context, String text, IconData icon, VoidCallback onTap) =>
-      OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 17),
-        label: Text(text, overflow: TextOverflow.ellipsis),
-      );
+  Widget _secondary(
+    BuildContext context,
+    String text,
+    IconData icon,
+    VoidCallback onTap,
+  ) => OutlinedButton.icon(
+    onPressed: onTap,
+    icon: Icon(icon, size: 17),
+    label: Text(text, overflow: TextOverflow.ellipsis),
+  );
 }
 
 class _StatusPill extends StatelessWidget {
@@ -212,7 +281,10 @@ class _StatusPill extends StatelessWidget {
       ),
       child: Text(
         record.statusLabel(),
-        style: theme.textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -226,14 +298,18 @@ class _Meta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: Theme.of(context).textTheme.bodyMedium?.color),
-          const SizedBox(width: 5),
-          Directionality(
-            textDirection: ltr ? TextDirection.ltr : TextDirection.rtl,
-            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
-          ),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(
+        icon,
+        size: 15,
+        color: Theme.of(context).textTheme.bodyMedium?.color,
+      ),
+      const SizedBox(width: 5),
+      Directionality(
+        textDirection: ltr ? TextDirection.ltr : TextDirection.rtl,
+        child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
+      ),
+    ],
+  );
 }

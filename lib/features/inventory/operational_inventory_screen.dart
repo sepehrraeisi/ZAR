@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
@@ -12,6 +13,7 @@ class OperationalInventoryScreen extends StatelessWidget {
     required this.personName,
     this.onOpenRecord,
     this.onOpenSettlement,
+    this.onQuickAction,
   });
 
   final ZarOperationalInventoryProjection projection;
@@ -21,6 +23,7 @@ class OperationalInventoryScreen extends StatelessWidget {
   /// Backwards-compatible alias while the repository shell is migrated to the
   /// deal-aware inventory API. New callers should use [onOpenRecord].
   final ValueChanged<String>? onOpenSettlement;
+  final ValueChanged<String>? onQuickAction;
 
   ValueChanged<String>? get _recordOpener => onOpenRecord ?? onOpenSettlement;
 
@@ -30,6 +33,26 @@ class OperationalInventoryScreen extends StatelessWidget {
     body: ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       children: [
+        Text(
+          'تعهدهای در انتظار',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        _section(
+          context,
+          'در انتظار دریافت',
+          projection.pendingReceive,
+          const Color(0xFF2F7D4C),
+          directionLabel: 'دریافت',
+        ),
+        _section(
+          context,
+          'در انتظار پرداخت',
+          projection.pendingDeliver,
+          const Color(0xFF9D5D36),
+          directionLabel: 'پرداخت',
+        ),
+        const SizedBox(height: 8),
         Text('موجودی واقعی', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         _section(
@@ -56,24 +79,6 @@ class OperationalInventoryScreen extends StatelessWidget {
           projection.cashInventory,
           const Color(0xFF303030),
         ),
-        const SizedBox(height: 20),
-        Text(
-          'تعهدهای در انتظار',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 12),
-        _section(
-          context,
-          'در انتظار دریافت',
-          projection.pendingReceive,
-          const Color(0xFF2F7D4C),
-        ),
-        _section(
-          context,
-          'در انتظار پرداخت',
-          projection.pendingDeliver,
-          const Color(0xFF9D5D36),
-        ),
       ],
     ),
   );
@@ -82,8 +87,9 @@ class OperationalInventoryScreen extends StatelessWidget {
     BuildContext context,
     String title,
     List<ZarOperationalInventoryItem> items,
-    Color accent,
-  ) {
+    Color accent, {
+    String? directionLabel,
+  }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
@@ -111,15 +117,35 @@ class OperationalInventoryScreen extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: Text(_title(items[index]))),
-                        Text(
-                          _value(items[index]),
-                          textDirection: TextDirection.ltr,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: accent,
+                        Expanded(
+                          child: _itemDetails(
+                            context,
+                            items[index],
+                            directionLabel: directionLabel,
                           ),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              _value(items[index]),
+                              textDirection: TextDirection.ltr,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: accent,
+                              ),
+                            ),
+                            if (directionLabel != null)
+                              Text(
+                                directionLabel,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.bodySmall?.copyWith(color: accent),
+                              ),
+                          ],
                         ),
                         const SizedBox(width: 6),
                         _rtlChevron(pointsRight: true, size: 20),
@@ -133,6 +159,53 @@ class OperationalInventoryScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _itemDetails(
+    BuildContext context,
+    ZarOperationalInventoryItem item, {
+    String? directionLabel,
+  }) {
+    final movement = item.movements.isEmpty ? null : item.movements.first;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(_title(item), overflow: TextOverflow.ellipsis),
+        const SizedBox(height: 3),
+        Text(
+          directionLabel == null
+              ? _assetType(item)
+              : '${_assetType(item)} • $directionLabel',
+          style: Theme.of(context).textTheme.bodySmall,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (movement != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            _movementTitle(movement),
+            style: Theme.of(context).textTheme.bodySmall,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            'آخرین حرکت: ${_dateTime(movement.occurredAt)}',
+            style: Theme.of(context).textTheme.bodySmall,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _movementTitle(ZarInventoryMovement movement) {
+    final name = personName(movement.personId);
+    if (movement.source == ZarInventoryMovementSource.deal) {
+      return movement.dealType == ZarDealType.buy
+          ? 'خرید از $name'
+          : 'فروش به $name';
+    }
+    return movement.direction == ZarSettlementDirection.receive
+        ? 'دریافت از $name'
+        : 'پرداخت به $name';
   }
 
   static Widget _rtlChevron({required bool pointsRight, double size = 24}) =>
@@ -154,6 +227,7 @@ class OperationalInventoryScreen extends StatelessWidget {
           accent: accent,
           personName: personName,
           onOpenRecord: _recordOpener,
+          onQuickAction: onQuickAction,
         ),
       ),
     );
@@ -167,12 +241,14 @@ class OperationalInventoryDetailScreen extends StatelessWidget {
     required this.accent,
     required this.personName,
     this.onOpenRecord,
+    this.onQuickAction,
   });
 
   final ZarOperationalInventoryItem item;
   final Color accent;
   final String Function(String personId) personName;
   final ValueChanged<String>? onOpenRecord;
+  final ValueChanged<String>? onQuickAction;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -187,7 +263,7 @@ class OperationalInventoryDetailScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('مقدار ثبت‌شده'),
+                const Text('موجودی فعلی'),
                 const SizedBox(height: 6),
                 Text(
                   _value(item),
@@ -196,10 +272,39 @@ class OperationalInventoryDetailScreen extends StatelessWidget {
                     context,
                   ).textTheme.headlineSmall?.copyWith(color: accent),
                 ),
+                if (item.movements.isNotEmpty) ...[
+                  const Divider(height: 24),
+                  Text(
+                    'آخرین حرکت: ${_movementTitle(item.movements.first)}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _dateTime(item.movements.first.occurredAt),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ],
             ),
           ),
         ),
+        if (onQuickAction != null) ...[
+          const SizedBox(height: 14),
+          Text('ثبت سریع', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final action in const ['خرید', 'فروش', 'دریافت', 'پرداخت'])
+                OutlinedButton.icon(
+                  onPressed: () => onQuickAction!(action),
+                  icon: const Icon(CupertinoIcons.add, size: 16),
+                  label: Text(action),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: 18),
         Text('سابقه حرکت', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
@@ -242,6 +347,12 @@ String _title(ZarOperationalInventoryItem item) => switch (item) {
         : 'طلای عیار ${toPersianDigits(fineness)}',
   ZarCoinInventoryItem(:final displayName) => toPersianDigits(displayName),
   ZarCurrencyInventoryItem(:final code) => code == 'TOMAN' ? 'وجه نقد' : code,
+};
+
+String _assetType(ZarOperationalInventoryItem item) => switch (item) {
+  ZarGoldInventoryItem() => 'طلا',
+  ZarCoinInventoryItem() => 'سکه',
+  ZarCurrencyInventoryItem(:final code) => code == 'TOMAN' ? 'وجه نقد' : 'ارز',
 };
 
 String _value(ZarOperationalInventoryItem item) => switch (item) {
