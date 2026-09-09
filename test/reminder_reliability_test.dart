@@ -28,7 +28,7 @@ void main() {
     expect(snoozePresetDateTime('سفارشی', now), isNull);
   });
 
-  testWidgets('Quick Add starts with the configured reminder preference', (
+  testWidgets('Quick Add keeps reminder disabled until a time is selected', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -48,7 +48,7 @@ void main() {
     await tester.tap(find.text('طلا'));
     await tester.pump();
 
-    expect(find.text('۳ ساعت'), findsOneWidget);
+    expect(find.textContaining('بدون یادآوری'), findsOneWidget);
   });
 
   testWidgets('snooze picker marks the configured default selection', (

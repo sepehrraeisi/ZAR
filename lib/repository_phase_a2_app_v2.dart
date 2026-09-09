@@ -379,6 +379,21 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     }
   }
 
+  ReminderPlan _quickAddReminderPlan(QuickAddDraft draft) {
+    final customAt = draft.customReminderAt;
+    if (customAt != null) {
+      return ReminderPlan(
+        rules: [
+          ReminderRule.custom(
+            id: 'quick-add-custom-${customAt.microsecondsSinceEpoch}',
+            customAt: customAt.toLocal(),
+          ),
+        ],
+      );
+    }
+    return reminderPlanFromLegacyLabel(draft.reminder);
+  }
+
   Future<void> _saveQuickAddDraftOrThrow(
     QuickAddDraft draft, {
     ValueChanged<String>? onSaved,
@@ -470,7 +485,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       totalToman: totalToman,
     );
     final runtimePlan = isSettlement
-        ? reminderPlanFromLegacyLabel(draft.reminder)
+        ? _quickAddReminderPlan(draft)
         : const ReminderPlan();
 
     setState(() => _writing = true);
@@ -523,7 +538,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     setState(() => _writing = true);
     try {
       if (isSettlement) {
-        final runtimePlan = reminderPlanFromLegacyLabel(draft.reminder);
+        final runtimePlan = _quickAddReminderPlan(draft);
         await _store.saveCoinSettlement(
           ZarSettlement(
             id: id,
@@ -617,6 +632,15 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
 
   Future<void> _openQuickAdd() async {
     String? savedRecordId;
+    final recentPeople = <AppPerson>[];
+    final seenPeople = <String>{};
+    for (final record in _store.records) {
+      if (seenPeople.add(record.personId)) {
+        final person = _store.personById(record.personId);
+        if (person != null && !person.archived) recentPeople.add(person);
+      }
+      if (recentPeople.length == 3) break;
+    }
     final result = await showModalBottomSheet<QuickAddDraft>(
       context: context,
       isScrollControlled: true,
@@ -625,6 +649,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       enableDrag: !_writing,
       builder: (_) => ConfirmedQuickAddSheet(
         people: _store.activePeople,
+        recentPeople: recentPeople,
         coinTypes: _store.coinTypes,
         onSave: (draft) => _saveQuickAddDraftOrThrow(
           draft,

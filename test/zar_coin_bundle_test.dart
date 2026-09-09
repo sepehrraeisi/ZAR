@@ -368,7 +368,7 @@ void main() {
     await tester.ensureVisible(find.text('افزودن سکه دیگر'));
     await tester.tap(find.text('افزودن سکه دیگر'));
     await tester.pump();
-    expect(find.text('ردیف ۲'), findsOneWidget);
+    expect(find.text('سکه ۲'), findsOneWidget);
   });
 }
 

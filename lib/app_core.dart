@@ -253,6 +253,7 @@ class QuickAddDraft {
     this.coinLines = const [],
     this.coinDealPricing,
     this.coinSettlementValuation,
+    this.customReminderAt,
   });
 
   final String operation;
@@ -273,6 +274,7 @@ class QuickAddDraft {
   final List<ZarCoinLine> coinLines;
   final ZarCoinDealPricing? coinDealPricing;
   final ZarCoinSettlementValuation? coinSettlementValuation;
+  final DateTime? customReminderAt;
 }
 
 String formatJalaliDate(Jalali date) => '${toPersianDigits(date.day.toString())} ${monthName(date.month)} ${toPersianDigits(date.year.toString())}';
@@ -2020,18 +2022,19 @@ class _CalendarHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-Future<AppPerson?> showPersonPickerBottomSheet(BuildContext context, List<AppPerson> people) {
+Future<AppPerson?> showPersonPickerBottomSheet(BuildContext context, List<AppPerson> people, {List<AppPerson> recentPeople = const []}) {
   return showModalBottomSheet<AppPerson>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (_) => _PersonPickerSheet(people: people),
+    builder: (_) => _PersonPickerSheet(people: people, recentPeople: recentPeople),
   );
 }
 
 class _PersonPickerSheet extends StatefulWidget {
-  const _PersonPickerSheet({required this.people});
+  const _PersonPickerSheet({required this.people, this.recentPeople = const []});
   final List<AppPerson> people;
+  final List<AppPerson> recentPeople;
 
   @override
   State<_PersonPickerSheet> createState() => _PersonPickerSheetState();
@@ -2042,7 +2045,11 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.people.where((e) => e.name.contains(query.trim())).toList(growable: false);
+    final trimmed = query.trim();
+    final filtered = widget.people.where((e) => e.name.contains(trimmed)).toList(growable: false);
+    final recent = trimmed.isEmpty
+        ? widget.recentPeople.where((person) => widget.people.any((item) => item.id == person.id)).toList(growable: false)
+        : const <AppPerson>[];
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
       child: Column(
@@ -2055,12 +2062,19 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
           const SizedBox(height: 8),
           SizedBox(
             height: 320,
-            child: ListView.builder(
-              itemCount: filtered.length,
-              itemBuilder: (context, index) {
-                final person = filtered[index];
-                return ListTile(title: Text(person.name), onTap: () => Navigator.pop(context, person));
-              },
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                if (recent.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4, bottom: 2),
+                    child: Align(alignment: AlignmentDirectional.centerStart, child: Text('اخیراً استفاده‌شده')),
+                  ),
+                  ...recent.map((person) => ListTile(title: Text(person.name), onTap: () => Navigator.pop(context, person))),
+                  if (filtered.any((person) => recent.every((item) => item.id != person.id))) const Divider(height: 1),
+                ],
+                ...filtered.where((person) => recent.every((item) => item.id != person.id)).map((person) => ListTile(title: Text(person.name), onTap: () => Navigator.pop(context, person))),
+              ],
             ),
           ),
         ],
@@ -2214,7 +2228,7 @@ Future<String?> showReminderTextPickerBottomSheet(BuildContext context, String c
     context: context,
     useSafeArea: true,
     builder: (_) {
-      final items = ['۱۵ دقیقه', '۳۰ دقیقه', '۱ ساعت', '۳ ساعت', '۱ روز', 'فردا', 'سفارشی'];
+      final items = ['بدون یادآوری', '۱۵ دقیقه', '۳۰ دقیقه', '۱ ساعت', '۳ ساعت', '۱ روز', 'فردا', 'سفارشی'];
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
         child: ListView(
