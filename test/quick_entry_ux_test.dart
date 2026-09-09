@@ -23,6 +23,22 @@ void main() {
   );
 
   testWidgets(
+    'changing selection preserves the selected context and common fields',
+    (tester) async {
+      await tester.pumpWidget(host());
+      await tester.tap(find.text('خرید'));
+      await tester.pump();
+      await tester.tap(find.text('طلا'));
+      await tester.pump();
+      await tester.tap(find.text('تغییر'));
+      await tester.pump();
+      await tester.tap(find.text('طلا'));
+      await tester.pump();
+      expect(find.text('خرید · طلا'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'selection collapses into a compact context and CTA remains visible',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(360, 800));

@@ -232,17 +232,20 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
 
   void _selectAsset(String value) => setState(() {
     _startedInput = true;
+    final assetChanged = _asset != value;
     _asset = value;
     _selectionExpanded = false;
-    _amount.clear();
-    _rate.clear();
-    _more = false;
-    _customPurity = false;
-    if (value != 'طلا') {
-      _fineness.text = '۷۵۰';
-      _reference.text = '۷۵۰';
-      _weightUnit = ZarGoldUnit.gram;
-      _priceUnit = ZarGoldUnit.gram;
+    if (assetChanged) {
+      _amount.clear();
+      _rate.clear();
+      _more = false;
+      _customPurity = false;
+      if (value != 'طلا') {
+        _fineness.text = '۷۵۰';
+        _reference.text = '۷۵۰';
+        _weightUnit = ZarGoldUnit.gram;
+        _priceUnit = ZarGoldUnit.gram;
+      }
     }
     _currencyCode = value == 'ارز'
         ? (_currencyCode ?? 'USD')
