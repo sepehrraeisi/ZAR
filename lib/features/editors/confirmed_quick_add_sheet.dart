@@ -47,7 +47,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       _notesExpanded = false,
       _customPurity = false,
       _startedInput = false;
-  Jalali _date = Jalali.now();
+  late Jalali _date;
   TimeOfDay? _time;
   DateTime? _customReminderAt;
   late String _reminder = widget.initialReminder;
@@ -76,6 +76,11 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   @override
   void initState() {
     super.initState();
+    // A transaction always starts with the local registration timestamp.
+    // Reminder scheduling remains independent and may still be disabled.
+    final now = DateTime.now();
+    _date = Jalali.fromDateTime(now);
+    _time = TimeOfDay.fromDateTime(now);
     _preferenceStore =
         widget.preferenceStore ?? SharedPreferencesQuickEntryPreferenceStore();
     _loadPreferences();
@@ -342,8 +347,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       _coinRows.any(
         (row) => row.price.text.trim().isNotEmpty || row.quantity.text != '۱',
       ) ||
-      _time != null ||
-      _effectiveReminder.isNotEmpty;
+      (_operation != null && _effectiveReminder.isNotEmpty);
 
   Future<bool> _confirmDismiss() async {
     if (!_hasMeaningfulInput) return true;
@@ -952,7 +956,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
             children: [
               Expanded(
                 child: Text(
-                  '$_metadataDateLabel · ${_time == null ? 'بدون ساعت' : _timeLabel} · ${_effectiveReminder.isEmpty ? 'بدون یادآوری' : _effectiveReminder}',
+                  '$_metadataDateLabel · $_timeLabel · ${_effectiveReminder.isEmpty ? 'بدون یادآوری' : _effectiveReminder}',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
@@ -976,15 +980,18 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
             ),
         ]);
 
-  String get _timeLabel => _time == null
-      ? 'بدون ساعت'
-      : '${toPersianDigits(_time!.hour.toString().padLeft(2, '0'))}:${toPersianDigits(_time!.minute.toString().padLeft(2, '0'))}';
+  String get _timeLabel {
+    final time = _time;
+    if (time == null) return '—';
+    return '${toPersianDigits(time.hour.toString().padLeft(2, '0'))}:${toPersianDigits(time.minute.toString().padLeft(2, '0'))}';
+  }
+
   String get _metadataDateLabel =>
       isSameJalali(_date, Jalali.now()) ? 'امروز' : formatJalaliDate(_date);
   Widget _metadataDateRow() => ListTile(
     contentPadding: EdgeInsets.zero,
     dense: true,
-    title: const Text('تاریخ'),
+    title: const Text('تاریخ ثبت'),
     subtitle: Text(formatJalaliDate(_date)),
     trailing: const Icon(CupertinoIcons.calendar, size: 20),
     onTap: () async {
@@ -995,7 +1002,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   Widget _metadataTimeRow() => ListTile(
     contentPadding: EdgeInsets.zero,
     dense: true,
-    title: const Text('ساعت'),
+    title: const Text('ساعت ثبت'),
     subtitle: Text(_timeLabel),
     trailing: const Icon(CupertinoIcons.time, size: 20),
     onTap: () async {

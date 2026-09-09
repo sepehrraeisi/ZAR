@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 import 'package:flutter_app/app_core.dart';
 import 'package:flutter_app/domain/zar_domain_models.dart';
 import 'package:flutter_app/features/editors/confirmed_quick_add_sheet.dart';
@@ -21,6 +22,119 @@ void main() {
       ),
     ),
   );
+
+  Widget modalHost({
+    required Future<void> Function(QuickAddDraft draft) onSave,
+    String initialReminder = 'بدون یادآوری',
+  }) => MaterialApp(
+    home: Builder(
+      builder: (context) => Scaffold(
+        body: FilledButton(
+          onPressed: () => showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            builder: (_) => ConfirmedQuickAddSheet(
+              people: [person()],
+              initialReminder: initialReminder,
+              preferenceStore: InMemoryQuickEntryPreferenceStore(),
+              onSave: onSave,
+            ),
+          ),
+          child: const Text('باز کردن'),
+        ),
+      ),
+    ),
+  );
+
+  String metadataSummary(WidgetTester tester) => tester
+      .widgetList<Text>(find.byType(Text))
+      .map((widget) => widget.data ?? '')
+      .firstWhere((value) => value.contains('امروز ·'));
+
+  testWidgets(
+    'new Quick Entry has an automatic transaction timestamp independent of reminder',
+    (tester) async {
+      QuickAddDraft? saved;
+      await tester.pumpWidget(
+        modalHost(onSave: (draft) async => saved = draft),
+      );
+      await tester.tap(find.text('باز کردن'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('خرید'));
+      await tester.pump();
+      await tester.tap(find.text('طلا'));
+      await tester.pump();
+
+      final summary = metadataSummary(tester);
+      expect(summary, contains('بدون یادآوری'));
+      expect(summary, isNot(contains('بدون ساعت')));
+      expect(summary, matches(RegExp(r'امروز · [۰-۹]{2}:[۰-۹]{2} ·')));
+
+      await tester.tap(find.text('انتخاب طرف حساب'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('مهیار'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).at(0), '۱');
+      await tester.enterText(find.byType(TextField).at(1), '۱۰۰۰');
+      await tester.pump();
+      await tester.tap(find.text('ثبت خرید طلا').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('تأیید و ثبت'));
+      await tester.pumpAndSettle();
+
+      expect(saved, isNotNull);
+      expect(saved!.time, isNotNull);
+      final today = Jalali.fromDateTime(DateTime.now());
+      expect(saved!.date.year, today.year);
+      expect(saved!.date.month, today.month);
+      expect(saved!.date.day, today.day);
+      expect(saved!.reminder, isEmpty);
+    },
+  );
+
+  testWidgets('selecting a reminder does not change transaction time', (
+    tester,
+  ) async {
+    await tester.pumpWidget(modalHost(onSave: (_) async {}));
+    await tester.tap(find.text('باز کردن'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('دریافت'));
+    await tester.pump();
+    await tester.tap(find.text('ارز'));
+    await tester.pump();
+    await tester.tap(find.text('ویرایش'));
+    await tester.pump();
+
+    final timeTile = find.ancestor(
+      of: find.text('ساعت ثبت'),
+      matching: find.byType(ListTile),
+    );
+    final timeBefore = tester
+        .widgetList<Text>(
+          find.descendant(of: timeTile, matching: find.byType(Text)),
+        )
+        .map((widget) => widget.data ?? '')
+        .last;
+    final reminderTile = find.ancestor(
+      of: find.text('بدون یادآوری'),
+      matching: find.byType(ListTile),
+    );
+    await tester.ensureVisible(reminderTile);
+    await tester.pumpAndSettle();
+    await tester.tap(reminderTile);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('۳۰ دقیقه'));
+    await tester.pumpAndSettle();
+
+    final timeAfter = tester
+        .widgetList<Text>(
+          find.descendant(of: timeTile, matching: find.byType(Text)),
+        )
+        .map((widget) => widget.data ?? '')
+        .last;
+    expect(timeAfter, timeBefore);
+  });
 
   testWidgets(
     'changing selection preserves the selected context and common fields',

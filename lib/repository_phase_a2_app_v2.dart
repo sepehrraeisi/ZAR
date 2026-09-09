@@ -454,6 +454,8 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             ),
           )
         : toPersianDigits(ZarAmountParser.gold(draft.amount).decimal);
+    final transactionTime =
+        draft.time ?? TimeOfDay.fromDateTime(DateTime.now());
 
     final record = AppRecord(
       id: 'n${DateTime.now().microsecondsSinceEpoch}',
@@ -468,7 +470,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           : 'گرم طلا',
       currencyCode: currencyCode,
       date: draft.date,
-      time: draft.time,
+      time: transactionTime,
       note: draft.note.isEmpty ? null : draft.note,
       goldFineness: !isCurrency ? draft.goldFineness : null,
       goldPriceReferenceFineness: !isCurrency
@@ -525,14 +527,16 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     if (draft.coinLines.isEmpty) {
       throw const FormatException('Coin lines are required.');
     }
-    final now = DateTime.now().toUtc();
+    final nowLocal = DateTime.now();
+    final now = nowLocal.toUtc();
+    final transactionTime = draft.time ?? TimeOfDay.fromDateTime(nowLocal);
     final gregorian = draft.date.toGregorian();
     final eventAt = DateTime(
       gregorian.year,
       gregorian.month,
       gregorian.day,
-      draft.time?.hour ?? 12,
-      draft.time?.minute ?? 0,
+      transactionTime.hour,
+      transactionTime.minute,
     ).toUtc();
     final id = 'n${DateTime.now().microsecondsSinceEpoch}';
     setState(() => _writing = true);
@@ -549,7 +553,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
                 : ZarSettlementDirection.deliver,
             amount: ZarCoinBundleAmount(draft.coinLines),
             scheduledAt: eventAt,
-            hasTime: draft.time != null,
+            hasTime: true,
             reminderPlan: reminderPlanToDomain(runtimePlan),
             coinValuation: draft.coinSettlementValuation,
             note: draft.note.isEmpty ? null : draft.note,
