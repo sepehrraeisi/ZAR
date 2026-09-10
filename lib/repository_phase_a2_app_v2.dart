@@ -634,7 +634,13 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     return true;
   }
 
-  Future<void> _openQuickAdd({String? initialOperation}) async {
+  Future<void> _openQuickAdd({
+    String? initialOperation,
+    String? initialAsset,
+    String? initialCurrencyCode,
+    String? initialGoldFineness,
+    String? initialCoinTypeId,
+  }) async {
     String? savedRecordId;
     final recentPeople = <AppPerson>[];
     final seenPeople = <String>{};
@@ -656,6 +662,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         recentPeople: recentPeople,
         coinTypes: _store.coinTypes,
         initialOperation: initialOperation,
+        initialAsset: initialAsset,
+        initialCurrencyCode: initialCurrencyCode,
+        initialGoldFineness: initialGoldFineness,
+        initialCoinTypeId: initialCoinTypeId,
         onSave: (draft) => _saveQuickAddDraftOrThrow(
           draft,
           onSaved: (id) => savedRecordId = id,
@@ -1130,6 +1140,8 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             settlements: _store.settlements,
             allocations: _store.paymentAllocations,
           ),
+          stateListenable: _store,
+          projectionBuilder: _inventoryProjection,
           personName: _store.personName,
           onOpenRecord: (id) {
             final record = _store.recordById(id);
@@ -1140,8 +1152,46 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
               initialOperation: operation == 'پرداخت' ? 'تحویل' : operation,
             ),
           ),
+          onQuickActionWithContext: (operation, item) =>
+              unawaited(_openInventoryQuickAction(operation, item)),
         ),
       ),
+    );
+  }
+
+  ZarOperationalInventoryProjection _inventoryProjection() =>
+      const ZarOperationalInventoryProjector().project(
+        deals: _store.deals,
+        settlements: _store.settlements,
+        allocations: _store.paymentAllocations,
+      );
+
+  Future<void> _openInventoryQuickAction(
+    String operation,
+    ZarOperationalInventoryItem item,
+  ) {
+    String? asset;
+    String? currencyCode;
+    String? goldFineness;
+    String? coinTypeId;
+    switch (item) {
+      case ZarCurrencyInventoryItem(:final code):
+        asset = code == 'TOMAN' ? 'وجه نقد' : 'ارز';
+        currencyCode = code;
+      case ZarGoldInventoryItem(:final fineness):
+        asset = 'طلا';
+        goldFineness = fineness;
+      case ZarCoinInventoryItem(:final identity):
+        asset = 'سکه';
+        final raw = identity.substring('coin:'.length);
+        coinTypeId = raw.split('|').first;
+    }
+    return _openQuickAdd(
+      initialOperation: operation == 'پرداخت' ? 'تحویل' : operation,
+      initialAsset: asset,
+      initialCurrencyCode: currencyCode,
+      initialGoldFineness: goldFineness,
+      initialCoinTypeId: coinTypeId,
     );
   }
 

@@ -1524,32 +1524,30 @@ class DealDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('جزئیات معامله (${record.operationDisplayLabel})', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 6),
-          Text(personName, style: Theme.of(context).textTheme.bodyLarge),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              AmountText(toPersianNumberText(record.amountDisplay)),
-              Text(record.assetLabel),
-              if (record.currencyCode != null)
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Text(record.currencyCode!),
-                ),
-              Text(formatJalaliDate(record.date), style: Theme.of(context).textTheme.bodyMedium),
-              Text(record.timeLabel(), style: Theme.of(context).textTheme.bodyMedium),
-            ],
-          ),
+          Text('جزئیات معامله (${record.operationDisplayLabel})', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 10),
+          _detailRow(context, 'نوع عملیات', Text(record.operationDisplayLabel)),
+          _detailRow(context, 'طرف حساب', Text(personName)),
+          _detailRow(context, 'دارایی', Text(record.assetLabel)),
+          _detailRow(context, 'مقدار', AmountText(toPersianNumberText(record.amountDisplay))),
+          if (record.currencyCode != null)
+            _detailRow(
+              context,
+              'نوع ارز',
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(record.currencyCode!),
+              ),
+            ),
+          _detailRow(context, 'تاریخ ثبت', Text(formatJalaliDate(record.date))),
+          _detailRow(context, 'ساعت ثبت', Text(record.timeLabel())),
           if (record.coinLines.isNotEmpty) ...[
             const SizedBox(height: 12),
             ...record.coinLines.map((line) => Padding(
@@ -1599,10 +1597,25 @@ class DealDetailSheet extends StatelessWidget {
             ),
           ],
           if ((record.note ?? '').isNotEmpty) ...[const SizedBox(height: 8), Text(record.note!, style: Theme.of(context).textTheme.bodyMedium)],
-          const SizedBox(height: 14),
-          Text('تعهدهای لینک‌شده', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 6),
-          if (linkedSettlements.isEmpty) const Text('تعهد لینک‌شده‌ای ندارد.') else ...linkedSettlements.map((e) => SettlementRow(record: e, personName: personName, onTap: () => onOpenSettlement(e))),
+          if (linkedSettlements.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text('تعهدهای لینک‌شده', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 6),
+            ...linkedSettlements.map((e) => SettlementRow(record: e, personName: personName, onTap: () => onOpenSettlement(e))),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(BuildContext context, String label, Widget value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 92, child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
+          Expanded(child: Align(alignment: AlignmentDirectional.centerStart, child: value)),
         ],
       ),
     );

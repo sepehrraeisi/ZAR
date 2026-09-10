@@ -250,18 +250,20 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('۳۲۰٬۰۰۰٬۰۰۰ تومان'),
+      find.text('۳۲۰٬۰۰۰٬۰۰۰'),
       400,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('۳۲۰٬۰۰۰٬۰۰۰ تومان'), findsOneWidget);
-    expect(find.text('۴۰۰ USD'), findsOneWidget);
+    expect(find.text('۳۲۰٬۰۰۰٬۰۰۰'), findsOneWidget);
+    expect(find.text('تومان'), findsOneWidget);
+    expect(find.text('۴۰۰'), findsOneWidget);
+    expect(find.text('USD'), findsWidgets);
     expect(
       find.byWidgetPredicate(
         (widget) =>
             widget is Icon &&
             widget.icon == Icons.chevron_left &&
-            widget.textDirection == TextDirection.rtl,
+            widget.textDirection == TextDirection.ltr,
       ),
       findsNWidgets(2),
     );
@@ -300,20 +302,29 @@ void main() {
       expect(find.text('تعهدهای در انتظار'), findsOneWidget);
       expect(find.text('موجودی واقعی'), findsOneWidget);
       expect(find.text('موجودی فعلی'), findsNothing);
-      expect(find.text('ارز • دریافت'), findsOneWidget);
-      expect(find.text('دریافت از علی'), findsWidgets);
-      expect(find.textContaining('آخرین حرکت:'), findsWidgets);
+      expect(find.text('USD'), findsWidgets);
+      expect(find.textContaining('دریافت از علی'), findsWidgets);
+      expect(find.text('فعالیت اخیر'), findsNothing);
       expect(
         tester.getTopLeft(find.text('تعهدهای در انتظار')).dy,
         lessThan(tester.getTopLeft(find.text('موجودی واقعی')).dy),
       );
 
       await tester.scrollUntilVisible(
-        find.text('۴۰۰ USD'),
+        find.text('۴۰۰'),
         400,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.tap(find.text('۴۰۰ USD'));
+      await tester.ensureVisible(find.text('۴۰۰'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find
+            .ancestor(
+              of: find.text('۴۰۰'),
+              matching: find.byType(InkWell),
+            )
+            .first,
+      );
       await tester.pumpAndSettle();
       expect(find.text('موجودی فعلی'), findsOneWidget);
       expect(find.text('مقدار ثبت‌شده'), findsNothing);
@@ -322,6 +333,48 @@ void main() {
       expect(actions, ['خرید']);
     },
   );
+
+  testWidgets('inventory projection refreshes while the route remains open', (
+    tester,
+  ) async {
+    var projection = projector.project(
+      settlements: [
+        settlement(
+          'live-usd',
+          amount: currency('USD', 400, 0),
+          status: ZarSettlementStatus.completed,
+        ),
+      ],
+    );
+    final state = ValueNotifier<int>(0);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OperationalInventoryScreen(
+          projection: projection,
+          stateListenable: state,
+          projectionBuilder: () => projection,
+          personName: (_) => 'علی',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('۴۰۰'), findsOneWidget);
+
+    projection = projector.project(
+      settlements: [
+        settlement(
+          'live-usd',
+          amount: currency('USD', 500, 0),
+          status: ZarSettlementStatus.completed,
+        ),
+      ],
+    );
+    state.value++;
+    await tester.pump();
+    expect(find.text('۴۰۰'), findsNothing);
+    expect(find.text('۵۰۰'), findsOneWidget);
+    state.dispose();
+  });
 }
 
 final _time = DateTime.utc(2026, 9, 1, 12);

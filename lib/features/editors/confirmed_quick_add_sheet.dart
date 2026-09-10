@@ -18,6 +18,10 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
     this.recentPeople = const [],
     this.preferenceStore,
     this.initialOperation,
+    this.initialAsset,
+    this.initialCurrencyCode,
+    this.initialGoldFineness,
+    this.initialCoinTypeId,
   });
   final List<AppPerson> people;
   final Future<void> Function(QuickAddDraft draft) onSave;
@@ -26,6 +30,10 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
   final List<AppPerson> recentPeople;
   final QuickEntryPreferenceStore? preferenceStore;
   final String? initialOperation;
+  final String? initialAsset;
+  final String? initialCurrencyCode;
+  final String? initialGoldFineness;
+  final String? initialCoinTypeId;
   @override
   State<ConfirmedQuickAddSheet> createState() => _ConfirmedQuickAddSheetState();
 }
@@ -84,8 +92,24 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     _date = Jalali.fromDateTime(now);
     _time = TimeOfDay.fromDateTime(now);
     _operation = widget.initialOperation;
+    _asset = widget.initialAsset;
+    _selectionExpanded = widget.initialAsset == null;
+    _currencyCode = widget.initialCurrencyCode;
+    if (widget.initialAsset == 'طلا') {
+      _fineness.text = widget.initialGoldFineness ?? '';
+    }
     _preferenceStore =
         widget.preferenceStore ?? SharedPreferencesQuickEntryPreferenceStore();
+    if (widget.initialAsset == 'سکه' && widget.coinTypes.isNotEmpty) {
+      final selected = widget.coinTypes.where(
+        (item) => item.id == widget.initialCoinTypeId,
+      );
+      _coinRows.add(
+        _CoinDraftRow(
+          selected.isEmpty ? widget.coinTypes.first : selected.first,
+        ),
+      );
+    }
     _loadPreferences();
   }
 
@@ -94,14 +118,33 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       final preferences = await _preferenceStore.load();
       if (!mounted || _startedInput) return;
       setState(() {
-        _weightUnit = preferences.weightUnit;
-        _priceUnit = preferences.priceUnit;
-        _fineness.text = toPersianNumberText(preferences.goldPurity);
+        if (widget.initialAsset == null) {
+          _weightUnit = preferences.weightUnit;
+          _priceUnit = preferences.priceUnit;
+        }
+        if (widget.initialAsset != 'طلا') {
+          _fineness.text = toPersianNumberText(preferences.goldPurity);
+        }
         _reference.text = preferences.priceUnit == ZarGoldUnit.gram
             ? '۷۵۰'
             : '۷۰۵';
-        _currencyCode = preferences.currencyCode;
+        if (widget.initialCurrencyCode == null) {
+          _currencyCode = preferences.currencyCode;
+        }
         _preferredCoinTypeId = preferences.coinTypeId;
+        if (widget.initialAsset == 'سکه' &&
+            widget.initialCoinTypeId == null &&
+            _coinRows.isEmpty &&
+            widget.coinTypes.isNotEmpty) {
+          final preferred = widget.coinTypes.where(
+            (item) => item.id == preferences.coinTypeId,
+          );
+          _coinRows.add(
+            _CoinDraftRow(
+              preferred.isEmpty ? widget.coinTypes.first : preferred.first,
+            ),
+          );
+        }
       });
     } catch (_) {
       // Preferences are a convenience only; Quick Entry must remain usable.

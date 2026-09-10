@@ -1,4 +1,5 @@
 import '../app_core.dart';
+import 'package:flutter/foundation.dart';
 import '../data/zar_domain_repository.dart';
 import '../domain/zar_domain_models.dart';
 import '../domain/zar_reminder_plan.dart';
@@ -12,7 +13,7 @@ import 'customer_operational_balance_projector.dart';
 /// Typed domain entities are the sole owned business state. The current widgets
 /// still consume `AppPerson` / `AppRecord`, so those values are derived at the
 /// presentation boundary rather than retained as a second mutable state graph.
-class ZarPhaseA2Store {
+class ZarPhaseA2Store extends ChangeNotifier {
   ZarPhaseA2Store({
     required ZarDomainRepository repository,
     required ZarLegacyPresentationBridge bridge,
@@ -108,6 +109,7 @@ class ZarPhaseA2Store {
         ..addEntries(deals.map((item) => MapEntry(item.id, item)));
       _coinTypes = coinTypes;
       _allocations = snapshot.paymentAllocations;
+      notifyListeners();
     } catch (error) {
       _lastError = error;
       rethrow;
@@ -143,6 +145,7 @@ class ZarPhaseA2Store {
     );
     await _repository.savePerson(domain);
     _domainPeople[domain.id] = domain;
+    notifyListeners();
   }
 
   Future<void> archivePerson(AppPerson person) async {
@@ -155,6 +158,7 @@ class ZarPhaseA2Store {
       now: _clock(),
     );
     _domainPeople[archived.id] = archived;
+    notifyListeners();
   }
 
   Future<void> restorePerson(AppPerson person) async {
@@ -167,6 +171,7 @@ class ZarPhaseA2Store {
       now: _clock(),
     );
     _domainPeople[restored.id] = restored;
+    notifyListeners();
   }
 
   Future<void> saveRecord(
@@ -197,16 +202,19 @@ class ZarPhaseA2Store {
       await _repository.saveDeal(domain, auditAction: auditAction);
       _domainDeals[domain.id] = domain;
     }
+    notifyListeners();
   }
 
   Future<void> saveCoinDeal(ZarDeal deal) async {
     await _repository.saveDeal(deal, auditAction: 'create');
     _domainDeals[deal.id] = deal;
+    notifyListeners();
   }
 
   Future<void> saveCoinSettlement(ZarSettlement settlement) async {
     await _repository.saveSettlement(settlement, auditAction: 'create');
     _domainSettlements[settlement.id] = settlement;
+    notifyListeners();
   }
 
   Future<void> saveCoinType(ZarCoinType coinType) async {
@@ -217,6 +225,7 @@ class ZarPhaseA2Store {
     final coinCatalog = catalog as ZarCoinCatalogRepository;
     await coinCatalog.saveCoinType(coinType);
     await _refreshCoinTypes(coinCatalog);
+    notifyListeners();
   }
 
   Future<void> archiveCoinType(ZarCoinType coinType) async {
@@ -227,6 +236,7 @@ class ZarPhaseA2Store {
     final coinCatalog = catalog as ZarCoinCatalogRepository;
     await coinCatalog.archiveCoinType(coinType);
     await _refreshCoinTypes(coinCatalog);
+    notifyListeners();
   }
 
   Future<void> restoreCoinType(ZarCoinType coinType) async {
@@ -237,6 +247,7 @@ class ZarPhaseA2Store {
     final coinCatalog = catalog as ZarCoinCatalogRepository;
     await coinCatalog.restoreCoinType(coinType);
     await _refreshCoinTypes(coinCatalog);
+    notifyListeners();
   }
 
   Future<void> _refreshCoinTypes(ZarCoinCatalogRepository catalog) async {
@@ -265,6 +276,7 @@ class ZarPhaseA2Store {
     );
     await _repository.saveSettlement(updated, auditAction: auditAction);
     _domainSettlements[updated.id] = updated;
+    notifyListeners();
   }
 
   Future<void> completeSettlement(AppRecord record) => saveRecord(
