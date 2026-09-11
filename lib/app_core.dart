@@ -1354,58 +1354,8 @@ class PersonDetailScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
-          Text(person.name, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 4),
-          Text(
-            person.phone ?? 'شماره تماس ثبت نشده است.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          if ((person.note ?? '').trim().isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(person.note!, style: Theme.of(context).textTheme.bodyMedium),
-          ],
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => onEditPerson(person),
-                icon: const Icon(CupertinoIcons.pencil, size: 16),
-                label: const Text('ویرایش'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: person.phone == null
-                    ? null
-                    : () async {
-                        final uri = Uri(
-                          scheme: 'tel',
-                          path: phoneToEnglishDigits(person.phone!),
-                        );
-                        await launchUrl(uri);
-                      },
-                icon: const Icon(CupertinoIcons.phone, size: 16),
-                label: const Text('تماس'),
-              ),
-              TextButton.icon(
-                onPressed: () => onArchivePerson(person.id),
-                icon: const Icon(CupertinoIcons.archivebox, size: 16),
-                label: const Text('آرشیو'),
-              ),
-              if (onShareStatement != null)
-                OutlinedButton.icon(
-                  onPressed: onShareStatement,
-                  icon: const Icon(CupertinoIcons.share, size: 16),
-                  label: const Text('اشتراک صورتحساب'),
-                ),
-              if (onQuickEntry != null)
-                FilledButton.tonalIcon(
-                  onPressed: onQuickEntry,
-                  icon: const Icon(CupertinoIcons.add, size: 16),
-                  label: const Text('ثبت جدید'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
+          _personProfileHeader(context),
+          const SizedBox(height: 12),
           if (balance != null) ...[
             CustomerBalanceCard(
               balance: balance!,
@@ -1479,6 +1429,152 @@ class PersonDetailScreen extends StatelessWidget {
               const Divider(height: 20),
               Text(
                 'آخرین فعالیت: ${_lastActivityLabel(position.lastActivityAt)}',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _personProfileHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasPhone = (person.phone ?? '').trim().isNotEmpty;
+    final phoneLabel = hasPhone ? person.phone! : 'شماره تماس ثبت نشده است.';
+    final note = (person.note ?? '').trim();
+    final buttonPadding = const EdgeInsets.symmetric(horizontal: 5);
+    final compactButtonStyle = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
+      padding: WidgetStatePropertyAll(buttonPadding),
+      visualDensity: VisualDensity.compact,
+    );
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 25,
+                backgroundColor: theme.colorScheme.primary.withValues(
+                  alpha: 0.14,
+                ),
+                child: Text(
+                  person.name.trim().isEmpty ? '-' : person.name.trim()[0],
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        person.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        phoneLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      if (note.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          note,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  key: const Key('person-primary-new-entry'),
+                  onPressed: onQuickEntry,
+                  style: compactButtonStyle,
+                  icon: const Icon(CupertinoIcons.add, size: 17),
+                  label: const Text('ثبت جدید'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('person-primary-share-statement'),
+                  onPressed: onShareStatement,
+                  style: compactButtonStyle,
+                  icon: const Icon(CupertinoIcons.share, size: 17),
+                  label: const Text('اشتراک صورتحساب'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: hasPhone
+                      ? () async {
+                          final uri = Uri(
+                            scheme: 'tel',
+                            path: phoneToEnglishDigits(person.phone!),
+                          );
+                          await launchUrl(uri);
+                        }
+                      : null,
+                  style: compactButtonStyle,
+                  icon: const Icon(CupertinoIcons.phone, size: 16),
+                  label: const Text('تماس'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => onEditPerson(person),
+                  style: compactButtonStyle,
+                  icon: const Icon(CupertinoIcons.pencil, size: 16),
+                  label: const Text('ویرایش'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => onArchivePerson(person.id),
+                  style: compactButtonStyle,
+                  icon: const Icon(CupertinoIcons.archivebox, size: 16),
+                  label: const Text('بایگانی'),
+                ),
               ),
             ],
           ),
@@ -1634,7 +1730,10 @@ class _PersonRecordRow extends StatelessWidget {
               child: Directionality(
                 textDirection: TextDirection.rtl,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  // In RTL, start is the physical right edge. Using end
+                  // here caused the information block to drift toward the
+                  // center of the row.
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       record.operationDisplayLabel,

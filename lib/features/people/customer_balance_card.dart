@@ -167,7 +167,9 @@ class CustomerBalanceCard extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 160),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        // The compact bucket lives in the RTL page context. `start` is the
+        // physical right edge, keeping identity/value blocks anchored.
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (bucket.assetType != ZarAssetType.currency)
             Text(
@@ -250,7 +252,9 @@ class CustomerBalanceCard extends StatelessWidget {
             child: Directionality(
               textDirection: TextDirection.rtl,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                // In RTL, start is the physical right edge. Using end here
+                // caused the identity column to drift toward the center.
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     identity,

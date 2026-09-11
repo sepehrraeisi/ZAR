@@ -1,4 +1,5 @@
 import 'package:flutter_app/app_core.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/application/customer_operational_balance_projector.dart';
 import 'package:flutter_app/domain/zar_domain_models.dart';
@@ -117,6 +118,102 @@ void main() {
       await tester.tap(find.text('ثبت جدید'));
       expect(shared, isTrue);
       expect(quickAdded, isTrue);
+    },
+  );
+
+  testWidgets(
+    'person profile header keeps prioritized actions usable at 360dp',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('fa', 'IR'),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: PersonDetailScreen(
+              person: AppPerson(
+                id: 'p1',
+                name: 'مهیار',
+                phone: '۰۹۱۲۱۲۳۴۵۶۷',
+                note: 'ایران‌زمین شهرکرد',
+              ),
+              records: const [],
+              personName: (_) => 'مهیار',
+              balance: balance,
+              onTapRecord: (_) {},
+              onEditPerson: (_) {},
+              onArchivePerson: (_) {},
+              onShareStatement: () {},
+              onQuickEntry: () {},
+              onShareBalanceBucket: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('person-primary-new-entry')), findsOneWidget);
+      expect(
+        find.byKey(const Key('person-primary-share-statement')),
+        findsOneWidget,
+      );
+      expect(find.text('تماس'), findsOneWidget);
+      expect(find.text('ویرایش'), findsOneWidget);
+      expect(find.text('بایگانی'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'person ledger rows anchor info right, amount left, and chevron far left',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final settlement = AppRecord(
+        id: 's1',
+        type: RecordType.settlement,
+        operationLabel: 'دریافت',
+        personId: person.id,
+        amountDisplay: '۱۰۰',
+        assetLabel: 'ارز',
+        currencyCode: 'USD',
+        date: Jalali(1405, 6, 18),
+        time: const TimeOfDay(hour: 16, minute: 13),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('fa', 'IR'),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: PersonDetailScreen(
+              person: person,
+              records: [settlement],
+              personName: (_) => person.name,
+              balance: ZarCustomerOperationalBalance(const []),
+              onTapRecord: (_) {},
+              onEditPerson: (_) {},
+              onArchivePerson: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final chevron = tester.getTopLeft(
+        find.byIcon(CupertinoIcons.chevron_left),
+      );
+      final amount = tester.getTopLeft(find.text('۱۰۰'));
+      final operation = tester.getTopLeft(find.text('دریافت'));
+      expect(chevron.dx, lessThan(amount.dx));
+      expect(amount.dx, lessThan(operation.dx));
+      expect(tester.takeException(), isNull);
     },
   );
 }
