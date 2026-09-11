@@ -15,6 +15,7 @@ import 'package:share_plus/share_plus.dart';
 import 'features/reminders/reminder_model.dart';
 import 'application/customer_position_projector.dart';
 import 'domain/zar_domain_models.dart';
+import 'widgets/zar_amount_display.dart';
 
 void main() {
   runApp(const ZarPlusApp());
@@ -1426,11 +1427,8 @@ class PersonDetailScreen extends StatelessWidget {
                 const _ZEmptyRow(label: 'تعهد باز وجود ندارد.')
               else
                 ...openItems.map(
-                  (e) => SettlementRow(
-                    record: e,
-                    personName: personName(e.personId),
-                    onTap: () => onTapRecord(e),
-                  ),
+                  (e) =>
+                      _PersonRecordRow(record: e, onTap: () => onTapRecord(e)),
                 ),
             ],
           ),
@@ -1442,10 +1440,8 @@ class PersonDetailScreen extends StatelessWidget {
                 ? const [_ZEmptyRow(label: 'معامله یا تسویه‌ای ثبت نشده است.')]
                 : historyItems
                       .map(
-                        (e) => SettlementRow(
+                        (e) => _PersonRecordRow(
                           record: e,
-                          personName: personName(e.personId),
-                          showPersonName: false,
                           onTap: () => onTapRecord(e),
                         ),
                       )
@@ -1593,6 +1589,161 @@ class PersonDetailScreen extends StatelessWidget {
       parts.length == 1 ? grouped : '$grouped٫${parts[1]}',
     );
   }
+}
+
+/// Person-profile row with a stable physical left amount column. The
+/// surrounding page is RTL, but the row itself is laid out left-to-right so
+/// the disclosure chevron and Amount/Unit block never jump as labels change.
+class _PersonRecordRow extends StatelessWidget {
+  const _PersonRecordRow({required this.record, this.onTap});
+
+  final AppRecord record;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final statusColor = record.status == SettlementStatus.completed
+        ? const Color(0xFF2F7D4C)
+        : record.status == SettlementStatus.cancelled
+        ? const Color(0xFF9D3636)
+        : theme.textTheme.bodyMedium?.color;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: theme.dividerColor)),
+        ),
+        child: Row(
+          textDirection: TextDirection.ltr,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(
+              width: 24,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Icon(CupertinoIcons.chevron_left, size: 20),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(width: 138, child: _PersonRecordAmount(record: record)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      record.operationDisplayLabel,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${formatJalaliDate(record.date)} · ${record.timeLabel()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      record.type == RecordType.settlement
+                          ? record.statusLabel()
+                          : 'معامله',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PersonRecordAmount extends StatelessWidget {
+  const _PersonRecordAmount({required this.record});
+
+  final AppRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = _personRecordAmountParts(record);
+    final style = Theme.of(context).textTheme.bodyMedium;
+    return ZarAmountDisplay(
+      amount: parts.amount,
+      unit: parts.unit,
+      purity: parts.purity,
+      amountStyle: style?.copyWith(fontWeight: FontWeight.w700),
+      unitStyle: style,
+    );
+  }
+}
+
+({String amount, String unit, String? purity}) _personRecordAmountParts(
+  AppRecord record,
+) {
+  if (record.coinLines.isNotEmpty) {
+    if (record.coinLines.length == 1) {
+      final line = record.coinLines.single;
+      return (
+        amount: toPersianDigits(line.quantity.toString()),
+        unit: 'عدد ${line.name}',
+        purity: line.fineness == null
+            ? null
+            : 'عیار ${toPersianDigits(line.fineness!)}',
+      );
+    }
+    return (
+      amount: toPersianDigits(record.coinLines.length.toString()),
+      unit: 'نوع سکه',
+      purity: null,
+    );
+  }
+
+  final numeric =
+      RegExp(
+        r'[-+]?[0-9۰-۹٬,٫.]+',
+      ).firstMatch(record.amountDisplay)?.group(0) ??
+      record.amountDisplay;
+  if (record.currencyCode != null) {
+    return (
+      amount: toPersianNumberText(numeric),
+      unit: record.currencyCode == 'TOMAN' ? 'تومان' : record.currencyCode!,
+      purity: null,
+    );
+  }
+  if (record.assetLabel == 'وجه نقد') {
+    return (amount: toPersianNumberText(numeric), unit: 'تومان', purity: null);
+  }
+  if (record.goldFineness != null || record.assetLabel == 'گرم طلا') {
+    return (
+      amount: toPersianNumberText(numeric),
+      unit: record.goldInputUnit == 'mesghal' ? 'مثقال طلا' : 'گرم طلا',
+      purity: record.goldFineness == null
+          ? null
+          : 'عیار ${toPersianDigits(record.goldFineness!)}',
+    );
+  }
+  return (
+    amount: toPersianNumberText(numeric),
+    unit: record.assetLabel,
+    purity: null,
+  );
 }
 
 class HistoryScreen extends StatefulWidget {
@@ -3967,11 +4118,11 @@ String _shareBucketLine(ZarCustomerBalanceAssetBucket bucket) {
   return switch (bucket.assetType) {
     ZarAssetType.currency =>
       bucket.currencyCode == 'TOMAN'
-          ? '$amount تومان'
-          : '$amount ${bucket.currencyCode ?? ''}',
+          ? 'تومان $amount'
+          : '${bucket.currencyCode ?? ''} $amount',
     ZarAssetType.gold =>
-      '${bucket.goldFineness == null ? 'طلای عیار نامشخص' : 'طلای عیار ${toPersianNumberText(bucket.goldFineness!)}'} — $amount گرم',
-    ZarAssetType.coin => '${bucket.displayName ?? 'سکه'} — $amount عدد',
+      'گرم طلا $amount — ${bucket.goldFineness == null ? 'عیار نامشخص' : 'عیار ${toPersianNumberText(bucket.goldFineness!)}'}',
+    ZarAssetType.coin => 'عدد $amount — ${bucket.displayName ?? 'سکه'}',
   };
 }
 

@@ -51,9 +51,9 @@ void main() {
       generatedAt: DateTime(2026, 9, 11, 16, 50),
     );
     expect(text, contains('وضعیت حساب با سهیل'));
-    expect(text, contains('۱۰٬۰۰۰ USD'));
-    expect(text, contains('طلای عیار ۷۵۰'));
-    expect(text, contains('۴۵٬۰۰۰ EUR'));
+    expect(text, contains('USD ۱۰٬۰۰۰'));
+    expect(text, contains('گرم طلا ۱۰۰ — عیار ۷۵۰'));
+    expect(text, contains('EUR ۴۵٬۰۰۰'));
     expect(text, contains('۲۰ شهریور ۱۴۰۵'));
   });
 
@@ -64,7 +64,7 @@ void main() {
       generatedAt: DateTime(2026, 9, 11, 16, 50),
     );
     expect(text, contains('باید به سهیل پرداخت کنم'));
-    expect(text, contains('۴۵٬۰۰۰ EUR'));
+    expect(text, contains('EUR ۴۵٬۰۰۰'));
     expect(text, contains('نه رسید معامله'));
   });
 

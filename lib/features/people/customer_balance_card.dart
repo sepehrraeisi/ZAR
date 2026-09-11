@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../application/customer_operational_balance_projector.dart';
 import '../../domain/zar_amount_formatter.dart';
 import '../../domain/zar_domain_models.dart';
+import '../../widgets/zar_amount_display.dart';
 
 class CustomerBalanceCard extends StatelessWidget {
   const CustomerBalanceCard({
@@ -162,14 +163,27 @@ class CustomerBalanceCard extends StatelessWidget {
   }
 
   Widget _compactBucket(ZarCustomerBalanceAssetBucket bucket, Color color) {
-    final label = _bucketText(bucket);
-    return Directionality(
-      textDirection: bucket.assetType == ZarAssetType.currency
-          ? TextDirection.ltr
-          : TextDirection.rtl,
-      child: Text(
-        label,
-        style: TextStyle(color: color, fontWeight: FontWeight.w700),
+    final parts = _bucketDisplayParts(bucket);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 160),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (bucket.assetType != ZarAssetType.currency)
+            Text(
+              _bucketIdentity(bucket),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: color, fontWeight: FontWeight.w600),
+            ),
+          ZarAmountDisplay(
+            amount: parts.amount,
+            unit: parts.unit,
+            purity: parts.purity,
+            amountStyle: TextStyle(color: color, fontWeight: FontWeight.w700),
+            unitStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }
@@ -181,7 +195,7 @@ class CustomerBalanceCard extends StatelessWidget {
     VoidCallback? onShare,
   }) {
     final identity = _bucketIdentity(bucket);
-    final amount = _bucketAmount(bucket);
+    final parts = _bucketDisplayParts(bucket);
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -191,71 +205,82 @@ class CustomerBalanceCard extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.16)),
       ),
       child: Row(
+        textDirection: TextDirection.ltr,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  identity,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Text(
-                    amount,
-                    textAlign: TextAlign.left,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w800,
+          SizedBox(
+            width: 44,
+            height: 44,
+            child: onShare == null
+                ? null
+                : Semantics(
+                    button: true,
+                    label: 'اشتراک‌گذاری این مورد',
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: 44,
+                        height: 44,
+                      ),
+                      tooltip: 'اشتراک‌گذاری این مورد',
+                      onPressed: onShare,
+                      icon: const Icon(Icons.ios_share_outlined, size: 19),
                     ),
                   ),
-                ),
-                if (bucket.sourceCount > 1)
-                  Text(
-                    '${_toPersianDigits(bucket.sourceCount.toString())} رکورد',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-              ],
-            ),
           ),
-          if (onShare != null)
-            Semantics(
-              button: true,
-              label: 'اشتراک‌گذاری این مورد',
-              child: IconButton(
-                tooltip: 'اشتراک‌گذاری این مورد',
-                onPressed: onShare,
-                icon: const Icon(Icons.ios_share_outlined, size: 19),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 132,
+            child: ZarAmountDisplay(
+              amount: parts.amount,
+              unit: parts.unit,
+              purity: parts.purity,
+              amountStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
+              unitStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    identity,
+                    textAlign: TextAlign.right,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (bucket.sourceCount > 1)
+                    Text(
+                      '${_toPersianDigits(bucket.sourceCount.toString())} رکورد',
+                      textAlign: TextAlign.right,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  String _bucketText(ZarCustomerBalanceAssetBucket bucket) {
-    final amount = _formatDecimal(bucket.amount);
-    return switch (bucket.assetType) {
-      ZarAssetType.currency =>
-        bucket.currencyCode == 'TOMAN'
-            ? '$amount تومان'
-            : '${bucket.currencyCode ?? ''} $amount',
-      ZarAssetType.gold => '$amount گرم طلا',
-      ZarAssetType.coin => '${bucket.displayName ?? 'سکه'} $amount عدد',
-    };
-  }
-
   String _bucketIdentity(ZarCustomerBalanceAssetBucket bucket) {
     return switch (bucket.assetType) {
       ZarAssetType.currency =>
-        bucket.currencyCode == 'TOMAN'
-            ? 'وجه نقد (تومان)'
-            : 'ارز ${bucket.currencyCode ?? ''}',
+        bucket.currencyCode == 'TOMAN' ? 'وجه نقد' : 'ارز',
       ZarAssetType.gold =>
         bucket.goldFineness == null
             ? 'طلای عیار نامشخص'
@@ -264,12 +289,20 @@ class CustomerBalanceCard extends StatelessWidget {
     };
   }
 
-  String _bucketAmount(ZarCustomerBalanceAssetBucket bucket) {
-    final value = _formatDecimal(bucket.amount);
+  ({String amount, String unit, String? purity}) _bucketDisplayParts(
+    ZarCustomerBalanceAssetBucket bucket,
+  ) {
+    final amount = _formatDecimal(bucket.amount);
     return switch (bucket.assetType) {
-      ZarAssetType.currency => value,
-      ZarAssetType.gold => '$value گرم',
-      ZarAssetType.coin => '$value عدد',
+      ZarAssetType.currency => (
+        amount: amount,
+        unit: bucket.currencyCode == 'TOMAN'
+            ? 'تومان'
+            : bucket.currencyCode ?? 'ارز',
+        purity: null,
+      ),
+      ZarAssetType.gold => (amount: amount, unit: 'گرم طلا', purity: null),
+      ZarAssetType.coin => (amount: amount, unit: 'عدد', purity: null),
     };
   }
 

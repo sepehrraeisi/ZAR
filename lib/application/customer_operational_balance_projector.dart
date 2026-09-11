@@ -54,16 +54,26 @@ class ZarCustomerOperationalBalance {
     Iterable<ZarCustomerTomanObligation> values, {
     Iterable<ZarCustomerBalanceAssetBucket> receivableAssetBuckets = const [],
     Iterable<ZarCustomerBalanceAssetBucket> payableAssetBuckets = const [],
+    bool projectedAssetBuckets = false,
   }) : obligations = List.unmodifiable(values),
        receivableAssetBuckets = List.unmodifiable(receivableAssetBuckets),
-       payableAssetBuckets = List.unmodifiable(payableAssetBuckets);
+       payableAssetBuckets = List.unmodifiable(payableAssetBuckets),
+       _projectedAssetBuckets = projectedAssetBuckets;
 
   final List<ZarCustomerTomanObligation> obligations;
   final List<ZarCustomerBalanceAssetBucket> receivableAssetBuckets;
   final List<ZarCustomerBalanceAssetBucket> payableAssetBuckets;
+  final bool _projectedAssetBuckets;
 
-  BigInt get receivableToman => _sum(ZarSettlementDirection.receive);
-  BigInt get payableToman => _sum(ZarSettlementDirection.deliver);
+  /// Returns the net Toman position when this instance came from the
+  /// canonical projector. Hand-built presentation fixtures without projected
+  /// buckets retain the historical obligation-based behavior.
+  BigInt get receivableToman => _projectedAssetBuckets
+      ? _sumTomanBucket(receivableAssetBuckets)
+      : _sum(ZarSettlementDirection.receive);
+  BigInt get payableToman => _projectedAssetBuckets
+      ? _sumTomanBucket(payableAssetBuckets)
+      : _sum(ZarSettlementDirection.deliver);
 
   List<ZarCustomerBalanceAssetBucket> bucketsFor(
     ZarSettlementDirection direction,
@@ -74,6 +84,13 @@ class ZarCustomerOperationalBalance {
   BigInt _sum(ZarSettlementDirection direction) => obligations
       .where((item) => item.direction == direction)
       .fold(BigInt.zero, (sum, item) => sum + item.remainingToman);
+
+  BigInt _sumTomanBucket(List<ZarCustomerBalanceAssetBucket> buckets) {
+    for (final bucket in buckets) {
+      if (bucket.isToman) return BigInt.parse(bucket.amount);
+    }
+    return BigInt.zero;
+  }
 }
 
 /// Reconstructs remaining Toman obligations from one coherent snapshot.
@@ -278,11 +295,100 @@ class ZarCustomerOperationalBalanceProjector {
       );
       if (bucket != null && !bucket.isToman) payableBuckets.add(bucket);
     }
+    final net = _netAssetBuckets(receivableBuckets, payableBuckets);
     return ZarCustomerOperationalBalance(
       result,
-      receivableAssetBuckets: receivableBuckets,
-      payableAssetBuckets: payableBuckets,
+      receivableAssetBuckets: net.receive,
+      payableAssetBuckets: net.deliver,
+      projectedAssetBuckets: true,
     );
+  }
+
+  _NetAssetBuckets _netAssetBuckets(
+    List<ZarCustomerBalanceAssetBucket> receivable,
+    List<ZarCustomerBalanceAssetBucket> payable,
+  ) {
+    final values = <String, _NetBucket>{};
+    for (final bucket in receivable) {
+      values
+          .putIfAbsent(
+            _assetIdentity(bucket),
+            () => _NetBucket(template: bucket),
+          )
+          .addReceive(bucket);
+    }
+    for (final bucket in payable) {
+      values
+          .putIfAbsent(
+            _assetIdentity(bucket),
+            () => _NetBucket(template: bucket),
+          )
+          .addDeliver(bucket);
+    }
+
+    final netReceivable = <ZarCustomerBalanceAssetBucket>[];
+    final netPayable = <ZarCustomerBalanceAssetBucket>[];
+    for (final value in values.values) {
+      final comparison = _compareExact(value.receivable, value.payable);
+      if (comparison == 0) continue;
+      final receives = comparison > 0;
+      final amount = receives
+          ? _exactDifference(value.receivable, value.payable)
+          : _exactDifference(value.payable, value.receivable);
+      final sourceCount = receives
+          ? value.receiveSourceCount
+          : value.deliverSourceCount;
+      final bucket = ZarCustomerBalanceAssetBucket(
+        direction: receives
+            ? ZarSettlementDirection.receive
+            : ZarSettlementDirection.deliver,
+        assetType: value.template.assetType,
+        amount: amount,
+        currencyCode: value.template.currencyCode,
+        goldFineness: value.template.goldFineness,
+        coinIdentity: value.template.coinIdentity,
+        displayName: value.template.displayName,
+        sourceCount: sourceCount,
+      );
+      (receives ? netReceivable : netPayable).add(bucket);
+    }
+    return _NetAssetBuckets(netReceivable, netPayable);
+  }
+
+  String _assetIdentity(ZarCustomerBalanceAssetBucket bucket) =>
+      switch (bucket.assetType) {
+        ZarAssetType.currency =>
+          'currency:${bucket.currencyCode?.trim().toUpperCase() ?? ''}',
+        ZarAssetType.gold => 'gold:${bucket.goldFineness?.trim() ?? 'unknown'}',
+        ZarAssetType.coin =>
+          'coin:${bucket.coinIdentity ?? bucket.displayName ?? ''}',
+      };
+
+  int _compareExact(ZarExactDecimal left, ZarExactDecimal right) {
+    final targetScale = left.scale > right.scale ? left.scale : right.scale;
+    final leftValue =
+        left.unscaled * BigInt.from(10).pow(targetScale - left.scale);
+    final rightValue =
+        right.unscaled * BigInt.from(10).pow(targetScale - right.scale);
+    return leftValue.compareTo(rightValue);
+  }
+
+  String _exactDifference(ZarExactDecimal larger, ZarExactDecimal smaller) {
+    final targetScale = larger.scale > smaller.scale
+        ? larger.scale
+        : smaller.scale;
+    var difference =
+        larger.unscaled * BigInt.from(10).pow(targetScale - larger.scale) -
+        smaller.unscaled * BigInt.from(10).pow(targetScale - smaller.scale);
+    var scale = targetScale;
+    while (scale > 0 && difference.remainder(BigInt.from(10)) == BigInt.zero) {
+      difference ~/= BigInt.from(10);
+      scale--;
+    }
+    if (scale == 0) return difference.toString();
+    final digits = difference.toString().padLeft(scale + 1, '0');
+    final split = digits.length - scale;
+    return '${digits.substring(0, split)}.${digits.substring(split)}';
   }
 
   ZarCustomerBalanceAssetBucket? _assetBucket(
@@ -338,4 +444,31 @@ class ZarCustomerOperationalBalanceProjector {
     if (value.remainder(scale) != BigInt.zero) return null;
     return value ~/ scale;
   }
+}
+
+class _NetBucket {
+  _NetBucket({required this.template});
+
+  final ZarCustomerBalanceAssetBucket template;
+  ZarExactDecimal receivable = ZarExactDecimal.parse('0');
+  ZarExactDecimal payable = ZarExactDecimal.parse('0');
+  int receiveSourceCount = 0;
+  int deliverSourceCount = 0;
+
+  void addReceive(ZarCustomerBalanceAssetBucket bucket) {
+    receivable = receivable.add(ZarExactDecimal.parse(bucket.amount));
+    receiveSourceCount += bucket.sourceCount;
+  }
+
+  void addDeliver(ZarCustomerBalanceAssetBucket bucket) {
+    payable = payable.add(ZarExactDecimal.parse(bucket.amount));
+    deliverSourceCount += bucket.sourceCount;
+  }
+}
+
+class _NetAssetBuckets {
+  const _NetAssetBuckets(this.receive, this.deliver);
+
+  final List<ZarCustomerBalanceAssetBucket> receive;
+  final List<ZarCustomerBalanceAssetBucket> deliver;
 }

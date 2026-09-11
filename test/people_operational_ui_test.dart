@@ -67,8 +67,82 @@ void main() {
       expect(find.text('۱ معامله'), findsOneWidget);
       expect(find.text('۰ تعهد باز'), findsOneWidget);
       expect(find.text('به او باید بدهم'), findsOneWidget);
-      expect(find.textContaining('USD ۱۰٬۰۰۰'), findsOneWidget);
+      expect(find.text('USD'), findsOneWidget);
+      expect(find.text('۱۰٬۰۰۰'), findsOneWidget);
       expect(find.textContaining('آخرین فعالیت: خرید'), findsOneWidget);
     },
   );
+
+  testWidgets('people preview uses the canonical net position', (tester) async {
+    final person = AppPerson(id: 'p1', name: 'مهیار');
+    final at = DateTime.utc(2026, 9, 11, 12);
+    ZarSettlement settlement(
+      String id,
+      ZarSettlementDirection direction,
+      int amount,
+    ) => ZarSettlement(
+      id: id,
+      businessId: 'business',
+      personId: person.id,
+      direction: direction,
+      amount: ZarCurrencyAssetAmount(
+        ZarCurrencyAmount(code: 'TOMAN', minorUnits: amount, minorUnitScale: 0),
+      ),
+      scheduledAt: at,
+      hasTime: true,
+      status: ZarSettlementStatus.open,
+      createdBy: 'user',
+      createdAt: at,
+      updatedAt: at,
+    );
+    final domainSettlements = [
+      settlement('receive', ZarSettlementDirection.receive, 700000000),
+      settlement('deliver', ZarSettlementDirection.deliver, 350000000),
+    ];
+    final balance = const ZarCustomerOperationalBalanceProjector().project(
+      personId: person.id,
+      deals: const [],
+      settlements: domainSettlements,
+      allocations: const <ZarPaymentAllocation>[],
+    );
+    final records = domainSettlements
+        .map(
+          (item) => AppRecord(
+            id: item.id,
+            type: RecordType.settlement,
+            operationLabel: item.direction == ZarSettlementDirection.receive
+                ? 'دریافت'
+                : 'تحویل',
+            personId: person.id,
+            amountDisplay: item.amount is ZarCurrencyAssetAmount
+                ? (item.amount as ZarCurrencyAssetAmount).value.minorUnits
+                      .toString()
+                : '',
+            assetLabel: 'وجه نقد',
+            currencyCode: 'TOMAN',
+            date: Jalali(1405, 6, 11),
+            time: const TimeOfDay(hour: 12, minute: 0),
+          ),
+        )
+        .toList(growable: false);
+
+    await tester.pumpWidget(
+      _host(
+        OperationalPeopleScreen(
+          people: [person],
+          records: records,
+          archivedCount: 0,
+          onAddPerson: () {},
+          onOpenPerson: (_) {},
+          onOpenArchive: () {},
+          balanceFor: (_) => balance,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('تومان'), findsOneWidget);
+    expect(find.text('۳۵۰٬۰۰۰٬۰۰۰'), findsOneWidget);
+    expect(find.text('۷۰۰٬۰۰۰٬۰۰۰'), findsNothing);
+  });
 }
