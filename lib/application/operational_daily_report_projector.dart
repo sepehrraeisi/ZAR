@@ -34,13 +34,17 @@ class ZarOperationalDailyReportProjector {
     required Iterable<ZarDeal> deals,
     required Iterable<ZarSettlement> settlements,
     required DateTime selectedDay,
+    DateTime? now,
   }) {
+    final selectedLocal = selectedDay.toLocal();
     final day = DateTime(
-      selectedDay.toLocal().year,
-      selectedDay.toLocal().month,
-      selectedDay.toLocal().day,
+      selectedLocal.year,
+      selectedLocal.month,
+      selectedLocal.day,
     );
     final nextDay = day.add(const Duration(days: 1));
+    final current = (now ?? DateTime.now()).toLocal();
+    final today = DateTime(current.year, current.month, current.day);
 
     final buys = <ZarDeal>[];
     final sells = <ZarDeal>[];
@@ -70,10 +74,16 @@ class ZarOperationalDailyReportProjector {
       if (settlement.status != ZarSettlementStatus.open) continue;
 
       final due = settlement.scheduledAt.toLocal();
-      if (_withinDay(due, day, nextDay)) {
-        openDue.add(settlement);
-      } else if (due.isBefore(day)) {
+      final dueIsToday = _withinDay(
+        due,
+        today,
+        today.add(const Duration(days: 1)),
+      );
+      if (due.isBefore(day) ||
+          (day == today && dueIsToday && due.isBefore(current))) {
         overdueOpen.add(settlement);
+      } else if (_withinDay(due, day, nextDay)) {
+        openDue.add(settlement);
       }
     }
 

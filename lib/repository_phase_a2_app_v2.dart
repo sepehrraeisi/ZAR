@@ -1249,6 +1249,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           records: records,
           personName: _store.personName,
           onOpenRecord: _openRecord,
+          stateListenable: _store,
+          dealsBuilder: () => _store.deals,
+          settlementsBuilder: () => _store.settlements,
+          recordsBuilder: () => _store.records,
         ),
       ),
     );

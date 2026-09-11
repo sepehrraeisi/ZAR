@@ -40,6 +40,7 @@ void main() {
   test('keeps due today and overdue open obligations separate', () {
     final report = projector.project(
       selectedDay: selected,
+      now: DateTime(2026, 9, 2, 12),
       deals: const [],
       settlements: [
         settlement(
@@ -57,6 +58,29 @@ void main() {
 
     expect(report.openDueIds, ['today']);
     expect(report.overdueOpenIds, ['overdue']);
+  });
+
+  test('classifies a same-day obligation as overdue after its due time', () {
+    final report = projector.project(
+      selectedDay: DateTime(2026, 9, 2, 12),
+      now: DateTime(2026, 9, 2, 16),
+      deals: const [],
+      settlements: [
+        settlement(
+          'same-day-overdue',
+          ZarSettlementDirection.receive,
+          scheduledAt: DateTime(2026, 9, 2, 15),
+        ),
+        settlement(
+          'same-day-upcoming',
+          ZarSettlementDirection.deliver,
+          scheduledAt: DateTime(2026, 9, 2, 17),
+        ),
+      ],
+    );
+
+    expect(report.overdueOpenIds, ['same-day-overdue']);
+    expect(report.openDueIds, ['same-day-upcoming']);
   });
 
   test('cancelled records are excluded', () {

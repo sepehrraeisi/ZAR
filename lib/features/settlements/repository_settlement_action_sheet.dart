@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../app_core.dart';
+import '../../widgets/zar_amount_display.dart';
 
 class RepositorySettlementActionSheet extends StatelessWidget {
   const RepositorySettlementActionSheet({
@@ -228,22 +229,55 @@ class RepositorySettlementActionSheet extends StatelessWidget {
         0,
         (sum, line) => sum + line.quantity,
       );
-      return Text(
-        '${toPersianDigits(total.toString())} عدد سکه',
-        style: theme.textTheme.titleMedium,
+      return ZarAmountDisplay(
+        amount: toPersianDigits(total.toString()),
+        unit: 'عدد سکه',
+        amountStyle: theme.textTheme.titleMedium,
+        unitStyle: theme.textTheme.bodyMedium,
       );
     }
-    return Wrap(
-      spacing: 7,
-      runSpacing: 4,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    final numeric =
+        RegExp(
+          r'[-+]?[0-9۰-۹٬,٫.]+',
+        ).firstMatch(record.amountDisplay)?.group(0) ??
+        toPersianNumberText(record.amountDisplay);
+    final amount = toPersianNumberText(numeric);
+    final negative = amount.startsWith('-');
+    final unit =
+        record.currencyCode ??
+        (record.assetLabel == 'وجه نقد'
+            ? 'تومان'
+            : record.assetLabel == 'سکه'
+            ? 'عدد'
+            : record.assetLabel);
+    return Row(
+      textDirection: TextDirection.rtl,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        AmountText(record.amountDisplay),
-        Text(record.assetLabel, style: theme.textTheme.bodyLarge),
+        Expanded(
+          child: Text(record.assetLabel, style: theme.textTheme.bodyLarge),
+        ),
+        SizedBox(
+          width: 132,
+          child: ZarAmountDisplay(
+            amount: negative ? amount.substring(1) : amount,
+            unit: unit,
+            negative: negative,
+            amountStyle: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            unitStyle: theme.textTheme.bodyMedium,
+          ),
+        ),
         if (record.goldFineness != null)
-          Text(
-            'عیار ${toPersianDigits(record.goldFineness!)}',
-            style: theme.textTheme.bodyMedium,
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(start: 8),
+              child: Text(
+                'عیار ${toPersianDigits(record.goldFineness!)}',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
           ),
       ],
     );
