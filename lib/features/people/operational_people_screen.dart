@@ -26,7 +26,8 @@ class OperationalPeopleScreen extends StatefulWidget {
   final ZarCustomerOperationalBalance Function(String)? balanceFor;
 
   @override
-  State<OperationalPeopleScreen> createState() => _OperationalPeopleScreenState();
+  State<OperationalPeopleScreen> createState() =>
+      _OperationalPeopleScreenState();
 }
 
 class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
@@ -36,7 +37,12 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
   Widget build(BuildContext context) {
     final query = _query.trim();
     final filtered = widget.people
-        .where((person) => query.isEmpty || person.name.contains(query) || (person.phone ?? '').contains(query))
+        .where(
+          (person) =>
+              query.isEmpty ||
+              person.name.contains(query) ||
+              (person.phone ?? '').contains(query),
+        )
         .toList(growable: false);
 
     return Scaffold(
@@ -85,7 +91,10 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text('مشتری‌ها و اشخاص', style: Theme.of(context).textTheme.titleMedium),
+                  child: Text(
+                    'مشتری‌ها و اشخاص',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
                 Text(
                   '${toPersianDigits(filtered.length.toString())} نفر',
@@ -105,10 +114,19 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
                     itemBuilder: (_, index) {
                       final person = filtered[index];
                       final open = widget.records
-                          .where((record) => record.personId == person.id && record.isObligation && record.status == SettlementStatus.open)
+                          .where(
+                            (record) =>
+                                record.personId == person.id &&
+                                record.isObligation &&
+                                record.status == SettlementStatus.open,
+                          )
                           .length;
                       final deals = widget.records
-                          .where((record) => record.personId == person.id && record.type == RecordType.deal)
+                          .where(
+                            (record) =>
+                                record.personId == person.id &&
+                                record.type == RecordType.deal,
+                          )
                           .length;
                       final last = _lastActivity(person.id);
                       return _PersonCard(
@@ -128,7 +146,9 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
   }
 
   AppRecord? _lastActivity(String personId) {
-    final items = widget.records.where((record) => record.personId == personId).toList(growable: false);
+    final items = widget.records
+        .where((record) => record.personId == personId)
+        .toList(growable: false);
     if (items.isEmpty) return null;
     items.sort((a, b) {
       final date = b.date.compareTo(a.date);
@@ -178,10 +198,14 @@ class _PersonCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.11),
+                backgroundColor: theme.colorScheme.primary.withValues(
+                  alpha: 0.11,
+                ),
                 child: Text(
                   initial,
-                  style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.primary),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -189,10 +213,33 @@ class _PersonCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(person.name, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            person.name,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (lastActivity != null)
+                          Text(
+                            formatJalaliDate(lastActivity!.date),
+                            style: theme.textTheme.bodySmall,
+                          ),
+                      ],
+                    ),
                     if ((person.phone ?? '').trim().isNotEmpty) ...[
                       const SizedBox(height: 2),
-                      Text(person.phone!, style: theme.textTheme.bodyMedium),
+                      Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Text(
+                          person.phone!,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
                     ],
                     const SizedBox(height: 8),
                     Wrap(
@@ -200,17 +247,23 @@ class _PersonCard extends StatelessWidget {
                       runSpacing: 6,
                       children: [
                         _CountPill(label: 'معامله', count: dealCount),
-                        _CountPill(label: 'تعهد باز', count: openCount, emphasize: openCount > 0),
+                        _CountPill(
+                          label: 'تعهد باز',
+                          count: openCount,
+                          emphasize: openCount > 0,
+                        ),
                       ],
                     ),
-                    if (balance != null) ...[
+                    if (balance != null &&
+                        (balance!.receivableToman != BigInt.zero ||
+                            balance!.payableToman != BigInt.zero)) ...[
                       const SizedBox(height: 10),
                       CustomerBalanceCard(balance: balance!, compact: true),
                     ],
                     if (lastActivity != null) ...[
                       const SizedBox(height: 8),
                       Text(
-                        'آخرین فعالیت: ${lastActivity!.operationDisplayLabel} • ${formatJalaliDate(lastActivity!.date)}',
+                        'آخرین فعالیت: ${lastActivity!.operationDisplayLabel} • ${formatJalaliDate(lastActivity!.date)} • ${lastActivity!.timeLabel()}',
                         style: theme.textTheme.bodyMedium,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -230,7 +283,11 @@ class _PersonCard extends StatelessWidget {
 }
 
 class _CountPill extends StatelessWidget {
-  const _CountPill({required this.label, required this.count, this.emphasize = false});
+  const _CountPill({
+    required this.label,
+    required this.count,
+    this.emphasize = false,
+  });
 
   final String label;
   final int count;
@@ -239,7 +296,9 @@ class _CountPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = emphasize ? theme.colorScheme.primary : theme.textTheme.bodyMedium?.color;
+    final color = emphasize
+        ? theme.colorScheme.primary
+        : theme.textTheme.bodyMedium?.color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
@@ -264,22 +323,25 @@ class _PeopleEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(CupertinoIcons.person_2, size: 34),
-              const SizedBox(height: 10),
-              Text('شخصی پیدا نشد.', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                'عبارت جستجو را تغییر دهید یا شخص جدید اضافه کنید.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(CupertinoIcons.person_2, size: 34),
+          const SizedBox(height: 10),
+          Text(
+            'شخصی پیدا نشد.',
+            style: Theme.of(context).textTheme.titleMedium,
           ),
-        ),
-      );
+          const SizedBox(height: 4),
+          Text(
+            'عبارت جستجو را تغییر دهید یا شخص جدید اضافه کنید.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    ),
+  );
 }

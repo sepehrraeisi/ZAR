@@ -71,6 +71,8 @@ class RepositorySettlementActionSheet extends StatelessWidget {
                     ],
                   ),
                 ),
+                RecordShareButton(record: record, personName: personName),
+                const SizedBox(width: 4),
                 _StatusPill(record: record),
               ],
             ),

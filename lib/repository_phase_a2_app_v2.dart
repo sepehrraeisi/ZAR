@@ -973,6 +973,13 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
                   name: person.name,
                   phone: person.phone,
                   openObligations: _store.openCountFor(person.id),
+                  dealCount: records
+                      .where(
+                        (item) =>
+                            item.personId == person.id &&
+                            item.type == RecordType.deal,
+                      )
+                      .length,
                 ),
               )
               .toList(growable: false),
@@ -994,25 +1001,31 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     if (mounted) setState(() {});
   }
 
-  Widget _buildPersonDetail(AppPerson person) => PersonDetailScreen(
-    person: person,
-    records: records,
-    position: _store.customerPositionFor(person.id),
-    balance: _store.balanceFor(person.id),
-    personName: _store.personName,
-    onTapRecord: _openRecord,
-    onEditPerson: (target) async {
-      await showModalBottomSheet<AppPerson>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        builder: (_) => ConfirmedPersonEditorSheet(
-          existing: target,
-          onSave: _savePersonOrThrow,
-        ),
+  Widget _buildPersonDetail(AppPerson person) => AnimatedBuilder(
+    animation: _store,
+    builder: (context, _) {
+      final currentPerson = _store.personById(person.id) ?? person;
+      return PersonDetailScreen(
+        person: currentPerson,
+        records: records,
+        position: _store.customerPositionFor(person.id),
+        balance: _store.balanceFor(person.id),
+        personName: _store.personName,
+        onTapRecord: _openRecord,
+        onEditPerson: (target) async {
+          await showModalBottomSheet<AppPerson>(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            builder: (_) => ConfirmedPersonEditorSheet(
+              existing: target,
+              onSave: _savePersonOrThrow,
+            ),
+          );
+        },
+        onArchivePerson: (_) => _archivePerson(currentPerson),
       );
     },
-    onArchivePerson: (_) => _archivePerson(person),
   );
 
   List<ZarNotificationItem> _notificationItemsFor(
