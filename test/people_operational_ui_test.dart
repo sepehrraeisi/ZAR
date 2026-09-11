@@ -38,15 +38,25 @@ void main() {
             onAddPerson: () {},
             onOpenPerson: (_) {},
             onOpenArchive: () {},
-            balanceFor: (_) => ZarCustomerOperationalBalance([
-              ZarCustomerTomanObligation(
-                targetType: ZarPaymentAllocationTarget.deal,
-                targetId: record.id,
-                direction: ZarSettlementDirection.deliver,
-                originalToman: BigInt.from(500000000),
-                allocatedToman: BigInt.zero,
-              ),
-            ]),
+            balanceFor: (_) => ZarCustomerOperationalBalance(
+              [
+                ZarCustomerTomanObligation(
+                  targetType: ZarPaymentAllocationTarget.deal,
+                  targetId: record.id,
+                  direction: ZarSettlementDirection.deliver,
+                  originalToman: BigInt.from(500000000),
+                  allocatedToman: BigInt.zero,
+                ),
+              ],
+              payableAssetBuckets: const [
+                ZarCustomerBalanceAssetBucket(
+                  direction: ZarSettlementDirection.deliver,
+                  assetType: ZarAssetType.currency,
+                  currencyCode: 'USD',
+                  amount: '10000',
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -57,6 +67,7 @@ void main() {
       expect(find.text('۱ معامله'), findsOneWidget);
       expect(find.text('۰ تعهد باز'), findsOneWidget);
       expect(find.text('به او باید بدهم'), findsOneWidget);
+      expect(find.textContaining('USD ۱۰٬۰۰۰'), findsOneWidget);
       expect(find.textContaining('آخرین فعالیت: خرید'), findsOneWidget);
     },
   );

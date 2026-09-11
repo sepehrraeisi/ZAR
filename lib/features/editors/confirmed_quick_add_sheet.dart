@@ -22,6 +22,7 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
     this.initialCurrencyCode,
     this.initialGoldFineness,
     this.initialCoinTypeId,
+    this.initialPersonId,
   });
   final List<AppPerson> people;
   final Future<void> Function(QuickAddDraft draft) onSave;
@@ -34,6 +35,7 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
   final String? initialCurrencyCode;
   final String? initialGoldFineness;
   final String? initialCoinTypeId;
+  final String? initialPersonId;
   @override
   State<ConfirmedQuickAddSheet> createState() => _ConfirmedQuickAddSheetState();
 }
@@ -95,6 +97,12 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     _asset = widget.initialAsset;
     _selectionExpanded = widget.initialAsset == null;
     _currencyCode = widget.initialCurrencyCode;
+    if (widget.initialPersonId != null) {
+      final selected = widget.people.where(
+        (item) => item.id == widget.initialPersonId,
+      );
+      if (selected.isNotEmpty) _person = selected.first;
+    }
     if (widget.initialAsset == 'طلا') {
       _fineness.text = widget.initialGoldFineness ?? '';
     }

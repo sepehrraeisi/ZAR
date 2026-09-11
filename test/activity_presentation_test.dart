@@ -125,15 +125,36 @@ void main() {
               deliverCount: 1,
               lastActivityAt: null,
             ),
-            balance: ZarCustomerOperationalBalance([
-              ZarCustomerTomanObligation(
-                targetType: ZarPaymentAllocationTarget.deal,
-                targetId: 'd1',
-                direction: ZarSettlementDirection.deliver,
-                originalToman: BigInt.from(500000000),
-                allocatedToman: BigInt.zero,
-              ),
-            ]),
+            balance: ZarCustomerOperationalBalance(
+              [
+                ZarCustomerTomanObligation(
+                  targetType: ZarPaymentAllocationTarget.deal,
+                  targetId: 'd1',
+                  direction: ZarSettlementDirection.deliver,
+                  originalToman: BigInt.from(500000000),
+                  allocatedToman: BigInt.zero,
+                ),
+              ],
+              receivableAssetBuckets: const [
+                ZarCustomerBalanceAssetBucket(
+                  direction: ZarSettlementDirection.receive,
+                  assetType: ZarAssetType.gold,
+                  goldFineness: '750',
+                  amount: '250',
+                ),
+                ZarCustomerBalanceAssetBucket(
+                  direction: ZarSettlementDirection.receive,
+                  assetType: ZarAssetType.gold,
+                  amount: '5',
+                ),
+                ZarCustomerBalanceAssetBucket(
+                  direction: ZarSettlementDirection.receive,
+                  assetType: ZarAssetType.currency,
+                  currencyCode: 'USD',
+                  amount: '10000',
+                ),
+              ],
+            ),
             personName: (_) => 'سهیل',
             onTapRecord: (_) {},
             onEditPerson: (_) {},
@@ -143,10 +164,25 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      await tester.scrollUntilVisible(
+        find.text('تعهدات باز'),
+        300,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
       expect(find.text('تعهدات باز'), findsOneWidget);
-      expect(find.text('بدهکارم به او'), findsOneWidget);
-      expect(find.text('بستانکارم از او'), findsOneWidget);
-      expect(find.text('۵۰۰٬۰۰۰٬۰۰۰ تومان'), findsWidgets);
+      await tester.scrollUntilVisible(
+        find.text('باید از او بگیرم'),
+        -300,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('باید از او بگیرم'), findsOneWidget);
+      expect(find.text('باید به او بدهم'), findsOneWidget);
+      expect(find.textContaining('۵۰۰٬۰۰۰٬۰۰۰'), findsWidgets);
+      expect(find.textContaining('طلای عیار ۷۵۰'), findsOneWidget);
+      expect(find.textContaining('عیار نامشخص'), findsOneWidget);
+      expect(find.textContaining('USD'), findsWidgets);
       await tester.scrollUntilVisible(
         find.text('سوابق معاملات'),
         300,
@@ -154,9 +190,6 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('سوابق معاملات'), findsOneWidget);
-      expect(find.textContaining('طلای عیار ۷۵۰'), findsOneWidget);
-      expect(find.textContaining('عیار نامشخص'), findsOneWidget);
-      expect(find.textContaining('USD'), findsOneWidget);
       expect(find.text('خرید'), findsWidgets);
       expect(find.text('دریافت'), findsWidgets);
       expect(find.text('پرداخت'), findsWidgets);

@@ -224,11 +224,6 @@ class _PersonCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (lastActivity != null)
-                          Text(
-                            formatJalaliDate(lastActivity!.date),
-                            style: theme.textTheme.bodySmall,
-                          ),
                       ],
                     ),
                     if ((person.phone ?? '').trim().isNotEmpty) ...[
@@ -255,7 +250,9 @@ class _PersonCard extends StatelessWidget {
                       ],
                     ),
                     if (balance != null &&
-                        (balance!.receivableToman != BigInt.zero ||
+                        (balance!.receivableAssetBuckets.isNotEmpty ||
+                            balance!.payableAssetBuckets.isNotEmpty ||
+                            balance!.receivableToman != BigInt.zero ||
                             balance!.payableToman != BigInt.zero)) ...[
                       const SizedBox(height: 10),
                       CustomerBalanceCard(balance: balance!, compact: true),

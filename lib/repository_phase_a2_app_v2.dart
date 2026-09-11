@@ -640,6 +640,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     String? initialCurrencyCode,
     String? initialGoldFineness,
     String? initialCoinTypeId,
+    String? initialPersonId,
   }) async {
     String? savedRecordId;
     final recentPeople = <AppPerson>[];
@@ -666,6 +667,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         initialCurrencyCode: initialCurrencyCode,
         initialGoldFineness: initialGoldFineness,
         initialCoinTypeId: initialCoinTypeId,
+        initialPersonId: initialPersonId,
         onSave: (draft) => _saveQuickAddDraftOrThrow(
           draft,
           onSaved: (id) => savedRecordId = id,
@@ -1010,6 +1012,23 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         records: records,
         position: _store.customerPositionFor(person.id),
         balance: _store.balanceFor(person.id),
+        onShareStatement: () => unawaited(
+          showPersonStatementShareOptions(
+            context,
+            person: currentPerson,
+            balance: _store.balanceFor(person.id),
+            records: records,
+          ),
+        ),
+        onShareBalanceBucket: (bucket) => unawaited(
+          showBalanceBucketShareOptions(
+            context,
+            person: currentPerson,
+            bucket: bucket,
+          ),
+        ),
+        onQuickEntry: () =>
+            unawaited(_openQuickAdd(initialPersonId: currentPerson.id)),
         personName: _store.personName,
         onTapRecord: _openRecord,
         onEditPerson: (target) async {

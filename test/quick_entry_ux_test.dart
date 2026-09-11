@@ -152,6 +152,29 @@ void main() {
     },
   );
 
+  testWidgets('Quick Entry can start with a person already selected', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ConfirmedQuickAddSheet(
+            people: [person()],
+            initialPersonId: 'p1',
+            preferenceStore: InMemoryQuickEntryPreferenceStore(),
+            onSave: (_) async {},
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('خرید'));
+    await tester.pump();
+    await tester.tap(find.text('طلا'));
+    await tester.pump();
+    expect(find.text('مهیار'), findsWidgets);
+    expect(find.text('انتخاب طرف حساب'), findsNothing);
+  });
+
   testWidgets(
     'selection collapses into a compact context and CTA remains visible',
     (tester) async {

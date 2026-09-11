@@ -1,5 +1,36 @@
 import '../domain/zar_domain_models.dart';
 import '../domain/zar_payment_allocation.dart';
+import 'customer_position_projector.dart';
+
+/// A typed, derived asset bucket for a person's current operational position.
+///
+/// These values come from open settlements only. Deal pricing contributes its
+/// actual Toman consideration to the financial balance, but a Deal never
+/// invents a physical asset obligation.
+class ZarCustomerBalanceAssetBucket {
+  const ZarCustomerBalanceAssetBucket({
+    required this.direction,
+    required this.assetType,
+    required this.amount,
+    this.currencyCode,
+    this.goldFineness,
+    this.coinIdentity,
+    this.displayName,
+    this.sourceCount = 0,
+  });
+
+  final ZarSettlementDirection direction;
+  final ZarAssetType assetType;
+  final String amount;
+  final String? currencyCode;
+  final String? goldFineness;
+  final String? coinIdentity;
+  final String? displayName;
+  final int sourceCount;
+
+  bool get isToman =>
+      assetType == ZarAssetType.currency && currencyCode == 'TOMAN';
+}
 
 class ZarCustomerTomanObligation {
   const ZarCustomerTomanObligation({
@@ -19,13 +50,26 @@ class ZarCustomerTomanObligation {
 }
 
 class ZarCustomerOperationalBalance {
-  ZarCustomerOperationalBalance(Iterable<ZarCustomerTomanObligation> values)
-    : obligations = List.unmodifiable(values);
+  ZarCustomerOperationalBalance(
+    Iterable<ZarCustomerTomanObligation> values, {
+    Iterable<ZarCustomerBalanceAssetBucket> receivableAssetBuckets = const [],
+    Iterable<ZarCustomerBalanceAssetBucket> payableAssetBuckets = const [],
+  }) : obligations = List.unmodifiable(values),
+       receivableAssetBuckets = List.unmodifiable(receivableAssetBuckets),
+       payableAssetBuckets = List.unmodifiable(payableAssetBuckets);
 
   final List<ZarCustomerTomanObligation> obligations;
+  final List<ZarCustomerBalanceAssetBucket> receivableAssetBuckets;
+  final List<ZarCustomerBalanceAssetBucket> payableAssetBuckets;
 
   BigInt get receivableToman => _sum(ZarSettlementDirection.receive);
   BigInt get payableToman => _sum(ZarSettlementDirection.deliver);
+
+  List<ZarCustomerBalanceAssetBucket> bucketsFor(
+    ZarSettlementDirection direction,
+  ) => direction == ZarSettlementDirection.receive
+      ? receivableAssetBuckets
+      : payableAssetBuckets;
 
   BigInt _sum(ZarSettlementDirection direction) => obligations
       .where((item) => item.direction == direction)
@@ -187,8 +231,103 @@ class ZarCustomerOperationalBalanceProjector {
         amount - (coveredBySource[settlement.id] ?? BigInt.zero),
       );
     }
-    return ZarCustomerOperationalBalance(result);
+    final position = const ZarCustomerPositionProjector().project(
+      personId: personId,
+      deals: deals,
+      settlements: settlements,
+    );
+    final receivableBuckets = <ZarCustomerBalanceAssetBucket>[];
+    final payableBuckets = <ZarCustomerBalanceAssetBucket>[];
+    final receivableToman = result
+        .where((item) => item.direction == ZarSettlementDirection.receive)
+        .fold<BigInt>(BigInt.zero, (sum, item) => sum + item.remainingToman);
+    final payableToman = result
+        .where((item) => item.direction == ZarSettlementDirection.deliver)
+        .fold<BigInt>(BigInt.zero, (sum, item) => sum + item.remainingToman);
+    if (receivableToman != BigInt.zero) {
+      receivableBuckets.add(
+        ZarCustomerBalanceAssetBucket(
+          direction: ZarSettlementDirection.receive,
+          assetType: ZarAssetType.currency,
+          currencyCode: 'TOMAN',
+          amount: receivableToman.toString(),
+        ),
+      );
+    }
+    if (payableToman != BigInt.zero) {
+      payableBuckets.add(
+        ZarCustomerBalanceAssetBucket(
+          direction: ZarSettlementDirection.deliver,
+          assetType: ZarAssetType.currency,
+          currencyCode: 'TOMAN',
+          amount: payableToman.toString(),
+        ),
+      );
+    }
+    for (final item in position.receive) {
+      final bucket = _assetBucket(
+        item,
+        direction: ZarSettlementDirection.receive,
+      );
+      if (bucket != null && !bucket.isToman) receivableBuckets.add(bucket);
+    }
+    for (final item in position.deliver) {
+      final bucket = _assetBucket(
+        item,
+        direction: ZarSettlementDirection.deliver,
+      );
+      if (bucket != null && !bucket.isToman) payableBuckets.add(bucket);
+    }
+    return ZarCustomerOperationalBalance(
+      result,
+      receivableAssetBuckets: receivableBuckets,
+      payableAssetBuckets: payableBuckets,
+    );
   }
+
+  ZarCustomerBalanceAssetBucket? _assetBucket(
+    ZarCustomerPositionItem item, {
+    required ZarSettlementDirection direction,
+  }) => switch (item) {
+    ZarCustomerGoldPosition(
+      :final fineness,
+      :final grams,
+      :final sourceCount,
+    ) =>
+      ZarCustomerBalanceAssetBucket(
+        direction: direction,
+        assetType: ZarAssetType.gold,
+        amount: grams,
+        goldFineness: fineness,
+        sourceCount: sourceCount,
+      ),
+    ZarCustomerCurrencyPosition(
+      :final code,
+      :final decimalAmount,
+      :final sourceCount,
+    ) =>
+      ZarCustomerBalanceAssetBucket(
+        direction: direction,
+        assetType: ZarAssetType.currency,
+        amount: decimalAmount,
+        currencyCode: code,
+        sourceCount: sourceCount,
+      ),
+    ZarCustomerCoinPosition(
+      :final identity,
+      :final displayName,
+      :final quantity,
+      :final sourceCount,
+    ) =>
+      ZarCustomerBalanceAssetBucket(
+        direction: direction,
+        assetType: ZarAssetType.coin,
+        amount: quantity.toString(),
+        coinIdentity: identity,
+        displayName: displayName,
+        sourceCount: sourceCount,
+      ),
+  };
 
   BigInt? _toman(ZarAssetAmount amount) {
     if (amount is! ZarCurrencyAssetAmount || amount.value.code != 'TOMAN') {

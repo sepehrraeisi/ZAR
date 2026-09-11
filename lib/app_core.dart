@@ -1317,6 +1317,9 @@ class PersonDetailScreen extends StatelessWidget {
     required this.onArchivePerson,
     this.position = const ZarCustomerPosition.empty(),
     this.balance,
+    this.onShareStatement,
+    this.onShareBalanceBucket,
+    this.onQuickEntry,
   });
 
   final AppPerson person;
@@ -1327,12 +1330,15 @@ class PersonDetailScreen extends StatelessWidget {
   final ValueChanged<String> onArchivePerson;
   final ZarCustomerPosition position;
   final ZarCustomerOperationalBalance? balance;
+  final VoidCallback? onShareStatement;
+  final ValueChanged<ZarCustomerBalanceAssetBucket>? onShareBalanceBucket;
+  final VoidCallback? onQuickEntry;
 
   @override
   Widget build(BuildContext context) {
     final personItems =
         records.where((e) => e.personId == person.id).toList(growable: false)
-          ..sort((a, b) => b.date.compareTo(a.date));
+          ..sort(_comparePersonRecords);
     final openItems = personItems
         .where((e) => e.status == SettlementStatus.open && e.isObligation)
         .toList(growable: false);
@@ -1384,42 +1390,37 @@ class PersonDetailScreen extends StatelessWidget {
                 icon: const Icon(CupertinoIcons.archivebox, size: 16),
                 label: const Text('آرشیو'),
               ),
+              if (onShareStatement != null)
+                OutlinedButton.icon(
+                  onPressed: onShareStatement,
+                  icon: const Icon(CupertinoIcons.share, size: 16),
+                  label: const Text('اشتراک صورتحساب'),
+                ),
+              if (onQuickEntry != null)
+                FilledButton.tonalIcon(
+                  onPressed: onQuickEntry,
+                  icon: const Icon(CupertinoIcons.add, size: 16),
+                  label: const Text('ثبت جدید'),
+                ),
             ],
           ),
           const SizedBox(height: 16),
           if (balance != null) ...[
-            CustomerBalanceCard(balance: balance!),
+            CustomerBalanceCard(
+              balance: balance!,
+              onShareBucket: onShareBalanceBucket,
+            ),
             const SizedBox(height: 16),
           ],
           _customerCard(
             context,
             title: 'تعهدات باز',
             children: [
-              _positionSide(
-                context,
-                'باید از او بگیرم',
-                position.receive
-                    .where(
-                      (item) =>
-                          balance == null ||
-                          item is! ZarCustomerCurrencyPosition ||
-                          item.code != 'TOMAN',
-                    )
-                    .toList(),
-              ),
-              const SizedBox(height: 12),
-              _positionSide(
-                context,
-                'باید به او بدهم',
-                position.deliver
-                    .where(
-                      (item) =>
-                          balance == null ||
-                          item is! ZarCustomerCurrencyPosition ||
-                          item.code != 'TOMAN',
-                    )
-                    .toList(),
-              ),
+              if (balance == null) ...[
+                _positionSide(context, 'باید از او بگیرم', position.receive),
+                const SizedBox(height: 12),
+                _positionSide(context, 'باید به او بدهم', position.deliver),
+              ],
               const Divider(height: 24),
               if (openItems.isEmpty)
                 const _ZEmptyRow(label: 'تعهد باز وجود ندارد.')
@@ -1444,6 +1445,7 @@ class PersonDetailScreen extends StatelessWidget {
                         (e) => SettlementRow(
                           record: e,
                           personName: personName(e.personId),
+                          showPersonName: false,
                           onTap: () => onTapRecord(e),
                         ),
                       )
@@ -1454,6 +1456,20 @@ class PersonDetailScreen extends StatelessWidget {
             context,
             title: 'خلاصه فعالیت',
             children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${toPersianDigits(position.activityCount.toString())} فعالیت',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(
+                    '${toPersianDigits(openItems.length.toString())} تعهد باز',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -1465,8 +1481,6 @@ class PersonDetailScreen extends StatelessWidget {
                 ],
               ),
               const Divider(height: 20),
-              _activityRow('تعداد کل فعالیت‌ها', position.activityCount),
-              _activityRow('تعهد باز', openItems.length),
               Text(
                 'آخرین فعالیت: ${_lastActivityLabel(position.lastActivityAt)}',
               ),
@@ -1546,14 +1560,6 @@ class PersonDetailScreen extends StatelessWidget {
       ),
     };
   }
-
-  Widget _activityRow(String label, int count) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [Text(label), Text(toPersianDigits(count.toString()))],
-    ),
-  );
 
   Widget _activityPill(BuildContext context, String label, int count) =>
       Container(
@@ -1839,12 +1845,14 @@ class SettlementRow extends StatelessWidget {
     required this.personName,
     this.onTap,
     this.showOverdueTone = false,
+    this.showPersonName = true,
   });
 
   final AppRecord record;
   final String personName;
   final VoidCallback? onTap;
   final bool showOverdueTone;
+  final bool showPersonName;
 
   @override
   Widget build(BuildContext context) {
@@ -1883,15 +1891,18 @@ class SettlementRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    personName,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.bodyLarge?.color?.withValues(
-                        alpha: 0.84,
+                  if (showPersonName) ...[
+                    Text(
+                      personName,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyLarge?.color?.withValues(
+                          alpha: 0.84,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
+                    const SizedBox(height: 4),
+                  ] else
+                    const SizedBox(height: 4),
                   Wrap(
                     spacing: 8,
                     children: [
@@ -3382,4 +3393,613 @@ class _RecordShareCard extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Builds a current, derived account summary for one person. This is a
+/// balance/status share, not a receipt and not an accounting statement.
+String personBalanceShareText({
+  required AppPerson person,
+  required ZarCustomerOperationalBalance balance,
+  DateTime? generatedAt,
+  String? lastActivityLabel,
+}) {
+  final lines = <String>[
+    'ZAR+',
+    'وضعیت حساب با ${person.name}',
+    if ((person.phone ?? '').trim().isNotEmpty) 'شماره تماس: ${person.phone}',
+    '',
+    'باید از او بگیرم:',
+    ..._shareBucketLines(balance.receivableAssetBuckets),
+    '',
+    'باید به او بدهم:',
+    ..._shareBucketLines(balance.payableAssetBuckets),
+    'تعهد باز: ${toPersianDigits(balance.obligations.where((item) => item.remainingToman > BigInt.zero).length.toString())} مورد',
+    if (lastActivityLabel != null) 'آخرین فعالیت: $lastActivityLabel',
+    '',
+    'تهیه‌شده در: ${_shareDateTime(generatedAt ?? DateTime.now())}',
+  ];
+  return lines.join('\n');
+}
+
+String personStatementShareText({
+  required AppPerson person,
+  required ZarCustomerOperationalBalance balance,
+  required List<AppRecord> records,
+  DateTime? generatedAt,
+  int? recentLimit,
+}) {
+  final personRecords =
+      records.where((item) => item.personId == person.id).toList()
+        ..sort(_compareShareRecords);
+  final open = personRecords
+      .where(
+        (item) =>
+            item.type == RecordType.settlement &&
+            item.status == SettlementStatus.open,
+      )
+      .toList(growable: false);
+  final history = personRecords
+      .where(
+        (item) =>
+            item.type == RecordType.deal ||
+            item.status != SettlementStatus.open,
+      )
+      .toList(growable: false);
+  final visibleHistory = recentLimit == null || history.length <= recentLimit
+      ? history
+      : history.take(recentLimit).toList(growable: false);
+  final lines = <String>[
+    'ZAR+',
+    'صورتحساب ${person.name}',
+    if ((person.phone ?? '').trim().isNotEmpty) 'شماره تماس: ${person.phone}',
+    '',
+    'وضعیت فعلی',
+    'باید از او بگیرم:',
+    ..._shareBucketLines(balance.receivableAssetBuckets),
+    'باید به او بدهم:',
+    ..._shareBucketLines(balance.payableAssetBuckets),
+    'تعهد باز: ${toPersianDigits(balance.obligations.where((item) => item.remainingToman > BigInt.zero).length.toString())} مورد',
+    '',
+    'تعهدات باز',
+    if (open.isEmpty)
+      'موردی وجود ندارد.'
+    else
+      ...open.expand(_shareOpenRecordLines),
+    '',
+    'سوابق',
+    if (visibleHistory.isEmpty)
+      'موردی ثبت نشده است.'
+    else
+      ...visibleHistory.expand(_shareHistoryRecordLines),
+    if (visibleHistory.length < history.length)
+      'و ${toPersianDigits((history.length - visibleHistory.length).toString())} فعالیت دیگر',
+    '',
+    'تهیه‌شده در: ${_shareDateTime(generatedAt ?? DateTime.now())}',
+  ];
+  return lines.join('\n');
+}
+
+String balanceBucketShareText({
+  required AppPerson person,
+  required ZarCustomerBalanceAssetBucket bucket,
+  DateTime? generatedAt,
+}) {
+  final direction = bucket.direction == ZarSettlementDirection.receive
+      ? 'باید از ${person.name} دریافت کنم'
+      : 'باید به ${person.name} پرداخت کنم';
+  return [
+    'ZAR+',
+    'وضعیت حساب با ${person.name}',
+    '',
+    direction,
+    _shareBucketLine(bucket),
+    '',
+    'این مورد خلاصه مانده فعلی است، نه رسید معامله.',
+    'تاریخ تهیه: ${_shareDateTime(generatedAt ?? DateTime.now())}',
+  ].join('\n');
+}
+
+Future<void> showPersonStatementShareOptions(
+  BuildContext context, {
+  required AppPerson person,
+  required ZarCustomerOperationalBalance balance,
+  required List<AppRecord> records,
+}) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'اشتراک‌گذاری صورتحساب',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            _shareActionTile(
+              sheetContext,
+              label: 'خلاصه حساب — ارسال متن',
+              icon: CupertinoIcons.textbox,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await SharePlus.instance.share(
+                  ShareParams(
+                    text: personBalanceShareText(
+                      person: person,
+                      balance: balance,
+                      lastActivityLabel: _latestShareActivityLabel(
+                        person,
+                        records,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            _shareActionTile(
+              sheetContext,
+              label: 'خلاصه حساب — ارسال تصویر',
+              icon: CupertinoIcons.photo,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await _sharePersonImage(
+                  context,
+                  person: person,
+                  balance: balance,
+                  records: records,
+                  full: false,
+                );
+              },
+            ),
+            _shareActionTile(
+              sheetContext,
+              label: 'صورتحساب کامل — ارسال متن',
+              icon: CupertinoIcons.doc_text,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await SharePlus.instance.share(
+                  ShareParams(
+                    text: personStatementShareText(
+                      person: person,
+                      balance: balance,
+                      records: records,
+                    ),
+                  ),
+                );
+              },
+            ),
+            _shareActionTile(
+              sheetContext,
+              label: 'صورتحساب کامل — ارسال تصویر',
+              icon: CupertinoIcons.photo_on_rectangle,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await _sharePersonImage(
+                  context,
+                  person: person,
+                  balance: balance,
+                  records: records,
+                  full: true,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+String? _latestShareActivityLabel(AppPerson person, List<AppRecord> records) {
+  final items = records.where((item) => item.personId == person.id).toList()
+    ..sort(_compareShareRecords);
+  if (items.isEmpty) return null;
+  final item = items.first;
+  return '${formatJalaliDate(item.date)} · ${item.timeLabel()}';
+}
+
+Future<void> showBalanceBucketShareOptions(
+  BuildContext context, {
+  required AppPerson person,
+  required ZarCustomerBalanceAssetBucket bucket,
+}) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'اشتراک‌گذاری این مورد',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            _shareActionTile(
+              sheetContext,
+              label: 'ارسال متن',
+              icon: CupertinoIcons.textbox,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await SharePlus.instance.share(
+                  ShareParams(
+                    text: balanceBucketShareText(
+                      person: person,
+                      bucket: bucket,
+                    ),
+                  ),
+                );
+              },
+            ),
+            _shareActionTile(
+              sheetContext,
+              label: 'ارسال تصویر',
+              icon: CupertinoIcons.photo,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await _shareBucketImage(
+                  context,
+                  person: person,
+                  bucket: bucket,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _shareActionTile(
+  BuildContext context, {
+  required String label,
+  required IconData icon,
+  required VoidCallback onTap,
+}) => ListTile(
+  contentPadding: EdgeInsets.zero,
+  leading: Icon(icon),
+  title: Text(label),
+  onTap: onTap,
+);
+
+Future<void> _sharePersonImage(
+  BuildContext context, {
+  required AppPerson person,
+  required ZarCustomerOperationalBalance balance,
+  required List<AppRecord> records,
+  required bool full,
+}) async {
+  final bytes = await _captureShareCard(
+    context,
+    _PersonShareCard(
+      person: person,
+      balance: balance,
+      records: records,
+      full: full,
+    ),
+  );
+  if (!context.mounted || bytes == null) return;
+  await SharePlus.instance.share(
+    ShareParams(
+      text: full ? 'صورتحساب ${person.name}' : 'وضعیت حساب با ${person.name}',
+      files: [
+        XFile.fromData(
+          bytes,
+          mimeType: 'image/png',
+          name: 'zar-person-${person.id}.png',
+        ),
+      ],
+      fileNameOverrides: ['zar-person-${person.id}.png'],
+    ),
+  );
+}
+
+Future<void> _shareBucketImage(
+  BuildContext context, {
+  required AppPerson person,
+  required ZarCustomerBalanceAssetBucket bucket,
+}) async {
+  final bytes = await _captureShareCard(
+    context,
+    _BalanceBucketShareCard(person: person, bucket: bucket),
+  );
+  if (!context.mounted || bytes == null) return;
+  await SharePlus.instance.share(
+    ShareParams(
+      text: balanceBucketShareText(person: person, bucket: bucket),
+      files: [
+        XFile.fromData(
+          bytes,
+          mimeType: 'image/png',
+          name: 'zar-balance-${person.id}.png',
+        ),
+      ],
+      fileNameOverrides: ['zar-balance-${person.id}.png'],
+    ),
+  );
+}
+
+Future<Uint8List?> _captureShareCard(BuildContext context, Widget card) async {
+  final boundaryKey = GlobalKey();
+  return showModalBottomSheet<Uint8List>(
+    context: context,
+    useSafeArea: true,
+    isScrollControlled: true,
+    builder: (_) =>
+        _GenericShareCardCapture(boundaryKey: boundaryKey, card: card),
+  );
+}
+
+class _GenericShareCardCapture extends StatefulWidget {
+  const _GenericShareCardCapture({
+    required this.boundaryKey,
+    required this.card,
+  });
+  final GlobalKey boundaryKey;
+  final Widget card;
+
+  @override
+  State<_GenericShareCardCapture> createState() =>
+      _GenericShareCardCaptureState();
+}
+
+class _GenericShareCardCaptureState extends State<_GenericShareCardCapture> {
+  bool _captured = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _capture());
+  }
+
+  Future<void> _capture() async {
+    if (_captured || !mounted) return;
+    final renderObject = widget.boundaryKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderRepaintBoundary) return;
+    try {
+      final image = await renderObject.toImage(pixelRatio: 3);
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (!mounted || data == null) return;
+      _captured = true;
+      Navigator.of(context).pop(data.buffer.asUint8List());
+    } catch (_) {
+      if (mounted) Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      child: RepaintBoundary(key: widget.boundaryKey, child: widget.card),
+    ),
+  );
+}
+
+class _PersonShareCard extends StatelessWidget {
+  const _PersonShareCard({
+    required this.person,
+    required this.balance,
+    required this.records,
+    required this.full,
+  });
+  final AppPerson person;
+  final ZarCustomerOperationalBalance balance;
+  final List<AppRecord> records;
+  final bool full;
+
+  @override
+  Widget build(BuildContext context) {
+    final personRecords =
+        records.where((item) => item.personId == person.id).toList()
+          ..sort(_compareShareRecords);
+    final history = personRecords
+        .where(
+          (item) =>
+              item.type == RecordType.deal ||
+              item.status != SettlementStatus.open,
+        )
+        .take(6)
+        .toList(growable: false);
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Material(
+        color: Colors.white,
+        child: Container(
+          width: 420,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFBFAF8),
+            border: Border.all(color: const Color(0xFFE4DFD7)),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'ZAR+',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                full
+                    ? 'صورتحساب ${person.name}'
+                    : 'وضعیت حساب با ${person.name}',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Divider(height: 26),
+              _shareCardDirection(
+                'باید از او بگیرم',
+                balance.receivableAssetBuckets,
+              ),
+              const SizedBox(height: 12),
+              _shareCardDirection(
+                'باید به او بدهم',
+                balance.payableAssetBuckets,
+              ),
+              if (full) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'فعالیت اخیر',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
+                if (history.isEmpty)
+                  const Text('موردی ثبت نشده است.')
+                else
+                  ...history.map(
+                    (record) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        '${record.operationDisplayLabel} — ${_shareAssetSummary(record)}\n${formatJalaliDate(record.date)} · ${record.timeLabel()}',
+                      ),
+                    ),
+                  ),
+              ],
+              const SizedBox(height: 16),
+              Text(
+                'تهیه‌شده در: ${_shareDateTime(DateTime.now())}',
+                style: const TextStyle(color: Color(0xFF65615C)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BalanceBucketShareCard extends StatelessWidget {
+  const _BalanceBucketShareCard({required this.person, required this.bucket});
+  final AppPerson person;
+  final ZarCustomerBalanceAssetBucket bucket;
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Material(
+      color: Colors.white,
+      child: Container(
+        width: 420,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBFAF8),
+          border: Border.all(color: const Color(0xFFE4DFD7)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'ZAR+',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'وضعیت حساب با ${person.name}',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+            const Divider(height: 26),
+            Text(
+              bucket.direction == ZarSettlementDirection.receive
+                  ? 'باید از او دریافت کنم'
+                  : 'باید به او پرداخت کنم',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _shareBucketLine(bucket),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 16),
+            const Text('این تصویر خلاصه مانده فعلی است، نه رسید معامله.'),
+            const SizedBox(height: 12),
+            Text(
+              'تهیه‌شده در: ${_shareDateTime(DateTime.now())}',
+              style: const TextStyle(color: Color(0xFF65615C)),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _shareCardDirection(
+  String title,
+  List<ZarCustomerBalanceAssetBucket> buckets,
+) => Column(
+  crossAxisAlignment: CrossAxisAlignment.stretch,
+  children: [
+    Text(
+      title,
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+    ),
+    const SizedBox(height: 6),
+    if (buckets.isEmpty)
+      const Text('موردی وجود ندارد.')
+    else
+      ...buckets.map(
+        (bucket) => Padding(
+          padding: const EdgeInsets.only(bottom: 5),
+          child: Text(_shareBucketLine(bucket)),
+        ),
+      ),
+  ],
+);
+
+List<String> _shareBucketLines(List<ZarCustomerBalanceAssetBucket> buckets) =>
+    buckets.isEmpty
+    ? ['موردی وجود ندارد.']
+    : buckets.map(_shareBucketLine).toList(growable: false);
+
+String _shareBucketLine(ZarCustomerBalanceAssetBucket bucket) {
+  final amount = toPersianNumberText(bucket.amount);
+  return switch (bucket.assetType) {
+    ZarAssetType.currency =>
+      bucket.currencyCode == 'TOMAN'
+          ? '$amount تومان'
+          : '$amount ${bucket.currencyCode ?? ''}',
+    ZarAssetType.gold =>
+      '${bucket.goldFineness == null ? 'طلای عیار نامشخص' : 'طلای عیار ${toPersianNumberText(bucket.goldFineness!)}'} — $amount گرم',
+    ZarAssetType.coin => '${bucket.displayName ?? 'سکه'} — $amount عدد',
+  };
+}
+
+Iterable<String> _shareOpenRecordLines(AppRecord record) sync* {
+  yield '${record.operationDisplayLabel}: ${_shareAssetSummary(record)}';
+  yield '${formatJalaliDate(record.date)} · ${record.timeLabel()} · ${record.statusLabel()}';
+}
+
+Iterable<String> _shareHistoryRecordLines(AppRecord record) sync* {
+  yield '${record.operationDisplayLabel}: ${_shareAssetSummary(record)}';
+  yield '${formatJalaliDate(record.date)} · ${record.timeLabel()}${record.type == RecordType.settlement ? ' · ${record.statusLabel()}' : ''}';
+}
+
+int _compareShareRecords(AppRecord a, AppRecord b) {
+  final date = b.date.compareTo(a.date);
+  if (date != 0) return date;
+  final aMinutes = (a.time?.hour ?? -1) * 60 + (a.time?.minute ?? 0);
+  final bMinutes = (b.time?.hour ?? -1) * 60 + (b.time?.minute ?? 0);
+  return bMinutes.compareTo(aMinutes);
+}
+
+int _comparePersonRecords(AppRecord a, AppRecord b) =>
+    _compareShareRecords(a, b);
+
+String _shareDateTime(DateTime value) {
+  final local = value.toLocal();
+  final jalali = Jalali.fromDateTime(local);
+  final hour = toPersianDigits(local.hour.toString().padLeft(2, '0'));
+  final minute = toPersianDigits(local.minute.toString().padLeft(2, '0'));
+  return '${formatJalaliDate(jalali)} · $hour:$minute';
 }
