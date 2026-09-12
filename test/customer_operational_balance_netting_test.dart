@@ -8,8 +8,9 @@ final _at = DateTime.utc(2026, 9, 11, 12);
 ZarSettlement _openSettlement(
   String id,
   ZarSettlementDirection direction,
-  ZarAssetAmount amount,
-) => ZarSettlement(
+  ZarAssetAmount amount, {
+  ZarSettlementStatus status = ZarSettlementStatus.completed,
+}) => ZarSettlement(
   id: id,
   businessId: 'business',
   personId: 'person',
@@ -17,7 +18,8 @@ ZarSettlement _openSettlement(
   amount: amount,
   scheduledAt: _at,
   hasTime: true,
-  status: ZarSettlementStatus.open,
+  status: status,
+  completedAt: status == ZarSettlementStatus.completed ? _at : null,
   createdBy: 'user',
   createdAt: _at,
   updatedAt: _at,
@@ -39,7 +41,7 @@ void main() {
         allocations: const <ZarPaymentAllocation>[],
       );
 
-  test('nets identical Toman buckets and leaves gross obligations intact', () {
+  test('nets identical completed Toman movements', () {
     final balance = project([
       _openSettlement(
         'receive',
@@ -53,12 +55,12 @@ void main() {
       ),
     ]);
 
-    expect(balance.obligations, hasLength(2));
-    expect(balance.receivableToman, BigInt.from(350000000));
-    expect(balance.payableToman, BigInt.zero);
-    expect(balance.receivableAssetBuckets, hasLength(1));
-    expect(balance.receivableAssetBuckets.single.amount, '350000000');
-    expect(balance.payableAssetBuckets, isEmpty);
+    expect(balance.obligations, isEmpty);
+    expect(balance.receivableToman, BigInt.zero);
+    expect(balance.payableToman, BigInt.from(350000000));
+    expect(balance.payableAssetBuckets, hasLength(1));
+    expect(balance.payableAssetBuckets.single.amount, '350000000');
+    expect(balance.receivableAssetBuckets, isEmpty);
   });
 
   test('shows the payable side when it is larger', () {
@@ -75,9 +77,10 @@ void main() {
       ),
     ]);
 
-    expect(balance.receivableAssetBuckets, isEmpty);
-    expect(balance.payableToman, BigInt.from(300000000));
-    expect(balance.payableAssetBuckets.single.amount, '300000000');
+    expect(balance.receivableToman, BigInt.from(300000000));
+    expect(balance.payableToman, BigInt.zero);
+    expect(balance.receivableAssetBuckets.single.amount, '300000000');
+    expect(balance.payableAssetBuckets, isEmpty);
   });
 
   test('does not net different currencies and removes exact zero', () {
@@ -104,10 +107,23 @@ void main() {
       ),
     ]);
 
-    expect(balance.receivableAssetBuckets.single.currencyCode, 'USD');
-    expect(balance.receivableAssetBuckets.single.amount, '10000');
-    expect(balance.payableAssetBuckets.single.currencyCode, 'EUR');
-    expect(balance.payableAssetBuckets.single.amount, '3000');
+    expect(balance.payableAssetBuckets.single.currencyCode, 'USD');
+    expect(balance.payableAssetBuckets.single.amount, '10000');
+    expect(balance.receivableAssetBuckets.single.currencyCode, 'EUR');
+    expect(balance.receivableAssetBuckets.single.amount, '3000');
+  });
+
+  test('open movements remain pending and do not affect current balance', () {
+    final balance = project([
+      _openSettlement(
+        'open',
+        ZarSettlementDirection.receive,
+        _currency('TOMAN', 700000000),
+        status: ZarSettlementStatus.open,
+      ),
+    ]);
+    expect(balance.receivableAssetBuckets, isEmpty);
+    expect(balance.payableAssetBuckets, isEmpty);
   });
 
   test('nets only gold with the same purity, including unknown purity', () {
@@ -139,16 +155,16 @@ void main() {
       ),
     ]);
 
-    final gold750 = balance.receivableAssetBuckets.firstWhere(
+    final gold750 = balance.payableAssetBuckets.firstWhere(
       (bucket) => bucket.goldFineness == '750',
     );
-    final unknown = balance.receivableAssetBuckets.firstWhere(
+    final unknown = balance.payableAssetBuckets.firstWhere(
       (bucket) => bucket.goldFineness == null,
     );
     expect(gold750.amount, '60.25');
     expect(unknown.amount, '4.5');
-    expect(balance.payableAssetBuckets.single.goldFineness, '740');
-    expect(balance.payableAssetBuckets.single.amount, '10');
+    expect(balance.receivableAssetBuckets.single.goldFineness, '740');
+    expect(balance.receivableAssetBuckets.single.amount, '10');
   });
 
   test('nets exact coin identity but keeps variants separate', () {
@@ -187,14 +203,14 @@ void main() {
       ),
     ]);
 
-    expect(balance.receivableAssetBuckets.single.amount, '20');
-    expect(
-      balance.receivableAssetBuckets.single.displayName,
-      startsWith('ربع‌سکه'),
-    );
-    expect(balance.payableAssetBuckets.single.amount, '2');
+    expect(balance.payableAssetBuckets.single.amount, '20');
     expect(
       balance.payableAssetBuckets.single.displayName,
+      startsWith('ربع‌سکه'),
+    );
+    expect(balance.receivableAssetBuckets.single.amount, '2');
+    expect(
+      balance.receivableAssetBuckets.single.displayName,
       startsWith('سکه امامی'),
     );
   });

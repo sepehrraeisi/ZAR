@@ -52,6 +52,14 @@ class ZarPhaseA2Store extends ChangeNotifier {
         allocations: _allocations,
       );
 
+  ZarCustomerLedgerProjection ledgerFor(String personId, {DateTime? asOf}) =>
+      const ZarCustomerLedgerProjector().project(
+        personId: personId,
+        deals: deals,
+        settlements: settlements,
+        asOf: asOf,
+      );
+
   Future<void> savePaymentAllocations(
     String sourceId,
     List<ZarPaymentAllocation> rows,

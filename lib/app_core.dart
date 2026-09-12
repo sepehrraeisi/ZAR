@@ -3663,7 +3663,6 @@ String personBalanceShareText({
     '',
     'باید به او بدهم:',
     ..._shareBucketLines(balance.payableAssetBuckets),
-    'تعهد باز: ${toPersianDigits(balance.obligations.where((item) => item.remainingToman > BigInt.zero).length.toString())} مورد',
     if (lastActivityLabel != null) 'آخرین فعالیت: $lastActivityLabel',
     '',
     'تهیه‌شده در: ${_shareDateTime(generatedAt ?? DateTime.now())}',
@@ -3675,6 +3674,7 @@ String personStatementShareText({
   required AppPerson person,
   required ZarCustomerOperationalBalance balance,
   required List<AppRecord> records,
+  ZarCustomerLedgerProjection? ledger,
   DateTime? generatedAt,
   int? recentLimit,
 }) {
@@ -3708,7 +3708,6 @@ String personStatementShareText({
     ..._shareBucketLines(balance.receivableAssetBuckets),
     'باید به او بدهم:',
     ..._shareBucketLines(balance.payableAssetBuckets),
-    'تعهد باز: ${toPersianDigits(balance.obligations.where((item) => item.remainingToman > BigInt.zero).length.toString())} مورد',
     '',
     'تعهدات باز',
     if (open.isEmpty)
@@ -3723,6 +3722,14 @@ String personStatementShareText({
       ...visibleHistory.expand(_shareHistoryRecordLines),
     if (visibleHistory.length < history.length)
       'و ${toPersianDigits((history.length - visibleHistory.length).toString())} فعالیت دیگر',
+    if (ledger != null && ledger.postings.isNotEmpty) ...[
+      '',
+      'گردش حساب',
+      ...ledger
+          .statementLines()
+          .take(recentLimit ?? ledger.postings.length)
+          .map(_shareLedgerStatementLine),
+    ],
     '',
     'تهیه‌شده در: ${_shareDateTime(generatedAt ?? DateTime.now())}',
   ];
@@ -3754,6 +3761,7 @@ Future<void> showPersonStatementShareOptions(
   required AppPerson person,
   required ZarCustomerOperationalBalance balance,
   required List<AppRecord> records,
+  ZarCustomerLedgerProjection? ledger,
 }) async {
   await showModalBottomSheet<void>(
     context: context,
@@ -3816,6 +3824,7 @@ Future<void> showPersonStatementShareOptions(
                       person: person,
                       balance: balance,
                       records: records,
+                      ledger: ledger,
                     ),
                   ),
                 );
@@ -3832,6 +3841,7 @@ Future<void> showPersonStatementShareOptions(
                   person: person,
                   balance: balance,
                   records: records,
+                  ledger: ledger,
                   full: true,
                 );
               },
@@ -3923,6 +3933,7 @@ Future<void> _sharePersonImage(
   required AppPerson person,
   required ZarCustomerOperationalBalance balance,
   required List<AppRecord> records,
+  ZarCustomerLedgerProjection? ledger,
   required bool full,
 }) async {
   final bytes = await _captureShareCard(
@@ -3931,6 +3942,7 @@ Future<void> _sharePersonImage(
       person: person,
       balance: balance,
       records: records,
+      ledger: ledger,
       full: full,
     ),
   );
@@ -4037,15 +4049,18 @@ class _PersonShareCard extends StatelessWidget {
     required this.person,
     required this.balance,
     required this.records,
+    this.ledger,
     required this.full,
   });
   final AppPerson person;
   final ZarCustomerOperationalBalance balance;
   final List<AppRecord> records;
+  final ZarCustomerLedgerProjection? ledger;
   final bool full;
 
   @override
   Widget build(BuildContext context) {
+    final currentLedger = ledger;
     final personRecords =
         records.where((item) => item.personId == person.id).toList()
           ..sort(_compareShareRecords);
@@ -4114,6 +4129,24 @@ class _PersonShareCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                if (currentLedger != null &&
+                    currentLedger.postings.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  const Text(
+                    'گردش حساب',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  ...currentLedger
+                      .statementLines()
+                      .take(6)
+                      .map(
+                        (line) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(_shareLedgerStatementLine(line)),
+                        ),
+                      ),
+                ],
               ],
               const SizedBox(height: 16),
               Text(
@@ -4223,6 +4256,36 @@ String _shareBucketLine(ZarCustomerBalanceAssetBucket bucket) {
       'گرم طلا $amount — ${bucket.goldFineness == null ? 'عیار نامشخص' : 'عیار ${toPersianNumberText(bucket.goldFineness!)}'}',
     ZarAssetType.coin => 'عدد $amount — ${bucket.displayName ?? 'سکه'}',
   };
+}
+
+String _shareLedgerPostingLine(ZarCustomerLedgerPosting posting) {
+  final operation = switch (posting.sourceType) {
+    ZarCustomerLedgerSourceType.deal =>
+      posting.direction == ZarSettlementDirection.receive ? 'فروش' : 'خرید',
+    ZarCustomerLedgerSourceType.settlement =>
+      posting.direction == ZarSettlementDirection.deliver ? 'دریافت' : 'پرداخت',
+  };
+  final bucket = ZarCustomerBalanceAssetBucket(
+    direction: posting.direction,
+    assetType: posting.assetType,
+    amount: posting.amount,
+    currencyCode: posting.currencyCode,
+    goldFineness: posting.goldFineness,
+    coinIdentity: posting.coinIdentity,
+    displayName: posting.displayName,
+  );
+  final date = Jalali.fromDateTime(posting.occurredAt.toLocal());
+  return '$operation: ${_shareBucketLine(bucket)} · ${formatJalaliDate(date)}';
+}
+
+String _shareLedgerStatementLine(ZarCustomerLedgerStatementLine line) {
+  final posting = _shareLedgerPostingLine(line.posting);
+  if (line.runningDirection == null) return '$posting · مانده صفر';
+  final direction = line.runningDirection == ZarSettlementDirection.receive
+      ? 'باید دریافت کنم'
+      : 'باید پرداخت کنم';
+  final amount = toPersianNumberText(line.runningAmount);
+  return '$posting · مانده: $amount — $direction';
 }
 
 Iterable<String> _shareOpenRecordLines(AppRecord record) sync* {

@@ -57,7 +57,7 @@ class CustomerBalanceCard extends StatelessWidget {
         if (!compact) ...[
           const SizedBox(height: 8),
           Text(
-            'دریافت/پرداخت آزاد این مبالغ را کاهش نمی‌دهد.',
+            'مانده از معاملات و دریافت/پرداخت‌های انجام‌شده محاسبه می‌شود.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],

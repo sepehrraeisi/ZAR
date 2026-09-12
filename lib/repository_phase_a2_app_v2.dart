@@ -1018,6 +1018,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             person: currentPerson,
             balance: _store.balanceFor(person.id),
             records: records,
+            ledger: _store.ledgerFor(person.id),
           ),
         ),
         onShareBalanceBucket: (bucket) => unawaited(

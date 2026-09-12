@@ -85,6 +85,67 @@ void main() {
     },
   );
 
+  test('full statement includes canonical gross account movements', () {
+    final when = DateTime.utc(2026, 9, 11, 16, 42);
+    final deal = ZarDeal(
+      id: 'deal-ledger',
+      businessId: 'b',
+      personId: person.id,
+      type: ZarDealType.sell,
+      amount: ZarCurrencyAssetAmount(
+        ZarCurrencyAmount(code: 'USD', minorUnits: 1, minorUnitScale: 0),
+      ),
+      pricing: ZarCurrencyDealPricing(
+        tomanPerUnit: '1',
+        totalToman: ZarTomanAmount(2000000000),
+      ),
+      dealAt: when,
+      createdBy: 'u',
+      createdAt: when,
+      updatedAt: when,
+    );
+    final settlement = ZarSettlement(
+      id: 'settlement-ledger',
+      businessId: 'b',
+      personId: person.id,
+      direction: ZarSettlementDirection.receive,
+      amount: ZarCurrencyAssetAmount(
+        ZarCurrencyAmount(
+          code: 'TOMAN',
+          minorUnits: 500000000,
+          minorUnitScale: 0,
+        ),
+      ),
+      scheduledAt: when,
+      hasTime: true,
+      status: ZarSettlementStatus.completed,
+      completedAt: when,
+      createdBy: 'u',
+      createdAt: when,
+      updatedAt: when,
+    );
+    final ledger = const ZarCustomerLedgerProjector().project(
+      personId: person.id,
+      deals: [deal],
+      settlements: [settlement],
+    );
+    final text = personStatementShareText(
+      person: person,
+      balance: ZarCustomerOperationalBalance(
+        const [],
+        receivableAssetBuckets: ledger.receivableAssetBuckets,
+        payableAssetBuckets: ledger.payableAssetBuckets,
+        projectedAssetBuckets: true,
+      ),
+      records: const [],
+      ledger: ledger,
+    );
+    expect(text, contains('گردش حساب'));
+    expect(text, contains('فروش'));
+    expect(text, contains('دریافت'));
+    expect(text, contains('۱٬۵۰۰٬۰۰۰٬۰۰۰'));
+  });
+
   testWidgets(
     'person detail exposes statement, quick entry and bucket share actions',
     (tester) async {
