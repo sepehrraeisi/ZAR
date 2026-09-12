@@ -16,7 +16,8 @@ class OperationalHistoryScreen extends StatefulWidget {
   final ValueChanged<AppRecord>? onTapRecord;
 
   @override
-  State<OperationalHistoryScreen> createState() => _OperationalHistoryScreenState();
+  State<OperationalHistoryScreen> createState() =>
+      _OperationalHistoryScreenState();
 }
 
 class _OperationalHistoryScreenState extends State<OperationalHistoryScreen> {
@@ -26,23 +27,24 @@ class _OperationalHistoryScreenState extends State<OperationalHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final normalized = _query.trim().toLowerCase();
-    final items = widget.records
-        .where(_matchesFilter)
-        .where((record) {
-          if (normalized.isEmpty) return true;
-          final searchable = <String>[
-            widget.personName(record.personId),
-            record.operationDisplayLabel,
-            record.assetLabel,
-            record.amountDisplay,
-            record.currencyCode ?? '',
-            record.note ?? '',
-            if (record.type == RecordType.settlement) record.statusLabel(),
-          ].join(' ').toLowerCase();
-          return searchable.contains(normalized);
-        })
-        .toList(growable: false)
-      ..sort(_newestFirst);
+    final items =
+        widget.records
+            .where(_matchesFilter)
+            .where((record) {
+              if (normalized.isEmpty) return true;
+              final searchable = <String>[
+                widget.personName(record.personId),
+                record.operationDisplayLabel,
+                record.assetLabel,
+                record.amountDisplay,
+                record.currencyCode ?? '',
+                record.note ?? '',
+                if (record.type == RecordType.settlement) record.statusLabel(),
+              ].join(' ').toLowerCase();
+              return searchable.contains(normalized);
+            })
+            .toList(growable: false)
+          ..sort(_newestFirst);
 
     return Scaffold(
       appBar: AppBar(title: const Text('سوابق')),
@@ -126,7 +128,9 @@ class _OperationalHistoryScreenState extends State<OperationalHistoryScreen> {
         label: Text(label),
         selected: selected,
         showCheckmark: false,
-        selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+        selectedColor: Theme.of(
+          context,
+        ).colorScheme.primary.withValues(alpha: 0.12),
         side: BorderSide(
           color: selected
               ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.35)
@@ -138,14 +142,22 @@ class _OperationalHistoryScreenState extends State<OperationalHistoryScreen> {
   }
 
   bool _matchesFilter(AppRecord record) => switch (_filter) {
-        HistoryFilter.all => true,
-        HistoryFilter.buy => record.type == RecordType.deal && record.operationLabel == 'خرید',
-        HistoryFilter.sell => record.type == RecordType.deal && record.operationLabel == 'فروش',
-        HistoryFilter.receive => record.type == RecordType.settlement && record.operationLabel == 'دریافت',
-        HistoryFilter.deliver => record.type == RecordType.settlement && record.operationLabel == 'تحویل',
-        HistoryFilter.completed => record.type == RecordType.settlement && record.status == SettlementStatus.completed,
-        HistoryFilter.cancelled => record.type == RecordType.settlement && record.status == SettlementStatus.cancelled,
-      };
+    HistoryFilter.all => true,
+    HistoryFilter.buy =>
+      record.type == RecordType.deal && record.operationLabel == 'خرید',
+    HistoryFilter.sell =>
+      record.type == RecordType.deal && record.operationLabel == 'فروش',
+    HistoryFilter.receive =>
+      record.type == RecordType.settlement && record.operationLabel == 'دریافت',
+    HistoryFilter.deliver =>
+      record.type == RecordType.settlement && record.operationLabel == 'تحویل',
+    HistoryFilter.completed =>
+      record.type == RecordType.settlement &&
+          record.status == SettlementStatus.completed,
+    HistoryFilter.cancelled =>
+      record.type == RecordType.settlement &&
+          record.status == SettlementStatus.cancelled,
+  };
 
   int _newestFirst(AppRecord a, AppRecord b) {
     final date = b.date.compareTo(a.date);
@@ -197,17 +209,16 @@ class _HistoryCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             personName,
-                            style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Text(
-                      _assetLine(record),
-                      style: theme.textTheme.titleMedium,
-                    ),
+                    _assetValue(context),
                     if ((record.note ?? '').trim().isNotEmpty) ...[
                       const SizedBox(height: 5),
                       Text(
@@ -223,8 +234,14 @@ class _HistoryCard extends StatelessWidget {
                       runSpacing: 4,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text(formatJalaliDate(record.date), style: theme.textTheme.bodyMedium),
-                        Text(record.timeLabel(), style: theme.textTheme.bodyMedium),
+                        Text(
+                          formatJalaliDate(record.date),
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                        Text(
+                          record.timeLabel(),
+                          style: theme.textTheme.bodyMedium,
+                        ),
                         if (!isDeal) _SettlementStatusLabel(record: record),
                       ],
                     ),
@@ -242,6 +259,17 @@ class _HistoryCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _assetValue(BuildContext context) {
+    final text = Text(
+      _assetLine(record),
+      style: Theme.of(context).textTheme.titleMedium,
+    );
+    if (record.currencyCode != null || record.assetLabel == 'وجه نقد') {
+      return Directionality(textDirection: TextDirection.ltr, child: text);
+    }
+    return text;
+  }
 }
 
 class _OperationPill extends StatelessWidget {
@@ -255,8 +283,8 @@ class _OperationPill extends StatelessWidget {
     final color = isDeal
         ? theme.colorScheme.primary
         : record.operationLabel == 'دریافت'
-            ? const Color(0xFF2F7D4C)
-            : const Color(0xFF8C5A2B);
+        ? const Color(0xFF2F7D4C)
+        : const Color(0xFF8C5A2B);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
@@ -283,14 +311,14 @@ class _SettlementStatusLabel extends StatelessWidget {
     final color = record.status == SettlementStatus.completed
         ? const Color(0xFF2F7D4C)
         : record.status == SettlementStatus.cancelled
-            ? Theme.of(context).colorScheme.error
-            : Theme.of(context).textTheme.bodyMedium?.color;
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).textTheme.bodyMedium?.color;
     return Text(
       record.statusLabel(),
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w600,
-          ),
+        color: color,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 }
@@ -300,23 +328,26 @@ class _HistoryEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(CupertinoIcons.clock, size: 34),
-              const SizedBox(height: 10),
-              Text('نتیجه‌ای پیدا نشد.', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                'فیلتر یا عبارت جستجو را تغییر دهید.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(CupertinoIcons.clock, size: 34),
+          const SizedBox(height: 10),
+          Text(
+            'نتیجه‌ای پیدا نشد.',
+            style: Theme.of(context).textTheme.titleMedium,
           ),
-        ),
-      );
+          const SizedBox(height: 4),
+          Text(
+            'فیلتر یا عبارت جستجو را تغییر دهید.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 String _assetLine(AppRecord record) {
@@ -328,10 +359,17 @@ String _assetLine(AppRecord record) {
     return '${toPersianDigits(record.coinLines.length.toString())} نوع سکه';
   }
   if (record.currencyCode != null || record.assetLabel == 'وجه نقد') {
-    return toPersianNumberText(record.amountDisplay);
+    final amount = _numericPart(record.amountDisplay);
+    final code = record.assetLabel == 'وجه نقد'
+        ? 'تومان'
+        : (record.currencyCode ?? 'ارز');
+    return '$code ${toPersianNumberText(amount)}';
   }
   if (record.goldFineness != null) {
-    return '${toPersianNumberText(record.amountDisplay)} گرم • عیار ${toPersianNumberText(record.goldFineness!)}';
+    return 'گرم طلا ${toPersianNumberText(_numericPart(record.amountDisplay))} • عیار ${toPersianNumberText(record.goldFineness!)}';
   }
-  return '${toPersianNumberText(record.amountDisplay)} ${record.assetLabel}';
+  return '${record.assetLabel} ${toPersianNumberText(_numericPart(record.amountDisplay))}';
 }
+
+String _numericPart(String value) =>
+    RegExp(r'[-+]?[0-9۰-۹٬,٫.]+').firstMatch(value)?.group(0) ?? value;

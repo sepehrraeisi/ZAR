@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 void main() {
-  testWidgets('pending screen renders compact consistent cards', (tester) async {
+  testWidgets('pending screen renders compact consistent cards', (
+    tester,
+  ) async {
     final records = [
       AppRecord(
         id: 'usd',
@@ -48,8 +50,8 @@ void main() {
     expect(find.text('در انتظار'), findsOneWidget);
     expect(find.text('سپهر'), findsOneWidget);
     expect(find.text('روژیه'), findsOneWidget);
-    expect(find.text(r'$۶٬۰۰۰٫۵۰'), findsOneWidget);
-    expect(find.text('۵٬۰۰۰ گرم • عیار ۷۵۰'), findsOneWidget);
+    expect(find.text('USD ۶٬۰۰۰٫۵۰'), findsOneWidget);
+    expect(find.text('گرم طلا ۵٬۰۰۰ • عیار ۷۵۰'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

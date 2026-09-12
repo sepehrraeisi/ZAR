@@ -828,6 +828,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         builder: (_) => DealDetailSheet(
           record: record,
           personName: _store.personName(record.personId),
+          accountingStatus: _dealAccountingStatus(record),
           linkedSettlements: records
               .where((item) => record.linkedSettlementIds.contains(item.id))
               .toList(growable: false),
@@ -1012,6 +1013,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         records: records,
         position: _store.customerPositionFor(person.id),
         balance: _store.balanceFor(person.id),
+        ledger: _store.ledgerFor(person.id),
         onShareStatement: () => unawaited(
           showPersonStatementShareOptions(
             context,
@@ -1411,5 +1413,21 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           ),
       ],
     );
+  }
+
+  String? _dealAccountingStatus(AppRecord record) {
+    final deal = _store.dealById(record.id);
+    if (deal == null) return null;
+    final status = const ZarCustomerLedgerProjector().accountingStatusForDeal(
+      deal: deal,
+      settlements: _store.settlements,
+    );
+    return switch (status) {
+      ZarCustomerDealAccountingStatus.cancelled => 'لغو شده',
+      ZarCustomerDealAccountingStatus.unpriced => 'مبلغ تسویه مشخص نشده',
+      ZarCustomerDealAccountingStatus.unsettled => 'تسویه نشده',
+      ZarCustomerDealAccountingStatus.partiallySettled => 'بخشی تسویه شده',
+      ZarCustomerDealAccountingStatus.settled => 'تسویه شده',
+    };
   }
 }

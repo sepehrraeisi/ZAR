@@ -279,4 +279,69 @@ void main() {
     expect(value.receivableAssetBuckets, isEmpty);
     expect(value.payableAssetBuckets, isEmpty);
   });
+
+  test(
+    'each net bucket exposes a stable key and reconcilable running lines',
+    () {
+      final deal = _deal(type: ZarDealType.sell, totalToman: 2000, id: 'sell');
+      final settlement = _settlement(
+        id: 'receive',
+        direction: ZarSettlementDirection.receive,
+        amount: _money('TOMAN', 500),
+      );
+      final ledger = const ZarCustomerLedgerProjector().project(
+        personId: 'person',
+        deals: [deal],
+        settlements: [settlement],
+      );
+      final bucket = ledger.receivableAssetBuckets.single;
+      expect(bucket.assetKey, 'currency:TOMAN');
+      final lines = ledger.statementFor(bucket.assetKey);
+      expect(lines, hasLength(2));
+      expect(lines.last.runningDirection, ZarSettlementDirection.receive);
+      expect(lines.last.runningAmount, '1500');
+      expect(ledger.linesForSource('sell'), hasLength(1));
+      expect(ledger.linesForSource('receive'), hasLength(1));
+    },
+  );
+
+  test(
+    'deal accounting status is derived only from linked completed movements',
+    () {
+      final projector = const ZarCustomerLedgerProjector();
+      final deal = _deal(
+        type: ZarDealType.buy,
+        totalToman: 2000,
+        id: 'deal-status',
+      );
+      expect(
+        projector.accountingStatusForDeal(deal: deal, settlements: const []),
+        ZarCustomerDealAccountingStatus.unsettled,
+      );
+      final base = _settlement(
+        id: 'linked',
+        direction: ZarSettlementDirection.deliver,
+        amount: _money('TOMAN', 500),
+      );
+      final linked = ZarSettlement(
+        id: base.id,
+        businessId: base.businessId,
+        dealId: deal.id,
+        personId: base.personId,
+        direction: base.direction,
+        amount: base.amount,
+        scheduledAt: base.scheduledAt,
+        hasTime: base.hasTime,
+        status: base.status,
+        completedAt: base.completedAt,
+        createdBy: base.createdBy,
+        createdAt: base.createdAt,
+        updatedAt: base.updatedAt,
+      );
+      expect(
+        projector.accountingStatusForDeal(deal: deal, settlements: [linked]),
+        ZarCustomerDealAccountingStatus.partiallySettled,
+      );
+    },
+  );
 }

@@ -2,6 +2,7 @@ import 'package:flutter_app/app_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/application/customer_operational_balance_projector.dart';
+import 'package:flutter_app/application/customer_position_projector.dart';
 import 'package:flutter_app/domain/zar_domain_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shamsi_date/shamsi_date.dart';
@@ -277,4 +278,64 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('tapping a financial bucket opens its source running balance', (
+    tester,
+  ) async {
+    final at = DateTime.utc(2026, 9, 11, 10);
+    final deal = ZarDeal(
+      id: 'deal-trace',
+      businessId: 'b',
+      personId: person.id,
+      type: ZarDealType.sell,
+      amount: ZarCurrencyAssetAmount(
+        ZarCurrencyAmount(code: 'USD', minorUnits: 1, minorUnitScale: 0),
+      ),
+      pricing: ZarCurrencyDealPricing(
+        tomanPerUnit: '1',
+        totalToman: ZarTomanAmount(2000),
+      ),
+      dealAt: at,
+      createdBy: 'u',
+      createdAt: at,
+      updatedAt: at,
+    );
+    final ledger = const ZarCustomerLedgerProjector().project(
+      personId: person.id,
+      deals: [deal],
+      settlements: const [],
+    );
+    final projected = ZarCustomerOperationalBalance(
+      const [],
+      receivableAssetBuckets: ledger.receivableAssetBuckets,
+      payableAssetBuckets: ledger.payableAssetBuckets,
+      projectedAssetBuckets: true,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('fa', 'IR'),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: PersonDetailScreen(
+            person: person,
+            records: const [],
+            personName: (_) => person.name,
+            position: const ZarCustomerPosition.empty(),
+            balance: projected,
+            ledger: ledger,
+            onTapRecord: (_) {},
+            onEditPerson: (_) {},
+            onArchivePerson: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('۲٬۰۰۰'));
+    await tester.pumpAndSettle();
+    expect(find.text('منشأ مانده'), findsOneWidget);
+    expect(find.text('فروش'), findsWidgets);
+    expect(find.textContaining('مانده پس از این رویداد'), findsOneWidget);
+    expect(find.textContaining('باید از او بگیرم'), findsWidgets);
+  });
 }

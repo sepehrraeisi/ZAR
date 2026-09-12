@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../application/customer_operational_balance_projector.dart';
-import '../../domain/zar_amount_formatter.dart';
 import '../../domain/zar_domain_models.dart';
 import '../../widgets/zar_amount_display.dart';
 
@@ -11,11 +10,13 @@ class CustomerBalanceCard extends StatelessWidget {
     required this.balance,
     this.compact = false,
     this.onShareBucket,
+    this.onTapBucket,
   });
 
   final ZarCustomerOperationalBalance balance;
   final bool compact;
   final ValueChanged<ZarCustomerBalanceAssetBucket>? onShareBucket;
+  final ValueChanged<ZarCustomerBalanceAssetBucket>? onTapBucket;
 
   @override
   Widget build(BuildContext context) {
@@ -105,33 +106,37 @@ class CustomerBalanceCard extends StatelessWidget {
     required bool compact,
   }) {
     if (compact) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(child: Text(title)),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: buckets.isEmpty
-                ? Text(
-                    ZarAmountFormatter.toman(BigInt.zero),
-                    textAlign: TextAlign.end,
-                    style: TextStyle(color: color),
-                  )
-                : Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: buckets
-                        .take(2)
-                        .map((bucket) => _compactBucket(bucket, color))
-                        .toList(growable: false),
-                  ),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              if (buckets.length > 2)
+                Text(
+                  '+${_toPersianDigits((buckets.length - 2).toString())} قلم',
+                  style: TextStyle(color: color, fontWeight: FontWeight.w600),
+                ),
+            ],
           ),
-          if (buckets.length > 2)
-            Text(
-              ' +${_toPersianDigits((buckets.length - 2).toString())} قلم',
-              style: TextStyle(color: color, fontWeight: FontWeight.w600),
+          const SizedBox(height: 5),
+          if (buckets.isEmpty)
+            Text('موردی ندارد', style: TextStyle(color: color))
+          else
+            Wrap(
+              alignment: WrapAlignment.start,
+              spacing: 10,
+              runSpacing: 4,
+              children: buckets
+                  .take(2)
+                  .map((bucket) => _compactBucket(bucket, color))
+                  .toList(growable: false),
             ),
         ],
       );
@@ -198,7 +203,7 @@ class CustomerBalanceCard extends StatelessWidget {
   }) {
     final identity = _bucketIdentity(bucket);
     final parts = _bucketDisplayParts(bucket);
-    return Container(
+    final card = Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
@@ -278,6 +283,12 @@ class CustomerBalanceCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+    if (onTapBucket == null) return card;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => onTapBucket!(bucket),
+      child: card,
     );
   }
 

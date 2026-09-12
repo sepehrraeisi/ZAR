@@ -1318,6 +1318,7 @@ class PersonDetailScreen extends StatelessWidget {
     required this.onArchivePerson,
     this.position = const ZarCustomerPosition.empty(),
     this.balance,
+    this.ledger,
     this.onShareStatement,
     this.onShareBalanceBucket,
     this.onQuickEntry,
@@ -1331,6 +1332,7 @@ class PersonDetailScreen extends StatelessWidget {
   final ValueChanged<String> onArchivePerson;
   final ZarCustomerPosition position;
   final ZarCustomerOperationalBalance? balance;
+  final ZarCustomerLedgerProjection? ledger;
   final VoidCallback? onShareStatement;
   final ValueChanged<ZarCustomerBalanceAssetBucket>? onShareBalanceBucket;
   final VoidCallback? onQuickEntry;
@@ -1360,6 +1362,9 @@ class PersonDetailScreen extends StatelessWidget {
             CustomerBalanceCard(
               balance: balance!,
               onShareBucket: onShareBalanceBucket,
+              onTapBucket: ledger == null
+                  ? null
+                  : (bucket) => _showBalanceProvenance(context, bucket),
             ),
             const SizedBox(height: 16),
           ],
@@ -1435,6 +1440,192 @@ class PersonDetailScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _showBalanceProvenance(
+    BuildContext context,
+    ZarCustomerBalanceAssetBucket bucket,
+  ) async {
+    final currentLedger = ledger;
+    if (currentLedger == null) return;
+    final lines = currentLedger.statementFor(bucket.assetKey);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.58,
+          minChildSize: 0.35,
+          maxChildSize: 0.9,
+          builder: (_, controller) => ListView(
+            controller: controller,
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            children: [
+              Text('منشأ مانده', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 6),
+              Text(
+                _balanceBucketIdentity(bucket),
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              _balanceBucketAmount(bucket),
+              const SizedBox(height: 14),
+              if (lines.isEmpty)
+                const Text('منشأ قابل نمایش برای این مانده پیدا نشد.')
+              else
+                ...lines.map((line) => _provenanceLine(sheetContext, line)),
+              if (lines.isNotEmpty) ...[
+                const Divider(height: 24),
+                Text('مانده فعلی', style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 4),
+                _runningAmount(
+                  sheetContext,
+                  bucket,
+                  lines.last.runningAmount,
+                  lines.last.runningDirection,
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _provenanceLine(
+    BuildContext context,
+    ZarCustomerLedgerStatementLine line,
+  ) {
+    final posting = line.posting;
+    final record = records.cast<AppRecord?>().firstWhere(
+      (item) => item?.id == posting.sourceRecordId,
+      orElse: () => null,
+    );
+    final title =
+        posting.sourceLabel ??
+        (posting.sourceType == ZarCustomerLedgerSourceType.deal
+            ? 'معامله'
+            : 'حرکت ثبت‌شده');
+    final date = Jalali.fromDateTime(posting.occurredAt.toLocal());
+    final time = posting.occurredAt.toLocal();
+    final amount = _postingAmount(posting);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: Text(
+                  record == null ? title : record.operationDisplayLabel,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Text(
+                '${formatJalaliDate(date)} · ${toPersianDigits(time.hour.toString().padLeft(2, '0'))}:${toPersianDigits(time.minute.toString().padLeft(2, '0'))}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          amount,
+          const SizedBox(height: 4),
+          Text(
+            'مانده پس از این رویداد: ${_runningLabel(line.runningDirection, line.runningAmount)}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _balanceBucketAmount(ZarCustomerBalanceAssetBucket bucket) {
+    final parts = _bucketParts(bucket);
+    return ZarAmountDisplay(
+      amount: parts.amount,
+      unit: parts.unit,
+      amountStyle: const TextStyle(fontWeight: FontWeight.w800),
+      unitStyle: const TextStyle(fontWeight: FontWeight.w600),
+    );
+  }
+
+  Widget _runningAmount(
+    BuildContext context,
+    ZarCustomerBalanceAssetBucket bucket,
+    String amount,
+    ZarSettlementDirection? direction,
+  ) {
+    if (direction == null) return const Text('تسویه شده');
+    final copy = ZarCustomerBalanceAssetBucket(
+      direction: direction,
+      assetType: bucket.assetType,
+      amount: amount,
+      currencyCode: bucket.currencyCode,
+      goldFineness: bucket.goldFineness,
+      coinIdentity: bucket.coinIdentity,
+      displayName: bucket.displayName,
+    );
+    return _balanceBucketAmount(copy);
+  }
+
+  Widget _postingAmount(ZarCustomerLedgerPosting posting) {
+    final bucket = ZarCustomerBalanceAssetBucket(
+      direction: posting.direction,
+      assetType: posting.assetType,
+      amount: posting.amount,
+      currencyCode: posting.currencyCode,
+      goldFineness: posting.goldFineness,
+      coinIdentity: posting.coinIdentity,
+      displayName: posting.displayName,
+    );
+    return _balanceBucketAmount(bucket);
+  }
+
+  ({String amount, String unit}) _bucketParts(
+    ZarCustomerBalanceAssetBucket bucket,
+  ) {
+    final formatted = toPersianNumberText(bucket.amount);
+    return switch (bucket.assetType) {
+      ZarAssetType.currency => (
+        amount: formatted,
+        unit: bucket.isToman ? 'تومان' : bucket.currencyCode ?? 'ارز',
+      ),
+      ZarAssetType.gold => (amount: formatted, unit: 'گرم طلا'),
+      ZarAssetType.coin => (amount: formatted, unit: 'عدد'),
+    };
+  }
+
+  String _balanceBucketIdentity(ZarCustomerBalanceAssetBucket bucket) {
+    return switch (bucket.assetType) {
+      ZarAssetType.currency =>
+        bucket.isToman ? 'وجه نقد' : 'ارز ${bucket.currencyCode ?? ''}'.trim(),
+      ZarAssetType.gold =>
+        bucket.goldFineness == null
+            ? 'طلای عیار نامشخص'
+            : 'طلای عیار ${toPersianNumberText(bucket.goldFineness!)}',
+      ZarAssetType.coin => bucket.displayName ?? 'سکه',
+    };
+  }
+
+  String _runningLabel(ZarSettlementDirection? direction, String amount) {
+    if (direction == null) return 'تسویه شده';
+    final label = direction == ZarSettlementDirection.receive
+        ? 'باید از او بگیرم'
+        : 'باید به او بدهم';
+    return '$label · ${toPersianNumberText(amount)}';
   }
 
   Widget _personProfileHeader(BuildContext context) {
@@ -2326,12 +2517,14 @@ class DealDetailSheet extends StatelessWidget {
     required this.personName,
     required this.linkedSettlements,
     required this.onOpenSettlement,
+    this.accountingStatus,
   });
 
   final AppRecord record;
   final String personName;
   final List<AppRecord> linkedSettlements;
   final ValueChanged<AppRecord> onOpenSettlement;
+  final String? accountingStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -2362,6 +2555,15 @@ class DealDetailSheet extends StatelessWidget {
             'مقدار',
             AmountText(toPersianNumberText(record.amountDisplay)),
           ),
+          _detailRow(
+            context,
+            'ثمن معامله',
+            record.totalToman == null
+                ? const Text('مبلغ تسویه مشخص نشده')
+                : Text(
+                    '${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(record.totalToman))} تومان',
+                  ),
+          ),
           if (record.currencyCode != null)
             _detailRow(
               context,
@@ -2373,6 +2575,8 @@ class DealDetailSheet extends StatelessWidget {
             ),
           _detailRow(context, 'تاریخ ثبت', Text(formatJalaliDate(record.date))),
           _detailRow(context, 'ساعت ثبت', Text(record.timeLabel())),
+          if (accountingStatus != null)
+            _detailRow(context, 'اثر روی حساب', Text(accountingStatus!)),
           if (record.coinLines.isNotEmpty) ...[
             const SizedBox(height: 12),
             ...record.coinLines.map(
@@ -3698,6 +3902,9 @@ String personStatementShareText({
   final visibleHistory = recentLimit == null || history.length <= recentLimit
       ? history
       : history.take(recentLimit).toList(growable: false);
+  final unpricedDeals = visibleHistory
+      .where((item) => item.type == RecordType.deal && item.totalToman == null)
+      .toList(growable: false);
   final lines = <String>[
     'ZAR+',
     'صورتحساب ${person.name}',
@@ -3722,6 +3929,14 @@ String personStatementShareText({
       ...visibleHistory.expand(_shareHistoryRecordLines),
     if (visibleHistory.length < history.length)
       'و ${toPersianDigits((history.length - visibleHistory.length).toString())} فعالیت دیگر',
+    if (unpricedDeals.isNotEmpty) ...[
+      '',
+      'معاملات بدون مبلغ تسویه',
+      ...unpricedDeals.map(
+        (item) =>
+            '${item.operationDisplayLabel}: ${_shareAssetSummary(item)} — مبلغ تسویه مشخص نشده',
+      ),
+    ],
     if (ledger != null && ledger.postings.isNotEmpty) ...[
       '',
       'گردش حساب',
@@ -3750,6 +3965,8 @@ String balanceBucketShareText({
     '',
     direction,
     _shareBucketLine(bucket),
+    if (bucket.sourceCount > 0)
+      'منشأ: ${toPersianDigits(bucket.sourceCount.toString())} رکورد',
     '',
     'این مورد خلاصه مانده فعلی است، نه رسید معامله.',
     'تاریخ تهیه: ${_shareDateTime(generatedAt ?? DateTime.now())}',

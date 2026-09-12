@@ -192,86 +192,105 @@ class _PersonCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: theme.colorScheme.primary.withValues(
-                  alpha: 0.11,
-                ),
-                child: Text(
-                  initial,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.primary,
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+            child: Row(
+              textDirection: TextDirection.rtl,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.11,
+                  ),
+                  child: Text(
+                    initial,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            person.name,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              person.name,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                      if ((person.phone ?? '').trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Text(
+                            person.phone!,
+                            style: theme.textTheme.bodyMedium,
                           ),
                         ),
                       ],
-                    ),
-                    if ((person.phone ?? '').trim().isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Directionality(
-                        textDirection: TextDirection.ltr,
-                        child: Text(
-                          person.phone!,
-                          style: theme.textTheme.bodyMedium,
-                        ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          _CountPill(label: 'معامله', count: dealCount),
+                          _CountPill(
+                            label: 'تعهد باز',
+                            count: openCount,
+                            emphasize: openCount > 0,
+                          ),
+                        ],
                       ),
-                    ],
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        _CountPill(label: 'معامله', count: dealCount),
-                        _CountPill(
-                          label: 'تعهد باز',
-                          count: openCount,
-                          emphasize: openCount > 0,
+                      if (balance != null &&
+                          (balance!.receivableAssetBuckets.isNotEmpty ||
+                              balance!.payableAssetBuckets.isNotEmpty ||
+                              balance!.receivableToman != BigInt.zero ||
+                              balance!.payableToman != BigInt.zero)) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 9,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerLowest,
+                            borderRadius: BorderRadius.circular(13),
+                            border: Border.all(color: theme.dividerColor),
+                          ),
+                          child: CustomerBalanceCard(
+                            balance: balance!,
+                            compact: true,
+                          ),
                         ),
                       ],
-                    ),
-                    if (balance != null &&
-                        (balance!.receivableAssetBuckets.isNotEmpty ||
-                            balance!.payableAssetBuckets.isNotEmpty ||
-                            balance!.receivableToman != BigInt.zero ||
-                            balance!.payableToman != BigInt.zero)) ...[
-                      const SizedBox(height: 10),
-                      CustomerBalanceCard(balance: balance!, compact: true),
+                      if (lastActivity != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'آخرین فعالیت: ${lastActivity!.operationDisplayLabel} • ${formatJalaliDate(lastActivity!.date)} • ${lastActivity!.timeLabel()}',
+                          style: theme.textTheme.bodyMedium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
-                    if (lastActivity != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'آخرین فعالیت: ${lastActivity!.operationDisplayLabel} • ${formatJalaliDate(lastActivity!.date)} • ${lastActivity!.timeLabel()}',
-                        style: theme.textTheme.bodyMedium,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(CupertinoIcons.chevron_left, size: 18),
-            ],
+                const SizedBox(width: 6),
+                const Icon(CupertinoIcons.chevron_left, size: 18),
+              ],
+            ),
           ),
         ),
       ),

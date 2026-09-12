@@ -26,6 +26,15 @@ class ZarCustomerBalanceAssetBucket {
   final String? displayName;
   final int sourceCount;
 
+  /// Stable key shared with the canonical ledger so a bucket can be opened
+  /// without reconstructing its identity in presentation code.
+  String get assetKey => switch (assetType) {
+    ZarAssetType.currency =>
+      'currency:${(currencyCode ?? 'OTHER').toUpperCase()}',
+    ZarAssetType.gold => 'gold:${goldFineness ?? 'unknown'}',
+    ZarAssetType.coin => 'coin:${coinIdentity ?? ''}',
+  };
+
   bool get isToman =>
       assetType == ZarAssetType.currency && currencyCode == 'TOMAN';
 }
@@ -276,6 +285,17 @@ class ZarCustomerOperationalBalanceProjector {
 /// intentionally not exposed as accounting terminology in the UI.
 enum ZarCustomerLedgerSourceType { deal, settlement }
 
+/// Derived status for a commercial Deal's recorded consideration. It never
+/// changes the Deal lifecycle; it only explains how much of its Toman
+/// consideration is covered by linked completed movements.
+enum ZarCustomerDealAccountingStatus {
+  unpriced,
+  unsettled,
+  partiallySettled,
+  settled,
+  cancelled,
+}
+
 /// A traceable, signed-by-direction posting derived from a source record.
 /// [direction] means the resulting customer position: receive means the
 /// customer owes ZAR+, deliver means ZAR+ owes the customer.
@@ -294,6 +314,7 @@ class ZarCustomerLedgerPosting {
     this.goldFineness,
     this.coinIdentity,
     this.displayName,
+    this.sourceLabel,
   });
 
   final ZarCustomerLedgerSourceType sourceType;
@@ -309,6 +330,10 @@ class ZarCustomerLedgerPosting {
   final String? goldFineness;
   final String? coinIdentity;
   final String? displayName;
+
+  /// Persian operation label used by traceability views. It is presentation
+  /// metadata derived from the source record, not a second business state.
+  final String? sourceLabel;
 }
 
 /// One gross source line plus the running position after that line.
@@ -405,6 +430,13 @@ class ZarCustomerLedgerProjection {
       }),
     );
   }
+
+  List<ZarCustomerLedgerStatementLine> linesForSource(String sourceRecordId) =>
+      List.unmodifiable(
+        statementLines().where(
+          (line) => line.posting.sourceRecordId == sourceRecordId,
+        ),
+      );
 }
 
 /// Projects counterparty positions from historical priced Deals and actual
@@ -413,6 +445,38 @@ class ZarCustomerLedgerProjection {
 /// a persisted relationship, but the completed source is applied once here.
 class ZarCustomerLedgerProjector {
   const ZarCustomerLedgerProjector();
+
+  ZarCustomerDealAccountingStatus accountingStatusForDeal({
+    required ZarDeal deal,
+    required Iterable<ZarSettlement> settlements,
+  }) {
+    if (deal.status == ZarDealStatus.cancelled) {
+      return ZarCustomerDealAccountingStatus.cancelled;
+    }
+    final pricing = deal.pricing;
+    if (pricing == null || pricing.totalToman.wholeTomans <= 0) {
+      return ZarCustomerDealAccountingStatus.unpriced;
+    }
+    final expectedDirection = deal.type == ZarDealType.buy
+        ? ZarSettlementDirection.deliver
+        : ZarSettlementDirection.receive;
+    var covered = BigInt.zero;
+    for (final settlement in settlements) {
+      if (settlement.dealId != deal.id ||
+          settlement.status != ZarSettlementStatus.completed ||
+          settlement.direction != expectedDirection) {
+        continue;
+      }
+      final value = zarWholeToman(settlement.amount);
+      if (value != null) covered += value;
+    }
+    final total = BigInt.from(pricing.totalToman.wholeTomans);
+    if (covered >= total) return ZarCustomerDealAccountingStatus.settled;
+    if (covered > BigInt.zero) {
+      return ZarCustomerDealAccountingStatus.partiallySettled;
+    }
+    return ZarCustomerDealAccountingStatus.unsettled;
+  }
 
   ZarCustomerLedgerProjection project({
     required String personId,
@@ -442,6 +506,7 @@ class ZarCustomerLedgerProjector {
           currencyCode: 'TOMAN',
           amount: deal.pricing!.totalToman.wholeTomans.toString(),
           occurredAt: deal.dealAt,
+          sourceLabel: deal.type == ZarDealType.buy ? 'خرید' : 'فروش',
         ),
       );
     }
@@ -491,6 +556,9 @@ class ZarCustomerLedgerProjector {
             currencyCode: code,
             amount: _currencyDecimal(value),
             occurredAt: occurredAt,
+            sourceLabel: settlement.direction == ZarSettlementDirection.receive
+                ? 'دریافت'
+                : 'پرداخت',
           ),
         );
       case ZarGoldAssetAmount(:final value):
@@ -508,6 +576,9 @@ class ZarCustomerLedgerProjector {
             goldFineness: fineness,
             amount: grams,
             occurredAt: occurredAt,
+            sourceLabel: settlement.direction == ZarSettlementDirection.receive
+                ? 'دریافت'
+                : 'پرداخت',
           ),
         );
       case ZarCoinBundleAmount(:final lines):
@@ -526,6 +597,10 @@ class ZarCustomerLedgerProjector {
               displayName: _coinDisplayName(line),
               amount: line.quantity.toString(),
               occurredAt: occurredAt,
+              sourceLabel:
+                  settlement.direction == ZarSettlementDirection.receive
+                  ? 'دریافت'
+                  : 'پرداخت',
             ),
           );
         }

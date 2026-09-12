@@ -20,24 +20,24 @@ class OperationalPendingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(title)),
-        body: records.isEmpty
-            ? const _PendingEmptyState()
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-                itemCount: records.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (_, index) {
-                  final record = records[index];
-                  return _PendingRecordCard(
-                    record: record,
-                    personName: personName(record.personId),
-                    overdue: overdueRecordIds.contains(record.id),
-                    onTap: () => onOpenRecord(record),
-                  );
-                },
-              ),
-      );
+    appBar: AppBar(title: Text(title)),
+    body: records.isEmpty
+        ? const _PendingEmptyState()
+        : ListView.separated(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            itemCount: records.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (_, index) {
+              final record = records[index];
+              return _PendingRecordCard(
+                record: record,
+                personName: personName(record.personId),
+                overdue: overdueRecordIds.contains(record.id),
+                onTap: () => onOpenRecord(record),
+              );
+            },
+          ),
+  );
 }
 
 class _PendingRecordCard extends StatelessWidget {
@@ -63,9 +63,7 @@ class _PendingRecordCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
         side: BorderSide(
-          color: overdue
-              ? error.withValues(alpha: 0.42)
-              : theme.dividerColor,
+          color: overdue ? error.withValues(alpha: 0.42) : theme.dividerColor,
         ),
       ),
       child: InkWell(
@@ -88,10 +86,7 @@ class _PendingRecordCard extends StatelessWidget {
                           style: theme.textTheme.titleMedium,
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          personName,
-                          style: theme.textTheme.bodyMedium,
-                        ),
+                        Text(personName, style: theme.textTheme.bodyMedium),
                       ],
                     ),
                   ),
@@ -114,14 +109,7 @@ class _PendingRecordCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      _assetSummary(record),
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                  Expanded(child: _assetValue(context)),
                   const SizedBox(width: 8),
                   const Icon(Icons.chevron_left, size: 18),
                 ],
@@ -147,6 +135,19 @@ class _PendingRecordCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _assetValue(BuildContext context) {
+    final text = Text(
+      _assetSummary(record),
+      style: Theme.of(
+        context,
+      ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+    );
+    if (record.currencyCode != null || record.assetLabel == 'وجه نقد') {
+      return Directionality(textDirection: TextDirection.ltr, child: text);
+    }
+    return text;
   }
 }
 
@@ -197,27 +198,27 @@ class _PendingEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.task_alt_rounded, size: 34),
-              const SizedBox(height: 10),
-              Text(
-                'تعهد بازی وجود ندارد.',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'موارد جدیدی که نیاز به دریافت یا پرداخت داشته باشند اینجا نمایش داده می‌شوند.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.task_alt_rounded, size: 34),
+          const SizedBox(height: 10),
+          Text(
+            'تعهد بازی وجود ندارد.',
+            style: Theme.of(context).textTheme.titleMedium,
           ),
-        ),
-      );
+          const SizedBox(height: 4),
+          Text(
+            'موارد جدیدی که نیاز به دریافت یا پرداخت داشته باشند اینجا نمایش داده می‌شوند.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 String _assetSummary(AppRecord record) {
@@ -229,15 +230,16 @@ String _assetSummary(AppRecord record) {
     return '${toPersianDigits(record.coinLines.length.toString())} نوع سکه';
   }
   if (record.assetLabel == 'وجه نقد') {
-    return record.amountDisplay.contains('تومان')
-        ? toPersianNumberText(record.amountDisplay)
-        : '${toPersianNumberText(record.amountDisplay)} تومان';
+    return 'تومان ${toPersianNumberText(_numericPart(record.amountDisplay))}';
   }
   if (record.currencyCode != null) {
-    return toPersianNumberText(record.amountDisplay);
+    return '${record.currencyCode} ${toPersianNumberText(_numericPart(record.amountDisplay))}';
   }
   if (record.goldFineness != null) {
-    return '${toPersianNumberText(record.amountDisplay)} گرم • عیار ${toPersianNumberText(record.goldFineness!)}';
+    return 'گرم طلا ${toPersianNumberText(_numericPart(record.amountDisplay))} • عیار ${toPersianNumberText(record.goldFineness!)}';
   }
-  return '${toPersianNumberText(record.amountDisplay)} ${record.assetLabel}';
+  return '${record.assetLabel} ${toPersianNumberText(_numericPart(record.amountDisplay))}';
 }
+
+String _numericPart(String value) =>
+    RegExp(r'[-+]?[0-9۰-۹٬,٫.]+').firstMatch(value)?.group(0) ?? value;
