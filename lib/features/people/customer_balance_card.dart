@@ -118,26 +118,32 @@ class CustomerBalanceCard extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
-              if (buckets.length > 2)
-                Text(
-                  '+${_toPersianDigits((buckets.length - 2).toString())} قلم',
-                  style: TextStyle(color: color, fontWeight: FontWeight.w600),
-                ),
             ],
           ),
-          const SizedBox(height: 5),
           if (buckets.isEmpty)
-            Text('موردی ندارد', style: TextStyle(color: color))
-          else
-            Wrap(
-              alignment: WrapAlignment.start,
-              spacing: 10,
-              runSpacing: 4,
-              children: buckets
-                  .take(2)
-                  .map((bucket) => _compactBucket(bucket, color))
-                  .toList(growable: false),
-            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                '—',
+                textAlign: TextAlign.right,
+                style: TextStyle(color: color, fontWeight: FontWeight.w600),
+              ),
+            )
+          else ...[
+            const SizedBox(height: 3),
+            ...buckets
+                .take(2)
+                .map((bucket) => _compactBalanceRow(bucket, color)),
+            if (buckets.length > 2)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  '+${_toPersianDigits((buckets.length - 2).toString())} مورد دیگر',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(color: color, fontWeight: FontWeight.w600),
+                ),
+              ),
+          ],
         ],
       );
     }
@@ -167,28 +173,42 @@ class CustomerBalanceCard extends StatelessWidget {
     );
   }
 
-  Widget _compactBucket(ZarCustomerBalanceAssetBucket bucket, Color color) {
+  Widget _compactBalanceRow(ZarCustomerBalanceAssetBucket bucket, Color color) {
     final parts = _bucketDisplayParts(bucket);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 160),
-      child: Column(
-        // The compact bucket lives in the RTL page context. `start` is the
-        // physical right edge, keeping identity/value blocks anchored.
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        textDirection: TextDirection.ltr,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (bucket.assetType != ZarAssetType.currency)
-            Text(
-              _bucketIdentity(bucket),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: color, fontWeight: FontWeight.w600),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ZarAmountDisplay(
+                amount: parts.amount,
+                unit: parts.unit,
+                purity: parts.purity,
+                amountStyle: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
+                unitStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
+              ),
             ),
-          ZarAmountDisplay(
-            amount: parts.amount,
-            unit: parts.unit,
-            purity: parts.purity,
-            amountStyle: TextStyle(color: color, fontWeight: FontWeight.w700),
-            unitStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: Text(
+                _bucketIdentity(bucket),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: TextStyle(color: color, fontWeight: FontWeight.w600),
+              ),
+            ),
           ),
         ],
       ),
@@ -206,6 +226,7 @@ class CustomerBalanceCard extends StatelessWidget {
     final card = Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      constraints: const BoxConstraints(minHeight: 64),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
@@ -213,52 +234,54 @@ class CustomerBalanceCard extends StatelessWidget {
       ),
       child: Row(
         textDirection: TextDirection.ltr,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(
-            width: 44,
-            height: 44,
-            child: onShare == null
-                ? null
-                : Semantics(
-                    button: true,
-                    label: 'اشتراک‌گذاری این مورد',
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 44,
-                        height: 44,
-                      ),
-                      tooltip: 'اشتراک‌گذاری این مورد',
-                      onPressed: onShare,
-                      icon: const Icon(Icons.ios_share_outlined, size: 19),
-                    ),
+          if (onShare != null)
+            SizedBox(
+              width: 44,
+              height: 44,
+              child: Semantics(
+                button: true,
+                label: 'اشتراک‌گذاری این مورد',
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 44,
+                    height: 44,
                   ),
-          ),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 132,
-            child: ZarAmountDisplay(
-              amount: parts.amount,
-              unit: parts.unit,
-              purity: parts.purity,
-              amountStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
+                  tooltip: 'اشتراک‌گذاری این مورد',
+                  onPressed: onShare,
+                  icon: const Icon(Icons.ios_share_outlined, size: 19),
+                ),
               ),
-              unitStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
+            ),
+          const SizedBox(width: 6),
+          Flexible(
+            flex: 5,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ZarAmountDisplay(
+                amount: parts.amount,
+                unit: parts.unit,
+                purity: parts.purity,
+                amountStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+                unitStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
+            flex: 6,
             child: Directionality(
               textDirection: TextDirection.rtl,
               child: Column(
-                // In RTL, start is the physical right edge. Using end here
-                // caused the identity column to drift toward the center.
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -295,7 +318,9 @@ class CustomerBalanceCard extends StatelessWidget {
   String _bucketIdentity(ZarCustomerBalanceAssetBucket bucket) {
     return switch (bucket.assetType) {
       ZarAssetType.currency =>
-        bucket.currencyCode == 'TOMAN' ? 'وجه نقد' : 'ارز',
+        bucket.currencyCode == 'TOMAN'
+            ? 'وجه نقد'
+            : 'ارز ${bucket.currencyCode ?? ''}'.trim(),
       ZarAssetType.gold =>
         bucket.goldFineness == null
             ? 'طلای عیار نامشخص'

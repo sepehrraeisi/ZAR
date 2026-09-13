@@ -69,7 +69,7 @@ void main() {
       expect(find.text('به او باید بدهم'), findsOneWidget);
       expect(find.text('USD'), findsOneWidget);
       expect(find.text('۱۰٬۰۰۰'), findsOneWidget);
-      expect(find.textContaining('آخرین فعالیت: خرید'), findsOneWidget);
+      expect(find.text('خرید • ۱۸ شهریور، ۱۶:۱۳'), findsOneWidget);
     },
   );
 
@@ -145,5 +145,59 @@ void main() {
     expect(find.text('تومان'), findsOneWidget);
     expect(find.text('۳۵۰٬۰۰۰٬۰۰۰'), findsOneWidget);
     expect(find.text('۷۰۰٬۰۰۰٬۰۰۰'), findsNothing);
+  });
+
+  testWidgets('people preview keeps directions compact and caps visible rows', (
+    tester,
+  ) async {
+    final person = AppPerson(id: 'p1', name: 'هما');
+    final buckets = [
+      const ZarCustomerBalanceAssetBucket(
+        direction: ZarSettlementDirection.receive,
+        assetType: ZarAssetType.currency,
+        currencyCode: 'USD',
+        amount: '10000',
+      ),
+      const ZarCustomerBalanceAssetBucket(
+        direction: ZarSettlementDirection.receive,
+        assetType: ZarAssetType.currency,
+        currencyCode: 'AED',
+        amount: '5000',
+      ),
+      const ZarCustomerBalanceAssetBucket(
+        direction: ZarSettlementDirection.receive,
+        assetType: ZarAssetType.currency,
+        currencyCode: 'EUR',
+        amount: '2500',
+      ),
+    ];
+    await tester.pumpWidget(
+      _host(
+        OperationalPeopleScreen(
+          people: [person],
+          records: const [],
+          archivedCount: 0,
+          onAddPerson: () {},
+          onOpenPerson: (_) {},
+          onOpenArchive: () {},
+          balanceFor: (_) => ZarCustomerOperationalBalance(
+            const [],
+            receivableAssetBuckets: buckets,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('از او باید بگیرم'), findsOneWidget);
+    expect(find.text('ارز USD'), findsOneWidget);
+    expect(find.text('ارز AED'), findsOneWidget);
+    expect(find.text('+۱ مورد دیگر'), findsOneWidget);
+    expect(find.text('به او باید بدهم'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    expect(find.text('موردی ندارد'), findsNothing);
+    expect(find.text('قلم'), findsNothing);
+    final card = find.byType(Card).last;
+    expect(tester.getSize(card).height, lessThan(270));
   });
 }

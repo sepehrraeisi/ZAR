@@ -1905,19 +1905,26 @@ class _PersonRecordRow extends StatelessWidget {
         ),
         child: Row(
           textDirection: TextDirection.ltr,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(
               width: 24,
               child: Align(
-                alignment: Alignment.topLeft,
+                alignment: Alignment.centerLeft,
                 child: Icon(CupertinoIcons.chevron_left, size: 20),
               ),
             ),
             const SizedBox(width: 8),
-            SizedBox(width: 138, child: _PersonRecordAmount(record: record)),
+            Flexible(
+              flex: 5,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _PersonRecordAmount(record: record),
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
+              flex: 6,
               child: Directionality(
                 textDirection: TextDirection.rtl,
                 child: Column(

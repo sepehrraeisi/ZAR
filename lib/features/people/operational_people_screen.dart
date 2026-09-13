@@ -77,10 +77,14 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton.icon(
+                OutlinedButton.icon(
                   onPressed: widget.onAddPerson,
                   icon: const Icon(CupertinoIcons.add, size: 16),
                   label: const Text('افزودن'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 44),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
                 ),
               ],
             ),
@@ -182,6 +186,12 @@ class _PersonCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final initial = person.name.trim().isEmpty ? '-' : person.name.trim()[0];
+    final hasBalance =
+        balance != null &&
+        (balance!.receivableAssetBuckets.isNotEmpty ||
+            balance!.payableAssetBuckets.isNotEmpty ||
+            balance!.receivableToman != BigInt.zero ||
+            balance!.payableToman != BigInt.zero);
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -195,106 +205,111 @@ class _PersonCard extends StatelessWidget {
         child: Directionality(
           textDirection: TextDirection.rtl,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-            child: Row(
-              textDirection: TextDirection.rtl,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: theme.colorScheme.primary.withValues(
-                    alpha: 0.11,
-                  ),
-                  child: Text(
-                    initial,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.primary,
+                // Header: identity on the right and disclosure on the far
+                // left. Counts stay with identity so they scan as one unit.
+                Row(
+                  textDirection: TextDirection.rtl,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: theme.colorScheme.primary.withValues(
+                        alpha: 0.11,
+                      ),
+                      child: Text(
+                        initial,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(
-                              person.name,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                          Text(
+                            person.name,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if ((person.phone ?? '').trim().isNotEmpty) ...[
+                            const SizedBox(height: 1),
+                            Directionality(
+                              textDirection: TextDirection.ltr,
+                              child: Text(
+                                person.phone!,
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 5),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                '${toPersianDigits(dealCount.toString())} معامله',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              _CountPill(
+                                label: 'تعهد باز',
+                                count: openCount,
+                                emphasize: openCount > 0,
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      if ((person.phone ?? '').trim().isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Directionality(
-                          textDirection: TextDirection.ltr,
-                          child: Text(
-                            person.phone!,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        children: [
-                          _CountPill(label: 'معامله', count: dealCount),
-                          _CountPill(
-                            label: 'تعهد باز',
-                            count: openCount,
-                            emphasize: openCount > 0,
-                          ),
-                        ],
-                      ),
-                      if (balance != null &&
-                          (balance!.receivableAssetBuckets.isNotEmpty ||
-                              balance!.payableAssetBuckets.isNotEmpty ||
-                              balance!.receivableToman != BigInt.zero ||
-                              balance!.payableToman != BigInt.zero)) ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 9,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerLowest,
-                            borderRadius: BorderRadius.circular(13),
-                            border: Border.all(color: theme.dividerColor),
-                          ),
-                          child: CustomerBalanceCard(
-                            balance: balance!,
-                            compact: true,
-                          ),
-                        ),
-                      ],
-                      if (lastActivity != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          'آخرین فعالیت: ${lastActivity!.operationDisplayLabel} • ${formatJalaliDate(lastActivity!.date)} • ${lastActivity!.timeLabel()}',
-                          style: theme.textTheme.bodyMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 3),
+                      child: Icon(CupertinoIcons.chevron_left, size: 18),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                const Icon(CupertinoIcons.chevron_left, size: 18),
+                if (hasBalance) ...[
+                  const SizedBox(height: 10),
+                  Divider(height: 1, color: theme.dividerColor),
+                  const SizedBox(height: 9),
+                  // Financial Summary is part of the person card itself;
+                  // compact mode deliberately does not add another Card.
+                  CustomerBalanceCard(balance: balance!, compact: true),
+                ],
+                if (lastActivity != null) ...[
+                  const SizedBox(height: 9),
+                  Divider(height: 1, color: theme.dividerColor),
+                  const SizedBox(height: 8),
+                  Text(
+                    _compactActivityLabel(lastActivity!),
+                    style: theme.textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  String _compactActivityLabel(AppRecord record) {
+    final date =
+        '${toPersianDigits(record.date.day.toString())} ${monthName(record.date.month)}';
+    final time = record.time == null ? '' : '، ${record.timeLabel()}';
+    return '${record.operationDisplayLabel} • $date$time';
   }
 }
 
@@ -312,9 +327,17 @@ class _CountPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = emphasize
-        ? theme.colorScheme.primary
-        : theme.textTheme.bodyMedium?.color;
+    final labelText = '${toPersianDigits(count.toString())} $label';
+    if (!emphasize) {
+      return Text(
+        labelText,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.textTheme.bodySmall?.color,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    }
+    final color = theme.colorScheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
@@ -324,7 +347,7 @@ class _CountPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(99),
       ),
       child: Text(
-        '${toPersianDigits(count.toString())} $label',
+        labelText,
         style: theme.textTheme.bodyMedium?.copyWith(
           color: color,
           fontWeight: FontWeight.w600,
