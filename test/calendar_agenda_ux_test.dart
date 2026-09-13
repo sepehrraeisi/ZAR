@@ -160,4 +160,83 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('agenda remains full-width and physically RTL-aligned', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final today = Jalali.now();
+    await tester.pumpWidget(
+      _host(
+        CalendarScreen(
+          clock: () => _gregorian(today, 12),
+          records: [
+            _record(
+              id: 'geometry',
+              type: RecordType.deal,
+              operation: 'فروش',
+              date: today,
+              calendarAt: _gregorian(today, 11),
+            ),
+          ],
+          personName: (_) => 'مهیار',
+          onTapRecord: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scroll = find.byKey(const ValueKey('calendar-scroll'));
+    await tester.drag(scroll, const Offset(0, -600));
+    await tester.pumpAndSettle();
+
+    final row = tester.getRect(
+      find.byKey(const ValueKey('calendar-agenda-row-geometry')),
+    );
+    final header = tester.getRect(
+      find.byKey(const ValueKey('calendar-agenda-header')),
+    );
+    final title = tester.getRect(
+      find.byKey(const ValueKey('calendar-agenda-title')),
+    );
+    final summary = tester.getRect(
+      find.byKey(const ValueKey('calendar-agenda-summary')),
+    );
+    final chevron = tester.getRect(
+      find.byKey(const ValueKey('calendar-agenda-chevron-geometry')),
+    );
+    final metadata = tester.getRect(
+      find.byKey(const ValueKey('calendar-agenda-meta-geometry')),
+    );
+    final info = tester.getRect(
+      find.byKey(const ValueKey('calendar-agenda-info-column-geometry')),
+    );
+    final amount = tester.getRect(find.text('۶۰۰'));
+
+    expect(header.width, greaterThan(310));
+    expect(row.width, greaterThan(310));
+    expect(title.right, greaterThan(header.right - 30));
+    expect(summary.right, greaterThan(header.right - 30));
+    expect(info.right, greaterThan(row.right - 30));
+    expect(amount.right, greaterThan(row.right - 30));
+    expect(info.center.dx, greaterThan(metadata.center.dx));
+    expect(chevron.center.dx, lessThan(metadata.center.dx));
+    expect(row.top, greaterThanOrEqualTo(header.bottom - 1));
+    expect(tester.takeException(), isNull);
+
+    final expandedRowWidth = row.width;
+    await tester.drag(scroll, const Offset(0, -600));
+    await tester.pumpAndSettle();
+    final collapsedHeader = tester.getRect(
+      find.byKey(const ValueKey('calendar-agenda-header')),
+    );
+    final collapsedRow = tester.getRect(
+      find.byKey(const ValueKey('calendar-agenda-row-geometry')),
+    );
+    expect(collapsedHeader.width, closeTo(header.width, 1));
+    expect(collapsedRow.width, closeTo(expandedRowWidth, 1));
+    expect(tester.takeException(), isNull);
+  });
 }

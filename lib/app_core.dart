@@ -1343,26 +1343,26 @@ class _CalendarAgendaHeaderDelegate extends SliverPersistentHeaderDelegate {
   ) {
     final theme = Theme.of(context);
     return Container(
+      key: const ValueKey('calendar-agenda-header'),
+      width: double.infinity,
       color: theme.scaffoldBackgroundColor,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'فعالیت‌های ${toPersianDigits(selected.day.toString())} ${monthName(selected.month)}',
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  summary.isEmpty ? 'برای این روز فعالیتی ثبت نشده' : summary,
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
-            ),
+          Text(
+            'فعالیت‌های ${toPersianDigits(selected.day.toString())} ${monthName(selected.month)}',
+            key: const ValueKey('calendar-agenda-title'),
+            textAlign: TextAlign.right,
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            summary.isEmpty ? 'برای این روز فعالیتی ثبت نشده' : summary,
+            key: const ValueKey('calendar-agenda-summary'),
+            textAlign: TextAlign.right,
+            style: theme.textTheme.bodySmall,
           ),
         ],
       ),
@@ -1406,6 +1406,7 @@ class _CalendarAgendaRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return InkWell(
+      key: ValueKey('calendar-agenda-row-${activity.record.id}'),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 20, 8),
@@ -1416,13 +1417,17 @@ class _CalendarAgendaRow extends StatelessWidget {
             SizedBox(
               width: 44,
               height: 52,
-              child: Icon(
-                CupertinoIcons.chevron_left,
-                size: 18,
-                color: theme.textTheme.bodyMedium?.color,
+              child: Center(
+                key: ValueKey('calendar-agenda-chevron-${activity.record.id}'),
+                child: Icon(
+                  CupertinoIcons.chevron_left,
+                  size: 18,
+                  color: theme.textTheme.bodyMedium?.color,
+                ),
               ),
             ),
             SizedBox(
+              key: ValueKey('calendar-agenda-meta-${activity.record.id}'),
               width: 82,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1459,11 +1464,16 @@ class _CalendarAgendaRow extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
+              key: ValueKey('calendar-agenda-info-${activity.record.id}'),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                key: ValueKey(
+                  'calendar-agenda-info-column-${activity.record.id}',
+                ),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     activity.record.operationDisplayLabel,
+                    textAlign: TextAlign.right,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -1471,6 +1481,7 @@ class _CalendarAgendaRow extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text(
                     personName,
+                    textAlign: TextAlign.right,
                     style: theme.textTheme.bodyMedium,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1496,57 +1507,69 @@ class _CalendarAgendaRow extends StatelessWidget {
         ).firstMatch(record.amountDisplay)?.group(0) ??
         record.amountDisplay;
     if (record.coinLines.isNotEmpty) {
-      return Directionality(
-        textDirection: TextDirection.rtl,
-        child: Text(
-          toPersianNumberText(record.amountDisplay),
-          style: const TextStyle(fontWeight: FontWeight.w600),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Text(
+            toPersianNumberText(record.amountDisplay),
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       );
     }
     if (record.currencyCode != null && record.currencyCode != 'TOMAN') {
-      return Align(
-        alignment: AlignmentDirectional.centerEnd,
+      return _rightAlignedAmount(
         child: ZarAmountDisplay(
           amount: toPersianNumberText(numeric),
           unit: record.currencyCode!,
+          contentAlignment: Alignment.centerRight,
           amountStyle: const TextStyle(fontWeight: FontWeight.w700),
           unitStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       );
     }
     if (record.assetLabel == 'وجه نقد' || record.currencyCode == 'TOMAN') {
-      return Align(
-        alignment: AlignmentDirectional.centerEnd,
+      return _rightAlignedAmount(
         child: ZarAmountDisplay(
           amount: toPersianNumberText(numeric),
           unit: 'تومان',
+          contentAlignment: Alignment.centerRight,
           amountStyle: const TextStyle(fontWeight: FontWeight.w700),
           unitStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       );
     }
     if (record.assetLabel == 'گرم طلا') {
-      return Align(
-        alignment: AlignmentDirectional.centerEnd,
+      return _rightAlignedAmount(
         child: ZarAmountDisplay(
           amount: toPersianNumberText(numeric),
           unit: 'گرم طلا',
+          contentAlignment: Alignment.centerRight,
           amountStyle: const TextStyle(fontWeight: FontWeight.w700),
           unitStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       );
     }
-    return Text(
-      toPersianNumberText(record.amountDisplay),
-      style: const TextStyle(fontWeight: FontWeight.w700),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      textAlign: TextAlign.right,
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Text(
+        toPersianNumberText(record.amountDisplay),
+        style: const TextStyle(fontWeight: FontWeight.w700),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.right,
+      ),
     );
   }
+
+  Widget _rightAlignedAmount({required Widget child}) => Align(
+    alignment: Alignment.centerRight,
+    child: IntrinsicWidth(child: child),
+  );
 }
 
 class PeopleScreen extends StatefulWidget {

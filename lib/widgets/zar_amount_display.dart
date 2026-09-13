@@ -12,6 +12,7 @@ class ZarAmountDisplay extends StatelessWidget {
     this.unitStyle,
     this.purity,
     this.negative = false,
+    this.contentAlignment = Alignment.centerLeft,
   });
 
   final String amount;
@@ -20,6 +21,13 @@ class ZarAmountDisplay extends StatelessWidget {
   final TextStyle? unitStyle;
   final String? purity;
   final bool negative;
+
+  /// Physical alignment for the complete amount/unit block.
+  ///
+  /// Existing callers keep the historical left alignment. Calendar agenda
+  /// rows override this so the canonical LTR amount remains on the physical
+  /// right side of the RTL information column.
+  final Alignment contentAlignment;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +40,7 @@ class ZarAmountDisplay extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Align(
-        alignment: Alignment.centerLeft,
+        alignment: contentAlignment,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
