@@ -93,6 +93,33 @@ void main() {
     },
   );
 
+  testWidgets('Calendar can preselect its selected date in Quick Entry', (
+    tester,
+  ) async {
+    final selected = Jalali(1405, 6, 18);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ConfirmedQuickAddSheet(
+            people: [person()],
+            initialDate: selected,
+            preferenceStore: InMemoryQuickEntryPreferenceStore(),
+            onSave: (_) async {},
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('خرید'));
+    await tester.pump();
+    await tester.tap(find.text('طلا'));
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('ویرایش'));
+    await tester.tap(find.text('ویرایش'));
+    await tester.pump();
+    expect(find.text(formatJalaliDate(selected)), findsOneWidget);
+  });
+
   testWidgets('selecting a reminder does not change transaction time', (
     tester,
   ) async {

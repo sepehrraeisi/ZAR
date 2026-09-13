@@ -208,6 +208,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
   bool _ready = false;
   bool _writing = false;
   Object? _loadError;
+  Jalali _calendarSelectedDate = Jalali.now();
 
   @override
   void initState() {
@@ -641,6 +642,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     String? initialGoldFineness,
     String? initialCoinTypeId,
     String? initialPersonId,
+    Jalali? initialDate,
   }) async {
     String? savedRecordId;
     final recentPeople = <AppPerson>[];
@@ -668,6 +670,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         initialGoldFineness: initialGoldFineness,
         initialCoinTypeId: initialCoinTypeId,
         initialPersonId: initialPersonId,
+        initialDate: initialDate,
         onSave: (draft) => _saveQuickAddDraftOrThrow(
           draft,
           onSaved: (id) => savedRecordId = id,
@@ -1349,6 +1352,9 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         records: records,
         personName: _store.personName,
         onTapRecord: _openRecord,
+        onSelectedDateChanged: (date) => _calendarSelectedDate = date,
+        onAdd: () =>
+            unawaited(_openQuickAdd(initialDate: _calendarSelectedDate)),
       ),
       const SizedBox.shrink(),
       OperationalPeopleScreen(
@@ -1387,7 +1393,11 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             currentIndex: _index,
             onTap: (value) {
               if (value == 2) {
-                unawaited(_openQuickAdd());
+                unawaited(
+                  _openQuickAdd(
+                    initialDate: _index == 1 ? _calendarSelectedDate : null,
+                  ),
+                );
               } else {
                 setState(() => _index = value);
               }

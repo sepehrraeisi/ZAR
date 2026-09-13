@@ -23,6 +23,7 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
     this.initialGoldFineness,
     this.initialCoinTypeId,
     this.initialPersonId,
+    this.initialDate,
   });
   final List<AppPerson> people;
   final Future<void> Function(QuickAddDraft draft) onSave;
@@ -36,6 +37,7 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
   final String? initialGoldFineness;
   final String? initialCoinTypeId;
   final String? initialPersonId;
+  final Jalali? initialDate;
   @override
   State<ConfirmedQuickAddSheet> createState() => _ConfirmedQuickAddSheetState();
 }
@@ -91,7 +93,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     // A transaction always starts with the local registration timestamp.
     // Reminder scheduling remains independent and may still be disabled.
     final now = DateTime.now();
-    _date = Jalali.fromDateTime(now);
+    _date = widget.initialDate ?? Jalali.fromDateTime(now);
     _time = TimeOfDay.fromDateTime(now);
     _operation = widget.initialOperation;
     _asset = widget.initialAsset;

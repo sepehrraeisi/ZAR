@@ -51,6 +51,10 @@ void main() {
             ],
             personName: (_) => 'هما',
             onTapRecord: (_) {},
+            clock: () {
+              final date = Jalali.now().toDateTime();
+              return DateTime(date.year, date.month, date.day, 12);
+            },
           ),
         ),
       );
@@ -60,7 +64,7 @@ void main() {
 
       expect(find.text('خرید'), findsOneWidget);
       expect(find.text('دریافت'), findsOneWidget);
-      expect(find.text('معامله'), findsOneWidget);
+      expect(find.text('ثبت شده'), findsOneWidget);
       expect(find.text('در انتظار'), findsOneWidget);
     },
   );

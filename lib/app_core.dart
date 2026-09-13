@@ -197,6 +197,7 @@ class AppRecord {
     this.status = SettlementStatus.open,
     this.note,
     this.linkedSettlementIds = const [],
+    this.calendarAt,
     this.goldFineness,
     this.goldPriceReferenceFineness,
     this.goldInputWeight,
@@ -224,6 +225,12 @@ class AppRecord {
   final SettlementStatus status;
   final String? note;
   final List<String> linkedSettlementIds;
+
+  /// Optional semantic timestamp used by Calendar projections. For deals this
+  /// is the deal timestamp; for settlements it is scheduledAt while open and
+  /// completedAt after completion. Legacy UI callers may omit it and fall
+  /// back to [date]/[time].
+  final DateTime? calendarAt;
   final String? goldFineness;
   final String? goldPriceReferenceFineness;
   final String? goldInputWeight;
@@ -250,6 +257,7 @@ class AppRecord {
     bool clearTime = false,
     SettlementStatus? status,
     String? note,
+    DateTime? calendarAt,
     String? goldFineness,
     String? goldPriceReferenceFineness,
     String? goldInputWeight,
@@ -273,6 +281,7 @@ class AppRecord {
       status: status ?? this.status,
       note: note ?? this.note,
       linkedSettlementIds: linkedSettlementIds,
+      calendarAt: calendarAt ?? this.calendarAt,
       goldFineness: goldFineness ?? this.goldFineness,
       goldPriceReferenceFineness:
           goldPriceReferenceFineness ?? this.goldPriceReferenceFineness,
@@ -1063,11 +1072,17 @@ class CalendarScreen extends StatefulWidget {
     required this.records,
     required this.personName,
     required this.onTapRecord,
+    this.onSelectedDateChanged,
+    this.clock,
+    this.onAdd,
   });
 
   final List<AppRecord> records;
   final String Function(String) personName;
   final ValueChanged<AppRecord> onTapRecord;
+  final ValueChanged<Jalali>? onSelectedDateChanged;
+  final DateTime Function()? clock;
+  final VoidCallback? onAdd;
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -1077,110 +1092,123 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Jalali _month = Jalali.now().withDay(1);
   Jalali _selected = Jalali.now();
 
-  double _expandedHeaderExtent(BuildContext context) {
-    const horizontalPadding = 32.0;
-    const headerAndVerticalPadding = 66.0;
-    const gridVerticalPadding = 16.0;
-    const cellAspectRatio = 0.9;
-    final gridWidth = MediaQuery.sizeOf(context).width - horizontalPadding;
-    final cellHeight = (gridWidth / 7) / cellAspectRatio;
-    return headerAndVerticalPadding +
-        gridVerticalPadding +
-        (CalendarMonthGrid.rowCountFor(_month) * cellHeight);
+  DateTime get _now => widget.clock?.call() ?? DateTime.now();
+
+  List<_CalendarActivity> get _activities => widget.records
+      .map((record) => _CalendarActivity.fromRecord(record, now: _now))
+      .toList(growable: false);
+
+  void _selectDate(Jalali date) {
+    setState(() => _selected = date);
+    widget.onSelectedDateChanged?.call(date);
+  }
+
+  void _moveMonth(int delta) {
+    final candidate = _month.addMonths(delta);
+    final day = _selected.day <= candidate.monthLength
+        ? _selected.day
+        : candidate.monthLength;
+    setState(() {
+      _month = candidate;
+      _selected = candidate.withDay(day);
+    });
+    widget.onSelectedDateChanged?.call(_selected);
+  }
+
+  Widget _monthSection(
+    BuildContext context,
+    List<_CalendarActivity> activities,
+  ) {
+    final theme = Theme.of(context);
+    final eventDays = activities.map((item) => item.date).toSet().toList();
+    final overdueDays = activities
+        .where((item) => item.overdue)
+        .map((item) => item.date)
+        .toSet()
+        .toList();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Column(
+        children: [
+          Row(
+            textDirection: TextDirection.ltr,
+            children: [
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: IconButton(
+                  tooltip: 'ماه قبل',
+                  onPressed: () => _moveMonth(-1),
+                  icon: const Icon(CupertinoIcons.chevron_left, size: 20),
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    '${monthName(_month.month)} ${toPersianDigits(_month.year.toString())}',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: IconButton(
+                  tooltip: 'ماه بعد',
+                  onPressed: () => _moveMonth(1),
+                  icon: const Icon(CupertinoIcons.chevron_right, size: 20),
+                ),
+              ),
+            ],
+          ),
+          CalendarMonthGrid(
+            month: _month,
+            selected: _selected,
+            eventDays: eventDays,
+            overdueDays: overdueDays,
+            onDayTap: _selectDate,
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedEvents = widget.records
-        .where((e) => isSameJalali(e.date, _selected))
-        .toList(growable: false);
+    final activities = _activities;
+    final selectedEvents =
+        activities.where((e) => isSameJalali(e.date, _selected)).toList()
+          ..sort(_compareCalendarActivities);
 
     return CustomScrollView(
+      key: const ValueKey('calendar-scroll'),
       slivers: [
         SliverAppBar(title: const Text('تقویم'), pinned: true),
+        SliverToBoxAdapter(child: _monthSection(context, activities)),
         SliverPersistentHeader(
           pinned: true,
-          delegate: _CalendarHeaderDelegate(
-            minExtentValue: 74,
-            maxExtentValue: _expandedHeaderExtent(context),
-            builder: (context, shrink) {
-              final compact = shrink > 0.7;
-              return Container(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () =>
-                              setState(() => _month = _month.addMonths(-1)),
-                          icon: const Icon(CupertinoIcons.chevron_right),
-                        ),
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              '${monthName(_month.month)} ${toPersianDigits(_month.year.toString())}',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () =>
-                              setState(() => _month = _month.addMonths(1)),
-                          icon: const Icon(CupertinoIcons.chevron_left),
-                        ),
-                      ],
-                    ),
-                    if (!compact)
-                      Expanded(
-                        child: CalendarMonthGrid(
-                          month: _month,
-                          selected: _selected,
-                          eventDays: widget.records
-                              .map((e) => e.date)
-                              .toList(growable: false),
-                          onDayTap: (date) => setState(() => _selected = date),
-                        ),
-                      ),
-                    if (compact)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Theme.of(context).dividerColor,
-                          ),
-                        ),
-                        child: Text(
-                          'برنامه روز ${formatJalaliDate(_selected)}',
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
-            child: Text(
-              'برنامه روز • ${formatJalaliDate(_selected)}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+          delegate: _CalendarAgendaHeaderDelegate(
+            selected: _selected,
+            summary: _agendaSummary(selectedEvents),
           ),
         ),
         if (selectedEvents.isEmpty)
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 40),
-              child: Center(child: Text('برای این روز موردی ثبت نشده است.')),
+              padding: const EdgeInsets.fromLTRB(20, 34, 20, 34),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('برای این روز فعالیتی ثبت نشده'),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: widget.onAdd,
+                      child: const Text('ثبت جدید'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           )
         else
@@ -1188,18 +1216,335 @@ class _CalendarScreenState extends State<CalendarScreen> {
             itemCount: selectedEvents.length,
             itemBuilder: (context, index) {
               final item = selectedEvents[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: SettlementRow(
-                  record: item,
-                  personName: widget.personName(item.personId),
-                  onTap: () => widget.onTapRecord(item),
-                ),
+              return _CalendarAgendaRow(
+                activity: item,
+                personName: widget.personName(item.record.personId),
+                onTap: () => widget.onTapRecord(item.record),
               );
             },
           ),
-        const SliverToBoxAdapter(child: SizedBox(height: 20)),
+        const SliverToBoxAdapter(child: SizedBox(height: 96)),
       ],
+    );
+  }
+
+  String _agendaSummary(List<_CalendarActivity> selectedEvents) {
+    final pending = selectedEvents
+        .where(
+          (item) =>
+              item.record.type == RecordType.settlement &&
+              item.record.status == SettlementStatus.open,
+        )
+        .length;
+    final overdue = selectedEvents.where((item) => item.overdue).length;
+    final completed = selectedEvents
+        .where(
+          (item) =>
+              item.record.type == RecordType.settlement &&
+              item.record.status == SettlementStatus.completed,
+        )
+        .length;
+    final cancelled = selectedEvents
+        .where(
+          (item) =>
+              item.record.type == RecordType.settlement &&
+              item.record.status == SettlementStatus.cancelled,
+        )
+        .length;
+    return <String>[
+      if (selectedEvents.isNotEmpty)
+        '${toPersianDigits(selectedEvents.length.toString())} مورد',
+      if (pending > 0) '${toPersianDigits(pending.toString())} در انتظار',
+      if (overdue > 0) '${toPersianDigits(overdue.toString())} عقب‌افتاده',
+      if (completed > 0) '${toPersianDigits(completed.toString())} انجام‌شده',
+      if (cancelled > 0) '${toPersianDigits(cancelled.toString())} لغوشده',
+    ].join(' · ');
+  }
+}
+
+class _CalendarActivity {
+  const _CalendarActivity({
+    required this.record,
+    required this.date,
+    required this.time,
+    required this.sortAt,
+    required this.overdue,
+  });
+
+  factory _CalendarActivity.fromRecord(
+    AppRecord record, {
+    required DateTime now,
+  }) {
+    final timestamp =
+        record.calendarAt?.toLocal() ?? _fallbackTimestamp(record);
+    final date = Jalali.fromDateTime(timestamp);
+    final overdue =
+        record.type == RecordType.settlement &&
+        record.status == SettlementStatus.open &&
+        timestamp.isBefore(now);
+    final time = record.time == null && record.calendarAt == null
+        ? null
+        : TimeOfDay(hour: timestamp.hour, minute: timestamp.minute);
+    return _CalendarActivity(
+      record: record,
+      date: date,
+      time: time,
+      sortAt: timestamp,
+      overdue: overdue,
+    );
+  }
+
+  final AppRecord record;
+  final Jalali date;
+  final TimeOfDay? time;
+  final DateTime sortAt;
+  final bool overdue;
+
+  static DateTime _fallbackTimestamp(AppRecord record) {
+    final gregorian = record.date.toGregorian();
+    final due = record.type == RecordType.settlement
+        ? dueDateTimeFromJalali(record.date, record.time)
+        : DateTime(
+            gregorian.year,
+            gregorian.month,
+            gregorian.day,
+            record.time?.hour ?? 12,
+            record.time?.minute ?? 0,
+          );
+    return due;
+  }
+}
+
+int _compareCalendarActivities(_CalendarActivity a, _CalendarActivity b) {
+  final byTime = b.sortAt.compareTo(a.sortAt);
+  return byTime != 0 ? byTime : b.record.id.compareTo(a.record.id);
+}
+
+class _CalendarAgendaHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _CalendarAgendaHeaderDelegate({
+    required this.selected,
+    required this.summary,
+  });
+
+  final Jalali selected;
+  final String summary;
+
+  @override
+  double get minExtent => 76;
+
+  @override
+  double get maxExtent => 76;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final theme = Theme.of(context);
+    return Container(
+      color: theme.scaffoldBackgroundColor,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'فعالیت‌های ${toPersianDigits(selected.day.toString())} ${monthName(selected.month)}',
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  summary.isEmpty ? 'برای این روز فعالیتی ثبت نشده' : summary,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _CalendarAgendaHeaderDelegate oldDelegate) =>
+      oldDelegate.selected != selected || oldDelegate.summary != summary;
+}
+
+class _CalendarAgendaRow extends StatelessWidget {
+  const _CalendarAgendaRow({
+    required this.activity,
+    required this.personName,
+    required this.onTap,
+  });
+
+  final _CalendarActivity activity;
+  final String personName;
+  final VoidCallback onTap;
+
+  String get _statusLabel {
+    if (activity.record.type == RecordType.deal) return 'ثبت شده';
+    if (activity.overdue) return 'عقب‌افتاده';
+    return activity.record.statusLabel();
+  }
+
+  Color _statusColor(BuildContext context) {
+    if (activity.overdue ||
+        activity.record.status == SettlementStatus.cancelled) {
+      return const Color(0xFF9D3636);
+    }
+    if (activity.record.status == SettlementStatus.completed) {
+      return const Color(0xFF2F7D4C);
+    }
+    return Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 20, 8),
+        child: Row(
+          textDirection: TextDirection.ltr,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 44,
+              height: 52,
+              child: Icon(
+                CupertinoIcons.chevron_left,
+                size: 18,
+                color: theme.textTheme.bodyMedium?.color,
+              ),
+            ),
+            SizedBox(
+              width: 82,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    activity.time == null
+                        ? 'بدون ساعت'
+                        : _formatTime(activity.time!),
+                    style: theme.textTheme.bodyMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _statusColor(context).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _statusLabel,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: _statusColor(context),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    activity.record.operationDisplayLabel,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    personName,
+                    style: theme.textTheme.bodyMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  _calendarAmount(activity.record),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTime(TimeOfDay time) =>
+      '${toPersianDigits(time.hour.toString().padLeft(2, '0'))}:${toPersianDigits(time.minute.toString().padLeft(2, '0'))}';
+
+  Widget _calendarAmount(AppRecord record) {
+    final numeric =
+        RegExp(
+          r'[-+]?[0-9۰-۹٬,٫.]+',
+        ).firstMatch(record.amountDisplay)?.group(0) ??
+        record.amountDisplay;
+    if (record.coinLines.isNotEmpty) {
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: Text(
+          toPersianNumberText(record.amountDisplay),
+          style: const TextStyle(fontWeight: FontWeight.w600),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }
+    if (record.currencyCode != null && record.currencyCode != 'TOMAN') {
+      return Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: ZarAmountDisplay(
+          amount: toPersianNumberText(numeric),
+          unit: record.currencyCode!,
+          amountStyle: const TextStyle(fontWeight: FontWeight.w700),
+          unitStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      );
+    }
+    if (record.assetLabel == 'وجه نقد' || record.currencyCode == 'TOMAN') {
+      return Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: ZarAmountDisplay(
+          amount: toPersianNumberText(numeric),
+          unit: 'تومان',
+          amountStyle: const TextStyle(fontWeight: FontWeight.w700),
+          unitStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      );
+    }
+    if (record.assetLabel == 'گرم طلا') {
+      return Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: ZarAmountDisplay(
+          amount: toPersianNumberText(numeric),
+          unit: 'گرم طلا',
+          amountStyle: const TextStyle(fontWeight: FontWeight.w700),
+          unitStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      );
+    }
+    return Text(
+      toPersianNumberText(record.amountDisplay),
+      style: const TextStyle(fontWeight: FontWeight.w700),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.right,
     );
   }
 }
@@ -3123,12 +3468,14 @@ class CalendarMonthGrid extends StatelessWidget {
     required this.month,
     required this.selected,
     required this.eventDays,
+    this.overdueDays = const [],
     required this.onDayTap,
   });
 
   final Jalali month;
   final Jalali selected;
   final List<Jalali> eventDays;
+  final List<Jalali> overdueDays;
   final ValueChanged<Jalali> onDayTap;
 
   @override
@@ -3141,7 +3488,15 @@ class CalendarMonthGrid extends StatelessWidget {
     for (final title in weekTitles) {
       cells.add(
         Center(
-          child: Text(title, style: Theme.of(context).textTheme.bodyMedium),
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.color?.withValues(alpha: 0.9),
+            ),
+          ),
         ),
       );
     }
@@ -3151,11 +3506,13 @@ class CalendarMonthGrid extends StatelessWidget {
     for (int day = 1; day <= daysInMonth; day++) {
       final date = month.withDay(day);
       final hasEvent = eventDays.any((e) => isSameJalali(e, date));
+      final hasOverdue = overdueDays.any((e) => isSameJalali(e, date));
       final isSelected = isSameJalali(date, selected);
       cells.add(
-        GestureDetector(
+        InkWell(
           key: ValueKey('calendar-day-$day'),
           onTap: () => onDayTap(date),
+          borderRadius: BorderRadius.circular(10),
           child: Container(
             margin: const EdgeInsets.all(3),
             decoration: BoxDecoration(
@@ -3171,7 +3528,9 @@ class CalendarMonthGrid extends StatelessWidget {
               children: [
                 Text(
                   toPersianDigits(day.toString()),
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : null,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 if (hasEvent)
@@ -3179,9 +3538,11 @@ class CalendarMonthGrid extends StatelessWidget {
                     width: 5,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.75),
+                      color: hasOverdue
+                          ? const Color(0xFFB23A3A)
+                          : Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.75),
                       shape: BoxShape.circle,
                     ),
                   )
@@ -3205,7 +3566,7 @@ class CalendarMonthGrid extends StatelessWidget {
         shrinkWrap: true,
         crossAxisCount: 7,
         physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 0.9,
+        childAspectRatio: 1.05,
         children: cells,
       ),
     );
@@ -3215,40 +3576,6 @@ class CalendarMonthGrid extends StatelessWidget {
     final firstWeekday = ((month.toDateTime().weekday + 1) % 7);
     final cellCount = 7 + firstWeekday + month.monthLength;
     return (cellCount / 7).ceil();
-  }
-}
-
-class _CalendarHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _CalendarHeaderDelegate({
-    required this.minExtentValue,
-    required this.maxExtentValue,
-    required this.builder,
-  });
-
-  final double minExtentValue;
-  final double maxExtentValue;
-  final Widget Function(BuildContext, double) builder;
-
-  @override
-  double get minExtent => minExtentValue;
-
-  @override
-  double get maxExtent => maxExtentValue;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
-    return builder(context, progress);
-  }
-
-  @override
-  bool shouldRebuild(covariant _CalendarHeaderDelegate oldDelegate) {
-    return oldDelegate.minExtentValue != minExtentValue ||
-        oldDelegate.maxExtentValue != maxExtentValue;
   }
 }
 
