@@ -111,7 +111,24 @@ class _PendingRecordCard extends StatelessWidget {
                 children: [
                   Expanded(child: _assetValue(context)),
                   const SizedBox(width: 8),
-                  const Icon(Icons.chevron_left, size: 18),
+                  SizedBox(
+                    key: ValueKey('pending-chevron-target-${record.id}'),
+                    width: 44,
+                    height: 44,
+                    child: Center(
+                      child: Directionality(
+                        // This is a physical navigation affordance. Keep it
+                        // isolated from the surrounding RTL tree so the
+                        // glyph itself always points to the left edge.
+                        textDirection: TextDirection.ltr,
+                        child: Icon(
+                          key: ValueKey('pending-chevron-${record.id}'),
+                          Icons.chevron_left,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
               if (record.coinLines.isNotEmpty) ...[

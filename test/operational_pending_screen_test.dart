@@ -72,4 +72,81 @@ void main() {
     expect(find.byIcon(Icons.task_alt_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'receive and pay rows keep a physical left chevron while app bar back stays right',
+    (tester) async {
+      Future<void> openPending(String title) async {
+        final record = AppRecord(
+          id: title,
+          type: RecordType.settlement,
+          operationLabel: title == 'در انتظار دریافت' ? 'دریافت' : 'تحویل',
+          personId: 'p1',
+          amountDisplay: '۱۰۰',
+          assetLabel: 'وجه نقد',
+          currencyCode: 'TOMAN',
+          date: Jalali(1405, 6, 11),
+          time: const TimeOfDay(hour: 10, minute: 15),
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) => Directionality(
+                textDirection: TextDirection.rtl,
+                child: Scaffold(
+                  body: Center(
+                    child: ElevatedButton(
+                      key: const ValueKey('open-pending'),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => Directionality(
+                            textDirection: TextDirection.rtl,
+                            child: OperationalPendingScreen(
+                              title: title,
+                              records: [record],
+                              personName: (_) => 'مهیار',
+                              onOpenRecord: (_) {},
+                            ),
+                          ),
+                        ),
+                      ),
+                      child: const Text('باز کردن'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('open-pending')));
+        await tester.pumpAndSettle();
+
+        final card = tester.getRect(find.byType(Card));
+        final target = tester.getRect(
+          find.byKey(ValueKey('pending-chevron-target-$title')),
+        );
+        final icon = tester.widget<Icon>(
+          find.byKey(ValueKey('pending-chevron-$title')),
+        );
+        expect(target.width, greaterThanOrEqualTo(44));
+        expect(target.left, lessThan(card.left + 24));
+        expect(icon.icon, Icons.chevron_left);
+        expect(
+          Directionality.of(
+            tester.element(find.byKey(ValueKey('pending-chevron-$title'))),
+          ),
+          TextDirection.ltr,
+        );
+
+        final back = tester.getRect(find.byType(BackButton));
+        expect(back.center.dx, greaterThan(360));
+        expect(tester.takeException(), isNull);
+      }
+
+      await openPending('در انتظار دریافت');
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await openPending('در انتظار پرداخت');
+    },
+  );
 }
