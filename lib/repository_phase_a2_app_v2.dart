@@ -234,13 +234,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       )
       .toList(growable: false);
 
-  List<AppRecord> get historyRecords => records
-      .where(
-        (record) =>
-            record.type == RecordType.deal ||
-            record.status != SettlementStatus.open,
-      )
-      .toList(growable: false);
+  /// History is the complete operational record, including open obligations.
+  /// The open state remains a Settlement lifecycle state; it is not promoted
+  /// into a Deal or treated as completed activity.
+  List<AppRecord> get historyRecords => records.toList(growable: false);
 
   Future<void> _load() async {
     try {
@@ -828,7 +825,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        builder: (_) => DealDetailSheet(
+        builder: (_) => HistoryDealDetailSheet(
           record: record,
           personName: _store.personName(record.personId),
           accountingStatus: _dealAccountingStatus(record),
@@ -1379,6 +1376,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       OperationalHistoryScreen(
         records: historyRecords,
         personName: _store.personName,
+        people: _store.people,
         onTapRecord: _openRecord,
       ),
     ];

@@ -3066,6 +3066,317 @@ class DealDetailSheet extends StatelessWidget {
   }
 }
 
+/// History-facing Deal detail that follows the same summary-first structure as
+/// the repository Settlement sheet. The legacy [DealDetailSheet] remains
+/// available to older preview shells, while the production V2 shell uses this
+/// presentation-only adapter.
+class HistoryDealDetailSheet extends StatelessWidget {
+  const HistoryDealDetailSheet({
+    super.key,
+    required this.record,
+    required this.personName,
+    required this.linkedSettlements,
+    required this.onOpenSettlement,
+    this.accountingStatus,
+  });
+
+  final AppRecord record;
+  final String personName;
+  final List<AppRecord> linkedSettlements;
+  final ValueChanged<AppRecord> onOpenSettlement;
+  final String? accountingStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.dividerColor,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              textDirection: TextDirection.rtl,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        record.operationDisplayLabel,
+                        textAlign: TextAlign.right,
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        personName,
+                        textAlign: TextAlign.right,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                RecordShareButton(record: record, personName: personName),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _summaryCard(context),
+            const SizedBox(height: 12),
+            _metaCard(context),
+            if (record.coinLines.isNotEmpty ||
+                record.goldFineness != null ||
+                record.tomanRate != null) ...[
+              const SizedBox(height: 12),
+              _breakdownCard(context),
+            ],
+            if ((record.note ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _sectionCard(
+                context,
+                title: 'یادداشت',
+                child: Text(
+                  record.note!.trim(),
+                  textAlign: TextAlign.right,
+                  style: theme.textTheme.bodyLarge,
+                ),
+              ),
+            ],
+            if (linkedSettlements.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _sectionCard(
+                context,
+                title: 'تعهدهای لینک‌شده',
+                child: Column(
+                  children: linkedSettlements
+                      .map(
+                        (settlement) => SettlementRow(
+                          record: settlement,
+                          personName: personName,
+                          onTap: () => onOpenSettlement(settlement),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryCard(BuildContext context) {
+    final theme = Theme.of(context);
+    return _sectionCard(
+      context,
+      key: const ValueKey('deal-detail-summary'),
+      title: 'خلاصه معامله',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('دارایی', style: theme.textTheme.bodySmall),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Directionality(
+              textDirection: record.currencyCode != null
+                  ? TextDirection.ltr
+                  : TextDirection.rtl,
+              child: Text(
+                recordAssetSummary(record),
+                textAlign: record.currencyCode != null
+                    ? TextAlign.left
+                    : TextAlign.right,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          if (record.totalToman != null) ...[
+            const SizedBox(height: 12),
+            Text('مبلغ کل', style: theme.textTheme.bodySmall),
+            const SizedBox(height: 2),
+            Text(
+              '${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(record.totalToman))} تومان',
+              textAlign: TextAlign.right,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Text(
+            '${formatJalaliDate(record.date)} · ${record.timeLabel()}',
+            textAlign: TextAlign.right,
+            style: theme.textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metaCard(BuildContext context) {
+    return _sectionCard(
+      context,
+      key: const ValueKey('deal-detail-meta'),
+      title: 'اطلاعات معامله',
+      child: Column(
+        children: [
+          _metaRow(context, 'نوع عملیات', record.operationDisplayLabel),
+          _metaRow(context, 'طرف حساب', personName),
+          _metaRow(context, 'تاریخ ثبت', formatJalaliDate(record.date)),
+          _metaRow(context, 'ساعت ثبت', record.timeLabel()),
+          if (accountingStatus != null)
+            _metaRow(context, 'اثر روی حساب', accountingStatus!),
+        ],
+      ),
+    );
+  }
+
+  Widget _breakdownCard(BuildContext context) {
+    final theme = Theme.of(context);
+    return _sectionCard(
+      context,
+      key: const ValueKey('deal-detail-breakdown'),
+      title: 'جزئیات دارایی و قیمت',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (record.goldFineness != null)
+            _metaRow(context, 'عیار', toPersianDigits(record.goldFineness!)),
+          if (record.goldInputWeight != null)
+            _metaRow(
+              context,
+              'وزن ثبت‌شده',
+              '${toPersianDigits(record.goldInputWeight!)} ${record.goldInputUnit == 'mesghal' ? 'مثقال' : 'گرم'}',
+            ),
+          if (record.goldEquivalentWeight != null)
+            _metaRow(
+              context,
+              'معادل وزن',
+              '${toPersianDigits(record.goldEquivalentWeight!)} ${record.goldInputUnit == 'mesghal' ? 'گرم' : 'مثقال'}',
+            ),
+          if (record.tomanRate != null)
+            _metaRow(
+              context,
+              'نرخ/قیمت واحد',
+              '${toPersianNumberText(record.tomanRate!)} تومان',
+            ),
+          ...record.coinLines.map(
+            (line) => Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '${toPersianDigits(line.quantity.toString())} × ${line.name}',
+                    textAlign: TextAlign.right,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (line.weightGrams != null || line.fineness != null)
+                    Text(
+                      [
+                        if (line.weightGrams != null)
+                          '${toPersianDigits(line.weightGrams!)} گرم',
+                        if (line.fineness != null)
+                          'عیار ${toPersianDigits(line.fineness!)}',
+                      ].join(' · '),
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  if (line.rowTotalToman != null)
+                    Text(
+                      'جمع ردیف: ${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(line.rowTotalToman))} تومان',
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionCard(
+    BuildContext context, {
+    Key? key,
+    required String title,
+    required Widget child,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      key: key,
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.right,
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _metaRow(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.bodyLarge,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(label, style: theme.textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
+}
+
 class EditRecordSheet extends StatefulWidget {
   const EditRecordSheet({
     super.key,
@@ -4006,6 +4317,13 @@ String _shareAssetSummary(AppRecord record) {
   }
   return toPersianNumberText(record.amountDisplay);
 }
+
+/// Canonical compact asset summary shared by History and share surfaces.
+///
+/// The summary is derived from the record and keeps currency values in the
+/// existing numeric-first format so callers can place it in an explicit LTR
+/// span without changing the stored amount.
+String recordAssetSummary(AppRecord record) => _shareAssetSummary(record);
 
 Future<void> showRecordShareOptions(
   BuildContext context, {

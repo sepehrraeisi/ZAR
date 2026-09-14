@@ -265,6 +265,7 @@ class RepositorySettlementActionSheet extends StatelessWidget {
             amount: negative ? amount.substring(1) : amount,
             unit: unit,
             negative: negative,
+            contentAlignment: Alignment.centerRight,
             amountStyle: theme.textTheme.bodyLarge?.copyWith(
               fontWeight: FontWeight.w600,
             ),
