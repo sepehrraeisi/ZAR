@@ -146,29 +146,6 @@ class _PendingRecordCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: _assetValue(context),
-              ),
-              if (record.coinLines.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                for (final line in record.coinLines.take(2))
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: Text(
-                      '${toPersianDigits(line.quantity.toString())} × ${line.name}',
-                      textAlign: TextAlign.right,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ),
-                if (record.coinLines.length > 2)
-                  Text(
-                    '+ ${toPersianDigits((record.coinLines.length - 2).toString())} مورد دیگر',
-                    textAlign: TextAlign.right,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-              ],
-              const SizedBox(height: 6),
               Row(
                 textDirection: TextDirection.ltr,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -193,9 +170,37 @@ class _PendingRecordCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: _DueLabel(record: record),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: _assetValue(context),
+                        ),
+                        if (record.coinLines.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          for (final line in record.coinLines.take(2))
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Text(
+                                '${toPersianDigits(line.quantity.toString())} × ${line.name}',
+                                textAlign: TextAlign.right,
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ),
+                          if (record.coinLines.length > 2)
+                            Text(
+                              '+ ${toPersianDigits((record.coinLines.length - 2).toString())} مورد دیگر',
+                              textAlign: TextAlign.right,
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                        ],
+                        const SizedBox(height: 4),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: _DueLabel(record: record),
+                        ),
+                      ],
                     ),
                   ),
                 ],
