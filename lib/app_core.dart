@@ -465,6 +465,13 @@ class CurrencyOption {
   String get displayLabel => '$persianName — $code';
 }
 
+CurrencyOption currencyOptionFromDomain(ZarCurrencyType value) =>
+    CurrencyOption(
+      code: value.code,
+      persianName: value.name,
+      shortLabel: value.name,
+    );
+
 const List<CurrencyOption> kCurrencyOptions = [
   CurrencyOption(code: 'USD', persianName: 'دلار آمریکا', shortLabel: 'دلار'),
   CurrencyOption(code: 'EUR', persianName: 'یورو', shortLabel: 'یورو'),
@@ -4013,19 +4020,22 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
 
 Future<CurrencyOption?> showCurrencyPickerBottomSheet(
   BuildContext context,
-  String? currentCode,
-) {
+  String? currentCode, {
+  List<CurrencyOption>? options,
+}) {
   return showModalBottomSheet<CurrencyOption>(
     context: context,
     useSafeArea: true,
-    builder: (_) => _CurrencyPickerSheet(currentCode: currentCode),
+    builder: (_) =>
+        _CurrencyPickerSheet(currentCode: currentCode, options: options),
   );
 }
 
 class _CurrencyPickerSheet extends StatelessWidget {
-  const _CurrencyPickerSheet({required this.currentCode});
+  const _CurrencyPickerSheet({required this.currentCode, this.options});
 
   final String? currentCode;
+  final List<CurrencyOption>? options;
 
   @override
   Widget build(BuildContext context) {
@@ -4037,7 +4047,7 @@ class _CurrencyPickerSheet extends StatelessWidget {
         children: [
           Text('نوع ارز', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          ...kCurrencyOptions.map(
+          ...(options ?? kCurrencyOptions).map(
             (option) => ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(option.displayLabel),

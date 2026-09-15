@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import '../../app_core.dart';
 import '../../domain/zar_domain_models.dart';
-import '../editors/persian_numeric_input_formatter.dart';
+import '../../app_core.dart' show toPersianDigits;
 
-class CoinCatalogScreen extends StatefulWidget {
-  const CoinCatalogScreen({
+class CurrencyCatalogScreen extends StatefulWidget {
+  const CurrencyCatalogScreen({
     super.key,
     required this.types,
     required this.onSave,
@@ -13,21 +13,21 @@ class CoinCatalogScreen extends StatefulWidget {
     required this.onRestore,
   });
 
-  final List<ZarCoinType> types;
-  final Future<void> Function(ZarCoinType) onSave;
-  final Future<void> Function(ZarCoinType) onArchive;
-  final Future<void> Function(ZarCoinType) onRestore;
+  final List<ZarCurrencyType> types;
+  final Future<void> Function(ZarCurrencyType) onSave;
+  final Future<void> Function(ZarCurrencyType) onArchive;
+  final Future<void> Function(ZarCurrencyType) onRestore;
 
   @override
-  State<CoinCatalogScreen> createState() => _CoinCatalogScreenState();
+  State<CurrencyCatalogScreen> createState() => _CurrencyCatalogScreenState();
 }
 
-class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
-  late final List<ZarCoinType> _types = [...widget.types];
+class _CurrencyCatalogScreenState extends State<CurrencyCatalogScreen> {
+  late final List<ZarCurrencyType> _types = [...widget.types];
 
-  List<ZarCoinType> get _active =>
+  List<ZarCurrencyType> get _active =>
       _types.where((item) => !item.archived).toList(growable: false);
-  List<ZarCoinType> get _archived =>
+  List<ZarCurrencyType> get _archived =>
       _types.where((item) => item.archived).toList(growable: false);
 
   @override
@@ -35,12 +35,12 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
     final active = _active;
     final archived = _archived;
     return Scaffold(
-      appBar: AppBar(title: const Text('انواع سکه')),
+      appBar: AppBar(title: const Text('مدیریت ارزها')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
           Text(
-            '${toPersianDigits(active.length.toString())} نوع فعال',
+            '${toPersianDigits(active.length.toString())} ارز فعال',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           if (archived.isNotEmpty) ...[
@@ -57,19 +57,22 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
           ],
           const SizedBox(height: 8),
           if (active.isEmpty)
-            const _EmptyCatalog(label: 'نوع سکه فعالی ثبت نشده است.')
+            const _EmptyCatalog(label: 'ارز فعالی ثبت نشده است.')
           else
             ...active.map(
               (item) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: _CoinRow(item: item, onTap: () => _edit(context, item)),
+                child: _CurrencyRow(
+                  item: item,
+                  onTap: () => _edit(context, item),
+                ),
               ),
             ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () => _edit(context),
             icon: const Icon(Icons.add),
-            label: const Text('افزودن نوع سکه'),
+            label: const Text('افزودن ارز'),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
               shape: RoundedRectangleBorder(
@@ -85,7 +88,7 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
   Future<void> _openArchived(BuildContext context) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => _ArchivedCoinTypesScreen(
+        builder: (_) => _ArchivedCurrencyTypesScreen(
           types: _archived,
           onRestore: (item) async {
             await widget.onRestore(item);
@@ -106,12 +109,12 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _edit(BuildContext context, [ZarCoinType? existing]) async {
-    final result = await showModalBottomSheet<_CoinSheetResult>(
+  Future<void> _edit(BuildContext context, [ZarCurrencyType? existing]) async {
+    final result = await showModalBottomSheet<_CurrencySheetResult>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _CoinEditorSheet(existing: existing),
+      builder: (_) => _CurrencyEditorSheet(existing: existing),
     );
     if (!mounted || result == null) return;
     if (!context.mounted) return;
@@ -119,7 +122,7 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('بایگانی نوع سکه'),
+          title: const Text('بایگانی ارز'),
           content: Text('آیا «${existing.name}» بایگانی شود؟'),
           actions: [
             TextButton(
@@ -149,6 +152,14 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
     }
     try {
       final value = result.value!;
+      if (_types.any(
+        (item) => item.code == value.code && item.id != value.id,
+      )) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('این کد ارز قبلاً ثبت شده است.')),
+        );
+        return;
+      }
       await widget.onSave(value);
       if (!mounted) return;
       setState(() {
@@ -159,19 +170,25 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
           _types[index] = value;
         }
       });
-    } on FormatException catch (_) {
+    } on FormatException catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('اطلاعات نوع سکه معتبر نیست.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_currencyError(error))));
       }
     }
   }
+
+  String _currencyError(FormatException error) =>
+      error.message.toString().contains('already exists')
+      ? 'این کد ارز قبلاً ثبت شده است.'
+      : 'اطلاعات ارز معتبر نیست.';
 }
 
-class _CoinRow extends StatelessWidget {
-  const _CoinRow({required this.item, required this.onTap});
-  final ZarCoinType item;
+class _CurrencyRow extends StatelessWidget {
+  const _CurrencyRow({required this.item, required this.onTap});
+
+  final ZarCurrencyType item;
   final VoidCallback onTap;
 
   @override
@@ -206,9 +223,12 @@ class _CoinRow extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      _details(item),
-                      style: Theme.of(context).textTheme.bodyMedium,
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: Text(item.code),
+                      ),
                     ),
                   ],
                 ),
@@ -219,16 +239,6 @@ class _CoinRow extends StatelessWidget {
       ),
     ),
   );
-
-  String _details(ZarCoinType item) => [
-    item.defaultPricingMethod == ZarCoinPricingMethod.perPiece
-        ? 'قیمت‌گذاری قطعه‌ای'
-        : 'قیمت‌گذاری وزنی',
-    if (item.defaultWeightGrams != null)
-      '${toPersianNumberText(item.defaultWeightGrams!)} گرم',
-    if (item.defaultFineness != null)
-      'عیار ${toPersianNumberText(item.defaultFineness!)}',
-  ].join(' • ');
 }
 
 class _EmptyCatalog extends StatelessWidget {
@@ -241,70 +251,59 @@ class _EmptyCatalog extends StatelessWidget {
   );
 }
 
-class _CoinSheetResult {
-  const _CoinSheetResult.value(this.value) : archive = false;
-  const _CoinSheetResult.archive() : value = null, archive = true;
-  final ZarCoinType? value;
+class _CurrencySheetResult {
+  const _CurrencySheetResult.value(this.value) : archive = false;
+  const _CurrencySheetResult.archive() : value = null, archive = true;
+  final ZarCurrencyType? value;
   final bool archive;
 }
 
-class _CoinEditorSheet extends StatefulWidget {
-  const _CoinEditorSheet({this.existing});
-  final ZarCoinType? existing;
+class _CurrencyEditorSheet extends StatefulWidget {
+  const _CurrencyEditorSheet({this.existing});
+  final ZarCurrencyType? existing;
   @override
-  State<_CoinEditorSheet> createState() => _CoinEditorSheetState();
+  State<_CurrencyEditorSheet> createState() => _CurrencyEditorSheetState();
 }
 
-class _CoinEditorSheetState extends State<_CoinEditorSheet> {
+class _CurrencyEditorSheetState extends State<_CurrencyEditorSheet> {
   late final TextEditingController _name = TextEditingController(
     text: widget.existing?.name ?? '',
   );
-  late final TextEditingController _weight = TextEditingController(
-    text: widget.existing?.defaultWeightGrams == null
-        ? ''
-        : toPersianNumberText(widget.existing!.defaultWeightGrams!),
+  late final TextEditingController _code = TextEditingController(
+    text: widget.existing?.code ?? '',
   );
-  late final TextEditingController _fineness = TextEditingController(
-    text: widget.existing?.defaultFineness == null
-        ? ''
-        : toPersianNumberText(widget.existing!.defaultFineness!),
-  );
-  late ZarCoinCategory _category =
-      widget.existing?.category ?? ZarCoinCategory.other;
-  late ZarCoinPricingMethod _method =
-      widget.existing?.defaultPricingMethod ?? ZarCoinPricingMethod.perPiece;
   String? _error;
 
   @override
   void dispose() {
     _name.dispose();
-    _weight.dispose();
-    _fineness.dispose();
+    _code.dispose();
     super.dispose();
   }
 
   void _save() {
-    if (_name.text.trim().isEmpty) {
-      setState(() => _error = 'نام نوع سکه الزامی است.');
+    final name = _name.text.trim();
+    final code = _code.text.trim().toUpperCase();
+    if (name.isEmpty || code.isEmpty) {
+      setState(() => _error = 'نام و کد ارز الزامی است.');
       return;
     }
     final now = DateTime.now().toUtc();
-    try {
-      final value = ZarCoinType(
-        id: widget.existing?.id ?? 'coin-custom-${now.microsecondsSinceEpoch}',
-        name: _name.text,
-        category: _category,
-        defaultWeightGrams: _weight.text.trim().isEmpty ? null : _weight.text,
-        defaultFineness: _fineness.text.trim().isEmpty ? null : _fineness.text,
-        defaultPricingMethod: _method,
-        archived: widget.existing?.archived ?? false,
-        createdAt: widget.existing?.createdAt ?? now,
-        updatedAt: now,
-      );
-      Navigator.pop(context, _CoinSheetResult.value(value));
-    } on FormatException {
-      setState(() => _error = 'وزن یا عیار واردشده معتبر نیست.');
-    }
+    Navigator.pop(
+      context,
+      _CurrencySheetResult.value(
+        ZarCurrencyType(
+          id:
+              widget.existing?.id ??
+              'currency-custom-${now.microsecondsSinceEpoch}',
+          name: name,
+          code: widget.existing?.code ?? code,
+          archived: widget.existing?.archived ?? false,
+          createdAt: widget.existing?.createdAt ?? now,
+          updatedAt: now,
+        ),
+      ),
+    );
   }
 
   @override
@@ -328,79 +327,33 @@ class _CoinEditorSheetState extends State<_CoinEditorSheet> {
             ),
             const SizedBox(height: 18),
             Text(
-              widget.existing == null ? 'افزودن نوع سکه' : 'ویرایش نوع سکه',
+              widget.existing == null ? 'افزودن ارز' : 'ویرایش ارز',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 20),
-            const Text('نام نوع سکه'),
+            const Text('نام ارز'),
             const SizedBox(height: 6),
             TextField(
               controller: _name,
-              decoration: const InputDecoration(hintText: 'مثلاً سکه امامی'),
+              decoration: const InputDecoration(hintText: 'مثلاً دلار آمریکا'),
             ),
             const SizedBox(height: 14),
-            const Text('دسته'),
-            const SizedBox(height: 6),
-            DropdownButtonFormField<ZarCoinCategory>(
-              initialValue: _category,
-              items: const [
-                DropdownMenuItem(
-                  value: ZarCoinCategory.official,
-                  child: Text('رسمی/بانکی'),
-                ),
-                DropdownMenuItem(
-                  value: ZarCoinCategory.parsian,
-                  child: Text('پارسیان/وزنی'),
-                ),
-                DropdownMenuItem(
-                  value: ZarCoinCategory.other,
-                  child: Text('سایر'),
-                ),
-              ],
-              onChanged: (value) =>
-                  setState(() => _category = value ?? _category),
-            ),
-            const SizedBox(height: 14),
-            const Text('روش قیمت پیش‌فرض'),
-            const SizedBox(height: 6),
-            DropdownButtonFormField<ZarCoinPricingMethod>(
-              initialValue: _method,
-              items: const [
-                DropdownMenuItem(
-                  value: ZarCoinPricingMethod.perPiece,
-                  child: Text('هر قطعه'),
-                ),
-                DropdownMenuItem(
-                  value: ZarCoinPricingMethod.perGram,
-                  child: Text('هر گرم'),
-                ),
-              ],
-              onChanged: (value) => setState(() => _method = value ?? _method),
-            ),
-            const SizedBox(height: 14),
-            const Text('وزن پیش‌فرض (اختیاری، گرم)'),
+            const Text('کد ارز'),
             const SizedBox(height: 6),
             TextField(
-              controller: _weight,
-              inputFormatters: [
-                const PersianNumericInputFormatter(group: false),
-              ],
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              controller: _code,
+              enabled: widget.existing == null,
+              textDirection: TextDirection.ltr,
+              inputFormatters: [const UpperCaseTextFormatter()],
+              decoration: const InputDecoration(hintText: 'USD'),
             ),
-            const SizedBox(height: 14),
-            const Text('عیار پیش‌فرض (اختیاری)'),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _fineness,
-              inputFormatters: [
-                const PersianNumericInputFormatter(group: false),
-              ],
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+            if (widget.existing != null) ...[
+              const SizedBox(height: 6),
+              const Text(
+                'کد ارز پس از ثبت قابل تغییر نیست.',
+                style: TextStyle(fontSize: 12),
               ),
-            ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 8),
               Text(
@@ -412,9 +365,11 @@ class _CoinEditorSheetState extends State<_CoinEditorSheet> {
             FilledButton(onPressed: _save, child: const Text('ذخیره')),
             if (widget.existing != null && !widget.existing!.archived)
               TextButton(
-                onPressed: () =>
-                    Navigator.pop(context, const _CoinSheetResult.archive()),
-                child: const Text('بایگانی این نوع سکه'),
+                onPressed: () => Navigator.pop(
+                  context,
+                  const _CurrencySheetResult.archive(),
+                ),
+                child: const Text('بایگانی این ارز'),
               ),
           ],
         ),
@@ -423,25 +378,35 @@ class _CoinEditorSheetState extends State<_CoinEditorSheet> {
   }
 }
 
-class _ArchivedCoinTypesScreen extends StatefulWidget {
-  const _ArchivedCoinTypesScreen({
+class UpperCaseTextFormatter extends TextInputFormatter {
+  const UpperCaseTextFormatter();
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) => newValue.copyWith(text: newValue.text.toUpperCase());
+}
+
+class _ArchivedCurrencyTypesScreen extends StatefulWidget {
+  const _ArchivedCurrencyTypesScreen({
     required this.types,
     required this.onRestore,
   });
-  final List<ZarCoinType> types;
-  final Future<void> Function(ZarCoinType) onRestore;
+  final List<ZarCurrencyType> types;
+  final Future<void> Function(ZarCurrencyType) onRestore;
   @override
-  State<_ArchivedCoinTypesScreen> createState() =>
-      _ArchivedCoinTypesScreenState();
+  State<_ArchivedCurrencyTypesScreen> createState() =>
+      _ArchivedCurrencyTypesScreenState();
 }
 
-class _ArchivedCoinTypesScreenState extends State<_ArchivedCoinTypesScreen> {
-  late final List<ZarCoinType> _types = [...widget.types];
+class _ArchivedCurrencyTypesScreenState
+    extends State<_ArchivedCurrencyTypesScreen> {
+  late final List<ZarCurrencyType> _types = [...widget.types];
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('انواع سکه بایگانی‌شده')),
+    appBar: AppBar(title: const Text('ارزهای بایگانی‌شده')),
     body: _types.isEmpty
-        ? const _EmptyCatalog(label: 'نوع سکه بایگانی‌شده‌ای وجود ندارد.')
+        ? const _EmptyCatalog(label: 'ارز بایگانی‌شده‌ای وجود ندارد.')
         : ListView.separated(
             padding: const EdgeInsets.all(20),
             itemCount: _types.length,
@@ -452,7 +417,10 @@ class _ArchivedCoinTypesScreenState extends State<_ArchivedCoinTypesScreen> {
                 elevation: 0,
                 child: ListTile(
                   title: Text(item.name),
-                  subtitle: Text(_details(item)),
+                  subtitle: Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(item.code),
+                  ),
                   trailing: TextButton(
                     onPressed: () async {
                       await widget.onRestore(item);
@@ -465,14 +433,4 @@ class _ArchivedCoinTypesScreenState extends State<_ArchivedCoinTypesScreen> {
             },
           ),
   );
-
-  String _details(ZarCoinType item) => [
-    item.defaultPricingMethod == ZarCoinPricingMethod.perPiece
-        ? 'قیمت‌گذاری قطعه‌ای'
-        : 'قیمت‌گذاری وزنی',
-    if (item.defaultWeightGrams != null)
-      '${toPersianNumberText(item.defaultWeightGrams!)} گرم',
-    if (item.defaultFineness != null)
-      'عیار ${toPersianNumberText(item.defaultFineness!)}',
-  ].join(' • ');
 }

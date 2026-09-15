@@ -12,6 +12,7 @@ class ZarBackupPreview {
       bundle.people.where((person) => person.archived).length;
   int get dealCount => bundle.deals.length;
   int get settlementCount => bundle.settlements.length;
+  int get currencyTypeCount => bundle.currencyTypes.length;
   int get settlementReminderCount => bundle.settlements
       .where((settlement) => !settlement.reminderPlan.isEmpty)
       .length;
@@ -58,6 +59,7 @@ class ZarBackupManager {
         deals: snapshot.deals,
         settlements: snapshot.settlements,
         coinTypes: snapshot.coinTypes,
+        currencyTypes: snapshot.currencyTypes,
         paymentAllocations: snapshot.paymentAllocations,
       ),
     );
@@ -79,6 +81,7 @@ class ZarBackupManager {
         deals: bundle.deals,
         settlements: bundle.settlements,
         coinTypes: bundle.coinTypes,
+        currencyTypes: bundle.currencyTypes,
         paymentAllocations: bundle.paymentAllocations,
       ),
     );

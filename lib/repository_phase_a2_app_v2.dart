@@ -24,6 +24,7 @@ import 'features/settlements/payment_allocation_sheet.dart';
 import 'features/editors/confirmed_editors.dart';
 import 'features/backup/backup_screen.dart';
 import 'features/coins/coin_catalog_screen.dart';
+import 'features/currencies/currency_catalog_screen.dart';
 import 'features/editors/confirmed_quick_add_sheet.dart';
 import 'features/history/operational_history_screen.dart';
 import 'features/notifications/native_notification_runtime.dart';
@@ -661,6 +662,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         people: _store.activePeople,
         recentPeople: recentPeople,
         coinTypes: _store.coinTypes,
+        currencies: _store.currencyTypes,
         initialOperation: initialOperation,
         initialAsset: initialAsset,
         initialCurrencyCode: initialCurrencyCode,
@@ -916,6 +918,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             builder: (_) => ConfirmedRecordEditorSheet(
               record: record,
               personName: _store.personName(record.personId),
+              currencies: _store.currencyTypes,
               onSave: (updated) => _saveRecordOrThrow(updated),
             ),
           );
@@ -1138,6 +1141,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         builder: (_) => BackupScreen(
           manager: _backupManager,
           onOpenCoinCatalog: _openCoinCatalog,
+          onOpenCurrencyCatalog: _openCurrencyCatalog,
         ),
       ),
     );
@@ -1159,6 +1163,28 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           },
           onRestore: (value) async {
             await _store.restoreCoinType(value);
+            if (mounted) setState(() {});
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openCurrencyCatalog() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CurrencyCatalogScreen(
+          types: _store.currencyTypes,
+          onSave: (value) async {
+            await _store.saveCurrencyType(value);
+            if (mounted) setState(() {});
+          },
+          onArchive: (value) async {
+            await _store.archiveCurrencyType(value);
+            if (mounted) setState(() {});
+          },
+          onRestore: (value) async {
+            await _store.restoreCurrencyType(value);
             if (mounted) setState(() {});
           },
         ),

@@ -40,6 +40,7 @@ class ZarPhaseA2Store extends ChangeNotifier {
       List.unmodifiable(_domainSettlements.values);
   List<ZarDeal> get deals => List.unmodifiable(_domainDeals.values);
   List<ZarCoinType> _coinTypes = const [];
+  List<ZarCurrencyType> _currencyTypes = const [];
   List<ZarPaymentAllocation> _allocations = const [];
   List<ZarPaymentAllocation> get paymentAllocations =>
       List.unmodifiable(_allocations);
@@ -76,6 +77,7 @@ class ZarPhaseA2Store extends ChangeNotifier {
   }
 
   List<ZarCoinType> get coinTypes => List.unmodifiable(_coinTypes);
+  List<ZarCurrencyType> get currencyTypes => List.unmodifiable(_currencyTypes);
 
   List<AppPerson> get people =>
       List.unmodifiable(_domainPeople.values.map(_bridge.personToUi));
@@ -105,6 +107,7 @@ class ZarPhaseA2Store extends ChangeNotifier {
       final settlements = snapshot.settlements;
       final deals = snapshot.deals;
       final coinTypes = snapshot.coinTypes;
+      final currencyTypes = snapshot.currencyTypes;
 
       _domainPeople
         ..clear()
@@ -116,6 +119,9 @@ class ZarPhaseA2Store extends ChangeNotifier {
         ..clear()
         ..addEntries(deals.map((item) => MapEntry(item.id, item)));
       _coinTypes = coinTypes;
+      _currencyTypes = currencyTypes.isEmpty
+          ? zarInitialCurrencyTypes()
+          : currencyTypes;
       _allocations = snapshot.paymentAllocations;
       notifyListeners();
     } catch (error) {
@@ -258,8 +264,47 @@ class ZarPhaseA2Store extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> saveCurrencyType(ZarCurrencyType currencyType) async {
+    final catalog = _repository;
+    if (catalog is! ZarCurrencyCatalogRepository) {
+      throw StateError('Currency catalog is unavailable.');
+    }
+    final currencyCatalog = catalog as ZarCurrencyCatalogRepository;
+    await currencyCatalog.saveCurrencyType(currencyType);
+    await _refreshCurrencyTypes(currencyCatalog);
+    notifyListeners();
+  }
+
+  Future<void> archiveCurrencyType(ZarCurrencyType currencyType) async {
+    final catalog = _repository;
+    if (catalog is! ZarCurrencyCatalogRepository) {
+      throw StateError('Currency catalog is unavailable.');
+    }
+    final currencyCatalog = catalog as ZarCurrencyCatalogRepository;
+    await currencyCatalog.archiveCurrencyType(currencyType);
+    await _refreshCurrencyTypes(currencyCatalog);
+    notifyListeners();
+  }
+
+  Future<void> restoreCurrencyType(ZarCurrencyType currencyType) async {
+    final catalog = _repository;
+    if (catalog is! ZarCurrencyCatalogRepository) {
+      throw StateError('Currency catalog is unavailable.');
+    }
+    final currencyCatalog = catalog as ZarCurrencyCatalogRepository;
+    await currencyCatalog.restoreCurrencyType(currencyType);
+    await _refreshCurrencyTypes(currencyCatalog);
+    notifyListeners();
+  }
+
   Future<void> _refreshCoinTypes(ZarCoinCatalogRepository catalog) async {
     _coinTypes = await catalog.loadCoinTypes(includeArchived: true);
+  }
+
+  Future<void> _refreshCurrencyTypes(
+    ZarCurrencyCatalogRepository catalog,
+  ) async {
+    _currencyTypes = await catalog.loadCurrencyTypes(includeArchived: true);
   }
 
   ZarReminderPlan reminderPlanFor(String recordId) =>

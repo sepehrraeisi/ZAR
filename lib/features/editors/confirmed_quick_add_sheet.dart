@@ -14,6 +14,7 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
     required this.people,
     required this.onSave,
     this.coinTypes = const [],
+    this.currencies = const [],
     this.initialReminder = '۱۵ دقیقه',
     this.recentPeople = const [],
     this.preferenceStore,
@@ -28,6 +29,7 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
   final List<AppPerson> people;
   final Future<void> Function(QuickAddDraft draft) onSave;
   final List<ZarCoinType> coinTypes;
+  final List<ZarCurrencyType> currencies;
   final String initialReminder;
   final List<AppPerson> recentPeople;
   final QuickEntryPreferenceStore? preferenceStore;
@@ -85,6 +87,25 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     if (_reminder == 'بدون یادآوری') return '';
     if (_customReminderAt != null) return 'سفارشی';
     return _time == null ? '' : _reminder;
+  }
+
+  CurrencyOption? get _selectedCurrency {
+    final code = _currencyCode;
+    if (code == null) return null;
+    for (final currency in widget.currencies) {
+      if (currency.code == code && !currency.archived) {
+        return currencyOptionFromDomain(currency);
+      }
+    }
+    return currencyByCode(code);
+  }
+
+  List<CurrencyOption> get _activeCurrencyOptions {
+    final active = widget.currencies
+        .where((currency) => !currency.archived)
+        .map(currencyOptionFromDomain)
+        .toList(growable: false);
+    return widget.currencies.isEmpty ? kCurrencyOptions : active;
   }
 
   @override
@@ -751,14 +772,13 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       ListTile(
         contentPadding: EdgeInsets.zero,
         title: const Text('نوع ارز'),
-        subtitle: Text(
-          currencyByCode(_currencyCode)?.displayLabel ?? 'انتخاب نوع ارز',
-        ),
+        subtitle: Text(_selectedCurrency?.displayLabel ?? 'انتخاب نوع ارز'),
         trailing: const Icon(CupertinoIcons.chevron_down),
         onTap: () async {
           final selected = await showCurrencyPickerBottomSheet(
             context,
             _currencyCode,
+            options: _activeCurrencyOptions,
           );
           if (mounted && selected != null) {
             setState(() {

@@ -116,6 +116,19 @@ class ZarCoinTypes extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+@DataClassName('LocalCurrencyTypeRow')
+class ZarCurrencyTypes extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get code => text()();
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
+  IntColumn get createdAtMicros => integer()();
+  IntColumn get updatedAtMicros => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DataClassName('LocalDealCoinLineRow')
 class ZarDealCoinLines extends Table {
   TextColumn get dealId =>
@@ -185,6 +198,7 @@ class ZarPaymentAllocations extends Table {
     ZarDealCoinLines,
     ZarSettlementCoinLines,
     ZarPaymentAllocations,
+    ZarCurrencyTypes,
   ],
 )
 class ZarLocalDatabase extends _$ZarLocalDatabase {
@@ -192,7 +206,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
 
   ZarLocalDatabase.defaults() : super(driftDatabase(name: 'zar_plus_local'));
 
-  static const currentSchemaVersion = 7;
+  static const currentSchemaVersion = 8;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -204,7 +218,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
       await into(zarLocalMetadata).insert(
         ZarLocalMetadataCompanion.insert(
           key: 'domain_schema_version',
-          value: '7',
+          value: '8',
         ),
       );
     },
@@ -287,6 +301,12 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
         await (update(zarLocalMetadata)
               ..where((row) => row.key.equals('domain_schema_version')))
             .write(const ZarLocalMetadataCompanion(value: Value('7')));
+      }
+      if (from < 8) {
+        await migrator.createTable(zarCurrencyTypes);
+        await (update(zarLocalMetadata)
+              ..where((row) => row.key.equals('domain_schema_version')))
+            .write(const ZarLocalMetadataCompanion(value: Value('8')));
       }
       if (to > currentSchemaVersion) {
         throw StateError(

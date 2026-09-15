@@ -437,6 +437,118 @@ class ZarCoinType {
   );
 }
 
+/// User-managed currency master data. The ISO-like code is the stable
+/// identity used by historical records and therefore remains immutable after
+/// creation; archiving hides it only from new-entry selectors.
+class ZarCurrencyType {
+  ZarCurrencyType({
+    required this.id,
+    required String name,
+    required String code,
+    this.archived = false,
+    required this.createdAt,
+    required this.updatedAt,
+  }) : name = name.trim(),
+       code = code.trim().toUpperCase() {
+    if (id.trim().isEmpty || this.name.isEmpty || this.code.isEmpty) {
+      throw const FormatException('Currency id, name and code are required.');
+    }
+  }
+
+  final String id;
+  final String name;
+  final String code;
+  final bool archived;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  ZarCurrencyType copyWith({
+    String? name,
+    bool? archived,
+    DateTime? updatedAt,
+  }) => ZarCurrencyType(
+    id: id,
+    name: name ?? this.name,
+    code: code,
+    archived: archived ?? this.archived,
+    createdAt: createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+
+  Map<String, Object?> toMap() => {
+    'id': id,
+    'name': name,
+    'code': code,
+    'archived': archived,
+    'createdAt': createdAt.toUtc().toIso8601String(),
+    'updatedAt': updatedAt.toUtc().toIso8601String(),
+  };
+
+  factory ZarCurrencyType.fromMap(Map<String, Object?> map) => ZarCurrencyType(
+    id: map['id']! as String,
+    name: map['name']! as String,
+    code: map['code']! as String,
+    archived: map['archived'] as bool? ?? false,
+    createdAt: DateTime.parse(map['createdAt']! as String),
+    updatedAt: DateTime.parse(map['updatedAt']! as String),
+  );
+}
+
+List<ZarCurrencyType> zarInitialCurrencyTypes({DateTime? now}) {
+  final timestamp = (now ?? DateTime.now()).toUtc();
+  return [
+    ZarCurrencyType(
+      id: 'currency-usd',
+      name: 'دلار آمریکا',
+      code: 'USD',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCurrencyType(
+      id: 'currency-eur',
+      name: 'یورو',
+      code: 'EUR',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCurrencyType(
+      id: 'currency-aed',
+      name: 'درهم امارات',
+      code: 'AED',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCurrencyType(
+      id: 'currency-try',
+      name: 'لیر ترکیه',
+      code: 'TRY',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCurrencyType(
+      id: 'currency-gbp',
+      name: 'پوند انگلیس',
+      code: 'GBP',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCurrencyType(
+      id: 'currency-cad',
+      name: 'دلار کانادا',
+      code: 'CAD',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+    ZarCurrencyType(
+      id: 'currency-other',
+      name: 'سایر',
+      code: 'OTHER',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    ),
+  ];
+}
+
 List<ZarCoinType> zarInitialCoinTypes({DateTime? now}) {
   final timestamp = (now ?? DateTime.now()).toUtc();
   return [
@@ -800,7 +912,8 @@ sealed class ZarAssetAmount {
 class ZarCoinBundleAmount extends ZarAssetAmount {
   ZarCoinBundleAmount(List<ZarCoinLine> lines)
     : lines = List.unmodifiable(lines) {
-    if (lines.isEmpty || lines.map((e) => e.id).toSet().length != lines.length) {
+    if (lines.isEmpty ||
+        lines.map((e) => e.id).toSet().length != lines.length) {
       throw const FormatException(
         'Coin bundle requires unique non-empty lines.',
       );

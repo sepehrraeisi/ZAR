@@ -178,7 +178,7 @@ void main() {
     await repo.close();
   });
 
-  test('Backup V6 round-trips catalog and one logical multi-line deal', () {
+  test('Backup V7 round-trips catalog and one logical multi-line deal', () {
     const codec = ZarDomainBackupCodec();
     final catalog = zarInitialCoinTypes(now: DateTime.utc(2026));
     final pricing = ZarCoinDealPricing(
@@ -203,7 +203,7 @@ void main() {
       coinTypes: catalog,
     );
     final restored = codec.decodeJson(codec.encodeJson(source));
-    expect(restored.exportVersion, 6);
+    expect(restored.exportVersion, 7);
     expect(restored.coinTypes, hasLength(7));
     expect(
       (restored.deals.single.amount as ZarCoinBundleAmount)
@@ -234,7 +234,7 @@ void main() {
     expect(restored.coinTypes, isEmpty);
   });
 
-  test('schema 5 upgrades additively to coin schema 6', () async {
+  test('schema 5 upgrades additively to coin and currency schema 8', () async {
     final directory = await Directory.systemTemp.createTemp('zar-v5-coin-');
     final file = File('${directory.path}${Platform.pathSeparator}zar.sqlite');
     try {
@@ -264,9 +264,11 @@ void main() {
           'zar_coin_types',
           'zar_deal_coin_lines',
           'zar_settlement_coin_lines',
+          'zar_currency_types',
         ]),
       );
       expect(await repo.loadCoinTypes(includeArchived: true), hasLength(7));
+      expect(await repo.loadCurrencyTypes(includeArchived: true), hasLength(7));
       await repo.close();
     } finally {
       await directory.delete(recursive: true);
