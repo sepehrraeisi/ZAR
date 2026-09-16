@@ -6,6 +6,7 @@ import '../reminders/flutter_local_notification_scheduler.dart';
 import '../reminders/record_reminder_registry.dart';
 import 'notification_center.dart';
 import 'notification_content_policy.dart';
+import 'notification_permission.dart';
 import 'notification_preferences_store.dart';
 import 'record_tap_buffer.dart';
 
@@ -48,6 +49,7 @@ class ZarNativeNotificationRuntime {
     RecordReminderRegistry.defaultScheduler = scheduler;
     NotificationSettingsScreen.defaultRequestPermission = requestPermission;
     NotificationSettingsScreen.defaultOpenSystemSettings = openSystemSettings;
+    NotificationSettingsScreen.defaultReadPermissionState = readPermissionState;
     NotificationSettingsScreen.defaultPreferencesChanged = updatePreferences;
 
     try {
@@ -75,6 +77,9 @@ class ZarNativeNotificationRuntime {
   }
 
   Future<bool> requestPermission() => scheduler.requestPermission();
+
+  Future<ZarNotificationPermissionState> readPermissionState() =>
+      scheduler.readPermissionState();
 
   Future<bool> openSystemSettings() =>
       scheduler.openSystemNotificationSettings();

@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
+import 'notification_permission.dart';
 
 /// Privacy level for content shown in notifications and on the lock screen.
 enum NotificationPrivacy { full, limited, private }
@@ -215,29 +219,71 @@ class NotificationSettingsScreen extends StatefulWidget {
     required this.onChanged,
     this.onRequestPermission,
     this.onOpenSystemSettings,
+    this.onReadPermissionState,
   });
 
   /// Native bootstrap installs these defaults so existing callers do not need
   /// platform dependencies. Tests and web preview may leave them null.
   static Future<bool> Function()? defaultRequestPermission;
   static Future<bool> Function()? defaultOpenSystemSettings;
+  static Future<ZarNotificationPermissionState> Function()?
+  defaultReadPermissionState;
   static ValueChanged<ZarNotificationPreferences>? defaultPreferencesChanged;
 
   final ZarNotificationPreferences initial;
   final ValueChanged<ZarNotificationPreferences> onChanged;
   final Future<bool> Function()? onRequestPermission;
   final Future<bool> Function()? onOpenSystemSettings;
+  final Future<ZarNotificationPermissionState> Function()?
+  onReadPermissionState;
 
   @override
   State<NotificationSettingsScreen> createState() =>
       _NotificationSettingsScreenState();
 }
 
-class _NotificationSettingsScreenState
-    extends State<NotificationSettingsScreen> {
+class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
+    with WidgetsBindingObserver {
   late ZarNotificationPreferences value = widget.initial;
   bool _permissionBusy = false;
-  bool? _permissionGranted;
+  ZarNotificationPermissionState _permissionState =
+      const ZarNotificationPermissionState.notDetermined();
+
+  Future<ZarNotificationPermissionState> Function()? get _readPermissionState =>
+      widget.onReadPermissionState ??
+      NotificationSettingsScreen.defaultReadPermissionState;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_refreshPermissionState());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshPermissionState());
+    }
+  }
+
+  Future<void> _refreshPermissionState() async {
+    final callback = _readPermissionState;
+    if (callback == null || !mounted) return;
+    try {
+      final next = await callback();
+      if (mounted) setState(() => _permissionState = next);
+    } catch (_) {
+      // Keep the last known state; settings must remain usable if a platform
+      // bridge is temporarily unavailable.
+    }
+  }
 
   void _set(ZarNotificationPreferences next) {
     setState(() => value = next);
@@ -246,6 +292,10 @@ class _NotificationSettingsScreenState
   }
 
   Future<void> _requestPermission() async {
+    if (_permissionState.shouldOpenSettings) {
+      await _openSystemSettings();
+      return;
+    }
     final callback =
         widget.onRequestPermission ??
         NotificationSettingsScreen.defaultRequestPermission;
@@ -254,7 +304,15 @@ class _NotificationSettingsScreenState
     try {
       final granted = await callback();
       if (!mounted) return;
-      setState(() => _permissionGranted = granted);
+      await _refreshPermissionState();
+      if (!mounted) return;
+      if (_readPermissionState == null) {
+        setState(
+          () => _permissionState = granted
+              ? const ZarNotificationPermissionState.granted()
+              : const ZarNotificationPermissionState.denied(),
+        );
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -275,6 +333,10 @@ class _NotificationSettingsScreenState
         NotificationSettingsScreen.defaultOpenSystemSettings;
     if (callback == null) return;
     await callback();
+    // The lifecycle observer refreshes again when the app returns from the
+    // system settings screen. This immediate read also helps platforms that
+    // keep the route resumed while launching settings.
+    await _refreshPermissionState();
   }
 
   @override
@@ -285,6 +347,25 @@ class _NotificationSettingsScreenState
     final canOpenSettings =
         widget.onOpenSystemSettings != null ||
         NotificationSettingsScreen.defaultOpenSystemSettings != null;
+    final permissionStatus = _permissionState.status;
+    final permissionLabel = switch (permissionStatus) {
+      ZarNotificationPermissionStatus.granted => 'فعال',
+      ZarNotificationPermissionStatus.provisional => 'فعال موقت',
+      ZarNotificationPermissionStatus.disabled =>
+        'اعلان‌های این برنامه در تنظیمات سیستم غیرفعال است.',
+      ZarNotificationPermissionStatus.denied =>
+        'مجوز اعلان داده نشده است؛ از تنظیمات سیستم فعال کنید.',
+      ZarNotificationPermissionStatus.unsupported =>
+        'وضعیت اعلان این دستگاه در دسترس نیست.',
+      ZarNotificationPermissionStatus.notDetermined =>
+        'برای دریافت یادآوری هنگام بسته بودن برنامه، مجوز دستگاه لازم است.',
+    };
+    final permissionCta = switch (permissionStatus) {
+      ZarNotificationPermissionStatus.notDetermined => 'فعال‌کردن',
+      ZarNotificationPermissionStatus.denied ||
+      ZarNotificationPermissionStatus.disabled => 'باز کردن تنظیمات',
+      _ => null,
+    };
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -298,18 +379,14 @@ class _NotificationSettingsScreenState
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(CupertinoIcons.bell_fill),
                 title: const Text('مجوز اعلان روی این دستگاه'),
-                subtitle: Text(
-                  _permissionGranted == true
-                      ? 'فعال'
-                      : _permissionGranted == false
-                      ? 'فعال نیست'
-                      : 'برای دریافت یادآوری هنگام بسته بودن برنامه، مجوز دستگاه لازم است.',
-                ),
+                subtitle: Text(permissionLabel),
                 trailing: _permissionBusy
                     ? const CupertinoActivityIndicator(radius: 9)
+                    : permissionCta == null
+                    ? null
                     : TextButton(
                         onPressed: _requestPermission,
-                        child: const Text('فعال‌کردن'),
+                        child: Text(permissionCta),
                       ),
               ),
               if (canOpenSettings)
@@ -319,7 +396,10 @@ class _NotificationSettingsScreenState
                   subtitle: const Text(
                     'صدا، نمایش روی صفحه قفل و مجوزهای iPhone/Android',
                   ),
-                  trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
+                  trailing: const Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Icon(Icons.chevron_left, size: 18),
+                  ),
                   onTap: _openSystemSettings,
                 ),
               const Divider(),
@@ -331,32 +411,42 @@ class _NotificationSettingsScreenState
               value: value.enabled,
               onChanged: (v) => _set(value.copyWith(enabled: v)),
             ),
-            const SizedBox(height: 18),
-            Text(
-              'رفتار یادآوری',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            RadioGroup<NotificationDeliveryMode>(
-              groupValue: value.deliveryMode,
-              onChanged: (mode) {
-                if (mode != null) _set(value.copyWith(deliveryMode: mode));
-              },
-              child: const Column(
+            _dependentSettings(
+              enabled: value.enabled,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RadioListTile<NotificationDeliveryMode>(
-                    contentPadding: EdgeInsets.zero,
-                    value: NotificationDeliveryMode.normal,
-                    title: Text('اعلان معمولی'),
-                    subtitle: Text(
-                      'نمایش استاندارد با صدا و ویبره مطابق تنظیمات.',
-                    ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'رفتار یادآوری',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  RadioListTile<NotificationDeliveryMode>(
-                    contentPadding: EdgeInsets.zero,
-                    value: NotificationDeliveryMode.persistentAlarm,
-                    title: Text('آلارم تا زمان اقدام'),
-                    subtitle: Text(
-                      'اعلان پر‌اهمیت و ماندگار؛ زمان دقیق تابع محدودیت‌های Android است.',
+                  RadioGroup<NotificationDeliveryMode>(
+                    groupValue: value.deliveryMode,
+                    onChanged: (mode) {
+                      if (mode != null) {
+                        _set(value.copyWith(deliveryMode: mode));
+                      }
+                    },
+                    child: const Column(
+                      children: [
+                        RadioListTile<NotificationDeliveryMode>(
+                          contentPadding: EdgeInsets.zero,
+                          value: NotificationDeliveryMode.normal,
+                          title: Text('اعلان معمولی'),
+                          subtitle: Text(
+                            'نمایش استاندارد با صدا و ویبره مطابق تنظیمات.',
+                          ),
+                        ),
+                        RadioListTile<NotificationDeliveryMode>(
+                          contentPadding: EdgeInsets.zero,
+                          value: NotificationDeliveryMode.persistentAlarm,
+                          title: Text('آلارم تا زمان اقدام'),
+                          subtitle: Text(
+                            'اعلان پر‌اهمیت و ماندگار؛ زمان دقیق تابع محدودیت‌های Android است.',
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -373,13 +463,13 @@ class _NotificationSettingsScreenState
                   ? (v) => _set(value.copyWith(soundEnabled: v))
                   : null,
             ),
-            if (value.enabled && value.soundEnabled)
-              _soundPicker(
-                context,
-                value: value.soundProfile,
-                onChanged: (profile) =>
-                    _set(value.copyWith(soundProfile: profile)),
-              ),
+            _soundPicker(
+              context,
+              value: value.soundProfile,
+              enabled: value.enabled && value.soundEnabled,
+              onChanged: (profile) =>
+                  _set(value.copyWith(soundProfile: profile)),
+            ),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: const Text('ویبره'),
@@ -391,47 +481,62 @@ class _NotificationSettingsScreenState
                   ? (v) => _set(value.copyWith(vibrationEnabled: v))
                   : null,
             ),
-            const SizedBox(height: 18),
-            Text(
-              'حریم خصوصی اعلان',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 6),
-            RadioGroup<NotificationPrivacy>(
-              groupValue: value.privacy,
-              onChanged: (privacy) {
-                if (privacy != null) {
-                  _set(value.copyWith(privacy: privacy));
-                }
-              },
+            _dependentSettings(
+              enabled: value.enabled,
               child: Column(
-                children: NotificationPrivacy.values
-                    .map(
-                      (privacy) => RadioListTile<NotificationPrivacy>(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(_privacyTitle(privacy)),
-                        subtitle: Text(_privacyExample(privacy)),
-                        value: privacy,
-                      ),
-                    )
-                    .toList(growable: false),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 18),
+                  Text(
+                    'حریم خصوصی اعلان',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 6),
+                  RadioGroup<NotificationPrivacy>(
+                    groupValue: value.privacy,
+                    onChanged: (privacy) {
+                      if (privacy != null) {
+                        _set(value.copyWith(privacy: privacy));
+                      }
+                    },
+                    child: Column(
+                      children: NotificationPrivacy.values
+                          .map(
+                            (privacy) => RadioListTile<NotificationPrivacy>(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(_privacyTitle(privacy)),
+                              subtitle: Text(_privacyExample(privacy)),
+                              value: privacy,
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 18),
-            _minutesPicker(
-              context,
-              title: 'یادآوری پیش‌فرض',
-              value: value.defaultReminderMinutes,
-              values: const [15, 30, 60, 180, 1440],
-              onChanged: (v) => _set(value.copyWith(defaultReminderMinutes: v)),
+            _dependentSettings(
+              enabled: value.enabled,
+              child: _minutesPicker(
+                context,
+                title: 'یادآوری پیش‌فرض',
+                value: value.defaultReminderMinutes,
+                values: const [15, 30, 60, 180, 1440],
+                onChanged: (v) =>
+                    _set(value.copyWith(defaultReminderMinutes: v)),
+              ),
             ),
             const SizedBox(height: 12),
-            _minutesPicker(
-              context,
-              title: 'اسنوز پیش‌فرض',
-              value: value.defaultSnoozeMinutes,
-              values: const [15, 30, 60, 180, 1440],
-              onChanged: (v) => _set(value.copyWith(defaultSnoozeMinutes: v)),
+            _dependentSettings(
+              enabled: value.enabled,
+              child: _minutesPicker(
+                context,
+                title: 'اسنوز پیش‌فرض',
+                value: value.defaultSnoozeMinutes,
+                values: const [15, 30, 60, 180, 1440],
+                onChanged: (v) => _set(value.copyWith(defaultSnoozeMinutes: v)),
+              ),
             ),
             const SizedBox(height: 20),
             Text(
@@ -447,41 +552,56 @@ class _NotificationSettingsScreenState
   Widget _soundPicker(
     BuildContext context, {
     required NotificationSoundProfile value,
+    required bool enabled,
     required ValueChanged<NotificationSoundProfile> onChanged,
   }) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: const Text('نوع صدا'),
-      subtitle: Text(_soundLabel(value)),
-      trailing: const Icon(CupertinoIcons.chevron_down, size: 18),
-      onTap: () async {
-        final selected = await showModalBottomSheet<NotificationSoundProfile>(
-          context: context,
-          useSafeArea: true,
-          builder: (sheetContext) => Directionality(
-            textDirection: TextDirection.rtl,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: NotificationSoundProfile.values
-                    .map(
-                      (profile) => ListTile(
-                        title: Text(_soundLabel(profile)),
-                        subtitle: Text(_soundDescription(profile)),
-                        trailing: profile == value
-                            ? const Icon(CupertinoIcons.check_mark)
-                            : null,
-                        onTap: () => Navigator.pop(sheetContext, profile),
+    return Opacity(
+      opacity: enabled ? 1 : 0.48,
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('نوع صدا'),
+        subtitle: Text(_soundLabel(value)),
+        trailing: const Icon(CupertinoIcons.chevron_down, size: 18),
+        onTap: enabled
+            ? () async {
+                final selected =
+                    await showModalBottomSheet<NotificationSoundProfile>(
+                      context: context,
+                      useSafeArea: true,
+                      builder: (sheetContext) => Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: NotificationSoundProfile.values
+                                .map(
+                                  (profile) => ListTile(
+                                    title: Text(_soundLabel(profile)),
+                                    subtitle: Text(_soundDescription(profile)),
+                                    trailing: profile == value
+                                        ? const Icon(CupertinoIcons.check_mark)
+                                        : null,
+                                    onTap: () =>
+                                        Navigator.pop(sheetContext, profile),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
                       ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ),
-        );
-        if (selected != null) onChanged(selected);
-      },
+                    );
+                if (selected != null) onChanged(selected);
+              }
+            : null,
+      ),
+    );
+  }
+
+  Widget _dependentSettings({required bool enabled, required Widget child}) {
+    return IgnorePointer(
+      ignoring: !enabled,
+      child: Opacity(opacity: enabled ? 1 : 0.48, child: child),
     );
   }
 

@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'native_notification_capacity.dart';
+import '../notifications/notification_permission.dart';
 import 'reminder_model.dart';
 import 'reminder_scheduler.dart';
 
@@ -63,6 +65,9 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   static const _channelName = 'یادآوری‌های ZAR+';
   static const _channelDescription = 'یادآوری پرداخت، دریافت و تعهدات کاری';
   static const _payloadPrefix = 'zar-record:';
+  static const _permissionChannel = MethodChannel(
+    'zarplus/notification_permission',
+  );
 
   final FlutterLocalNotificationsPlugin _plugin;
   final String timeZoneName;
@@ -162,12 +167,17 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
           IOSFlutterLocalNotificationsPlugin
         >();
     if (ios != null) {
-      return await ios.requestPermissions(
+      final result =
+          await ios.requestPermissions(
             alert: true,
             badge: true,
             sound: _playSound,
           ) ??
           false;
+      final state = await readPermissionState();
+      return state.isGranted ||
+          (state.status == ZarNotificationPermissionStatus.unsupported &&
+              result);
     }
 
     final android = _plugin
@@ -175,10 +185,119 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (android != null) {
-      return await android.requestNotificationsPermission() ?? false;
+      final result = await android.requestNotificationsPermission() ?? false;
+      // The native adapter records only that a request was attempted. The
+      // authoritative state is read again from Android below; it is never
+      // inferred from a cached Dart boolean.
+      try {
+        await _permissionChannel.invokeMethod<void>('markPermissionRequested');
+      } on MissingPluginException {
+        // Tests and platforms without the optional native bridge use the
+        // plugin result as a best-effort fallback.
+      } on PlatformException {
+        // A missing/older host implementation must not block reminders.
+      }
+      final state = await readPermissionState();
+      return state.isGranted ||
+          (state.status == ZarNotificationPermissionStatus.unsupported &&
+              result);
     }
 
     return false;
+  }
+
+  /// Reads notification authorization from the operating system.
+  ///
+  /// Android uses a tiny host bridge to distinguish a first request from a
+  /// previously denied permission and to separate app-level notification
+  /// disablement from POST_NOTIFICATIONS. iOS maps the native authorization
+  /// status, including provisional authorization. If a host bridge is not
+  /// available (for example in a widget test), the plugin APIs remain a safe
+  /// fallback.
+  Future<ZarNotificationPermissionState> readPermissionState() async {
+    if (kIsWeb) return const ZarNotificationPermissionState.unsupported();
+    await initialize();
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        final raw = await _permissionChannel.invokeMethod<Object?>(
+          'getPermissionState',
+        );
+        if (raw is Map) {
+          final status = raw['status']?.toString();
+          return switch (status) {
+            'granted' => const ZarNotificationPermissionState.granted(),
+            'disabled' => const ZarNotificationPermissionState.disabled(),
+            'notDetermined' =>
+              const ZarNotificationPermissionState.notDetermined(),
+            'denied' => const ZarNotificationPermissionState.denied(),
+            _ => const ZarNotificationPermissionState.unsupported(),
+          };
+        }
+      } on MissingPluginException {
+        // Fall through to the plugin API for tests/older hosts.
+      } on PlatformException {
+        // Fall through to the plugin API for a graceful compatibility path.
+      }
+
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android == null) {
+        return const ZarNotificationPermissionState.unsupported();
+      }
+      final enabled = await android.areNotificationsEnabled();
+      if (enabled == null) {
+        return const ZarNotificationPermissionState.unsupported();
+      }
+      return enabled
+          ? const ZarNotificationPermissionState.granted()
+          : const ZarNotificationPermissionState.denied();
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      try {
+        final raw = await _permissionChannel.invokeMethod<Object?>(
+          'getPermissionState',
+        );
+        if (raw is Map) {
+          final status = raw['status']?.toString();
+          return switch (status) {
+            'granted' => const ZarNotificationPermissionState.granted(),
+            'provisional' => const ZarNotificationPermissionState.provisional(),
+            'notDetermined' =>
+              const ZarNotificationPermissionState.notDetermined(),
+            'denied' => const ZarNotificationPermissionState.denied(),
+            _ => const ZarNotificationPermissionState.unsupported(),
+          };
+        }
+      } on MissingPluginException {
+        // Fall through to the plugin API for tests/older hosts.
+      } on PlatformException {
+        // Fall through to the plugin API for a graceful compatibility path.
+      }
+
+      final ios = _plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
+      if (ios == null) {
+        return const ZarNotificationPermissionState.unsupported();
+      }
+      final options = await ios.checkPermissions();
+      if (options == null) {
+        return const ZarNotificationPermissionState.unsupported();
+      }
+      if (options.isProvisionalEnabled) {
+        return const ZarNotificationPermissionState.provisional();
+      }
+      return options.isEnabled
+          ? const ZarNotificationPermissionState.granted()
+          : const ZarNotificationPermissionState.denied();
+    }
+
+    return const ZarNotificationPermissionState.unsupported();
   }
 
   Future<bool> openSystemNotificationSettings() async {
