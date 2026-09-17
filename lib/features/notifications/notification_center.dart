@@ -246,6 +246,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     with WidgetsBindingObserver {
   late ZarNotificationPreferences value = widget.initial;
   bool _permissionBusy = false;
+  int _permissionRead = 0;
   ZarNotificationPermissionState _permissionState =
       const ZarNotificationPermissionState.notDetermined();
 
@@ -276,12 +277,19 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   Future<void> _refreshPermissionState() async {
     final callback = _readPermissionState;
     if (callback == null || !mounted) return;
+    final read = ++_permissionRead;
     try {
       final next = await callback();
-      if (mounted) setState(() => _permissionState = next);
+      if (mounted && read == _permissionRead) {
+        setState(() => _permissionState = next);
+      }
     } catch (_) {
-      // Keep the last known state; settings must remain usable if a platform
-      // bridge is temporarily unavailable.
+      if (mounted && read == _permissionRead) {
+        setState(
+          () => _permissionState =
+              const ZarNotificationPermissionState.unsupported(),
+        );
+      }
     }
   }
 
@@ -428,22 +436,24 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                         _set(value.copyWith(deliveryMode: mode));
                       }
                     },
-                    child: const Column(
+                    child: Column(
                       children: [
                         RadioListTile<NotificationDeliveryMode>(
+                          enabled: value.enabled,
                           contentPadding: EdgeInsets.zero,
                           value: NotificationDeliveryMode.normal,
-                          title: Text('اعلان معمولی'),
-                          subtitle: Text(
+                          title: const Text('اعلان معمولی'),
+                          subtitle: const Text(
                             'نمایش استاندارد با صدا و ویبره مطابق تنظیمات.',
                           ),
                         ),
                         RadioListTile<NotificationDeliveryMode>(
+                          enabled: value.enabled,
                           contentPadding: EdgeInsets.zero,
                           value: NotificationDeliveryMode.persistentAlarm,
-                          title: Text('آلارم تا زمان اقدام'),
-                          subtitle: Text(
-                            'اعلان پر‌اهمیت و ماندگار؛ زمان دقیق تابع محدودیت‌های Android است.',
+                          title: const Text('اعلان ماندگار'),
+                          subtitle: const Text(
+                            'اعلان پر‌اهمیت در Android؛ زنگ مداوم نیست و زمان نمایش تابع محدودیت‌های سیستم است.',
                           ),
                         ),
                       ],
@@ -503,6 +513,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                       children: NotificationPrivacy.values
                           .map(
                             (privacy) => RadioListTile<NotificationPrivacy>(
+                              enabled: value.enabled,
                               contentPadding: EdgeInsets.zero,
                               title: Text(_privacyTitle(privacy)),
                               subtitle: Text(_privacyExample(privacy)),
@@ -599,9 +610,12 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   }
 
   Widget _dependentSettings({required bool enabled, required Widget child}) {
-    return IgnorePointer(
-      ignoring: !enabled,
-      child: Opacity(opacity: enabled ? 1 : 0.48, child: child),
+    return ExcludeFocus(
+      excluding: !enabled,
+      child: IgnorePointer(
+        ignoring: !enabled,
+        child: Opacity(opacity: enabled ? 1 : 0.48, child: child),
+      ),
     );
   }
 
@@ -663,7 +677,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       case NotificationSoundProfile.systemDefault:
         return 'از صدای استاندارد اعلان دستگاه استفاده شود.';
       case NotificationSoundProfile.subtle:
-        return 'در نسخه Native از صدای کوتاه‌تر ZAR+ استفاده شود، در صورت پشتیبانی.';
+        return 'صدای اختصاصی ملایم در این نسخه موجود نیست؛ صدای پیش‌فرض دستگاه پخش می‌شود.';
       case NotificationSoundProfile.silent:
         return 'اعلان نمایش داده شود ولی ZAR+ درخواست پخش صدا نکند.';
     }

@@ -30,6 +30,7 @@ import 'features/history/operational_history_screen.dart';
 import 'features/notifications/native_notification_runtime.dart';
 import 'features/inventory/operational_inventory_screen.dart';
 import 'features/notifications/notification_center.dart';
+import 'features/notifications/notification_content_policy.dart';
 import 'features/people/archived_people_screen.dart';
 import 'features/people/operational_people_screen.dart';
 import 'features/reminders/record_reminder_registry.dart';
@@ -1057,67 +1058,61 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     Iterable<AppRecord> source, {
     bool overdue = false,
   }) => source
-      .map(
-        (record) => ZarNotificationItem(
+      .map((record) {
+        final content = const ZarNotificationContentPolicy().forRecord(
+          record: record,
+          personName: _store.personName(record.personId),
+          privacy: _notificationPreferences.privacy,
+        );
+        return ZarNotificationItem(
           id: 'notification-${record.id}',
           recordId: record.id,
-          title:
-              '${record.operationDisplayLabel} • ${_store.personName(record.personId)}',
-          subtitle:
-              _notificationPreferences.privacy == NotificationPrivacy.private
-              ? 'یک یادآوری کاری دارید.'
-              : _notificationPreferences.privacy == NotificationPrivacy.limited
-              ? '${record.operationDisplayLabel} برای ${_store.personName(record.personId)}'
-              : _recordAmountLabel(record),
+          title: content.title,
+          subtitle: content.body,
           timeLabel: record.timeLabel(),
           isOverdue: overdue,
-        ),
-      )
+        );
+      })
       .toList(growable: false);
 
-  String _recordAmountLabel(AppRecord record) {
-    if (record.coinLines.isNotEmpty) return record.amountDisplay;
-    final numeric =
-        RegExp(
-          r'[-+]?[0-9۰-۹٬,٫.]+',
-        ).firstMatch(record.amountDisplay)?.group(0) ??
-        record.amountDisplay;
-    final amount = toPersianNumberText(numeric);
-    if (record.currencyCode != null) return '$amount ${record.currencyCode}';
-    if (record.assetLabel == 'وجه نقد') return '$amount تومان';
-    return '$amount ${record.assetLabel}';
-  }
-
   Future<void> _openNotificationCenter() async {
-    final currentTime = DateTime.now();
-    final currentDate = Jalali.fromDateTime(currentTime);
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => NotificationCenterScreen(
-          overdue: _notificationItemsFor(
-            openObligations.where(
-              (record) => isRecordOverdueAt(record, currentTime),
-            ),
-            overdue: true,
-          ),
-          today: _notificationItemsFor(
-            openObligations.where(
-              (record) =>
-                  isSameJalali(record.date, currentDate) &&
-                  !isRecordOverdueAt(record, currentTime),
-            ),
-          ),
-          upcoming: _notificationItemsFor(
-            openObligations.where(
-              (record) => record.date.compareTo(currentDate) > 0,
-            ),
-          ),
-          onOpenRecord: (recordId) {
-            final target = _store.recordById(recordId);
-            Navigator.of(context).pop();
-            if (target != null) unawaited(_openRecord(target));
+        builder: (_) => AnimatedBuilder(
+          animation: Listenable.merge([
+            _store,
+            ZarNativeNotificationRuntime.instance,
+          ]),
+          builder: (_, _) {
+            final currentTime = DateTime.now();
+            final currentDate = Jalali.fromDateTime(currentTime);
+            return NotificationCenterScreen(
+              overdue: _notificationItemsFor(
+                openObligations.where(
+                  (record) => isRecordOverdueAt(record, currentTime),
+                ),
+                overdue: true,
+              ),
+              today: _notificationItemsFor(
+                openObligations.where(
+                  (record) =>
+                      isSameJalali(record.date, currentDate) &&
+                      !isRecordOverdueAt(record, currentTime),
+                ),
+              ),
+              upcoming: _notificationItemsFor(
+                openObligations.where(
+                  (record) => record.date.compareTo(currentDate) > 0,
+                ),
+              ),
+              onOpenRecord: (recordId) {
+                final target = _store.recordById(recordId);
+                Navigator.of(context).pop();
+                if (target != null) unawaited(_openRecord(target));
+              },
+              onOpenSettings: _openNotificationSettings,
+            );
           },
-          onOpenSettings: _openNotificationSettings,
         ),
       ),
     );

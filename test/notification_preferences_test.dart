@@ -69,11 +69,11 @@ void main() {
       ),
     );
     await tester.scrollUntilVisible(
-      find.text('آلارم تا زمان اقدام'),
+      find.text('اعلان ماندگار'),
       250,
       scrollable: find.byType(Scrollable),
     );
-    await tester.tap(find.text('آلارم تا زمان اقدام'));
+    await tester.tap(find.text('اعلان ماندگار'));
     await tester.pump();
     expect(changed?.deliveryMode, NotificationDeliveryMode.persistentAlarm);
   });

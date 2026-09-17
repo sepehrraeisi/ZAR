@@ -80,7 +80,20 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   bool _enableVibration;
   bool _persistentAlarm;
   bool _initialized = false;
+  Future<void>? _initializing;
+  Future<void> _operations = Future<void>.value();
   late tz.Location _location;
+
+  // Native pending-list reads and cancel/schedule writes must not interleave.
+  // A later completion must always win over an earlier reschedule.
+  Future<void> _serial(Future<void> Function() action) {
+    final result = _operations.then((_) => action());
+    _operations = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {},
+    );
+    return result;
+  }
 
   bool get initialized => _initialized;
   bool get enabled => _enabled;
@@ -94,7 +107,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     required bool playSound,
     required bool enableVibration,
     bool persistentAlarm = false,
-  }) async {
+  }) => _serial(() async {
     _enabled = enabled;
     _playSound = playSound;
     _enableVibration = enableVibration;
@@ -113,15 +126,22 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     }
 
     final specs = List<_NativeReminderSpec>.from(_specs.values);
-    await _cancelAllNative();
+    // A startup rebuild must not dismiss an already-delivered, still-actionable
+    // persistent notification. Content replacements reconcile those separately.
+    await _plugin.cancelAllPendingNotifications();
     for (final spec in specs) {
       await _scheduleSpec(spec);
     }
+  });
+
+  Future<void> initialize() {
+    if (_initialized || kIsWeb) return Future<void>.value();
+    return _initializing ??= _initialize().whenComplete(
+      () => _initializing = null,
+    );
   }
 
-  Future<void> initialize() async {
-    if (_initialized || kIsWeb) return;
-
+  Future<void> _initialize() async {
     tzdata.initializeTimeZones();
     _location = tz.getLocation(timeZoneName);
 
@@ -143,13 +163,16 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
         iOS: ios,
         windows: windows,
       ),
-      onDidReceiveNotificationResponse: (response) {
+      onDidReceiveNotificationResponse: (response) async {
         final recordId = _recordIdFromPayload(response.payload);
         if (response.id != null) {
-          _plugin.cancel(id: response.id!);
+          await _plugin.cancel(id: response.id!);
           if (defaultTargetPlatform == TargetPlatform.android &&
               recordId != null) {
-            _plugin.cancel(id: response.id!, tag: '$_payloadPrefix$recordId');
+            await _plugin.cancel(
+              id: response.id!,
+              tag: '$_payloadPrefix$recordId',
+            );
           }
         }
         if (recordId != null) onRecordTapped?.call(recordId);
@@ -321,7 +344,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     required ReminderPlan plan,
     required String title,
     required String body,
-  }) async {
+  }) => _serial(() async {
     final spec = _NativeReminderSpec(
       recordId: recordId,
       dueAt: dueAt,
@@ -334,13 +357,14 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     await initialize();
 
     if (_isIos) {
+      await _cancelNativeForRecord(recordId, keepMatching: spec);
       await _rebuildIosQueue();
       return;
     }
 
-    await _cancelNativeForRecord(recordId);
+    await _cancelNativeForRecord(recordId, keepMatching: spec);
     if (_enabled) await _scheduleSpec(spec);
-  }
+  });
 
   Future<void> _rebuildIosQueue() async {
     await _plugin.cancelAllPendingNotifications();
@@ -364,11 +388,8 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   }
 
   Future<void> _cancelAllNative() async {
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      await _plugin.cancelAll();
-      return;
-    }
-    await _plugin.cancelAllPendingNotifications();
+    // Also remove already displayed persistent/private-content notifications.
+    await _plugin.cancelAll();
   }
 
   Future<void> _scheduleSpec(_NativeReminderSpec spec) async {
@@ -423,20 +444,24 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   }
 
   @override
-  Future<void> cancelForRecord(String recordId) async {
+  Future<void> cancelForRecord(String recordId) => _serial(() async {
     _specs.remove(recordId);
     if (kIsWeb) return;
     await initialize();
 
     if (_isIos) {
+      await _cancelNativeForRecord(recordId);
       await _rebuildIosQueue();
       return;
     }
 
     await _cancelNativeForRecord(recordId);
-  }
+  });
 
-  Future<void> _cancelNativeForRecord(String recordId) async {
+  Future<void> _cancelNativeForRecord(
+    String recordId, {
+    _NativeReminderSpec? keepMatching,
+  }) async {
     final payload = '$_payloadPrefix$recordId';
     final pending = await _plugin.pendingNotificationRequests();
     for (final request in pending.where((item) => item.payload == payload)) {
@@ -445,11 +470,27 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
         await _plugin.cancel(id: request.id, tag: payload);
       }
     }
-    if (defaultTargetPlatform == TargetPlatform.android) {
+    if (defaultTargetPlatform == TargetPlatform.android || _isIos) {
       final active = await _plugin.getActiveNotifications();
-      for (final notification in active.where((item) => item.tag == payload)) {
+      for (final notification in active.where(
+        (item) => item.tag == payload || item.payload == payload,
+      )) {
+        final unchanged =
+            keepMatching != null &&
+            notification.title == keepMatching.title &&
+            notification.body == keepMatching.body &&
+            keepMatching.plan
+                .resolveTimes(keepMatching.dueAt)
+                .any(
+                  (time) =>
+                      _stableNotificationId(recordId, time) == notification.id,
+                );
+        if (unchanged) continue;
         if (notification.id != null) {
-          await _plugin.cancel(id: notification.id!, tag: payload);
+          await _plugin.cancel(
+            id: notification.id!,
+            tag: _isIos ? null : payload,
+          );
         }
       }
     }
@@ -457,7 +498,30 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
 
   @override
   Future<List<ScheduledReminder>> pendingForRecord(String recordId) async {
-    return const [];
+    await _operations;
+    if (kIsWeb || !_enabled) return const [];
+    await initialize();
+    final spec = _specs[recordId];
+    if (spec == null) return const [];
+    final pendingIds = (await _plugin.pendingNotificationRequests())
+        .where((item) => item.payload == '$_payloadPrefix$recordId')
+        .map((item) => item.id)
+        .toSet();
+    return spec.plan
+        .resolveTimes(spec.dueAt)
+        .where((time) {
+          return pendingIds.contains(_stableNotificationId(recordId, time));
+        })
+        .map(
+          (time) => ScheduledReminder(
+            id: _stableNotificationId(recordId, time).toString(),
+            recordId: recordId,
+            scheduledAt: time,
+            title: spec.title,
+            body: spec.body,
+          ),
+        )
+        .toList(growable: false);
   }
 
   static String? _recordIdFromPayload(String? payload) {

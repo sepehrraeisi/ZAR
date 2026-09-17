@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_app/features/notifications/notification_center.dart';
@@ -121,4 +123,61 @@ void main() {
       expect(changed, isNull);
     },
   );
+
+  testWidgets('a stale OS read cannot overwrite a newer resume result', (
+    tester,
+  ) async {
+    final oldRead = Completer<ZarNotificationPermissionState>();
+    var reads = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationSettingsScreen(
+          initial: const ZarNotificationPreferences(),
+          onChanged: (_) {},
+          onRequestPermission: () async => false,
+          onReadPermissionState: () => ++reads == 1
+              ? oldRead.future
+              : Future.value(const ZarNotificationPermissionState.granted()),
+        ),
+      ),
+    );
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    oldRead.complete(const ZarNotificationPermissionState.denied());
+    await tester.pumpAndSettle();
+    expect(find.text('فعال'), findsOneWidget);
+    expect(find.text('باز کردن تنظیمات'), findsNothing);
+  });
+
+  testWidgets('sound and master dependencies preserve saved selections', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationSettingsScreen(
+          initial: const ZarNotificationPreferences(
+            soundEnabled: false,
+            soundProfile: NotificationSoundProfile.subtle,
+          ),
+          onChanged: (_) {},
+        ),
+      ),
+    );
+    final soundType = find.widgetWithText(ListTile, 'نوع صدا');
+    await tester.scrollUntilVisible(soundType, 200);
+    expect(tester.widget<ListTile>(soundType).onTap, isNull);
+    final sound = find.widgetWithText(SwitchListTile, 'صدا');
+    tester.widget<SwitchListTile>(sound).onChanged!(true);
+    await tester.pump();
+    expect(tester.widget<ListTile>(soundType).onTap, isNotNull);
+    expect(find.text('ملایم'), findsOneWidget);
+    final master = find.widgetWithText(SwitchListTile, 'اعلان‌ها');
+    await tester.scrollUntilVisible(master, -300);
+    tester.widget<SwitchListTile>(master).onChanged!(false);
+    await tester.pump();
+    await tester.scrollUntilVisible(soundType, 200);
+    expect(tester.widget<ListTile>(soundType).onTap, isNull);
+    expect(tester.widget<SwitchListTile>(sound).value, isTrue);
+    expect(tester.widget<SwitchListTile>(sound).onChanged, isNull);
+  });
 }
