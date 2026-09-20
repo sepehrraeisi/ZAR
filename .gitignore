@@ -5,6 +5,12 @@
 .packages
 .pub-cache/
 .pub/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Node tooling (not part of the Flutter app)
+node_modules/
+package-lock.json
 
 # IDE
 .vscode/
