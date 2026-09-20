@@ -633,14 +633,17 @@ class _HomeHeader extends StatelessWidget {
             textDirection: TextDirection.rtl,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Directionality(
-                textDirection: TextDirection.ltr,
-                child: Text(
-                  'ZAR+',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    height: 1,
-                    letterSpacing: 0.35,
+              Semantics(
+                label: 'ZAR+',
+                image: true,
+                child: SizedBox(
+                  key: const ValueKey('home-header-logo'),
+                  width: 64,
+                  height: 26,
+                  child: Image.asset(
+                    'assets/branding/zar_plus_logo_horizontal.png',
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
                   ),
                 ),
               ),

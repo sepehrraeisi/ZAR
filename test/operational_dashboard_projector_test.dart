@@ -335,6 +335,9 @@ void main() {
     final todayRect = tester.getRect(
       find.byKey(const ValueKey('home-header-today')),
     );
+    final logoRect = tester.getRect(
+      find.byKey(const ValueKey('home-header-logo')),
+    );
     final quickActionsRect = tester.getRect(
       find.byKey(const ValueKey('home-quick-actions')),
     );
@@ -348,12 +351,13 @@ void main() {
       find.byKey(const ValueKey('home-notification-badge')),
     );
 
-    expect(find.text('ZAR+'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-header-logo')), findsOneWidget);
     expect(find.text('امروز'), findsOneWidget);
     expect(find.text('·'), findsOneWidget);
     expect(find.text(formatJalaliDate(Jalali.fromDateTime(now))), findsOneWidget);
     expect(headerRect.height, lessThanOrEqualTo(60));
     expect(headerRowRect.height, 44);
+    expect(logoRect.size, const Size(64, 26));
     expect(bellRect.size, const Size(44, 44));
     expect(settingsRect.size, const Size(44, 44));
     expect(tester.getRect(find.byTooltip('اعلان‌ها')).size, const Size(44, 44));

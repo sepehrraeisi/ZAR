@@ -9,7 +9,7 @@ void main() {
     await tester.pumpWidget(const ZarPlusPhaseA2App());
     await tester.pumpAndSettle();
 
-    expect(find.text('ZAR+'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-header-logo')), findsOneWidget);
     expect(find.text('خانه'), findsOneWidget);
     expect(find.text('تقویم'), findsOneWidget);
     expect(find.text('اشخاص'), findsOneWidget);
