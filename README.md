@@ -16,6 +16,18 @@ Private Persian-first Flutter application for operational gold and currency work
 - lossless production-domain JSON backup + Persian CSV export foundation
 - Firestore mapper/repository, rules and indexes prepared but production Firebase remains disabled
 
+## Development
+
+```powershell
+flutter pub get
+flutter analyze
+flutter test
+flutter run -d windows   # or -d <android device>
+```
+
+CI runs `flutter analyze` and `flutter test` on every push to `master` and on
+every pull request (`.github/workflows/phase_a2_ci.yml`).
+
 ## Reminder data ownership
 
 Reminder intent is business data, not only device notification state.
@@ -31,30 +43,26 @@ The plan is serialized with the settlement in Firestore and in the lossless doma
 
 Legacy Firestore/backup settlement documents that do not yet contain `reminderPlan` remain readable and default safely to an empty plan.
 
-## Next Development Pass (Do Not Skip)
+## Reminder wiring (completed)
 
-### 1) Finish live reminder-plan wiring
+The live V2 shell (`repository_phase_a2_app_v2.dart`) wires reminder intent end to end:
 
-The persistence model/store is now ready. The live shell still needs to stop treating the default reminder as the authoritative plan.
+- after repository load, every open settlement is scheduled from its persisted `ZarReminderPlan`
+- a newly created settlement uses the device/user default reminder only when no explicit plan is selected
+- Quick Add saves the selected reminder plan before native notifications are scheduled
+- Snooze persists the new `snoozedUntil` before changing the native schedule
+- reminder edits persist before the native schedule is replaced
+- Complete/Cancel retain the historical reminder plan for audit/backup while cancelling obsolete native pending notifications
+- after a successful Retry, the native schedule is reconciled from persisted settlement state
 
-Required next wiring:
-
-- after repository/workspace load, schedule each open settlement using its persisted `ZarReminderPlan`
-- use the device/user default reminder only when a newly created settlement has no explicit plan
-- Quick Add must save the selected reminder plan in the settlement before scheduling native notifications
-- Snooze must persist the new `snoozedUntil` before changing the native schedule
-- reminder edits must persist before native schedule replacement
-- Complete/Cancel must retain historical reminder intent if desired for audit/backup, while cancelling obsolete native pending notifications
-- after successful Retry, reconcile the native reminder schedule from the persisted settlement state
-
-### 2) Notification Center remains a core operational feature
+## Notification Center
 
 - Home bell icon opens Persian RTL `اعلان‌ها`.
-- Show due soon, overdue, snoozed returns and upcoming deliveries/receipts.
+- Shows due soon, overdue, snoozed returns and upcoming deliveries/receipts.
 - Notification items deep-link to the relevant record/settlement.
-- Include subtle unread state + optional unread badge/count.
+- Includes subtle unread state + optional unread badge/count.
 
-#### Notification settings (`تنظیمات اعلان‌ها`)
+### Notification settings (`تنظیمات اعلان‌ها`)
 
 - اعلان‌ها: on/off
 - صدا: supported app notification behavior/sound options within platform limits
@@ -63,18 +71,17 @@ Required next wiring:
 - یادآوری‌های پیش‌فرض: 15m, 30m, 1h, 3h, 1d before
 - Snooze defaults: 15m, 30m, 1h, 3h, tomorrow, custom time
 
-### 3) Archived People must never disappear
+## Archived People
 
 - Archive means hidden from active People list, not deleted/inaccessible.
 - `اشخاص بایگانی‌شده` remains searchable, openable and restorable.
-- Archiving must not delete/detach deals, settlements, history or audit logs.
-- If a person has open obligations, require confirmation; do not cancel them.
+- Archiving does not delete/detach deals, settlements, history or audit logs.
+- If a person has open obligations, archiving requires confirmation; it never cancels them.
 
 ## Safety constraints
 
 - Firebase production integration remains paused until the correct configuration for `com.zarplus.app` is provided.
 - Do not commit Firebase Admin keys, `.env`, signing keys, tokens or credentials.
-- Do not merge the Phase A.2 PR until CI/device validation is available.
 
 ## Windows development modes
 
@@ -130,10 +137,10 @@ settlement reminder plans are stored as typed domain fields. Currency is stored
 as integer minor units and scale; gold is stored as its normalized decimal text.
 No `AppRecord` or calculated presentation value is stored.
 
-JSON V6 is the portable backup format, including exact Toman deal pricing,
-gold-market gram/mithqal inputs, coin bundles, and explicit payment allocations.
-Existing V2, V3, V4 and V5 backups remain
-importable. Restore validates the complete
+JSON V7 is the portable backup format, including exact Toman deal pricing,
+gold-market gram/mithqal inputs, coin bundles, the editable coin/currency type
+catalog, and explicit payment allocations. Existing V2, V3, V4, V5 and V6
+backups remain importable. Restore validates the complete
 typed snapshot before opening one replacement transaction; a validation or
 database failure rolls the transaction back. Native reminders are reconciled
 only after persistence succeeds. Schema upgrades must be implemented as
@@ -149,7 +156,8 @@ the allocation sheet after saving a Toman movement, or from its detail sheet.
 Only completed, non-cancelled allocated movements reduce the chosen obligation.
 Open allocated movements reserve their amount but do not discharge the target.
 
-Drift schema 7 adds only `zar_payment_allocations`: source settlement ID,
+Drift schema 8 adds the editable coin/currency type catalog; schema 7 added
+`zar_payment_allocations`: source settlement ID,
 typed target kind/ID, and whole-Toman allocation amount. The composite primary
 key prevents duplicate source/target allocations. Validation rejects mismatched
 person/business/direction, missing targets, over-allocation and allocation chains.
