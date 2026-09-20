@@ -1,11 +1,13 @@
 name: Phase A2 Flutter CI
 
 on:
+  push:
+    branches: [master]
   pull_request:
     branches: [master]
 
 concurrency:
-  group: phase-a2-${{ github.event.pull_request.number }}
+  group: phase-a2-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
