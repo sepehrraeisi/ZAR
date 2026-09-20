@@ -1,12 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_app/main_phase_a2.dart';
+import 'package:flutter_app/data/zar_preview_repository.dart';
+import 'package:flutter_app/repository_phase_a2_app_v2.dart';
 
 void main() {
-  testWidgets('promoted Phase A2 app renders operational home and navigation', (
+  testWidgets('live ZAR+ shell renders operational home and navigation', (
     tester,
   ) async {
-    await tester.pumpWidget(const ZarPlusPhaseA2App());
+    await tester.pumpWidget(
+      RepositoryZarPlusAppV2(repository: buildPhaseA2PreviewRepository()),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('home-header-logo')), findsOneWidget);

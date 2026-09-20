@@ -40,7 +40,7 @@ import 'features/reports/operational_daily_report_screen.dart';
 import 'features/settlements/operational_pending_screen.dart';
 import 'features/settlements/repository_settlement_action_sheet.dart';
 import 'main_phase_a2.dart' show PhaseA2HomeScreen, isRecordOverdueAt;
-import 'repository_phase_a2_app.dart' show buildPhaseA2PreviewRepository;
+import 'data/zar_preview_repository.dart';
 
 /// Phase A.2 live shell with persisted reminder editing and confirmed editor
 /// writes wired into the approved Persian-first UI.
