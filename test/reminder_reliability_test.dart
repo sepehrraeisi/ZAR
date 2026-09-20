@@ -28,7 +28,7 @@ void main() {
     expect(snoozePresetDateTime('سفارشی', now), isNull);
   });
 
-  testWidgets('Quick Add starts with the configured reminder preference', (
+  testWidgets('Quick Add stores a timestamp while reminder stays optional', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -36,7 +36,7 @@ void main() {
         home: Scaffold(
           body: ConfirmedQuickAddSheet(
             people: [AppPerson(id: 'p1', name: 'رضا')],
-            initialReminder: reminderPresetLabel(180),
+            initialReminder: 'بدون یادآوری',
             onSave: (_) async {},
           ),
         ),
@@ -48,7 +48,9 @@ void main() {
     await tester.tap(find.text('طلا'));
     await tester.pump();
 
-    expect(find.text('۳ ساعت'), findsOneWidget);
+    expect(find.textContaining('امروز ·'), findsOneWidget);
+    expect(find.textContaining('بدون ساعت'), findsNothing);
+    expect(find.textContaining('بدون یادآوری'), findsOneWidget);
   });
 
   testWidgets('snooze picker marks the configured default selection', (
@@ -120,8 +122,8 @@ void main() {
       ),
     );
 
-    expect(find.text('عقب‌افتاده'), findsOneWidget);
+    expect(find.text('عقب‌افتاده'), findsWidgets);
     expect(find.text('رضا'), findsOneWidget);
-    expect(find.text('در انتظار'), findsOneWidget);
+    expect(find.text('در انتظار'), findsNothing);
   });
 }

@@ -97,6 +97,32 @@ void main() {
       expect(find.text('در انتظار'), findsNothing);
       expect(find.text('انجام شد'), findsNothing);
       expect(find.text('لغو شد'), findsNothing);
+      expect(find.byTooltip('اشتراک‌گذاری'), findsOneWidget);
+    },
+  );
+
+  test(
+    'record share text keeps Deal lifecycle separate from Settlement status',
+    () {
+      final deal = AppRecord(
+        id: 'deal-share',
+        type: RecordType.deal,
+        operationLabel: 'فروش',
+        personId: 'person',
+        amountDisplay: '۱۰٬۰۰۰',
+        assetLabel: 'ارز',
+        currencyCode: 'USD',
+        date: Jalali(1405, 6, 7),
+        time: const TimeOfDay(hour: 9, minute: 15),
+      );
+
+      final text = recordShareText(deal, 'علی رضایی');
+      expect(text, contains('جزئیات معامله'));
+      expect(text, contains('عملیات: فروش'));
+      expect(text, contains('طرف حساب: علی رضایی'));
+      expect(text, contains('۱۰٬۰۰۰ USD'));
+      expect(text, isNot(contains('در انتظار')));
+      expect(text, isNot(contains('انجام شد')));
     },
   );
 }

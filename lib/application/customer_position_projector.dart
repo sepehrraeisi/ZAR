@@ -7,21 +7,28 @@ sealed class ZarCustomerPositionItem {
 }
 
 class ZarCustomerGoldPosition extends ZarCustomerPositionItem {
-  const ZarCustomerGoldPosition({required this.fineness, required this.grams});
+  const ZarCustomerGoldPosition({
+    required this.fineness,
+    required this.grams,
+    this.sourceCount = 1,
+  });
 
   /// Null means the source settlement did not record a purity value.
   final String? fineness;
   final String grams;
+  final int sourceCount;
 }
 
 class ZarCustomerCurrencyPosition extends ZarCustomerPositionItem {
   const ZarCustomerCurrencyPosition({
     required this.code,
     required this.decimalAmount,
+    this.sourceCount = 1,
   });
 
   final String code;
   final String decimalAmount;
+  final int sourceCount;
 }
 
 class ZarCustomerCoinPosition extends ZarCustomerPositionItem {
@@ -29,10 +36,12 @@ class ZarCustomerCoinPosition extends ZarCustomerPositionItem {
     required this.identity,
     required this.displayName,
     required this.quantity,
+    this.sourceCount = 1,
   });
   final String identity;
   final String displayName;
   final int quantity;
+  final int sourceCount;
 }
 
 class ZarCustomerPosition {
@@ -126,7 +135,7 @@ class ZarCustomerPositionProjector {
   List<ZarCustomerPositionItem> _aggregate(
     Iterable<ZarSettlement> settlements,
   ) {
-    final gold = <String?, ZarExactDecimal>{};
+    final gold = <String?, _GoldAccumulator>{};
     final currencies = <String, _CurrencyAccumulator>{};
     final coins = <String, _CoinAccumulator>{};
     for (final settlement in settlements) {
@@ -138,9 +147,12 @@ class ZarCustomerPositionProjector {
           final grams = ZarExactDecimal.parse(
             zarGoldWeightInGrams(value.decimal, value.unit),
           );
-          gold[fineness] = (gold[fineness] ?? ZarExactDecimal.parse('0')).add(
-            grams,
+          final accumulator = gold.putIfAbsent(
+            fineness,
+            () => _GoldAccumulator(),
           );
+          accumulator.grams = accumulator.grams.add(grams);
+          accumulator.sourceCount++;
         case ZarCurrencyAssetAmount(:final value):
           currencies
               .putIfAbsent(value.code, _CurrencyAccumulator.new)
@@ -160,6 +172,7 @@ class ZarCustomerPositionProjector {
                     )
                     .quantity +=
                 line.quantity;
+            coins[identity]!.sourceCount++;
           }
       }
     }
@@ -168,13 +181,15 @@ class ZarCustomerPositionProjector {
       ...gold.entries.map(
         (entry) => ZarCustomerGoldPosition(
           fineness: entry.key,
-          grams: entry.value.toString(),
+          grams: entry.value.grams.toString(),
+          sourceCount: entry.value.sourceCount,
         ),
       ),
       ...currencies.entries.map(
         (entry) => ZarCustomerCurrencyPosition(
           code: entry.key,
           decimalAmount: entry.value.decimal,
+          sourceCount: entry.value.sourceCount,
         ),
       ),
       ...coins.entries.map(
@@ -182,6 +197,7 @@ class ZarCustomerPositionProjector {
           identity: entry.key,
           displayName: entry.value.label,
           quantity: entry.value.quantity,
+          sourceCount: entry.value.sourceCount,
         ),
       ),
     ];
@@ -202,6 +218,7 @@ class _CoinAccumulator {
   final String? weight;
   final String? fineness;
   int quantity = 0;
+  int sourceCount = 0;
   String get label => [
     name,
     if (weight != null) '$weight گرم',
@@ -212,8 +229,10 @@ class _CoinAccumulator {
 class _CurrencyAccumulator {
   BigInt _minorUnits = BigInt.zero;
   int _scale = 0;
+  int sourceCount = 0;
 
   void add(int minorUnits, int scale) {
+    sourceCount++;
     if (scale > _scale) {
       _minorUnits *= BigInt.from(10).pow(scale - _scale);
       _scale = scale;
@@ -231,4 +250,9 @@ class _CurrencyAccumulator {
         ? digits.substring(0, split)
         : '${digits.substring(0, split)}.$fraction';
   }
+}
+
+class _GoldAccumulator {
+  ZarExactDecimal grams = ZarExactDecimal.parse('0');
+  int sourceCount = 0;
 }

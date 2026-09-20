@@ -6,6 +6,7 @@ import '../reminders/flutter_local_notification_scheduler.dart';
 import '../reminders/record_reminder_registry.dart';
 import 'notification_center.dart';
 import 'notification_content_policy.dart';
+import 'notification_permission.dart';
 import 'notification_preferences_store.dart';
 import 'record_tap_buffer.dart';
 
@@ -13,7 +14,7 @@ import 'record_tap_buffer.dart';
 ///
 /// It installs the native scheduler without prompting for permissions. Permission
 /// requests remain an explicit user action from Notification Settings.
-class ZarNativeNotificationRuntime {
+class ZarNativeNotificationRuntime extends ChangeNotifier {
   ZarNativeNotificationRuntime._() {
     scheduler = FlutterLocalNotificationScheduler(
       onRecordTapped: _handleRecordTapped,
@@ -28,6 +29,7 @@ class ZarNativeNotificationRuntime {
   final RecordTapBuffer _recordTaps = RecordTapBuffer();
 
   ZarNotificationPreferences _preferences = const ZarNotificationPreferences();
+  Future<void> _preferenceWrites = Future<void>.value();
 
   ZarNotificationPreferences get preferences => _preferences;
   String? get pendingRecordId => _recordTaps.pendingRecordId;
@@ -48,6 +50,7 @@ class ZarNativeNotificationRuntime {
     RecordReminderRegistry.defaultScheduler = scheduler;
     NotificationSettingsScreen.defaultRequestPermission = requestPermission;
     NotificationSettingsScreen.defaultOpenSystemSettings = openSystemSettings;
+    NotificationSettingsScreen.defaultReadPermissionState = readPermissionState;
     NotificationSettingsScreen.defaultPreferencesChanged = updatePreferences;
 
     try {
@@ -71,10 +74,19 @@ class ZarNativeNotificationRuntime {
   void updatePreferences(ZarNotificationPreferences value) {
     _preferences = value;
     _installPrivacyPolicy();
-    unawaited(_persistAndApplyPreferenceChange(value));
+    notifyListeners();
+    // Preserve user edit order across asynchronous platform/storage calls.
+    _preferenceWrites = _preferenceWrites
+        .then((_) => _persistAndApplyPreferenceChange(value))
+        .catchError((Object error, StackTrace stack) {
+          debugPrint('ZAR notification reconciliation failed: $error');
+        });
   }
 
   Future<bool> requestPermission() => scheduler.requestPermission();
+
+  Future<ZarNotificationPermissionState> readPermissionState() =>
+      scheduler.readPermissionState();
 
   Future<bool> openSystemSettings() =>
       scheduler.openSystemNotificationSettings();

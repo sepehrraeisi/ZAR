@@ -6,12 +6,14 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 import 'app_core.dart';
+import 'widgets/zar_amount_display.dart';
 import 'application/operational_dashboard_projector.dart';
 import 'application/operational_inventory_projector.dart';
 import 'features/notifications/notification_center.dart';
 import 'features/people/archived_people_screen.dart';
 import 'features/reminders/record_reminder_registry.dart';
 import 'features/reminders/reminder_model.dart';
+import 'domain/zar_domain_models.dart';
 
 void main() {
   runApp(const ZarPlusPhaseA2App());
@@ -424,6 +426,49 @@ class _PhaseA2ShellState extends State<PhaseA2Shell> {
 bool isRecordOverdueAt(AppRecord record, DateTime now) =>
     dueDateTimeFromJalali(record.date, record.time).isBefore(now);
 
+String _homeDueLabel(AppRecord record, DateTime now) {
+  final today = DateTime(now.year, now.month, now.day);
+  final gregorian = record.date.toGregorian();
+  final dueDay = DateTime(gregorian.year, gregorian.month, gregorian.day);
+  final dayDelta = dueDay.difference(today).inDays;
+  final time = record.time == null ? null : record.timeLabel();
+  if (dueDateTimeFromJalali(record.date, record.time).isBefore(now)) {
+    if (dayDelta == 0) return 'عقب‌افتاده';
+  }
+  if (dayDelta < 0) {
+    return '${toPersianDigits((-dayDelta).toString())} روز عقب‌افتاده';
+  }
+  if (dayDelta == 0) {
+    return time == null ? 'سررسید امروز' : 'سررسید: امروز $time';
+  }
+  if (dayDelta == 1) {
+    return time == null ? 'سررسید فردا' : 'سررسید: فردا $time';
+  }
+  return '${toPersianDigits(dayDelta.toString())} روز مانده';
+}
+
+String _homeActivityTimestamp(AppRecord record, DateTime now) {
+  final current = Jalali.fromDateTime(now);
+  final time = record.time == null ? null : record.timeLabel();
+  final suffix = time == null ? '' : ' · $time';
+  if (isSameJalali(record.date, current)) return 'امروز$suffix';
+  if (isSameJalali(record.date, current.addDays(-1))) return 'دیروز$suffix';
+  if (isSameJalali(record.date, current.addDays(1))) return 'فردا$suffix';
+  return '${formatJalaliDate(record.date)}$suffix';
+}
+
+const _homeSecondaryColor = Color(0xFF6F6A62);
+const _homeOverdueColor = Color(0xFF9D3636);
+const _homeAmountColor = Color(0xFF9A6700);
+const _homeNeutralAmountColor = Color(0xFF2A2927);
+
+IconData _homeActivityIcon(AppRecord record) {
+  if (record.type == RecordType.deal) {
+    return CupertinoIcons.arrow_2_squarepath;
+  }
+  return record.operationLabel == 'دریافت' ? CupertinoIcons.arrow_down_circle : CupertinoIcons.arrow_up_circle;
+}
+
 class PhaseA2HomeScreen extends StatelessWidget {
   const PhaseA2HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord, required this.onOpenNotifications, required this.unreadCount, this.onOpenSettings, this.onOpenInventory, this.onOpenDailyReport, this.onOpenOverdue, this.onOpenHistory, this.dashboard, this.recentRecords = const [], this.onOpenPendingReceive, this.onOpenPendingDeliver, this.now});
 
@@ -453,96 +498,105 @@ class PhaseA2HomeScreen extends StatelessWidget {
 
     return CustomScrollView(
       slivers: [
-        SliverAppBar(
-          pinned: true,
-          title: const Directionality(textDirection: TextDirection.ltr, child: Text('ZAR+')),
-          actions: [
-            if (onOpenSettings != null)
-              IconButton(
-                tooltip: 'تنظیمات و داده‌ها',
-                onPressed: onOpenSettings,
-                icon: const Icon(CupertinoIcons.settings),
-              ),
-            _NotificationBell(count: unreadCount, onTap: onOpenNotifications),
-            const SizedBox(width: 8),
-          ],
-        ),
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('امروز', style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 2),
-                Text(formatJalaliDate(currentDate), style: Theme.of(context).textTheme.bodyMedium),
-                if (onOpenInventory != null || onOpenDailyReport != null) ...[
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    if (onOpenInventory != null)
-                      Expanded(child: OutlinedButton.icon(onPressed: onOpenInventory, icon: const Icon(CupertinoIcons.cube_box), label: const Text('موجودی'))),
-                    if (onOpenInventory != null && onOpenDailyReport != null) const SizedBox(width: 8),
-                    if (onOpenDailyReport != null)
-                      Expanded(child: OutlinedButton.icon(onPressed: onOpenDailyReport, icon: const Icon(CupertinoIcons.doc_text_search), label: const Text('گزارش روزانه'))),
-                  ]),
-                ],
-              ],
-            ),
+          child: _HomeHeader(
+            currentDate: currentDate,
+            unreadCount: unreadCount,
+            onOpenNotifications: onOpenNotifications,
+            onOpenSettings: onOpenSettings,
           ),
         ),
-        if (dashboard != null) _dashboardSections(context, dashboard!),
-        if (overdue.isNotEmpty) _section(context, 'عقب‌افتاده', overdue, overdue: true, maxItems: 3, onViewAll: onOpenOverdue ?? onOpenNotifications),
-        if (today.isNotEmpty) _section(context, 'امروز', today, maxItems: 3, onViewAll: onOpenNotifications),
-        if (tomorrow.isNotEmpty) _section(context, 'فردا', tomorrow, maxItems: 3, onViewAll: onOpenNotifications),
+        if (onOpenInventory != null || onOpenDailyReport != null)
+          SliverToBoxAdapter(
+            child: _HomeQuickActions(
+              onOpenInventory: onOpenInventory,
+              onOpenDailyReport: onOpenDailyReport,
+            ),
+          ),
+        if (dashboard != null) _dashboardSections(context, dashboard!, currentTime),
+        if (overdue.isNotEmpty) _section(context, 'عقب‌افتاده', overdue, overdue: true, maxItems: 3, onViewAll: onOpenOverdue ?? onOpenNotifications, now: currentTime),
+        if (recentRecords.isNotEmpty) _recentSection(context, currentTime),
+        if (today.isNotEmpty) _section(context, 'امروز', today, maxItems: 3, onViewAll: onOpenNotifications, now: currentTime),
+        if (tomorrow.isNotEmpty) _section(context, 'فردا', tomorrow, maxItems: 3, onViewAll: onOpenNotifications, now: currentTime),
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
       ],
     );
   }
 
-  Widget _section(BuildContext context, String title, List<AppRecord> items, {bool overdue = false, int? maxItems, VoidCallback? onViewAll}) {
+  Widget _section(BuildContext context, String title, List<AppRecord> items, {bool overdue = false, int? maxItems, VoidCallback? onViewAll, required DateTime now}) {
     final visible = maxItems == null ? items : items.take(maxItems).toList(growable: false);
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 16, color: overdue ? const Color(0xFF9D3636) : null)),
+            _HomeSectionHeading(
+              title: title,
+              titleColor: overdue ? _homeOverdueColor : null,
+              onTap: maxItems != null && items.length > maxItems ? onViewAll : null,
+              actionLabel: maxItems != null && items.length > maxItems ? 'مشاهده همه ${toPersianDigits(items.length.toString())} مورد' : null,
+            ),
             const SizedBox(height: 8),
             if (items.isEmpty)
               _HomeContainer(child: const Padding(padding: EdgeInsets.all(12), child: Text('موردی ثبت نشده است.')))
             else
-              _HomeActionList(items: visible, personName: personName, onTap: onTapRecord, overdue: overdue),
-            if (maxItems != null && items.length > maxItems && onViewAll != null)
-              Align(alignment: AlignmentDirectional.centerStart, child: TextButton(onPressed: onViewAll, child: Text('مشاهده همه (${toPersianDigits(items.length.toString())})'))),
+              _HomeActionList(items: visible, personName: personName, onTap: onTapRecord, overdue: overdue, now: now),
           ],
         ),
       ),
     );
   }
 
-  Widget _dashboardSections(BuildContext context, ZarOperationalDashboardProjection value) {
-    final inventory = value.inventory;
-    final hasInventory = inventory.goldInventory.isNotEmpty || inventory.coinInventory.isNotEmpty || inventory.currencyInventory.isNotEmpty || inventory.cashInventory.isNotEmpty;
+  Widget _dashboardSections(BuildContext context, ZarOperationalDashboardProjection value, DateTime currentTime) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            Widget card({required String title, required int count, required List<ZarOperationalInventoryItem> items, required VoidCallback? onTap}) => _HomeObligationCard(title: title, count: count, items: items, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onTap, accent: _homeNeutralAmountColor, now: currentTime);
+            final receive = card(title: 'دریافتنی‌ها', count: value.pendingReceiveCount, items: value.inventory.pendingReceive, onTap: onOpenPendingReceive);
+            final deliver = card(title: 'پرداختنی‌ها', count: value.pendingDeliverCount, items: value.inventory.pendingDeliver, onTap: onOpenPendingDeliver);
+            if (constraints.maxWidth < 560) {
+              return Column(children: [
+                SizedBox(height: 160, child: receive),
+                const SizedBox(height: 8),
+                SizedBox(height: 160, child: deliver),
+              ]);
+            }
+            return SizedBox(
+              height: 160,
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Expanded(child: receive),
+                const SizedBox(width: 8),
+                Expanded(child: deliver),
+              ]),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _recentSection(BuildContext context, DateTime currentTime) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(child: _HomeObligationCard(title: 'باید دریافت کنم', count: value.pendingReceiveCount, items: inventory.pendingReceive, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onOpenPendingReceive, accent: const Color(0xFF9A6700))),
-              const SizedBox(width: 8),
-              Expanded(child: _HomeObligationCard(title: 'باید پرداخت کنم', count: value.pendingDeliverCount, items: inventory.pendingDeliver, records: records, personName: personName, onTapRecord: onTapRecord, onTap: onOpenPendingDeliver, accent: const Color(0xFF6C5A42))),
-            ]),
-            const SizedBox(height: 16),
-            _HomeSectionHeading(title: 'موجودی واقعی', onTap: onOpenInventory, actionLabel: 'مشاهده همه'),
+            _HomeSectionHeading(
+              title: 'فعالیت اخیر',
+              onTap: onOpenHistory,
+              actionLabel: onOpenHistory == null ? null : 'مشاهده همه',
+            ),
             const SizedBox(height: 8),
-            _HomeInventoryCard(inventory: inventory, hasInventory: hasInventory, onTap: onOpenInventory),
-            const SizedBox(height: 16),
-            _HomeSectionHeading(title: 'فعالیت اخیر', onTap: recentRecords.isEmpty ? null : onOpenHistory, actionLabel: recentRecords.isEmpty ? null : 'مشاهده همه'),
-            const SizedBox(height: 8),
-            _HomeRecentActivity(records: recentRecords.take(5).toList(growable: false), personName: personName, onTap: onTapRecord),
+            _HomeRecentActivity(
+              records: recentRecords.take(5).toList(growable: false),
+              personName: personName,
+              onTap: onTapRecord,
+              now: currentTime,
+            ),
           ],
         ),
       ),
@@ -551,25 +605,218 @@ class PhaseA2HomeScreen extends StatelessWidget {
 
 }
 
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
+    required this.currentDate,
+    required this.unreadCount,
+    required this.onOpenNotifications,
+    required this.onOpenSettings,
+  });
+
+  final Jalali currentDate;
+  final int unreadCount;
+  final VoidCallback onOpenNotifications;
+  final VoidCallback? onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      key: const ValueKey('home-header'),
+      color: theme.scaffoldBackgroundColor,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 16),
+        child: SizedBox(
+          key: const ValueKey('home-header-row'),
+          height: 44,
+          child: Row(
+            textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Semantics(
+                label: 'ZAR+',
+                image: true,
+                child: SizedBox(
+                  key: const ValueKey('home-header-logo'),
+                  width: 64,
+                  height: 26,
+                  child: Image.asset(
+                    'assets/branding/zar_plus_logo_horizontal.png',
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: FittedBox(
+                    key: const ValueKey('home-header-today'),
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      textDirection: TextDirection.rtl,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'امروز',
+                          textAlign: TextAlign.right,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '·',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          formatJalaliDate(currentDate),
+                          textAlign: TextAlign.right,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              if (onOpenSettings != null)
+                _HomeHeaderIconButton(
+                  buttonKey: const ValueKey('home-settings-button'),
+                  tooltip: 'تنظیمات و داده‌ها',
+                  onPressed: onOpenSettings!,
+                  icon: CupertinoIcons.gear,
+                ),
+              _NotificationBell(count: unreadCount, onTap: onOpenNotifications),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeHeaderIconButton extends StatelessWidget {
+  const _HomeHeaderIconButton({
+    required this.buttonKey,
+    required this.tooltip,
+    required this.onPressed,
+    required this.icon,
+  });
+
+  final Key buttonKey;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    key: buttonKey,
+    tooltip: tooltip,
+    onPressed: onPressed,
+    constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+    padding: EdgeInsets.zero,
+    iconSize: 21,
+    style: IconButton.styleFrom(
+      fixedSize: const Size(44, 44),
+      minimumSize: const Size(44, 44),
+      maximumSize: const Size(44, 44),
+      padding: EdgeInsets.zero,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    ),
+    icon: Icon(icon),
+  );
+}
+
+class _HomeQuickActions extends StatelessWidget {
+  const _HomeQuickActions({this.onOpenInventory, this.onOpenDailyReport});
+
+  final VoidCallback? onOpenInventory;
+  final VoidCallback? onOpenDailyReport;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    key: const ValueKey('home-quick-actions'),
+    padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 0),
+    child: Row(
+      children: [
+        if (onOpenInventory != null)
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: OutlinedButton.icon(
+                onPressed: onOpenInventory,
+                icon: const Icon(CupertinoIcons.cube_box),
+                label: const Text('موجودی'),
+                style: _homeQuickActionStyle(context),
+              ),
+            ),
+          ),
+        if (onOpenInventory != null && onOpenDailyReport != null)
+          const SizedBox(width: 8),
+        if (onOpenDailyReport != null)
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: OutlinedButton.icon(
+                onPressed: onOpenDailyReport,
+                icon: const Icon(CupertinoIcons.doc_text_search),
+                label: const Text('گزارش روزانه'),
+                style: _homeQuickActionStyle(context),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+ButtonStyle _homeQuickActionStyle(BuildContext context) {
+  final theme = Theme.of(context);
+  return OutlinedButton.styleFrom(
+    minimumSize: Size.zero,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    side: BorderSide(color: theme.dividerColor),
+    textStyle: theme.textTheme.labelLarge,
+  );
+}
+
 class _HomeSectionHeading extends StatelessWidget {
-  const _HomeSectionHeading({required this.title, this.onTap, this.actionLabel});
+  const _HomeSectionHeading({required this.title, this.onTap, this.actionLabel, this.titleColor});
   final String title;
   final VoidCallback? onTap;
   final String? actionLabel;
+  final Color? titleColor;
 
   @override
   Widget build(BuildContext context) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
-      Text(title, style: Theme.of(context).textTheme.titleMedium),
+      Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: titleColor)),
       if (onTap != null && actionLabel != null)
-        TextButton(onPressed: onTap, child: Text(actionLabel!)),
+        TextButton(
+          onPressed: onTap,
+          style: TextButton.styleFrom(
+            foregroundColor: _homeAmountColor,
+            textStyle: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+            visualDensity: VisualDensity.compact,
+          ),
+          child: Text(actionLabel!),
+        ),
     ],
   );
 }
 
 class _HomeObligationCard extends StatelessWidget {
-  const _HomeObligationCard({required this.title, required this.count, required this.items, required this.records, required this.personName, required this.onTapRecord, required this.onTap, required this.accent});
+  const _HomeObligationCard({required this.title, required this.count, required this.items, required this.records, required this.personName, required this.onTapRecord, required this.onTap, required this.accent, required this.now});
   final String title;
   final int count;
   final List<ZarOperationalInventoryItem> items;
@@ -578,104 +825,110 @@ class _HomeObligationCard extends StatelessWidget {
   final ValueChanged<AppRecord> onTapRecord;
   final VoidCallback? onTap;
   final Color accent;
+  final DateTime now;
 
   @override
-  Widget build(BuildContext context) => _HomeContainer(
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15)),
-        const SizedBox(height: 2),
-        Text('${toPersianDigits(count.toString())} مورد', style: TextStyle(color: accent, fontSize: 13, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 6),
-        if (items.isEmpty)
-          const _PhaseA2EmptyRow(label: 'موردی ثبت نشده است.')
-        else ...[
-          ...items.take(3).map((item) {
-            final names = <String, AppRecord>{};
-            for (final movement in item.movements) {
-              AppRecord? record;
-              for (final candidate in records) {
-                if (candidate.id == movement.recordId) {
-                  record = candidate;
-                  break;
-                }
-              }
-              final matchedRecord = record;
-              if (matchedRecord != null) names.putIfAbsent(personName(movement.personId), () => matchedRecord);
-            }
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                _HomeInventoryLine(item: item, accent: accent),
-                if (names.isNotEmpty)
-                  Row(mainAxisAlignment: MainAxisAlignment.start, children: [
-                    Text(title.contains('دریافت') ? 'از' : 'به', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11)),
-                    const SizedBox(width: 4),
-                    ...names.entries.take(2).map((entry) => Padding(
-                      padding: const EdgeInsetsDirectional.only(end: 6),
-                      child: InkWell(onTap: () => onTapRecord(entry.value), child: Text(entry.key, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11))),
-                    )),
-                  ]),
-              ]),
-            );
-          }),
-          if (items.length > 3 || onTap != null)
-            Align(alignment: AlignmentDirectional.centerStart, child: TextButton(onPressed: onTap, child: const Text('مشاهده همه'))),
-        ],
-      ]),
+  Widget build(BuildContext context) => KeyedSubtree(
+    key: ValueKey('home-obligation-$title'),
+    child: _HomeContainer(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 7),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15)),
+          const SizedBox(height: 2),
+          Text('${toPersianDigits(count.toString())} مورد', style: const TextStyle(color: _homeSecondaryColor, fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (items.isEmpty)
+                const _PhaseA2EmptyRow(label: 'موردی ثبت نشده است.')
+              else
+                ...items.take(2).map((item) {
+                  final people = <String>{};
+                  AppRecord? matchedRecord;
+                  for (final movement in item.movements) {
+                    people.add(personName(movement.personId));
+                    for (final candidate in records) {
+                      if (candidate.id == movement.recordId) {
+                        matchedRecord ??= candidate;
+                        break;
+                      }
+                    }
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      textDirection: TextDirection.rtl,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (people.isNotEmpty)
+                                ...people.take(1).map(
+                                  (name) => GestureDetector(
+                                    onTap: matchedRecord == null
+                                        ? null
+                                        : () => onTapRecord(matchedRecord!),
+                                    child: Text(
+                                      name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              if (matchedRecord != null)
+                                Text(
+                                  _homeDueLabel(matchedRecord, now),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        fontSize: 10,
+                                        color: _homeSecondaryColor,
+                                      ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 132,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: _HomeInventoryLine(
+                              item: item,
+                              accent: accent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              const Spacer(),
+            ]),
+          ),
+          if (onTap != null && items.isNotEmpty)
+            Align(alignment: AlignmentDirectional.centerEnd, child: TextButton(onPressed: onTap, style: TextButton.styleFrom(foregroundColor: _homeAmountColor, textStyle: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600), minimumSize: Size.zero, padding: EdgeInsets.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap, visualDensity: VisualDensity.compact), child: const Text('مشاهده همه'))),
+        ]),
+      ),
     ),
   );
-}
-
-class _HomeInventoryCard extends StatelessWidget {
-  const _HomeInventoryCard({required this.inventory, required this.hasInventory, this.onTap});
-  final ZarOperationalInventoryProjection inventory;
-  final bool hasInventory;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!hasInventory) {
-      return _HomeContainer(child: const Padding(padding: EdgeInsets.all(16), child: Text('هنوز موجودی ثبت‌شده‌ای ندارید.')));
-    }
-    final sections = <Widget>[
-      if (inventory.goldInventory.isNotEmpty) _HomeInventoryGroup(title: 'طلا', items: inventory.goldInventory, accent: const Color(0xFF9A6700), onTap: onTap),
-      if (inventory.coinInventory.isNotEmpty) _HomeInventoryGroup(title: 'سکه', items: inventory.coinInventory, accent: const Color(0xFF6D5A8A), onTap: onTap),
-      if (inventory.currencyInventory.isNotEmpty) _HomeInventoryGroup(title: 'ارز', items: inventory.currencyInventory, accent: const Color(0xFF386C68), onTap: onTap),
-      if (inventory.cashInventory.isNotEmpty) _HomeInventoryGroup(title: 'وجه نقد', items: inventory.cashInventory, accent: const Color(0xFF4D4D4D), onTap: onTap),
-    ];
-    return _HomeContainer(child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
-      for (var i = 0; i < sections.length; i++) ...[
-        sections[i],
-        if (i < sections.length - 1) const Divider(height: 20),
-      ],
-    ])));
-  }
-}
-
-class _HomeInventoryGroup extends StatelessWidget {
-  const _HomeInventoryGroup({required this.title, required this.items, required this.accent, this.onTap});
-  final String title;
-  final List<ZarOperationalInventoryItem> items;
-  final Color accent;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Text(title, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
-      if (onTap != null)
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: const Padding(padding: EdgeInsets.all(6), child: Icon(CupertinoIcons.chevron_left, size: 16)),
-        ),
-    ]),
-    ...items.take(3).map((item) => Padding(padding: const EdgeInsets.only(bottom: 5), child: _HomeInventoryLine(item: item, accent: accent))),
-    if (items.length > 3) TextButton(onPressed: onTap, child: const Text('مشاهده همه')),
-  ]);
 }
 
 class _HomeInventoryLine extends StatelessWidget {
@@ -686,17 +939,11 @@ class _HomeInventoryLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final display = switch (item) {
-      ZarGoldInventoryItem(:final fineness, :final grams) => _HomeAmountParts(_dashboardDecimal(grams), 'گرم طلا', fineness == null ? 'عیار نامشخص' : 'عیار ${toPersianDigits(fineness)}'),
+      ZarGoldInventoryItem(:final fineness, :final grams) => _HomeAmountParts(toPersianNumberText(grams), 'گرم طلا', fineness == null ? 'عیار نامشخص' : 'عیار ${toPersianDigits(fineness)}'),
       ZarCoinInventoryItem(:final displayName, :final quantity) => _HomeAmountParts(toPersianDigits(quantity.toString()), 'عدد ${toPersianDigits(displayName)}', null),
-      ZarCurrencyInventoryItem(:final code, :final decimalAmount) => _HomeAmountParts(_dashboardDecimal(decimalAmount), code == 'TOMAN' ? 'تومان' : code, null),
+      ZarCurrencyInventoryItem(:final code, :final decimalAmount) => _HomeAmountParts(toPersianNumberText(decimalAmount), code == 'TOMAN' ? 'تومان' : code, null),
     };
-    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Expanded(child: _HomeAmountText(amount: display.amount, unit: display.unit, color: accent)),
-      if (display.detail != null) ...[
-        const SizedBox(width: 8),
-        Text(display.detail!, style: Theme.of(context).textTheme.bodySmall),
-      ],
-    ]);
+    return _HomeAmountText(amount: display.amount, unit: display.unit, color: accent, purity: display.detail);
   }
 }
 
@@ -708,79 +955,152 @@ class _HomeAmountParts {
 }
 
 class _HomeAmountText extends StatelessWidget {
-  const _HomeAmountText({required this.amount, required this.unit, required this.color});
+  const _HomeAmountText({required this.amount, required this.unit, required this.color, this.purity});
   final String amount;
   final String unit;
   final Color color;
+  final String? purity;
 
   @override
-  Widget build(BuildContext context) => Directionality(
-    textDirection: TextDirection.ltr,
-    child: RichText(
-      text: TextSpan(
-        style: Theme.of(context).textTheme.bodyMedium,
-        children: [
-          TextSpan(text: amount, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
-          TextSpan(text: ' $unit', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.w500)),
-        ],
-      ),
-    ),
+  Widget build(BuildContext context) => ZarAmountDisplay(
+    amount: amount,
+    unit: unit,
+    purity: purity,
+    amountStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w700),
+    unitStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
   );
 }
 
 class _HomeRecentActivity extends StatelessWidget {
-  const _HomeRecentActivity({required this.records, required this.personName, required this.onTap});
+  const _HomeRecentActivity({required this.records, required this.personName, required this.onTap, required this.now});
   final List<AppRecord> records;
   final String Function(String) personName;
   final ValueChanged<AppRecord> onTap;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
-    if (records.isEmpty) return const _HomeContainer(child: Padding(padding: EdgeInsets.all(16), child: Text('هنوز فعالیتی ثبت نشده است.')));
-    return _HomeContainer(child: Column(children: records.map((record) {
-      final relation = record.type == RecordType.deal ? 'با' : record.operationLabel == 'دریافت' ? 'از' : 'به';
-      return Material(
-        color: Colors.transparent,
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-          title: Text('${record.operationDisplayLabel} ${record.assetLabel} $relation ${personName(record.personId)}'),
-          subtitle: Padding(padding: const EdgeInsets.only(top: 3), child: Directionality(textDirection: TextDirection.ltr, child: Text(record.amountDisplay))),
-          trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
-          onTap: () => onTap(record),
+    if (records.isEmpty) {
+      return const _HomeContainer(child: Padding(padding: EdgeInsets.all(16), child: Text('هنوز فعالیتی ثبت نشده است.')));
+    }
+    return _HomeContainer(
+      child: Column(
+        children: [
+          for (var index = 0; index < records.length; index++) ...[
+            _HomeRecentRow(record: records[index], personName: personName, onTap: onTap, now: now),
+            if (index < records.length - 1) const Divider(height: 1, indent: 12, endIndent: 12),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeRecentRow extends StatelessWidget {
+  const _HomeRecentRow({required this.record, required this.personName, required this.onTap, required this.now});
+  final AppRecord record;
+  final String Function(String) personName;
+  final ValueChanged<AppRecord> onTap;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final relation = record.type == RecordType.deal ? 'با' : record.operationLabel == 'دریافت' ? 'از' : 'به';
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => onTap(record),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(12, 7, 12, 7),
+          child: Row(
+            textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Row(
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    Icon(_homeActivityIcon(record), size: 15, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '${record.operationDisplayLabel} ${record.assetLabel} $relation ${personName(record.personId)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 132,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _HomeRecordAmountText(record: record, color: _homeNeutralAmountColor),
+                    const SizedBox(height: 2),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _homeActivityTimestamp(record, now),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              const SizedBox(width: 22, child: Align(alignment: Alignment.centerLeft, child: Icon(CupertinoIcons.chevron_left, size: 17))),
+            ],
+          ),
         ),
-      );
-    }).toList()));
+      ),
+    );
   }
 }
 
 class _HomeContainer extends StatelessWidget {
-  const _HomeContainer({required this.child, this.onTap});
+  const _HomeContainer({required this.child, this.onTap, this.backgroundColor, this.borderColor});
   final Widget child;
   final VoidCallback? onTap;
+  final Color? backgroundColor;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final decorated = Container(
-      decoration: BoxDecoration(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: theme.dividerColor)),
+      decoration: BoxDecoration(color: backgroundColor ?? theme.colorScheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: borderColor ?? theme.dividerColor)),
       child: child,
     );
-    return onTap == null ? decorated : InkWell(borderRadius: BorderRadius.circular(16), onTap: onTap, child: decorated);
+    if (onTap == null) return decorated;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(borderRadius: BorderRadius.circular(16), onTap: onTap, child: decorated),
+    );
   }
 }
 
 class _HomeActionList extends StatelessWidget {
-  const _HomeActionList({required this.items, required this.personName, required this.onTap, required this.overdue});
+  const _HomeActionList({required this.items, required this.personName, required this.onTap, required this.overdue, required this.now});
   final List<AppRecord> items;
   final String Function(String) personName;
   final ValueChanged<AppRecord> onTap;
   final bool overdue;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) => _HomeContainer(
+    backgroundColor: overdue ? const Color(0xFFFFF8F8) : null,
+    borderColor: overdue ? const Color(0xFFE9CACA) : null,
     child: Column(children: [
       for (var index = 0; index < items.length; index++) ...[
-        _HomeActionRow(record: items[index], person: personName(items[index].personId), overdue: overdue, onTap: () => onTap(items[index])),
+        _HomeActionRow(record: items[index], person: personName(items[index].personId), overdue: overdue, onTap: () => onTap(items[index]), now: now),
         if (index < items.length - 1) const Divider(height: 1, indent: 12, endIndent: 12),
       ],
     ]),
@@ -788,33 +1108,36 @@ class _HomeActionList extends StatelessWidget {
 }
 
 class _HomeActionRow extends StatelessWidget {
-  const _HomeActionRow({required this.record, required this.person, required this.overdue, required this.onTap});
+  const _HomeActionRow({required this.record, required this.person, required this.overdue, required this.onTap, required this.now});
   final AppRecord record;
   final String person;
   final bool overdue;
   final VoidCallback onTap;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) => Material(
     color: Colors.transparent,
     child: InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text(record.operationDisplayLabel, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700, fontSize: 15)),
+            Text(record.operationDisplayLabel, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700, fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 1),
-            Text(person, style: Theme.of(context).textTheme.bodySmall),
+            Text(person, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ])),
           const SizedBox(width: 8),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Directionality(textDirection: TextDirection.ltr, child: Text(record.amountDisplay, style: TextStyle(color: overdue ? const Color(0xFF9D3636) : const Color(0xFF9A6700), fontWeight: FontWeight.w700, fontSize: 14))),
+            _HomeRecordAmountText(record: record, color: overdue ? _homeOverdueColor : _homeNeutralAmountColor, fontSize: 14),
             const SizedBox(height: 1),
             Row(mainAxisSize: MainAxisSize.min, children: [
-              Text(record.timeLabel(), style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11)),
-              const SizedBox(width: 4),
-              Text(record.statusLabel(), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: overdue ? const Color(0xFF9D3636) : null, fontSize: 11)),
+              if (!overdue) ...[
+                Text(record.statusLabel(), style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11)),
+                const SizedBox(width: 4),
+              ],
+              Text(_homeDueLabel(record, now), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: overdue ? _homeOverdueColor : null, fontSize: 11)),
             ]),
           ]),
           const SizedBox(width: 6),
@@ -825,17 +1148,49 @@ class _HomeActionRow extends StatelessWidget {
   );
 }
 
-String _dashboardDecimal(String value) {
-  final negative = value.startsWith('-');
-  final raw = negative ? value.substring(1) : value;
-  final parts = raw.split('.');
-  final digits = parts.first;
-  final grouped = <String>[];
-  for (var end = digits.length; end > 0; end -= 3) {
-    grouped.insert(0, digits.substring(end < 3 ? 0 : end - 3, end));
+_HomeAmountParts _homeRecordParts(AppRecord record) {
+  if (record.coinLines.isNotEmpty) {
+    if (record.coinLines.length == 1) {
+      final line = record.coinLines.single;
+      return _HomeAmountParts(toPersianDigits(line.quantity.toString()), 'عدد ${line.name}', null);
+    }
+    return _HomeAmountParts(toPersianDigits(record.coinLines.length.toString()), 'نوع سکه', null);
   }
-  final number = parts.length == 1 ? grouped.join('٬') : '${grouped.join('٬')}٫${parts[1]}';
-  return toPersianDigits('${negative ? '-' : ''}$number');
+  if (record.currencyCode != null) {
+    final numeric = RegExp(r'[-+]?[0-9۰-۹٬,٫.]+').firstMatch(record.amountDisplay)?.group(0) ?? record.amountDisplay;
+    return _HomeAmountParts(toPersianNumberText(numeric), record.currencyCode!, null);
+  }
+  if (record.assetLabel == 'وجه نقد') {
+    final numeric = RegExp(r'[-+]?[0-9۰-۹٬,٫.]+').firstMatch(record.amountDisplay)?.group(0) ?? record.amountDisplay;
+    return _HomeAmountParts(toPersianNumberText(numeric), 'تومان', null);
+  }
+  if (record.assetLabel == 'گرم طلا' || record.goldFineness != null) {
+    final numeric = RegExp(r'[-+]?[0-9۰-۹٬,٫.]+').firstMatch(record.amountDisplay)?.group(0) ?? record.amountDisplay;
+    final unit = record.goldInputUnit == ZarGoldUnit.mesghal.name ? 'مثقال طلا' : 'گرم طلا';
+    final purity = record.goldFineness == null ? null : 'عیار ${toPersianNumberText(record.goldFineness!)}';
+    return _HomeAmountParts(toPersianNumberText(numeric), unit, purity);
+  }
+  return _HomeAmountParts(toPersianNumberText(record.amountDisplay), record.assetLabel, null);
+}
+
+class _HomeRecordAmountText extends StatelessWidget {
+  const _HomeRecordAmountText({required this.record, required this.color, this.fontSize = 13});
+  final AppRecord record;
+  final Color color;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final display = _homeRecordParts(record);
+    final baseStyle = Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: fontSize);
+    return ZarAmountDisplay(
+      amount: display.amount,
+      unit: display.unit,
+      purity: display.detail,
+      amountStyle: baseStyle?.copyWith(color: color, fontWeight: FontWeight.w700),
+      unitStyle: baseStyle?.copyWith(color: color, fontWeight: FontWeight.w600),
+    );
+  }
 }
 
 class _NotificationBell extends StatelessWidget {
@@ -845,26 +1200,60 @@ class _NotificationBell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
+    final badgeLabel = toPersianDigits(count > 99 ? '99+' : count.toString());
+    final singleDigit = count < 10;
+    return SizedBox(
+      key: const ValueKey('home-notification-bell'),
+      width: 44,
+      height: 44,
+      child: Stack(
       children: [
-        IconButton(tooltip: 'اعلان‌ها', onPressed: onTap, icon: const Icon(CupertinoIcons.bell)),
+        Positioned.fill(
+          child: IconButton(
+            tooltip: 'اعلان‌ها',
+            onPressed: onTap,
+            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+            padding: EdgeInsets.zero,
+            iconSize: 21,
+            style: IconButton.styleFrom(
+              fixedSize: const Size(44, 44),
+              minimumSize: const Size(44, 44),
+              maximumSize: const Size(44, 44),
+              padding: EdgeInsets.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: const Icon(CupertinoIcons.bell),
+          ),
+        ),
         if (count > 0)
           Positioned(
-            top: 5,
-            left: 5,
+            top: 4,
+            left: 3,
             child: Container(
-              constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              key: const ValueKey('home-notification-badge'),
+              width: singleDigit ? 16 : null,
+              height: 16,
+              constraints: const BoxConstraints(minWidth: 16),
+              padding: singleDigit ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 3),
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: const Color(0xFF9D3636), borderRadius: BorderRadius.circular(20)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF9D3636),
+                shape: singleDigit ? BoxShape.circle : BoxShape.rectangle,
+                borderRadius: singleDigit ? null : BorderRadius.circular(20),
+              ),
               child: Text(
-                toPersianDigits(count > 99 ? '99+' : count.toString()),
-                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700, height: 1),
+                badgeLabel,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
+                ),
               ),
             ),
           ),
       ],
+      ),
     );
   }
 }

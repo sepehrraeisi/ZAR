@@ -1,15 +1,21 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'application/customer_operational_balance_projector.dart';
 import 'features/people/customer_balance_card.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import 'package:shamsi_date/shamsi_date.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'features/reminders/reminder_model.dart';
 import 'application/customer_position_projector.dart';
 import 'domain/zar_domain_models.dart';
+import 'widgets/zar_amount_display.dart';
 
 void main() {
   runApp(const ZarPlusApp());
@@ -25,12 +31,19 @@ class ZarPlusApp extends StatelessWidget {
       title: 'ZAR+',
       locale: const Locale('fa', 'IR'),
       supportedLocales: const [Locale('fa', 'IR'), Locale('en', 'US')],
-      localizationsDelegates: const [GlobalMaterialLocalizations.delegate, GlobalWidgetsLocalizations.delegate, GlobalCupertinoLocalizations.delegate],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: ThemeMode.light,
       builder: (context, child) {
-        return Directionality(textDirection: TextDirection.rtl, child: child ?? const SizedBox.shrink());
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: child ?? const SizedBox.shrink(),
+        );
       },
       home: const ZarShell(),
     );
@@ -41,25 +54,67 @@ class ZarPlusApp extends StatelessWidget {
     const warmAccent = Color(0xFFC08A3D);
     final surface = isDark ? const Color(0xFF151515) : const Color(0xFFFBFAF8);
     final card = isDark ? const Color(0xFF1D1D1D) : Colors.white;
-    final textPrimary = isDark ? const Color(0xFFF4F4F4) : const Color(0xFF121212);
-    final textSecondary = isDark ? const Color(0xFFA9A9A9) : const Color(0xFF707070);
+    final textPrimary = isDark
+        ? const Color(0xFFF4F4F4)
+        : const Color(0xFF121212);
+    final textSecondary = isDark
+        ? const Color(0xFFA9A9A9)
+        : const Color(0xFF707070);
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       scaffoldBackgroundColor: surface,
       fontFamily: 'Vazirmatn',
-      colorScheme: ColorScheme.fromSeed(seedColor: warmAccent, brightness: brightness, surface: card),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: warmAccent,
+        brightness: brightness,
+        surface: card,
+      ),
       textTheme: TextTheme(
-        headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: textPrimary, height: 1.35),
-        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: textPrimary, height: 1.35),
-        titleMedium: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: textPrimary, height: 1.45),
-        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: textPrimary, height: 1.55),
-        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: textSecondary, height: 1.6),
-        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary),
+        headlineSmall: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+          height: 1.35,
+        ),
+        titleLarge: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+          height: 1.35,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+          height: 1.45,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: textPrimary,
+          height: 1.55,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: textSecondary,
+          height: 1.6,
+        ),
+        labelLarge: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+        ),
       ),
       dividerColor: isDark ? const Color(0xFF303030) : const Color(0xFFECEAE6),
-      appBarTheme: AppBarTheme(elevation: 0, backgroundColor: surface, foregroundColor: textPrimary, centerTitle: false),
+      appBarTheme: AppBarTheme(
+        elevation: 0,
+        backgroundColor: surface,
+        foregroundColor: textPrimary,
+        centerTitle: false,
+      ),
       cardTheme: CardThemeData(
         color: card,
         elevation: 0,
@@ -68,16 +123,24 @@ class ZarPlusApp extends StatelessWidget {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? const Color(0xFF252525) : const Color(0xFFF6F4F1),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: warmAccent, width: 1.2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 13,
+        ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: card,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
       ),
     );
   }
@@ -90,7 +153,13 @@ enum SettlementStatus { open, completed, cancelled }
 enum HistoryFilter { all, buy, sell, receive, deliver, completed, cancelled }
 
 class AppPerson {
-  AppPerson({required this.id, required this.name, this.phone, this.note, this.archived = false});
+  AppPerson({
+    required this.id,
+    required this.name,
+    this.phone,
+    this.note,
+    this.archived = false,
+  });
 
   final String id;
   final String name;
@@ -98,8 +167,19 @@ class AppPerson {
   final String? note;
   final bool archived;
 
-  AppPerson copyWith({String? name, String? phone, String? note, bool? archived}) {
-    return AppPerson(id: id, name: name ?? this.name, phone: phone ?? this.phone, note: note ?? this.note, archived: archived ?? this.archived);
+  AppPerson copyWith({
+    String? name,
+    String? phone,
+    String? note,
+    bool? archived,
+  }) {
+    return AppPerson(
+      id: id,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      note: note ?? this.note,
+      archived: archived ?? this.archived,
+    );
   }
 }
 
@@ -117,6 +197,7 @@ class AppRecord {
     this.status = SettlementStatus.open,
     this.note,
     this.linkedSettlementIds = const [],
+    this.calendarAt,
     this.goldFineness,
     this.goldPriceReferenceFineness,
     this.goldInputWeight,
@@ -133,7 +214,8 @@ class AppRecord {
   final RecordType type;
   final String operationLabel;
   // Keep legacy presentation/backup values stable; localize only at display.
-  String get operationDisplayLabel => operationLabel == 'تحویل' ? 'پرداخت' : operationLabel;
+  String get operationDisplayLabel =>
+      operationLabel == 'تحویل' ? 'پرداخت' : operationLabel;
   final String personId;
   final String amountDisplay;
   final String assetLabel;
@@ -143,6 +225,12 @@ class AppRecord {
   final SettlementStatus status;
   final String? note;
   final List<String> linkedSettlementIds;
+
+  /// Optional semantic timestamp used by Calendar projections. For deals this
+  /// is the deal timestamp; for settlements it is scheduledAt while open and
+  /// completedAt after completion. Legacy UI callers may omit it and fall
+  /// back to [date]/[time].
+  final DateTime? calendarAt;
   final String? goldFineness;
   final String? goldPriceReferenceFineness;
   final String? goldInputWeight;
@@ -154,7 +242,9 @@ class AppRecord {
   final int? totalToman;
   final List<AppCoinLine> coinLines;
 
-  bool get isObligation => type == RecordType.settlement && (operationLabel == 'دریافت' || operationLabel == 'تحویل');
+  bool get isObligation =>
+      type == RecordType.settlement &&
+      (operationLabel == 'دریافت' || operationLabel == 'تحویل');
 
   AppRecord copyWith({
     String? operationLabel,
@@ -167,6 +257,7 @@ class AppRecord {
     bool clearTime = false,
     SettlementStatus? status,
     String? note,
+    DateTime? calendarAt,
     String? goldFineness,
     String? goldPriceReferenceFineness,
     String? goldInputWeight,
@@ -190,8 +281,10 @@ class AppRecord {
       status: status ?? this.status,
       note: note ?? this.note,
       linkedSettlementIds: linkedSettlementIds,
+      calendarAt: calendarAt ?? this.calendarAt,
       goldFineness: goldFineness ?? this.goldFineness,
-      goldPriceReferenceFineness: goldPriceReferenceFineness ?? this.goldPriceReferenceFineness,
+      goldPriceReferenceFineness:
+          goldPriceReferenceFineness ?? this.goldPriceReferenceFineness,
       goldInputWeight: goldInputWeight ?? this.goldInputWeight,
       goldInputUnit: goldInputUnit ?? this.goldInputUnit,
       goldPriceUnit: goldPriceUnit ?? this.goldPriceUnit,
@@ -223,7 +316,15 @@ class AppRecord {
 }
 
 class AppCoinLine {
-  const AppCoinLine({required this.name, required this.quantity, this.weightGrams, this.fineness, this.pricingMethod, this.unitPriceToman, this.rowTotalToman});
+  const AppCoinLine({
+    required this.name,
+    required this.quantity,
+    this.weightGrams,
+    this.fineness,
+    this.pricingMethod,
+    this.unitPriceToman,
+    this.rowTotalToman,
+  });
   final String name;
   final int quantity;
   final String? weightGrams;
@@ -253,6 +354,7 @@ class QuickAddDraft {
     this.coinLines = const [],
     this.coinDealPricing,
     this.coinSettlementValuation,
+    this.customReminderAt,
   });
 
   final String operation;
@@ -273,12 +375,27 @@ class QuickAddDraft {
   final List<ZarCoinLine> coinLines;
   final ZarCoinDealPricing? coinDealPricing;
   final ZarCoinSettlementValuation? coinSettlementValuation;
+  final DateTime? customReminderAt;
 }
 
-String formatJalaliDate(Jalali date) => '${toPersianDigits(date.day.toString())} ${monthName(date.month)} ${toPersianDigits(date.year.toString())}';
+String formatJalaliDate(Jalali date) =>
+    '${toPersianDigits(date.day.toString())} ${monthName(date.month)} ${toPersianDigits(date.year.toString())}';
 
 String monthName(int month) {
-  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+  const months = [
+    'فروردین',
+    'اردیبهشت',
+    'خرداد',
+    'تیر',
+    'مرداد',
+    'شهریور',
+    'مهر',
+    'آبان',
+    'آذر',
+    'دی',
+    'بهمن',
+    'اسفند',
+  ];
   return months[month - 1];
 }
 
@@ -317,7 +434,8 @@ String toPersianNumberText(String input) {
   );
 }
 
-bool isSameJalali(Jalali a, Jalali b) => a.year == b.year && a.month == b.month && a.day == b.day;
+bool isSameJalali(Jalali a, Jalali b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
 
 String phoneToEnglishDigits(String input) {
   const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -334,7 +452,11 @@ String formatAmountWithGrouping(int amount) {
 }
 
 class CurrencyOption {
-  const CurrencyOption({required this.code, required this.persianName, required this.shortLabel});
+  const CurrencyOption({
+    required this.code,
+    required this.persianName,
+    required this.shortLabel,
+  });
 
   final String code;
   final String persianName;
@@ -343,13 +465,24 @@ class CurrencyOption {
   String get displayLabel => '$persianName — $code';
 }
 
+CurrencyOption currencyOptionFromDomain(ZarCurrencyType value) =>
+    CurrencyOption(
+      code: value.code,
+      persianName: value.name,
+      shortLabel: value.name,
+    );
+
 const List<CurrencyOption> kCurrencyOptions = [
   CurrencyOption(code: 'USD', persianName: 'دلار آمریکا', shortLabel: 'دلار'),
   CurrencyOption(code: 'EUR', persianName: 'یورو', shortLabel: 'یورو'),
   CurrencyOption(code: 'AED', persianName: 'درهم امارات', shortLabel: 'درهم'),
   CurrencyOption(code: 'TRY', persianName: 'لیر ترکیه', shortLabel: 'لیر'),
   CurrencyOption(code: 'GBP', persianName: 'پوند انگلیس', shortLabel: 'پوند'),
-  CurrencyOption(code: 'CAD', persianName: 'دلار کانادا', shortLabel: 'دلار کانادا'),
+  CurrencyOption(
+    code: 'CAD',
+    persianName: 'دلار کانادا',
+    shortLabel: 'دلار کانادا',
+  ),
   CurrencyOption(code: 'OTHER', persianName: 'سایر', shortLabel: 'سایر'),
 ];
 
@@ -372,7 +505,9 @@ String digitsToEnglish(String input) {
 
 String formatCurrencyAmount(String amountInput, String currencyCode) {
   final english = digitsToEnglish(amountInput).replaceAll(',', '').trim();
-  final digitsOnly = RegExp(r'\d+').allMatches(english).map((e) => e.group(0)!).join();
+  final digitsOnly = RegExp(
+    r'\d+',
+  ).allMatches(english).map((e) => e.group(0)!).join();
   final amount = int.tryParse(digitsOnly) ?? 0;
   final grouped = NumberFormat('#,###').format(amount);
 
@@ -405,7 +540,12 @@ class _ZarShellState extends State<ZarShell> {
   int _index = 0;
 
   final List<AppPerson> _people = [
-    AppPerson(id: 'p1', name: 'علی رضایی', phone: '۰۹۱۲۱۲۳۴۵۶۷', note: 'مشتری ثابت'),
+    AppPerson(
+      id: 'p1',
+      name: 'علی رضایی',
+      phone: '۰۹۱۲۱۲۳۴۵۶۷',
+      note: 'مشتری ثابت',
+    ),
     AppPerson(id: 'p2', name: 'رضا محمدی', phone: '۰۹۱۲۴۴۴۵۵۶۶'),
     AppPerson(id: 'p3', name: 'حسن کریمی', phone: '۰۹۱۲۳۳۳۴۴۵۵'),
     AppPerson(id: 'p4', name: 'مهدی احمدی', note: 'ترجیح تماس بعدازظهر'),
@@ -444,7 +584,15 @@ class _ZarShellState extends State<ZarShell> {
       date: Jalali.now(),
       time: const TimeOfDay(hour: 14, minute: 45),
     ),
-    AppRecord(id: 's4', type: RecordType.settlement, operationLabel: 'دریافت', personId: 'p4', amountDisplay: '۴۰۰', assetLabel: 'گرم طلا', date: Jalali.now().addDays(1)),
+    AppRecord(
+      id: 's4',
+      type: RecordType.settlement,
+      operationLabel: 'دریافت',
+      personId: 'p4',
+      amountDisplay: '۴۰۰',
+      assetLabel: 'گرم طلا',
+      date: Jalali.now().addDays(1),
+    ),
     AppRecord(
       id: 'd1',
       type: RecordType.deal,
@@ -490,14 +638,26 @@ class _ZarShellState extends State<ZarShell> {
         .name;
   }
 
-  List<AppPerson> get activePeople => _people.where((p) => !p.archived).toList(growable: false);
+  List<AppPerson> get activePeople =>
+      _people.where((p) => !p.archived).toList(growable: false);
 
-  List<AppRecord> get openObligations => _records.where((r) => r.isObligation && r.status == SettlementStatus.open).toList(growable: false);
+  List<AppRecord> get openObligations => _records
+      .where((r) => r.isObligation && r.status == SettlementStatus.open)
+      .toList(growable: false);
 
-  List<AppRecord> get calendarRecords => _records.where((r) => r.status == SettlementStatus.open).toList(growable: false);
+  List<AppRecord> get calendarRecords => _records
+      .where((r) => r.status == SettlementStatus.open)
+      .toList(growable: false);
 
   List<AppRecord> get historyRecords =>
-      _records.where((r) => r.type == RecordType.deal || r.status == SettlementStatus.completed || r.status == SettlementStatus.cancelled).toList(growable: false)
+      _records
+          .where(
+            (r) =>
+                r.type == RecordType.deal ||
+                r.status == SettlementStatus.completed ||
+                r.status == SettlementStatus.cancelled,
+          )
+          .toList(growable: false)
         ..sort((a, b) => b.date.compareTo(a.date));
 
   void _updateRecord(AppRecord updated) {
@@ -520,15 +680,21 @@ class _ZarShellState extends State<ZarShell> {
     final isCurrency = draft.asset == 'ارز';
     final newRecord = AppRecord(
       id: 'n${DateTime.now().millisecondsSinceEpoch}',
-      type: (draft.operation == 'دریافت' || draft.operation == 'تحویل') ? RecordType.settlement : RecordType.deal,
+      type: (draft.operation == 'دریافت' || draft.operation == 'تحویل')
+          ? RecordType.settlement
+          : RecordType.deal,
       operationLabel: draft.operation,
       personId: draft.personId,
-      amountDisplay: isCurrency && draft.currencyCode != null ? formatCurrencyAmount(draft.amount, draft.currencyCode!) : draft.amount,
+      amountDisplay: isCurrency && draft.currencyCode != null
+          ? formatCurrencyAmount(draft.amount, draft.currencyCode!)
+          : draft.amount,
       assetLabel: draft.asset == 'طلا' ? 'گرم طلا' : 'ارز',
       currencyCode: isCurrency ? draft.currencyCode : null,
       date: draft.date,
       time: draft.time,
-      note: draft.note.isEmpty ? null : 'یادآوری: ${draft.reminder} • ${draft.note}',
+      note: draft.note.isEmpty
+          ? null
+          : 'یادآوری: ${draft.reminder} • ${draft.note}',
     );
 
     setState(() {
@@ -545,7 +711,9 @@ class _ZarShellState extends State<ZarShell> {
         builder: (_) => DealDetailSheet(
           record: record,
           personName: personName(record.personId),
-          linkedSettlements: _records.where((e) => record.linkedSettlementIds.contains(e.id)).toList(growable: false),
+          linkedSettlements: _records
+              .where((e) => record.linkedSettlementIds.contains(e.id))
+              .toList(growable: false),
           onOpenSettlement: (settlement) {
             Navigator.pop(context);
             _openRecord(settlement);
@@ -575,7 +743,10 @@ class _ZarShellState extends State<ZarShell> {
             context: context,
             isScrollControlled: true,
             useSafeArea: true,
-            builder: (_) => EditRecordSheet(record: record, personName: personName(record.personId)),
+            builder: (_) => EditRecordSheet(
+              record: record,
+              personName: personName(record.personId),
+            ),
           );
           if (updated != null) {
             _updateRecord(updated);
@@ -591,7 +762,11 @@ class _ZarShellState extends State<ZarShell> {
           navigator.pop();
         },
         onSnooze: () async {
-          final dateTime = await showReminderPickerBottomSheet(context, initialDate: record.date, initialTime: record.time);
+          final dateTime = await showReminderPickerBottomSheet(
+            context,
+            initialDate: record.date,
+            initialTime: record.time,
+          );
           if (dateTime == null) return;
           _updateRecord(record.copyWith(date: dateTime.$1, time: dateTime.$2));
           if (mounted) Navigator.pop(context);
@@ -623,14 +798,27 @@ class _ZarShellState extends State<ZarShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeScreen(records: openObligations, personName: personName, onTapRecord: _openRecord),
-      CalendarScreen(records: calendarRecords, personName: personName, onTapRecord: _openRecord),
+      HomeScreen(
+        records: openObligations,
+        personName: personName,
+        onTapRecord: _openRecord,
+      ),
+      CalendarScreen(
+        records: calendarRecords,
+        personName: personName,
+        onTapRecord: _openRecord,
+      ),
       const SizedBox.shrink(),
       PeopleScreen(
         people: activePeople,
         records: _records,
         onAddPerson: () async {
-          final person = await showModalBottomSheet<AppPerson>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const PersonEditorSheet());
+          final person = await showModalBottomSheet<AppPerson>(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            builder: (_) => const PersonEditorSheet(),
+          );
           if (person != null) {
             await _savePerson(person);
           }
@@ -660,7 +848,11 @@ class _ZarShellState extends State<ZarShell> {
           );
         },
       ),
-      HistoryScreen(records: historyRecords, personName: personName, onTapRecord: _openRecord),
+      HistoryScreen(
+        records: historyRecords,
+        personName: personName,
+        onTapRecord: _openRecord,
+      ),
     ];
 
     return Scaffold(
@@ -682,7 +874,11 @@ class _ZarShellState extends State<ZarShell> {
 }
 
 class ZBottomBar extends StatelessWidget {
-  const ZBottomBar({super.key, required this.currentIndex, required this.onTap});
+  const ZBottomBar({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+  });
 
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -693,7 +889,11 @@ class ZBottomBar extends StatelessWidget {
     final active = theme.colorScheme.primary;
     final inactive = theme.textTheme.bodyMedium?.color ?? Colors.grey;
 
-    Widget navItem({required int index, required IconData icon, required String label}) {
+    Widget navItem({
+      required int index,
+      required IconData icon,
+      required String label,
+    }) {
       final selected = currentIndex == index;
       final color = selected ? active : inactive;
       return Expanded(
@@ -708,7 +908,11 @@ class ZBottomBar extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   label,
-                  style: TextStyle(fontSize: 11.5, color: color, fontWeight: selected ? FontWeight.w600 : FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: color,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -732,23 +936,45 @@ class ZBottomBar extends StatelessWidget {
               Row(
                 children: [
                   navItem(index: 0, icon: CupertinoIcons.house, label: 'خانه'),
-                  navItem(index: 1, icon: CupertinoIcons.calendar, label: 'تقویم'),
+                  navItem(
+                    index: 1,
+                    icon: CupertinoIcons.calendar,
+                    label: 'تقویم',
+                  ),
                   const SizedBox(width: 76),
-                  navItem(index: 3, icon: CupertinoIcons.person_2, label: 'اشخاص'),
+                  navItem(
+                    index: 3,
+                    icon: CupertinoIcons.person_2,
+                    label: 'اشخاص',
+                  ),
                   navItem(index: 4, icon: CupertinoIcons.clock, label: 'سوابق'),
                 ],
               ),
-              GestureDetector(
-                onTap: () => onTap(2),
-                child: Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: active,
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: active.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 6))],
+              Semantics(
+                button: true,
+                label: 'ثبت معامله جدید',
+                child: GestureDetector(
+                  onTap: () => onTap(2),
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: active,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: active.withValues(alpha: 0.28),
+                          blurRadius: 10,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      CupertinoIcons.add,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
-                  child: const Icon(CupertinoIcons.add, color: Colors.white, size: 22),
                 ),
               ),
             ],
@@ -760,7 +986,12 @@ class ZBottomBar extends StatelessWidget {
 }
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.records, required this.personName, required this.onTapRecord});
+  const HomeScreen({
+    super.key,
+    required this.records,
+    required this.personName,
+    required this.onTapRecord,
+  });
 
   final List<AppRecord> records;
   final String Function(String) personName;
@@ -769,20 +1000,32 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = Jalali.now();
-    final overdue = records.where((r) => r.date.compareTo(now) < 0).toList(growable: false);
-    final today = records.where((r) => isSameJalali(r.date, now)).toList(growable: false);
-    final tomorrow = records.where((r) => isSameJalali(r.date, now.addDays(1))).toList(growable: false);
+    final overdue = records
+        .where((r) => r.date.compareTo(now) < 0)
+        .toList(growable: false);
+    final today = records
+        .where((r) => isSameJalali(r.date, now))
+        .toList(growable: false);
+    final tomorrow = records
+        .where((r) => isSameJalali(r.date, now.addDays(1)))
+        .toList(growable: false);
 
     return CustomScrollView(
       slivers: [
         SliverAppBar(
           pinned: true,
-          title: const Directionality(textDirection: TextDirection.ltr, child: Text('ZAR+')),
+          title: const Directionality(
+            textDirection: TextDirection.ltr,
+            child: Text('ZAR+'),
+          ),
         ),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-            child: Text('امروز\n${formatJalaliDate(now)}', style: Theme.of(context).textTheme.titleLarge),
+            child: Text(
+              'امروز\n${formatJalaliDate(now)}',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
           ),
         ),
         _section(context, 'عقب‌افتاده', overdue, overdue: true),
@@ -793,19 +1036,36 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _section(BuildContext context, String title, List<AppRecord> items, {bool overdue = false}) {
+  Widget _section(
+    BuildContext context,
+    String title,
+    List<AppRecord> items, {
+    bool overdue = false,
+  }) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: overdue ? const Color(0xFF9D3636) : null)),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: overdue ? const Color(0xFF9D3636) : null,
+              ),
+            ),
             const SizedBox(height: 8),
             if (items.isEmpty)
               const _ZEmptyRow(label: 'موردی ثبت نشده است.')
             else
-              ...items.map((item) => SettlementRow(record: item, personName: personName(item.personId), onTap: () => onTapRecord(item), showOverdueTone: overdue)),
+              ...items.map(
+                (item) => SettlementRow(
+                  record: item,
+                  personName: personName(item.personId),
+                  onTap: () => onTapRecord(item),
+                  showOverdueTone: overdue,
+                ),
+              ),
           ],
         ),
       ),
@@ -814,11 +1074,22 @@ class HomeScreen extends StatelessWidget {
 }
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key, required this.records, required this.personName, required this.onTapRecord});
+  const CalendarScreen({
+    super.key,
+    required this.records,
+    required this.personName,
+    required this.onTapRecord,
+    this.onSelectedDateChanged,
+    this.clock,
+    this.onAdd,
+  });
 
   final List<AppRecord> records;
   final String Function(String) personName;
   final ValueChanged<AppRecord> onTapRecord;
+  final ValueChanged<Jalali>? onSelectedDateChanged;
+  final DateTime Function()? clock;
+  final VoidCallback? onAdd;
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -828,82 +1099,123 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Jalali _month = Jalali.now().withDay(1);
   Jalali _selected = Jalali.now();
 
-  double _expandedHeaderExtent(BuildContext context) {
-    const horizontalPadding = 32.0;
-    const headerAndVerticalPadding = 66.0;
-    const gridVerticalPadding = 16.0;
-    const cellAspectRatio = 0.9;
-    final gridWidth = MediaQuery.sizeOf(context).width - horizontalPadding;
-    final cellHeight = (gridWidth / 7) / cellAspectRatio;
-    return headerAndVerticalPadding +
-        gridVerticalPadding +
-        (CalendarMonthGrid.rowCountFor(_month) * cellHeight);
+  DateTime get _now => widget.clock?.call() ?? DateTime.now();
+
+  List<_CalendarActivity> get _activities => widget.records
+      .map((record) => _CalendarActivity.fromRecord(record, now: _now))
+      .toList(growable: false);
+
+  void _selectDate(Jalali date) {
+    setState(() => _selected = date);
+    widget.onSelectedDateChanged?.call(date);
+  }
+
+  void _moveMonth(int delta) {
+    final candidate = _month.addMonths(delta);
+    final day = _selected.day <= candidate.monthLength
+        ? _selected.day
+        : candidate.monthLength;
+    setState(() {
+      _month = candidate;
+      _selected = candidate.withDay(day);
+    });
+    widget.onSelectedDateChanged?.call(_selected);
+  }
+
+  Widget _monthSection(
+    BuildContext context,
+    List<_CalendarActivity> activities,
+  ) {
+    final theme = Theme.of(context);
+    final eventDays = activities.map((item) => item.date).toSet().toList();
+    final overdueDays = activities
+        .where((item) => item.overdue)
+        .map((item) => item.date)
+        .toSet()
+        .toList();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Column(
+        children: [
+          Row(
+            textDirection: TextDirection.ltr,
+            children: [
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: IconButton(
+                  tooltip: 'ماه قبل',
+                  onPressed: () => _moveMonth(-1),
+                  icon: const Icon(CupertinoIcons.chevron_left, size: 20),
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    '${monthName(_month.month)} ${toPersianDigits(_month.year.toString())}',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: IconButton(
+                  tooltip: 'ماه بعد',
+                  onPressed: () => _moveMonth(1),
+                  icon: const Icon(CupertinoIcons.chevron_right, size: 20),
+                ),
+              ),
+            ],
+          ),
+          CalendarMonthGrid(
+            month: _month,
+            selected: _selected,
+            eventDays: eventDays,
+            overdueDays: overdueDays,
+            onDayTap: _selectDate,
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedEvents = widget.records.where((e) => isSameJalali(e.date, _selected)).toList(growable: false);
+    final activities = _activities;
+    final selectedEvents =
+        activities.where((e) => isSameJalali(e.date, _selected)).toList()
+          ..sort(_compareCalendarActivities);
 
     return CustomScrollView(
+      key: const ValueKey('calendar-scroll'),
       slivers: [
         SliverAppBar(title: const Text('تقویم'), pinned: true),
+        SliverToBoxAdapter(child: _monthSection(context, activities)),
         SliverPersistentHeader(
           pinned: true,
-          delegate: _CalendarHeaderDelegate(
-            minExtentValue: 74,
-            maxExtentValue: _expandedHeaderExtent(context),
-            builder: (context, shrink) {
-              final compact = shrink > 0.7;
-              return Container(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(onPressed: () => setState(() => _month = _month.addMonths(-1)), icon: const Icon(CupertinoIcons.chevron_right)),
-                        Expanded(
-                          child: Center(child: Text('${monthName(_month.month)} ${toPersianDigits(_month.year.toString())}', style: Theme.of(context).textTheme.titleMedium)),
-                        ),
-                        IconButton(onPressed: () => setState(() => _month = _month.addMonths(1)), icon: const Icon(CupertinoIcons.chevron_left)),
-                      ],
-                    ),
-                    if (!compact)
-                      Expanded(
-                        child: CalendarMonthGrid(
-                          month: _month,
-                          selected: _selected,
-                          eventDays: widget.records.map((e) => e.date).toList(growable: false),
-                          onDayTap: (date) => setState(() => _selected = date),
-                        ),
-                      ),
-                    if (compact)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Theme.of(context).dividerColor),
-                        ),
-                        child: Text('برنامه روز ${formatJalaliDate(_selected)}', style: Theme.of(context).textTheme.bodyLarge),
-                      ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
-            child: Text('برنامه روز • ${formatJalaliDate(_selected)}', style: Theme.of(context).textTheme.titleMedium),
+          delegate: _CalendarAgendaHeaderDelegate(
+            selected: _selected,
+            summary: _agendaSummary(selectedEvents),
           ),
         ),
         if (selectedEvents.isEmpty)
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 40),
-              child: Center(child: Text('برای این روز موردی ثبت نشده است.')),
+              padding: const EdgeInsets.fromLTRB(20, 34, 20, 34),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('برای این روز فعالیتی ثبت نشده'),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: widget.onAdd,
+                      child: const Text('ثبت جدید'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           )
         else
@@ -911,20 +1223,370 @@ class _CalendarScreenState extends State<CalendarScreen> {
             itemCount: selectedEvents.length,
             itemBuilder: (context, index) {
               final item = selectedEvents[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: SettlementRow(record: item, personName: widget.personName(item.personId), onTap: () => widget.onTapRecord(item)),
+              return _CalendarAgendaRow(
+                activity: item,
+                personName: widget.personName(item.record.personId),
+                onTap: () => widget.onTapRecord(item.record),
               );
             },
           ),
-        const SliverToBoxAdapter(child: SizedBox(height: 20)),
+        const SliverToBoxAdapter(child: SizedBox(height: 96)),
       ],
     );
   }
+
+  String _agendaSummary(List<_CalendarActivity> selectedEvents) {
+    final pending = selectedEvents
+        .where(
+          (item) =>
+              item.record.type == RecordType.settlement &&
+              item.record.status == SettlementStatus.open,
+        )
+        .length;
+    final overdue = selectedEvents.where((item) => item.overdue).length;
+    final completed = selectedEvents
+        .where(
+          (item) =>
+              item.record.type == RecordType.settlement &&
+              item.record.status == SettlementStatus.completed,
+        )
+        .length;
+    final cancelled = selectedEvents
+        .where(
+          (item) =>
+              item.record.type == RecordType.settlement &&
+              item.record.status == SettlementStatus.cancelled,
+        )
+        .length;
+    return <String>[
+      if (selectedEvents.isNotEmpty)
+        '${toPersianDigits(selectedEvents.length.toString())} مورد',
+      if (pending > 0) '${toPersianDigits(pending.toString())} در انتظار',
+      if (overdue > 0) '${toPersianDigits(overdue.toString())} عقب‌افتاده',
+      if (completed > 0) '${toPersianDigits(completed.toString())} انجام‌شده',
+      if (cancelled > 0) '${toPersianDigits(cancelled.toString())} لغوشده',
+    ].join(' · ');
+  }
+}
+
+class _CalendarActivity {
+  const _CalendarActivity({
+    required this.record,
+    required this.date,
+    required this.time,
+    required this.sortAt,
+    required this.overdue,
+  });
+
+  factory _CalendarActivity.fromRecord(
+    AppRecord record, {
+    required DateTime now,
+  }) {
+    final timestamp =
+        record.calendarAt?.toLocal() ?? _fallbackTimestamp(record);
+    final date = Jalali.fromDateTime(timestamp);
+    final overdue =
+        record.type == RecordType.settlement &&
+        record.status == SettlementStatus.open &&
+        timestamp.isBefore(now);
+    final time = record.time == null && record.calendarAt == null
+        ? null
+        : TimeOfDay(hour: timestamp.hour, minute: timestamp.minute);
+    return _CalendarActivity(
+      record: record,
+      date: date,
+      time: time,
+      sortAt: timestamp,
+      overdue: overdue,
+    );
+  }
+
+  final AppRecord record;
+  final Jalali date;
+  final TimeOfDay? time;
+  final DateTime sortAt;
+  final bool overdue;
+
+  static DateTime _fallbackTimestamp(AppRecord record) {
+    final gregorian = record.date.toGregorian();
+    final due = record.type == RecordType.settlement
+        ? dueDateTimeFromJalali(record.date, record.time)
+        : DateTime(
+            gregorian.year,
+            gregorian.month,
+            gregorian.day,
+            record.time?.hour ?? 12,
+            record.time?.minute ?? 0,
+          );
+    return due;
+  }
+}
+
+int _compareCalendarActivities(_CalendarActivity a, _CalendarActivity b) {
+  final byTime = b.sortAt.compareTo(a.sortAt);
+  return byTime != 0 ? byTime : b.record.id.compareTo(a.record.id);
+}
+
+class _CalendarAgendaHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _CalendarAgendaHeaderDelegate({
+    required this.selected,
+    required this.summary,
+  });
+
+  final Jalali selected;
+  final String summary;
+
+  @override
+  double get minExtent => 76;
+
+  @override
+  double get maxExtent => 76;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final theme = Theme.of(context);
+    return Container(
+      key: const ValueKey('calendar-agenda-header'),
+      width: double.infinity,
+      color: theme.scaffoldBackgroundColor,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'فعالیت‌های ${toPersianDigits(selected.day.toString())} ${monthName(selected.month)}',
+            key: const ValueKey('calendar-agenda-title'),
+            textAlign: TextAlign.right,
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            summary.isEmpty ? 'برای این روز فعالیتی ثبت نشده' : summary,
+            key: const ValueKey('calendar-agenda-summary'),
+            textAlign: TextAlign.right,
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _CalendarAgendaHeaderDelegate oldDelegate) =>
+      oldDelegate.selected != selected || oldDelegate.summary != summary;
+}
+
+class _CalendarAgendaRow extends StatelessWidget {
+  const _CalendarAgendaRow({
+    required this.activity,
+    required this.personName,
+    required this.onTap,
+  });
+
+  final _CalendarActivity activity;
+  final String personName;
+  final VoidCallback onTap;
+
+  String get _statusLabel {
+    if (activity.record.type == RecordType.deal) return 'ثبت شده';
+    if (activity.overdue) return 'عقب‌افتاده';
+    return activity.record.statusLabel();
+  }
+
+  Color _statusColor(BuildContext context) {
+    if (activity.overdue ||
+        activity.record.status == SettlementStatus.cancelled) {
+      return const Color(0xFF9D3636);
+    }
+    if (activity.record.status == SettlementStatus.completed) {
+      return const Color(0xFF2F7D4C);
+    }
+    return Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      key: ValueKey('calendar-agenda-row-${activity.record.id}'),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 20, 8),
+        child: Row(
+          textDirection: TextDirection.ltr,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 44,
+              height: 52,
+              child: Center(
+                key: ValueKey('calendar-agenda-chevron-${activity.record.id}'),
+                child: Icon(
+                  CupertinoIcons.chevron_left,
+                  size: 18,
+                  color: theme.textTheme.bodyMedium?.color,
+                ),
+              ),
+            ),
+            SizedBox(
+              key: ValueKey('calendar-agenda-meta-${activity.record.id}'),
+              width: 82,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    activity.time == null
+                        ? 'بدون ساعت'
+                        : _formatTime(activity.time!),
+                    style: theme.textTheme.bodyMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _statusColor(context).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _statusLabel,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: _statusColor(context),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              key: ValueKey('calendar-agenda-info-${activity.record.id}'),
+              child: Column(
+                key: ValueKey(
+                  'calendar-agenda-info-column-${activity.record.id}',
+                ),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    activity.record.operationDisplayLabel,
+                    textAlign: TextAlign.right,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    personName,
+                    textAlign: TextAlign.right,
+                    style: theme.textTheme.bodyMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  _calendarAmount(activity.record),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTime(TimeOfDay time) =>
+      '${toPersianDigits(time.hour.toString().padLeft(2, '0'))}:${toPersianDigits(time.minute.toString().padLeft(2, '0'))}';
+
+  Widget _calendarAmount(AppRecord record) {
+    final numeric =
+        RegExp(
+          r'[-+]?[0-9۰-۹٬,٫.]+',
+        ).firstMatch(record.amountDisplay)?.group(0) ??
+        record.amountDisplay;
+    if (record.coinLines.isNotEmpty) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Text(
+            toPersianNumberText(record.amountDisplay),
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      );
+    }
+    if (record.currencyCode != null && record.currencyCode != 'TOMAN') {
+      return _rightAlignedAmount(
+        child: ZarAmountDisplay(
+          amount: toPersianNumberText(numeric),
+          unit: record.currencyCode!,
+          contentAlignment: Alignment.centerRight,
+          amountStyle: const TextStyle(fontWeight: FontWeight.w700),
+          unitStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      );
+    }
+    if (record.assetLabel == 'وجه نقد' || record.currencyCode == 'TOMAN') {
+      return _rightAlignedAmount(
+        child: ZarAmountDisplay(
+          amount: toPersianNumberText(numeric),
+          unit: 'تومان',
+          contentAlignment: Alignment.centerRight,
+          amountStyle: const TextStyle(fontWeight: FontWeight.w700),
+          unitStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      );
+    }
+    if (record.assetLabel == 'گرم طلا') {
+      return _rightAlignedAmount(
+        child: ZarAmountDisplay(
+          amount: toPersianNumberText(numeric),
+          unit: 'گرم طلا',
+          contentAlignment: Alignment.centerRight,
+          amountStyle: const TextStyle(fontWeight: FontWeight.w700),
+          unitStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      );
+    }
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Text(
+        toPersianNumberText(record.amountDisplay),
+        style: const TextStyle(fontWeight: FontWeight.w700),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.right,
+      ),
+    );
+  }
+
+  Widget _rightAlignedAmount({required Widget child}) => Align(
+    alignment: Alignment.centerRight,
+    child: IntrinsicWidth(child: child),
+  );
 }
 
 class PeopleScreen extends StatefulWidget {
-  const PeopleScreen({super.key, required this.people, required this.records, required this.onAddPerson, required this.onOpenPerson});
+  const PeopleScreen({
+    super.key,
+    required this.people,
+    required this.records,
+    required this.onAddPerson,
+    required this.onOpenPerson,
+  });
 
   final List<AppPerson> people;
   final List<AppRecord> records;
@@ -940,7 +1602,9 @@ class _PeopleScreenState extends State<PeopleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.people.where((p) => p.name.contains(query.trim())).toList(growable: false);
+    final filtered = widget.people
+        .where((p) => p.name.contains(query.trim()))
+        .toList(growable: false);
 
     return Scaffold(
       appBar: AppBar(title: const Text('اشخاص')),
@@ -952,31 +1616,59 @@ class _PeopleScreenState extends State<PeopleScreen> {
               children: [
                 Expanded(
                   child: TextField(
-                    decoration: const InputDecoration(hintText: 'جستجو در اشخاص', prefixIcon: Icon(CupertinoIcons.search)),
+                    decoration: const InputDecoration(
+                      hintText: 'جستجو در اشخاص',
+                      prefixIcon: Icon(CupertinoIcons.search),
+                    ),
                     onChanged: (value) => setState(() => query = value),
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton.icon(onPressed: widget.onAddPerson, icon: const Icon(CupertinoIcons.add, size: 16), label: const Text('افزودن')),
+                FilledButton.icon(
+                  onPressed: widget.onAddPerson,
+                  icon: const Icon(CupertinoIcons.add, size: 16),
+                  label: const Text('افزودن'),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             Expanded(
               child: ListView.separated(
                 itemCount: filtered.length,
-                separatorBuilder: (_, __) => Divider(color: Theme.of(context).dividerColor),
+                separatorBuilder: (_, __) =>
+                    Divider(color: Theme.of(context).dividerColor),
                 itemBuilder: (context, index) {
                   final person = filtered[index];
-                  final openCount = widget.records.where((r) => r.personId == person.id && r.status == SettlementStatus.open && r.isObligation).length;
+                  final openCount = widget.records
+                      .where(
+                        (r) =>
+                            r.personId == person.id &&
+                            r.status == SettlementStatus.open &&
+                            r.isObligation,
+                      )
+                      .length;
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
                       radius: 18,
-                      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
-                      child: Text(person.name.isEmpty ? '-' : person.name[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.14),
+                      child: Text(
+                        person.name.isEmpty ? '-' : person.name[0],
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
                     ),
-                    title: Text(person.name, style: Theme.of(context).textTheme.bodyLarge),
-                    subtitle: Text('${toPersianDigits(openCount.toString())} تعهد باز', style: Theme.of(context).textTheme.bodyMedium),
+                    title: Text(
+                      person.name,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    subtitle: Text(
+                      '${toPersianDigits(openCount.toString())} تعهد باز',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                     trailing: const Icon(CupertinoIcons.chevron_left, size: 18),
                     onTap: () => widget.onOpenPerson(person),
                   );
@@ -991,7 +1683,21 @@ class _PeopleScreenState extends State<PeopleScreen> {
 }
 
 class PersonDetailScreen extends StatelessWidget {
-  const PersonDetailScreen({super.key, required this.person, required this.records, required this.personName, required this.onTapRecord, required this.onEditPerson, required this.onArchivePerson, this.position = const ZarCustomerPosition.empty(), this.balance});
+  const PersonDetailScreen({
+    super.key,
+    required this.person,
+    required this.records,
+    required this.personName,
+    required this.onTapRecord,
+    required this.onEditPerson,
+    required this.onArchivePerson,
+    this.position = const ZarCustomerPosition.empty(),
+    this.balance,
+    this.ledger,
+    this.onShareStatement,
+    this.onShareBalanceBucket,
+    this.onQuickEntry,
+  });
 
   final AppPerson person;
   final List<AppRecord> records;
@@ -1001,16 +1707,22 @@ class PersonDetailScreen extends StatelessWidget {
   final ValueChanged<String> onArchivePerson;
   final ZarCustomerPosition position;
   final ZarCustomerOperationalBalance? balance;
+  final ZarCustomerLedgerProjection? ledger;
+  final VoidCallback? onShareStatement;
+  final ValueChanged<ZarCustomerBalanceAssetBucket>? onShareBalanceBucket;
+  final VoidCallback? onQuickEntry;
 
   @override
   Widget build(BuildContext context) {
-    final personItems = records.where((e) => e.personId == person.id).toList(growable: false)..sort((a, b) => b.date.compareTo(a.date));
-    final openItems = personItems.where((e) => e.status == SettlementStatus.open && e.isObligation).toList(growable: false);
+    final personItems =
+        records.where((e) => e.personId == person.id).toList(growable: false)
+          ..sort(_comparePersonRecords);
+    final openItems = personItems
+        .where((e) => e.status == SettlementStatus.open && e.isObligation)
+        .toList(growable: false);
     final historyItems = personItems
         .where(
-          (e) =>
-              e.type == RecordType.deal ||
-              e.status != SettlementStatus.open,
+          (e) => e.type == RecordType.deal || e.status != SettlementStatus.open,
         )
         .toList(growable: false);
 
@@ -1019,45 +1731,35 @@ class PersonDetailScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
-          Text(person.name, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 4),
-          Text(person.phone ?? 'شماره تماس ثبت نشده است.', style: Theme.of(context).textTheme.bodyMedium),
-          if ((person.note ?? '').trim().isNotEmpty) ...[const SizedBox(height: 4), Text(person.note!, style: Theme.of(context).textTheme.bodyMedium)],
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            children: [
-              OutlinedButton.icon(onPressed: () => onEditPerson(person), icon: const Icon(CupertinoIcons.pencil, size: 16), label: const Text('ویرایش')),
-              FilledButton.tonalIcon(
-                onPressed: person.phone == null
-                    ? null
-                    : () async {
-                        final uri = Uri(scheme: 'tel', path: phoneToEnglishDigits(person.phone!));
-                        await launchUrl(uri);
-                      },
-                icon: const Icon(CupertinoIcons.phone, size: 16),
-                label: const Text('تماس'),
-              ),
-              TextButton.icon(onPressed: () => onArchivePerson(person.id), icon: const Icon(CupertinoIcons.archivebox, size: 16), label: const Text('آرشیو')),
-            ],
-          ),
-          const SizedBox(height: 16),
+          _personProfileHeader(context),
+          const SizedBox(height: 12),
           if (balance != null) ...[
-            CustomerBalanceCard(balance: balance!),
+            CustomerBalanceCard(
+              balance: balance!,
+              onShareBucket: onShareBalanceBucket,
+              onTapBucket: ledger == null
+                  ? null
+                  : (bucket) => _showBalanceProvenance(context, bucket),
+            ),
             const SizedBox(height: 16),
           ],
           _customerCard(
             context,
             title: 'تعهدات باز',
             children: [
-              _positionSide(context, 'باید دریافت کنم', position.receive.where((item) => balance == null || item is! ZarCustomerCurrencyPosition || item.code != 'TOMAN').toList()),
-              const SizedBox(height: 12),
-              _positionSide(context, 'باید پرداخت کنم', position.deliver.where((item) => balance == null || item is! ZarCustomerCurrencyPosition || item.code != 'TOMAN').toList()),
+              if (balance == null) ...[
+                _positionSide(context, 'باید از او بگیرم', position.receive),
+                const SizedBox(height: 12),
+                _positionSide(context, 'باید به او بدهم', position.deliver),
+              ],
               const Divider(height: 24),
               if (openItems.isEmpty)
                 const _ZEmptyRow(label: 'تعهد باز وجود ندارد.')
               else
-                ...openItems.map((e) => SettlementRow(record: e, personName: personName(e.personId), onTap: () => onTapRecord(e))),
+                ...openItems.map(
+                  (e) =>
+                      _PersonRecordRow(record: e, onTap: () => onTapRecord(e)),
+                ),
             ],
           ),
           const SizedBox(height: 18),
@@ -1066,19 +1768,48 @@ class PersonDetailScreen extends StatelessWidget {
             title: 'سوابق معاملات',
             children: historyItems.isEmpty
                 ? const [_ZEmptyRow(label: 'معامله یا تسویه‌ای ثبت نشده است.')]
-                : historyItems.map((e) => SettlementRow(record: e, personName: personName(e.personId), onTap: () => onTapRecord(e))).toList(growable: false),
+                : historyItems
+                      .map(
+                        (e) => _PersonRecordRow(
+                          record: e,
+                          onTap: () => onTapRecord(e),
+                        ),
+                      )
+                      .toList(growable: false),
           ),
           const SizedBox(height: 18),
           _customerCard(
             context,
             title: 'خلاصه فعالیت',
             children: [
-              _activityRow('خرید', position.buyCount),
-              _activityRow('فروش', position.sellCount),
-              _activityRow('دریافت', position.receiveCount),
-              _activityRow('پرداخت', position.deliverCount),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${toPersianDigits(position.activityCount.toString())} فعالیت',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(
+                    '${toPersianDigits(openItems.length.toString())} تعهد باز',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _activityPill(context, 'خرید', position.buyCount),
+                  _activityPill(context, 'فروش', position.sellCount),
+                  _activityPill(context, 'دریافت', position.receiveCount),
+                  _activityPill(context, 'پرداخت', position.deliverCount),
+                ],
+              ),
               const Divider(height: 20),
-              Text('آخرین فعالیت: ${_lastActivityLabel(position.lastActivityAt)}'),
+              Text(
+                'آخرین فعالیت: ${_lastActivityLabel(position.lastActivityAt)}',
+              ),
             ],
           ),
         ],
@@ -1086,17 +1817,364 @@ class PersonDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _customerCard(BuildContext context, {required String title, required List<Widget> children}) => Container(
+  Future<void> _showBalanceProvenance(
+    BuildContext context,
+    ZarCustomerBalanceAssetBucket bucket,
+  ) async {
+    final currentLedger = ledger;
+    if (currentLedger == null) return;
+    final lines = currentLedger.statementFor(bucket.assetKey);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.58,
+          minChildSize: 0.35,
+          maxChildSize: 0.9,
+          builder: (_, controller) => ListView(
+            controller: controller,
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            children: [
+              Text('منشأ مانده', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 6),
+              Text(
+                _balanceBucketIdentity(bucket),
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              _balanceBucketAmount(bucket),
+              const SizedBox(height: 14),
+              if (lines.isEmpty)
+                const Text('منشأ قابل نمایش برای این مانده پیدا نشد.')
+              else
+                ...lines.map((line) => _provenanceLine(sheetContext, line)),
+              if (lines.isNotEmpty) ...[
+                const Divider(height: 24),
+                Text('مانده فعلی', style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 4),
+                _runningAmount(
+                  sheetContext,
+                  bucket,
+                  lines.last.runningAmount,
+                  lines.last.runningDirection,
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _provenanceLine(
+    BuildContext context,
+    ZarCustomerLedgerStatementLine line,
+  ) {
+    final posting = line.posting;
+    final record = records.cast<AppRecord?>().firstWhere(
+      (item) => item?.id == posting.sourceRecordId,
+      orElse: () => null,
+    );
+    final title =
+        posting.sourceLabel ??
+        (posting.sourceType == ZarCustomerLedgerSourceType.deal
+            ? 'معامله'
+            : 'حرکت ثبت‌شده');
+    final date = Jalali.fromDateTime(posting.occurredAt.toLocal());
+    final time = posting.occurredAt.toLocal();
+    final amount = _postingAmount(posting);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: Text(
+                  record == null ? title : record.operationDisplayLabel,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Text(
+                '${formatJalaliDate(date)} · ${toPersianDigits(time.hour.toString().padLeft(2, '0'))}:${toPersianDigits(time.minute.toString().padLeft(2, '0'))}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          amount,
+          const SizedBox(height: 4),
+          Text(
+            'مانده پس از این رویداد: ${_runningLabel(line.runningDirection, line.runningAmount)}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _balanceBucketAmount(ZarCustomerBalanceAssetBucket bucket) {
+    final parts = _bucketParts(bucket);
+    return ZarAmountDisplay(
+      amount: parts.amount,
+      unit: parts.unit,
+      amountStyle: const TextStyle(fontWeight: FontWeight.w800),
+      unitStyle: const TextStyle(fontWeight: FontWeight.w600),
+    );
+  }
+
+  Widget _runningAmount(
+    BuildContext context,
+    ZarCustomerBalanceAssetBucket bucket,
+    String amount,
+    ZarSettlementDirection? direction,
+  ) {
+    if (direction == null) return const Text('تسویه شده');
+    final copy = ZarCustomerBalanceAssetBucket(
+      direction: direction,
+      assetType: bucket.assetType,
+      amount: amount,
+      currencyCode: bucket.currencyCode,
+      goldFineness: bucket.goldFineness,
+      coinIdentity: bucket.coinIdentity,
+      displayName: bucket.displayName,
+    );
+    return _balanceBucketAmount(copy);
+  }
+
+  Widget _postingAmount(ZarCustomerLedgerPosting posting) {
+    final bucket = ZarCustomerBalanceAssetBucket(
+      direction: posting.direction,
+      assetType: posting.assetType,
+      amount: posting.amount,
+      currencyCode: posting.currencyCode,
+      goldFineness: posting.goldFineness,
+      coinIdentity: posting.coinIdentity,
+      displayName: posting.displayName,
+    );
+    return _balanceBucketAmount(bucket);
+  }
+
+  ({String amount, String unit}) _bucketParts(
+    ZarCustomerBalanceAssetBucket bucket,
+  ) {
+    final formatted = toPersianNumberText(bucket.amount);
+    return switch (bucket.assetType) {
+      ZarAssetType.currency => (
+        amount: formatted,
+        unit: bucket.isToman ? 'تومان' : bucket.currencyCode ?? 'ارز',
+      ),
+      ZarAssetType.gold => (amount: formatted, unit: 'گرم طلا'),
+      ZarAssetType.coin => (amount: formatted, unit: 'عدد'),
+    };
+  }
+
+  String _balanceBucketIdentity(ZarCustomerBalanceAssetBucket bucket) {
+    return switch (bucket.assetType) {
+      ZarAssetType.currency =>
+        bucket.isToman ? 'وجه نقد' : 'ارز ${bucket.currencyCode ?? ''}'.trim(),
+      ZarAssetType.gold =>
+        bucket.goldFineness == null
+            ? 'طلای عیار نامشخص'
+            : 'طلای عیار ${toPersianNumberText(bucket.goldFineness!)}',
+      ZarAssetType.coin => bucket.displayName ?? 'سکه',
+    };
+  }
+
+  String _runningLabel(ZarSettlementDirection? direction, String amount) {
+    if (direction == null) return 'تسویه شده';
+    final label = direction == ZarSettlementDirection.receive
+        ? 'باید از او بگیرم'
+        : 'باید به او بدهم';
+    return '$label · ${toPersianNumberText(amount)}';
+  }
+
+  Widget _personProfileHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasPhone = (person.phone ?? '').trim().isNotEmpty;
+    final phoneLabel = hasPhone ? person.phone! : 'شماره تماس ثبت نشده است.';
+    final note = (person.note ?? '').trim();
+    final buttonPadding = const EdgeInsets.symmetric(horizontal: 5);
+    final compactButtonStyle = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
+      padding: WidgetStatePropertyAll(buttonPadding),
+      visualDensity: VisualDensity.compact,
+    );
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 25,
+                backgroundColor: theme.colorScheme.primary.withValues(
+                  alpha: 0.14,
+                ),
+                child: Text(
+                  person.name.trim().isEmpty ? '-' : person.name.trim()[0],
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        person.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        phoneLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      if (note.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          note,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  key: const Key('person-primary-new-entry'),
+                  onPressed: onQuickEntry,
+                  style: compactButtonStyle,
+                  icon: const Icon(CupertinoIcons.add, size: 17),
+                  label: const Text('ثبت جدید'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('person-primary-share-statement'),
+                  onPressed: onShareStatement,
+                  style: compactButtonStyle,
+                  icon: const Icon(CupertinoIcons.share, size: 17),
+                  label: const Text('اشتراک صورتحساب'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: hasPhone
+                      ? () async {
+                          final uri = Uri(
+                            scheme: 'tel',
+                            path: phoneToEnglishDigits(person.phone!),
+                          );
+                          await launchUrl(uri);
+                        }
+                      : null,
+                  style: compactButtonStyle,
+                  icon: const Icon(CupertinoIcons.phone, size: 16),
+                  label: const Text('تماس'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => onEditPerson(person),
+                  style: compactButtonStyle,
+                  icon: const Icon(CupertinoIcons.pencil, size: 16),
+                  label: const Text('ویرایش'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => onArchivePerson(person.id),
+                  style: compactButtonStyle,
+                  icon: const Icon(CupertinoIcons.archivebox, size: 16),
+                  label: const Text('بایگانی'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _customerCard(
+    BuildContext context, {
+    required String title,
+    required List<Widget> children,
+  }) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surfaceContainerLowest,
       border: Border.all(color: Theme.of(context).dividerColor),
       borderRadius: BorderRadius.circular(20),
     ),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: Theme.of(context).textTheme.titleMedium), const SizedBox(height: 12), ...children]),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 12),
+        ...children,
+      ],
+    ),
   );
 
-  Widget _positionSide(BuildContext context, String title, List<ZarCustomerPositionItem> items) => Column(
+  Widget _positionSide(
+    BuildContext context,
+    String title,
+    List<ZarCustomerPositionItem> items,
+  ) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(title, style: Theme.of(context).textTheme.bodyLarge),
@@ -1104,7 +2182,12 @@ class PersonDetailScreen extends StatelessWidget {
       if (items.isEmpty)
         Text('موردی وجود ندارد.', style: Theme.of(context).textTheme.bodyMedium)
       else
-        ...items.map((item) => Padding(padding: const EdgeInsets.only(bottom: 4), child: _positionItem(item))),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: _positionItem(item),
+          ),
+        ),
     ],
   );
 
@@ -1116,15 +2199,19 @@ class PersonDetailScreen extends StatelessWidget {
         '${_formatPositionDecimal(grams)} گرم طلای ${fineness == null ? 'عیار نامشخص' : 'عیار ${toPersianDigits(fineness)}'}',
         style: const TextStyle(color: gold, fontWeight: FontWeight.w600),
       ),
-      ZarCustomerCurrencyPosition(:final code, :final decimalAmount) => Directionality(
-        textDirection: TextDirection.ltr,
-        child: Text(
-          code == 'TOMAN'
-              ? '${_formatPositionDecimal(decimalAmount)} تومان'
-              : '${_formatPositionDecimal(decimalAmount)} $code',
-          style: const TextStyle(color: currency, fontWeight: FontWeight.w600),
+      ZarCustomerCurrencyPosition(:final code, :final decimalAmount) =>
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Text(
+            code == 'TOMAN'
+                ? '${_formatPositionDecimal(decimalAmount)} تومان'
+                : '${_formatPositionDecimal(decimalAmount)} $code',
+            style: const TextStyle(
+              color: currency,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-      ),
       ZarCustomerCoinPosition(:final displayName, :final quantity) => Text(
         '${toPersianDigits(quantity.toString())} عدد $displayName',
         style: const TextStyle(color: gold, fontWeight: FontWeight.w600),
@@ -1132,10 +2219,20 @@ class PersonDetailScreen extends StatelessWidget {
     };
   }
 
-  Widget _activityRow(String label, int count) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label), Text(toPersianDigits(count.toString()))]),
-  );
+  Widget _activityPill(BuildContext context, String label, int count) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(99),
+        ),
+        child: Text(
+          '$label ${toPersianDigits(count.toString())}',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      );
 
   String _lastActivityLabel(DateTime? value) {
     if (value == null) return 'ثبت نشده';
@@ -1146,13 +2243,188 @@ class PersonDetailScreen extends StatelessWidget {
 
   String _formatPositionDecimal(String value) {
     final parts = value.split('.');
-    final grouped = parts.first.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => '٬');
-    return toPersianDigits(parts.length == 1 ? grouped : '$grouped٫${parts[1]}');
+    final grouped = parts.first.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (match) => '٬',
+    );
+    return toPersianDigits(
+      parts.length == 1 ? grouped : '$grouped٫${parts[1]}',
+    );
   }
 }
 
+/// Person-profile row with a stable physical left amount column. The
+/// surrounding page is RTL, but the row itself is laid out left-to-right so
+/// the disclosure chevron and Amount/Unit block never jump as labels change.
+class _PersonRecordRow extends StatelessWidget {
+  const _PersonRecordRow({required this.record, this.onTap});
+
+  final AppRecord record;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final statusColor = record.status == SettlementStatus.completed
+        ? const Color(0xFF2F7D4C)
+        : record.status == SettlementStatus.cancelled
+        ? const Color(0xFF9D3636)
+        : theme.textTheme.bodyMedium?.color;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: theme.dividerColor)),
+        ),
+        child: Row(
+          textDirection: TextDirection.ltr,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: 24,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Icon(CupertinoIcons.chevron_left, size: 20),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              flex: 5,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _PersonRecordAmount(record: record),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 6,
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: Column(
+                  // In RTL, start is the physical right edge. Using end
+                  // here caused the information block to drift toward the
+                  // center of the row.
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      record.operationDisplayLabel,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${formatJalaliDate(record.date)} · ${record.timeLabel()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      record.type == RecordType.settlement
+                          ? record.statusLabel()
+                          : 'معامله',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PersonRecordAmount extends StatelessWidget {
+  const _PersonRecordAmount({required this.record});
+
+  final AppRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = _personRecordAmountParts(record);
+    final style = Theme.of(context).textTheme.bodyMedium;
+    return ZarAmountDisplay(
+      amount: parts.amount,
+      unit: parts.unit,
+      purity: parts.purity,
+      amountStyle: style?.copyWith(fontWeight: FontWeight.w700),
+      unitStyle: style,
+    );
+  }
+}
+
+({String amount, String unit, String? purity}) _personRecordAmountParts(
+  AppRecord record,
+) {
+  if (record.coinLines.isNotEmpty) {
+    if (record.coinLines.length == 1) {
+      final line = record.coinLines.single;
+      return (
+        amount: toPersianDigits(line.quantity.toString()),
+        unit: 'عدد ${line.name}',
+        purity: line.fineness == null
+            ? null
+            : 'عیار ${toPersianDigits(line.fineness!)}',
+      );
+    }
+    return (
+      amount: toPersianDigits(record.coinLines.length.toString()),
+      unit: 'نوع سکه',
+      purity: null,
+    );
+  }
+
+  final numeric =
+      RegExp(
+        r'[-+]?[0-9۰-۹٬,٫.]+',
+      ).firstMatch(record.amountDisplay)?.group(0) ??
+      record.amountDisplay;
+  if (record.currencyCode != null) {
+    return (
+      amount: toPersianNumberText(numeric),
+      unit: record.currencyCode == 'TOMAN' ? 'تومان' : record.currencyCode!,
+      purity: null,
+    );
+  }
+  if (record.assetLabel == 'وجه نقد') {
+    return (amount: toPersianNumberText(numeric), unit: 'تومان', purity: null);
+  }
+  if (record.goldFineness != null || record.assetLabel == 'گرم طلا') {
+    return (
+      amount: toPersianNumberText(numeric),
+      unit: record.goldInputUnit == 'mesghal' ? 'مثقال طلا' : 'گرم طلا',
+      purity: record.goldFineness == null
+          ? null
+          : 'عیار ${toPersianDigits(record.goldFineness!)}',
+    );
+  }
+  return (
+    amount: toPersianNumberText(numeric),
+    unit: record.assetLabel,
+    purity: null,
+  );
+}
+
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key, required this.records, required this.personName, this.onTapRecord});
+  const HistoryScreen({
+    super.key,
+    required this.records,
+    required this.personName,
+    this.onTapRecord,
+  });
 
   final List<AppRecord> records;
   final String Function(String) personName;
@@ -1195,7 +2467,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
         child: Column(
           children: [
             TextField(
-              decoration: const InputDecoration(prefixIcon: Icon(CupertinoIcons.search), hintText: 'جستجو'),
+              decoration: const InputDecoration(
+                prefixIcon: Icon(CupertinoIcons.search),
+                hintText: 'جستجو',
+              ),
               onChanged: (value) => setState(() => query = value),
             ),
             const SizedBox(height: 10),
@@ -1225,7 +2500,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           key: ValueKey('history-record-${item.id}'),
                           record: item,
                           personName: widget.personName(item.personId),
-                          onTap: widget.onTapRecord == null ? null : () => widget.onTapRecord!(item),
+                          onTap: widget.onTapRecord == null
+                              ? null
+                              : () => widget.onTapRecord!(item),
                         );
                       },
                     ),
@@ -1242,8 +2519,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
       label: Text(label),
       selected: selected,
       showCheckmark: false,
-      selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
-      side: BorderSide(color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.35) : Theme.of(context).dividerColor),
+      selectedColor: Theme.of(
+        context,
+      ).colorScheme.primary.withValues(alpha: 0.14),
+      side: BorderSide(
+        color: selected
+            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.35)
+            : Theme.of(context).dividerColor,
+      ),
       labelPadding: const EdgeInsets.symmetric(horizontal: 4),
       onSelected: (_) => setState(() => filter = value),
     );
@@ -1254,17 +2537,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
       case HistoryFilter.all:
         return true;
       case HistoryFilter.buy:
-        return record.type == RecordType.deal && record.operationLabel == 'خرید';
+        return record.type == RecordType.deal &&
+            record.operationLabel == 'خرید';
       case HistoryFilter.sell:
-        return record.type == RecordType.deal && record.operationLabel == 'فروش';
+        return record.type == RecordType.deal &&
+            record.operationLabel == 'فروش';
       case HistoryFilter.receive:
-        return record.type == RecordType.settlement && record.operationLabel == 'دریافت';
+        return record.type == RecordType.settlement &&
+            record.operationLabel == 'دریافت';
       case HistoryFilter.deliver:
-        return record.type == RecordType.settlement && record.operationLabel == 'تحویل';
+        return record.type == RecordType.settlement &&
+            record.operationLabel == 'تحویل';
       case HistoryFilter.completed:
-        return record.type == RecordType.settlement && record.status == SettlementStatus.completed;
+        return record.type == RecordType.settlement &&
+            record.status == SettlementStatus.completed;
       case HistoryFilter.cancelled:
-        return record.type == RecordType.settlement && record.status == SettlementStatus.cancelled;
+        return record.type == RecordType.settlement &&
+            record.status == SettlementStatus.cancelled;
     }
   }
 
@@ -1278,7 +2567,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
 }
 
 class HistoryRecordRow extends StatelessWidget {
-  const HistoryRecordRow({super.key, required this.record, required this.personName, this.onTap});
+  const HistoryRecordRow({
+    super.key,
+    required this.record,
+    required this.personName,
+    this.onTap,
+  });
 
   final AppRecord record;
   final String personName;
@@ -1288,7 +2582,9 @@ class HistoryRecordRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isSettlement = record.type == RecordType.settlement;
-    final statusColor = record.status == SettlementStatus.completed ? const Color(0xFF2F7D4C) : const Color(0xFF9D3636);
+    final statusColor = record.status == SettlementStatus.completed
+        ? const Color(0xFF2F7D4C)
+        : const Color(0xFF9D3636);
 
     return InkWell(
       onTap: onTap,
@@ -1305,7 +2601,12 @@ class HistoryRecordRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(record.operationDisplayLabel, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    record.operationDisplayLabel,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(personName, style: theme.textTheme.bodyMedium),
                   const SizedBox(height: 5),
@@ -1314,11 +2615,17 @@ class HistoryRecordRow extends StatelessWidget {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       AmountText(record.amountDisplay),
-                      Text(record.assetLabel, style: theme.textTheme.bodyMedium),
+                      Text(
+                        record.assetLabel,
+                        style: theme.textTheme.bodyMedium,
+                      ),
                       if (record.currencyCode != null)
                         Directionality(
                           textDirection: TextDirection.ltr,
-                          child: Text(record.currencyCode!, style: theme.textTheme.bodyMedium),
+                          child: Text(
+                            record.currencyCode!,
+                            style: theme.textTheme.bodyMedium,
+                          ),
                         ),
                     ],
                   ),
@@ -1329,14 +2636,20 @@ class HistoryRecordRow extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(formatJalaliDate(record.date), style: theme.textTheme.bodyMedium),
+                Text(
+                  formatJalaliDate(record.date),
+                  style: theme.textTheme.bodyMedium,
+                ),
                 const SizedBox(height: 2),
                 Text(record.timeLabel(), style: theme.textTheme.bodyMedium),
                 if (isSettlement) ...[
                   const SizedBox(height: 4),
                   Text(
                     record.statusLabel(),
-                    style: theme.textTheme.bodyMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ],
@@ -1349,12 +2662,20 @@ class HistoryRecordRow extends StatelessWidget {
 }
 
 class SettlementRow extends StatelessWidget {
-  const SettlementRow({super.key, required this.record, required this.personName, this.onTap, this.showOverdueTone = false});
+  const SettlementRow({
+    super.key,
+    required this.record,
+    required this.personName,
+    this.onTap,
+    this.showOverdueTone = false,
+    this.showPersonName = true,
+  });
 
   final AppRecord record;
   final String personName;
   final VoidCallback? onTap;
   final bool showOverdueTone;
+  final bool showPersonName;
 
   @override
   Widget build(BuildContext context) {
@@ -1386,15 +2707,33 @@ class SettlementRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(record.operationDisplayLabel, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    record.operationDisplayLabel,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(personName, style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.84))),
-                  const SizedBox(height: 4),
+                  if (showPersonName) ...[
+                    Text(
+                      personName,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyLarge?.color?.withValues(
+                          alpha: 0.84,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ] else
+                    const SizedBox(height: 4),
                   Wrap(
                     spacing: 8,
                     children: [
                       AmountText(record.amountDisplay),
-                      Text(record.assetLabel, style: theme.textTheme.bodyMedium),
+                      Text(
+                        record.assetLabel,
+                        style: theme.textTheme.bodyMedium,
+                      ),
                     ],
                   ),
                 ],
@@ -1409,7 +2748,10 @@ class SettlementRow extends StatelessWidget {
                 if (record.type == RecordType.settlement)
                   Text(
                     record.statusLabel(),
-                    style: theme.textTheme.bodyMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                    ),
                   )
                 else
                   Text('معامله', style: theme.textTheme.bodyMedium),
@@ -1432,7 +2774,9 @@ class _ZEmptyRow extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
       ),
       child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
     );
@@ -1450,7 +2794,9 @@ class AmountText extends StatelessWidget {
       child: Text(
         amount,
         textAlign: TextAlign.left,
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -1484,82 +2830,174 @@ class SettlementActionSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${record.operationDisplayLabel} • $personName', style: Theme.of(context).textTheme.titleMedium),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${record.operationDisplayLabel} • $personName',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              RecordShareButton(record: record, personName: personName),
+            ],
+          ),
           const SizedBox(height: 4),
-          Text('${record.assetLabel} • ${record.amountDisplay}', style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            '${record.assetLabel} • ${record.amountDisplay}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           const SizedBox(height: 12),
-          _action(context, 'انجام شد', CupertinoIcons.check_mark_circled, onComplete),
+          _action(
+            context,
+            'انجام شد',
+            CupertinoIcons.check_mark_circled,
+            onComplete,
+          ),
           _action(context, 'ویرایش', CupertinoIcons.pencil, onEdit),
-          _action(context, 'زمان‌بندی مجدد', CupertinoIcons.calendar, onReschedule),
+          _action(
+            context,
+            'زمان‌بندی مجدد',
+            CupertinoIcons.calendar,
+            onReschedule,
+          ),
           _action(context, 'یادآوری بعداً', CupertinoIcons.bell, onSnooze),
-          _action(context, 'لغو', CupertinoIcons.xmark_circle, onCancel, destructive: true),
+          _action(
+            context,
+            'لغو',
+            CupertinoIcons.xmark_circle,
+            onCancel,
+            destructive: true,
+          ),
         ],
       ),
     );
   }
 
-  Widget _action(BuildContext context, String text, IconData icon, VoidCallback onTap, {bool destructive = false}) {
+  Widget _action(
+    BuildContext context,
+    String text,
+    IconData icon,
+    VoidCallback onTap, {
+    bool destructive = false,
+  }) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: destructive ? Colors.red : null),
-      title: Text(text, style: TextStyle(color: destructive ? Colors.red : null)),
+      title: Text(
+        text,
+        style: TextStyle(color: destructive ? Colors.red : null),
+      ),
       onTap: onTap,
     );
   }
 }
 
 class DealDetailSheet extends StatelessWidget {
-  const DealDetailSheet({super.key, required this.record, required this.personName, required this.linkedSettlements, required this.onOpenSettlement});
+  const DealDetailSheet({
+    super.key,
+    required this.record,
+    required this.personName,
+    required this.linkedSettlements,
+    required this.onOpenSettlement,
+    this.accountingStatus,
+  });
 
   final AppRecord record;
   final String personName;
   final List<AppRecord> linkedSettlements;
   final ValueChanged<AppRecord> onOpenSettlement;
+  final String? accountingStatus;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('جزئیات معامله (${record.operationDisplayLabel})', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 6),
-          Text(personName, style: Theme.of(context).textTheme.bodyLarge),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
             children: [
-              AmountText(toPersianNumberText(record.amountDisplay)),
-              Text(record.assetLabel),
-              if (record.currencyCode != null)
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Text(record.currencyCode!),
+              Expanded(
+                child: Text(
+                  'جزئیات معامله (${record.operationDisplayLabel})',
+                  style: theme.textTheme.titleMedium,
                 ),
-              Text(formatJalaliDate(record.date), style: Theme.of(context).textTheme.bodyMedium),
-              Text(record.timeLabel(), style: Theme.of(context).textTheme.bodyMedium),
+              ),
+              RecordShareButton(record: record, personName: personName),
             ],
           ),
+          const SizedBox(height: 10),
+          _detailRow(context, 'نوع عملیات', Text(record.operationDisplayLabel)),
+          _detailRow(context, 'طرف حساب', Text(personName)),
+          _detailRow(context, 'دارایی', Text(record.assetLabel)),
+          _detailRow(
+            context,
+            'مقدار',
+            AmountText(toPersianNumberText(record.amountDisplay)),
+          ),
+          _detailRow(
+            context,
+            'ثمن معامله',
+            record.totalToman == null
+                ? const Text('مبلغ تسویه مشخص نشده')
+                : Text(
+                    '${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(record.totalToman))} تومان',
+                  ),
+          ),
+          if (record.currencyCode != null)
+            _detailRow(
+              context,
+              'نوع ارز',
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(record.currencyCode!),
+              ),
+            ),
+          _detailRow(context, 'تاریخ ثبت', Text(formatJalaliDate(record.date))),
+          _detailRow(context, 'ساعت ثبت', Text(record.timeLabel())),
+          if (accountingStatus != null)
+            _detailRow(context, 'اثر روی حساب', Text(accountingStatus!)),
           if (record.coinLines.isNotEmpty) ...[
             const SizedBox(height: 12),
-            ...record.coinLines.map((line) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${toPersianDigits(line.quantity.toString())} × ${line.name}', style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF9A6700))),
-                if (line.weightGrams != null || line.fineness != null)
-                  Text([if (line.weightGrams != null) '${toPersianDigits(line.weightGrams!)} گرم', if (line.fineness != null) 'عیار ${toPersianDigits(line.fineness!)}'].join(' • ')),
-                if (line.rowTotalToman != null)
-                  Text('جمع ردیف: ${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(line.rowTotalToman))} تومان'),
-              ]),
-            )),
+            ...record.coinLines.map(
+              (line) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${toPersianDigits(line.quantity.toString())} × ${line.name}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF9A6700),
+                      ),
+                    ),
+                    if (line.weightGrams != null || line.fineness != null)
+                      Text(
+                        [
+                          if (line.weightGrams != null)
+                            '${toPersianDigits(line.weightGrams!)} گرم',
+                          if (line.fineness != null)
+                            'عیار ${toPersianDigits(line.fineness!)}',
+                        ].join(' • '),
+                      ),
+                    if (line.rowTotalToman != null)
+                      Text(
+                        'جمع ردیف: ${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(line.rowTotalToman))} تومان',
+                      ),
+                  ],
+                ),
+              ),
+            ),
           ],
           if (record.goldFineness != null) ...[
             const SizedBox(height: 8),
-            Text('عیار: ${toPersianDigits(record.goldFineness.toString())}', style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              'عیار: ${toPersianDigits(record.goldFineness.toString())}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
             if (record.goldInputWeight != null)
               Text(
                 'وزن ثبت‌شده: ${toPersianDigits(record.goldInputWeight!)} ${record.goldInputUnit == 'mesghal' ? 'مثقال' : 'گرم'}',
@@ -1592,11 +3030,354 @@ class DealDetailSheet extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyLarge,
             ),
           ],
-          if ((record.note ?? '').isNotEmpty) ...[const SizedBox(height: 8), Text(record.note!, style: Theme.of(context).textTheme.bodyMedium)],
-          const SizedBox(height: 14),
-          Text('تعهدهای لینک‌شده', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 6),
-          if (linkedSettlements.isEmpty) const Text('تعهد لینک‌شده‌ای ندارد.') else ...linkedSettlements.map((e) => SettlementRow(record: e, personName: personName, onTap: () => onOpenSettlement(e))),
+          if ((record.note ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(record.note!, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+          if (linkedSettlements.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text('تعهدهای لینک‌شده', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 6),
+            ...linkedSettlements.map(
+              (e) => SettlementRow(
+                record: e,
+                personName: personName,
+                onTap: () => onOpenSettlement(e),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(BuildContext context, String label, Widget value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+          ),
+          Expanded(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: value,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// History-facing Deal detail that follows the same summary-first structure as
+/// the repository Settlement sheet. The legacy [DealDetailSheet] remains
+/// available to older preview shells, while the production V2 shell uses this
+/// presentation-only adapter.
+class HistoryDealDetailSheet extends StatelessWidget {
+  const HistoryDealDetailSheet({
+    super.key,
+    required this.record,
+    required this.personName,
+    required this.linkedSettlements,
+    required this.onOpenSettlement,
+    this.accountingStatus,
+  });
+
+  final AppRecord record;
+  final String personName;
+  final List<AppRecord> linkedSettlements;
+  final ValueChanged<AppRecord> onOpenSettlement;
+  final String? accountingStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.dividerColor,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              textDirection: TextDirection.rtl,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        record.operationDisplayLabel,
+                        textAlign: TextAlign.right,
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        personName,
+                        textAlign: TextAlign.right,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                RecordShareButton(record: record, personName: personName),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _summaryCard(context),
+            const SizedBox(height: 12),
+            _metaCard(context),
+            if (record.coinLines.isNotEmpty ||
+                record.goldFineness != null ||
+                record.tomanRate != null) ...[
+              const SizedBox(height: 12),
+              _breakdownCard(context),
+            ],
+            if ((record.note ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _sectionCard(
+                context,
+                title: 'یادداشت',
+                child: Text(
+                  record.note!.trim(),
+                  textAlign: TextAlign.right,
+                  style: theme.textTheme.bodyLarge,
+                ),
+              ),
+            ],
+            if (linkedSettlements.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _sectionCard(
+                context,
+                title: 'تعهدهای لینک‌شده',
+                child: Column(
+                  children: linkedSettlements
+                      .map(
+                        (settlement) => SettlementRow(
+                          record: settlement,
+                          personName: personName,
+                          onTap: () => onOpenSettlement(settlement),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryCard(BuildContext context) {
+    final theme = Theme.of(context);
+    return _sectionCard(
+      context,
+      key: const ValueKey('deal-detail-summary'),
+      title: 'خلاصه معامله',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('دارایی', style: theme.textTheme.bodySmall),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Directionality(
+              textDirection: record.currencyCode != null
+                  ? TextDirection.ltr
+                  : TextDirection.rtl,
+              child: Text(
+                recordAssetSummary(record),
+                textAlign: record.currencyCode != null
+                    ? TextAlign.left
+                    : TextAlign.right,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          if (record.totalToman != null) ...[
+            const SizedBox(height: 12),
+            Text('مبلغ کل', style: theme.textTheme.bodySmall),
+            const SizedBox(height: 2),
+            Text(
+              '${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(record.totalToman))} تومان',
+              textAlign: TextAlign.right,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Text(
+            '${formatJalaliDate(record.date)} · ${record.timeLabel()}',
+            textAlign: TextAlign.right,
+            style: theme.textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metaCard(BuildContext context) {
+    return _sectionCard(
+      context,
+      key: const ValueKey('deal-detail-meta'),
+      title: 'اطلاعات معامله',
+      child: Column(
+        children: [
+          _metaRow(context, 'نوع عملیات', record.operationDisplayLabel),
+          _metaRow(context, 'طرف حساب', personName),
+          _metaRow(context, 'تاریخ ثبت', formatJalaliDate(record.date)),
+          _metaRow(context, 'ساعت ثبت', record.timeLabel()),
+          if (accountingStatus != null)
+            _metaRow(context, 'اثر روی حساب', accountingStatus!),
+        ],
+      ),
+    );
+  }
+
+  Widget _breakdownCard(BuildContext context) {
+    final theme = Theme.of(context);
+    return _sectionCard(
+      context,
+      key: const ValueKey('deal-detail-breakdown'),
+      title: 'جزئیات دارایی و قیمت',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (record.goldFineness != null)
+            _metaRow(context, 'عیار', toPersianDigits(record.goldFineness!)),
+          if (record.goldInputWeight != null)
+            _metaRow(
+              context,
+              'وزن ثبت‌شده',
+              '${toPersianDigits(record.goldInputWeight!)} ${record.goldInputUnit == 'mesghal' ? 'مثقال' : 'گرم'}',
+            ),
+          if (record.goldEquivalentWeight != null)
+            _metaRow(
+              context,
+              'معادل وزن',
+              '${toPersianDigits(record.goldEquivalentWeight!)} ${record.goldInputUnit == 'mesghal' ? 'گرم' : 'مثقال'}',
+            ),
+          if (record.tomanRate != null)
+            _metaRow(
+              context,
+              'نرخ/قیمت واحد',
+              '${toPersianNumberText(record.tomanRate!)} تومان',
+            ),
+          ...record.coinLines.map(
+            (line) => Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '${toPersianDigits(line.quantity.toString())} × ${line.name}',
+                    textAlign: TextAlign.right,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (line.weightGrams != null || line.fineness != null)
+                    Text(
+                      [
+                        if (line.weightGrams != null)
+                          '${toPersianDigits(line.weightGrams!)} گرم',
+                        if (line.fineness != null)
+                          'عیار ${toPersianDigits(line.fineness!)}',
+                      ].join(' · '),
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  if (line.rowTotalToman != null)
+                    Text(
+                      'جمع ردیف: ${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(line.rowTotalToman))} تومان',
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionCard(
+    BuildContext context, {
+    Key? key,
+    required String title,
+    required Widget child,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      key: key,
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.right,
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _metaRow(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.bodyLarge,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(label, style: theme.textTheme.bodySmall),
         ],
       ),
     );
@@ -1604,7 +3385,11 @@ class DealDetailSheet extends StatelessWidget {
 }
 
 class EditRecordSheet extends StatefulWidget {
-  const EditRecordSheet({super.key, required this.record, required this.personName});
+  const EditRecordSheet({
+    super.key,
+    required this.record,
+    required this.personName,
+  });
 
   final AppRecord record;
   final String personName;
@@ -1614,16 +3399,27 @@ class EditRecordSheet extends StatefulWidget {
 }
 
 class _EditRecordSheetState extends State<EditRecordSheet> {
-  late final TextEditingController _amountController = TextEditingController(text: widget.record.amountDisplay);
-  late final TextEditingController _noteController = TextEditingController(text: widget.record.note ?? '');
-  late String? _currencyCode = widget.record.currencyCode ?? (widget.record.assetLabel == 'ارز' ? 'USD' : null);
+  late final TextEditingController _amountController = TextEditingController(
+    text: widget.record.amountDisplay,
+  );
+  late final TextEditingController _noteController = TextEditingController(
+    text: widget.record.note ?? '',
+  );
+  late String? _currencyCode =
+      widget.record.currencyCode ??
+      (widget.record.assetLabel == 'ارز' ? 'USD' : null);
 
   CurrencyOption? get _selectedCurrency => currencyByCode(_currencyCode);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 14, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        14,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1634,10 +3430,15 @@ class _EditRecordSheetState extends State<EditRecordSheet> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('نوع ارز'),
-                subtitle: Text(_selectedCurrency?.displayLabel ?? 'انتخاب نوع ارز'),
+                subtitle: Text(
+                  _selectedCurrency?.displayLabel ?? 'انتخاب نوع ارز',
+                ),
                 trailing: const Icon(CupertinoIcons.chevron_down),
                 onTap: () async {
-                  final selected = await showCurrencyPickerBottomSheet(context, _currencyCode);
+                  final selected = await showCurrencyPickerBottomSheet(
+                    context,
+                    _currencyCode,
+                  );
                   if (selected != null) {
                     setState(() => _currencyCode = selected.code);
                   }
@@ -1659,10 +3460,19 @@ class _EditRecordSheetState extends State<EditRecordSheet> {
               child: FilledButton(
                 onPressed: () {
                   final amountInput = _amountController.text.trim();
-                  final amountDisplay = widget.record.assetLabel == 'ارز' && _currencyCode != null ? formatCurrencyAmount(amountInput, _currencyCode!) : amountInput;
+                  final amountDisplay =
+                      widget.record.assetLabel == 'ارز' && _currencyCode != null
+                      ? formatCurrencyAmount(amountInput, _currencyCode!)
+                      : amountInput;
                   Navigator.pop(
                     context,
-                    widget.record.copyWith(amountDisplay: amountDisplay, currencyCode: widget.record.assetLabel == 'ارز' ? _currencyCode : null, note: _noteController.text.trim()),
+                    widget.record.copyWith(
+                      amountDisplay: amountDisplay,
+                      currencyCode: widget.record.assetLabel == 'ارز'
+                          ? _currencyCode
+                          : null,
+                      note: _noteController.text.trim(),
+                    ),
                   );
                 },
                 child: const Text('ذخیره'),
@@ -1685,19 +3495,33 @@ class PersonEditorSheet extends StatefulWidget {
 }
 
 class _PersonEditorSheetState extends State<PersonEditorSheet> {
-  late final TextEditingController _nameController = TextEditingController(text: widget.existing?.name ?? '');
-  late final TextEditingController _phoneController = TextEditingController(text: widget.existing?.phone ?? '');
-  late final TextEditingController _noteController = TextEditingController(text: widget.existing?.note ?? '');
+  late final TextEditingController _nameController = TextEditingController(
+    text: widget.existing?.name ?? '',
+  );
+  late final TextEditingController _phoneController = TextEditingController(
+    text: widget.existing?.phone ?? '',
+  );
+  late final TextEditingController _noteController = TextEditingController(
+    text: widget.existing?.note ?? '',
+  );
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 14, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        14,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.existing == null ? 'افزودن شخص' : 'ویرایش شخص', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              widget.existing == null ? 'افزودن شخص' : 'ویرایش شخص',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: _nameController,
@@ -1706,7 +3530,9 @@ class _PersonEditorSheetState extends State<PersonEditorSheet> {
             const SizedBox(height: 10),
             TextField(
               controller: _phoneController,
-              decoration: const InputDecoration(labelText: 'شماره تماس (اختیاری)'),
+              decoration: const InputDecoration(
+                labelText: 'شماره تماس (اختیاری)',
+              ),
               keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: 10),
@@ -1723,10 +3549,16 @@ class _PersonEditorSheetState extends State<PersonEditorSheet> {
                   final name = _nameController.text.trim();
                   if (name.isEmpty) return;
                   final person = AppPerson(
-                    id: widget.existing?.id ?? 'p${DateTime.now().millisecondsSinceEpoch}',
+                    id:
+                        widget.existing?.id ??
+                        'p${DateTime.now().millisecondsSinceEpoch}',
                     name: name,
-                    phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-                    note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+                    phone: _phoneController.text.trim().isEmpty
+                        ? null
+                        : _phoneController.text.trim(),
+                    note: _noteController.text.trim().isEmpty
+                        ? null
+                        : _noteController.text.trim(),
                     archived: widget.existing?.archived ?? false,
                   );
                   Navigator.pop(context, person);
@@ -1766,9 +3598,19 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   @override
   Widget build(BuildContext context) {
     final currencyReady = _asset != 'ارز' || _currencyCode != null;
-    final ready = _operation != null && _asset != null && _person != null && currencyReady && _amountController.text.trim().isNotEmpty;
+    final ready =
+        _operation != null &&
+        _asset != null &&
+        _person != null &&
+        currencyReady &&
+        _amountController.text.trim().isNotEmpty;
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1777,7 +3619,10 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               child: Container(
                 width: 46,
                 height: 4,
-                decoration: BoxDecoration(color: Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(100)),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).dividerColor,
+                  borderRadius: BorderRadius.circular(100),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -1786,7 +3631,16 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: ['خرید', 'فروش', 'دریافت', 'تحویل'].map((value) => _chip(context, value, _operation == value, () => setState(() => _operation = value))).toList(),
+              children: ['خرید', 'فروش', 'دریافت', 'تحویل']
+                  .map(
+                    (value) => _chip(
+                      context,
+                      value,
+                      _operation == value,
+                      () => setState(() => _operation = value),
+                    ),
+                  )
+                  .toList(),
             ),
             const SizedBox(height: 10),
             Wrap(
@@ -1819,7 +3673,10 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               subtitle: Text(_person?.name ?? 'انتخاب شخص'),
               trailing: const Icon(CupertinoIcons.chevron_down),
               onTap: () async {
-                final selected = await showPersonPickerBottomSheet(context, widget.people);
+                final selected = await showPersonPickerBottomSheet(
+                  context,
+                  widget.people,
+                );
                 if (selected != null) setState(() => _person = selected);
               },
             ),
@@ -1827,10 +3684,15 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('نوع ارز'),
-                subtitle: Text(_selectedCurrency?.displayLabel ?? 'انتخاب نوع ارز'),
+                subtitle: Text(
+                  _selectedCurrency?.displayLabel ?? 'انتخاب نوع ارز',
+                ),
                 trailing: const Icon(CupertinoIcons.chevron_down),
                 onTap: () async {
-                  final selected = await showCurrencyPickerBottomSheet(context, _currencyCode);
+                  final selected = await showCurrencyPickerBottomSheet(
+                    context,
+                    _currencyCode,
+                  );
                   if (selected != null) {
                     setState(() => _currencyCode = selected.code);
                   }
@@ -1839,7 +3701,9 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
             TextField(
               controller: _amountController,
               keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: _asset == 'طلا' ? 'مقدار' : 'مبلغ'),
+              decoration: InputDecoration(
+                labelText: _asset == 'طلا' ? 'مقدار' : 'مبلغ',
+              ),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 6),
@@ -1856,7 +3720,11 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('ساعت'),
-              subtitle: Text(_time == null ? 'بدون ساعت' : '${toPersianDigits(_time!.hour.toString().padLeft(2, '0'))}:${toPersianDigits(_time!.minute.toString().padLeft(2, '0'))}'),
+              subtitle: Text(
+                _time == null
+                    ? 'بدون ساعت'
+                    : '${toPersianDigits(_time!.hour.toString().padLeft(2, '0'))}:${toPersianDigits(_time!.minute.toString().padLeft(2, '0'))}',
+              ),
               trailing: const Icon(CupertinoIcons.time),
               onTap: () async {
                 final selected = await pickCupertinoTime(context, _time);
@@ -1869,7 +3737,10 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               subtitle: Text(_reminder),
               trailing: const Icon(CupertinoIcons.bell),
               onTap: () async {
-                final selected = await showReminderTextPickerBottomSheet(context, _reminder);
+                final selected = await showReminderTextPickerBottomSheet(
+                  context,
+                  _reminder,
+                );
                 if (selected != null) setState(() => _reminder = selected);
               },
             ),
@@ -1909,24 +3780,43 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     );
   }
 
-  Widget _chip(BuildContext context, String text, bool selected, VoidCallback? onTap) {
+  Widget _chip(
+    BuildContext context,
+    String text,
+    bool selected,
+    VoidCallback? onTap,
+  ) {
     return ChoiceChip(
       label: Text(text),
       selected: selected,
       showCheckmark: false,
-      selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
-      side: BorderSide(color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.35) : Theme.of(context).dividerColor),
+      selectedColor: Theme.of(
+        context,
+      ).colorScheme.primary.withValues(alpha: 0.14),
+      side: BorderSide(
+        color: selected
+            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.35)
+            : Theme.of(context).dividerColor,
+      ),
       onSelected: onTap == null ? null : (_) => onTap(),
     );
   }
 }
 
 class CalendarMonthGrid extends StatelessWidget {
-  const CalendarMonthGrid({super.key, required this.month, required this.selected, required this.eventDays, required this.onDayTap});
+  const CalendarMonthGrid({
+    super.key,
+    required this.month,
+    required this.selected,
+    required this.eventDays,
+    this.overdueDays = const [],
+    required this.onDayTap,
+  });
 
   final Jalali month;
   final Jalali selected;
   final List<Jalali> eventDays;
+  final List<Jalali> overdueDays;
   final ValueChanged<Jalali> onDayTap;
 
   @override
@@ -1937,7 +3827,19 @@ class CalendarMonthGrid extends StatelessWidget {
     final cells = <Widget>[];
 
     for (final title in weekTitles) {
-      cells.add(Center(child: Text(title, style: Theme.of(context).textTheme.bodyMedium)));
+      cells.add(
+        Center(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.color?.withValues(alpha: 0.9),
+            ),
+          ),
+        ),
+      );
     }
     for (int i = 0; i < firstWeekday; i++) {
       cells.add(const SizedBox());
@@ -1945,24 +3847,45 @@ class CalendarMonthGrid extends StatelessWidget {
     for (int day = 1; day <= daysInMonth; day++) {
       final date = month.withDay(day);
       final hasEvent = eventDays.any((e) => isSameJalali(e, date));
+      final hasOverdue = overdueDays.any((e) => isSameJalali(e, date));
       final isSelected = isSameJalali(date, selected);
       cells.add(
-        GestureDetector(
+        InkWell(
           key: ValueKey('calendar-day-$day'),
           onTap: () => onDayTap(date),
+          borderRadius: BorderRadius.circular(10),
           child: Container(
             margin: const EdgeInsets.all(3),
-            decoration: BoxDecoration(color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.14) : Colors.transparent, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(toPersianDigits(day.toString()), style: Theme.of(context).textTheme.bodyLarge),
+                Text(
+                  toPersianDigits(day.toString()),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : null,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 if (hasEvent)
                   Container(
                     width: 5,
                     height: 5,
-                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: hasOverdue
+                          ? const Color(0xFFB23A3A)
+                          : Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.75),
+                      shape: BoxShape.circle,
+                    ),
                   )
                 else
                   const SizedBox(height: 5),
@@ -1980,7 +3903,13 @@ class CalendarMonthGrid extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
-      child: GridView.count(shrinkWrap: true, crossAxisCount: 7, physics: const NeverScrollableScrollPhysics(), childAspectRatio: 0.9, children: cells),
+      child: GridView.count(
+        shrinkWrap: true,
+        crossAxisCount: 7,
+        physics: const NeverScrollableScrollPhysics(),
+        childAspectRatio: 1.05,
+        children: cells,
+      ),
     );
   }
 
@@ -1991,43 +3920,27 @@ class CalendarMonthGrid extends StatelessWidget {
   }
 }
 
-class _CalendarHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _CalendarHeaderDelegate({required this.minExtentValue, required this.maxExtentValue, required this.builder});
-
-  final double minExtentValue;
-  final double maxExtentValue;
-  final Widget Function(BuildContext, double) builder;
-
-  @override
-  double get minExtent => minExtentValue;
-
-  @override
-  double get maxExtent => maxExtentValue;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
-    return builder(context, progress);
-  }
-
-  @override
-  bool shouldRebuild(covariant _CalendarHeaderDelegate oldDelegate) {
-    return oldDelegate.minExtentValue != minExtentValue || oldDelegate.maxExtentValue != maxExtentValue;
-  }
-}
-
-Future<AppPerson?> showPersonPickerBottomSheet(BuildContext context, List<AppPerson> people) {
+Future<AppPerson?> showPersonPickerBottomSheet(
+  BuildContext context,
+  List<AppPerson> people, {
+  List<AppPerson> recentPeople = const [],
+}) {
   return showModalBottomSheet<AppPerson>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (_) => _PersonPickerSheet(people: people),
+    builder: (_) =>
+        _PersonPickerSheet(people: people, recentPeople: recentPeople),
   );
 }
 
 class _PersonPickerSheet extends StatefulWidget {
-  const _PersonPickerSheet({required this.people});
+  const _PersonPickerSheet({
+    required this.people,
+    this.recentPeople = const [],
+  });
   final List<AppPerson> people;
+  final List<AppPerson> recentPeople;
 
   @override
   State<_PersonPickerSheet> createState() => _PersonPickerSheetState();
@@ -2038,25 +3951,65 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.people.where((e) => e.name.contains(query.trim())).toList(growable: false);
+    final trimmed = query.trim();
+    final filtered = widget.people
+        .where((e) => e.name.contains(trimmed))
+        .toList(growable: false);
+    final recent = trimmed.isEmpty
+        ? widget.recentPeople
+              .where(
+                (person) => widget.people.any((item) => item.id == person.id),
+              )
+              .toList(growable: false)
+        : const <AppPerson>[];
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
-            decoration: const InputDecoration(prefixIcon: Icon(CupertinoIcons.search), hintText: 'جستجو'),
+            decoration: const InputDecoration(
+              prefixIcon: Icon(CupertinoIcons.search),
+              hintText: 'جستجو',
+            ),
             onChanged: (v) => setState(() => query = v),
           ),
           const SizedBox(height: 8),
           SizedBox(
             height: 320,
-            child: ListView.builder(
-              itemCount: filtered.length,
-              itemBuilder: (context, index) {
-                final person = filtered[index];
-                return ListTile(title: Text(person.name), onTap: () => Navigator.pop(context, person));
-              },
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                if (recent.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4, bottom: 2),
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Text('اخیراً استفاده‌شده'),
+                    ),
+                  ),
+                  ...recent.map(
+                    (person) => ListTile(
+                      title: Text(person.name),
+                      onTap: () => Navigator.pop(context, person),
+                    ),
+                  ),
+                  if (filtered.any(
+                    (person) => recent.every((item) => item.id != person.id),
+                  ))
+                    const Divider(height: 1),
+                ],
+                ...filtered
+                    .where(
+                      (person) => recent.every((item) => item.id != person.id),
+                    )
+                    .map(
+                      (person) => ListTile(
+                        title: Text(person.name),
+                        onTap: () => Navigator.pop(context, person),
+                      ),
+                    ),
+              ],
             ),
           ),
         ],
@@ -2065,18 +4018,24 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
   }
 }
 
-Future<CurrencyOption?> showCurrencyPickerBottomSheet(BuildContext context, String? currentCode) {
+Future<CurrencyOption?> showCurrencyPickerBottomSheet(
+  BuildContext context,
+  String? currentCode, {
+  List<CurrencyOption>? options,
+}) {
   return showModalBottomSheet<CurrencyOption>(
     context: context,
     useSafeArea: true,
-    builder: (_) => _CurrencyPickerSheet(currentCode: currentCode),
+    builder: (_) =>
+        _CurrencyPickerSheet(currentCode: currentCode, options: options),
   );
 }
 
 class _CurrencyPickerSheet extends StatelessWidget {
-  const _CurrencyPickerSheet({required this.currentCode});
+  const _CurrencyPickerSheet({required this.currentCode, this.options});
 
   final String? currentCode;
+  final List<CurrencyOption>? options;
 
   @override
   Widget build(BuildContext context) {
@@ -2088,11 +4047,13 @@ class _CurrencyPickerSheet extends StatelessWidget {
         children: [
           Text('نوع ارز', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          ...kCurrencyOptions.map(
+          ...(options ?? kCurrencyOptions).map(
             (option) => ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(option.displayLabel),
-              trailing: currentCode == option.code ? const Icon(CupertinoIcons.check_mark) : null,
+              trailing: currentCode == option.code
+                  ? const Icon(CupertinoIcons.check_mark)
+                  : null,
               onTap: () => Navigator.pop(context, option),
             ),
           ),
@@ -2132,27 +4093,53 @@ class _JalaliDateDialogState extends State<_JalaliDateDialog> {
           children: [
             Row(
               children: [
-                IconButton(onPressed: () => setState(() => month = month.addMonths(-1)), icon: const Icon(CupertinoIcons.chevron_right)),
-                Expanded(child: Center(child: Text('${monthName(month.month)} ${toPersianDigits(month.year.toString())}'))),
-                IconButton(onPressed: () => setState(() => month = month.addMonths(1)), icon: const Icon(CupertinoIcons.chevron_left)),
+                IconButton(
+                  onPressed: () => setState(() => month = month.addMonths(-1)),
+                  icon: const Icon(CupertinoIcons.chevron_right),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '${monthName(month.month)} ${toPersianDigits(month.year.toString())}',
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => month = month.addMonths(1)),
+                  icon: const Icon(CupertinoIcons.chevron_left),
+                ),
               ],
             ),
             SizedBox(
               height: 280,
-              child: CalendarMonthGrid(month: month, selected: selected, eventDays: const [], onDayTap: (d) => setState(() => selected = d)),
+              child: CalendarMonthGrid(
+                month: month,
+                selected: selected,
+                eventDays: const [],
+                onDayTap: (d) => setState(() => selected = d),
+              ),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
-        FilledButton(onPressed: () => Navigator.pop(context, selected), child: const Text('تایید')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('انصراف'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, selected),
+          child: const Text('تایید'),
+        ),
       ],
     );
   }
 }
 
-Future<TimeOfDay?> pickCupertinoTime(BuildContext context, TimeOfDay? initial) async {
+Future<TimeOfDay?> pickCupertinoTime(
+  BuildContext context,
+  TimeOfDay? initial,
+) async {
   TimeOfDay selected = initial ?? TimeOfDay.now();
   await showCupertinoModalPopup<void>(
     context: context,
@@ -2163,14 +4150,28 @@ Future<TimeOfDay?> pickCupertinoTime(BuildContext context, TimeOfDay? initial) a
         child: Column(
           children: [
             Row(
-              children: [CupertinoButton(onPressed: () => Navigator.pop(context), child: const Text('تایید'))],
+              children: [
+                CupertinoButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('تایید'),
+                ),
+              ],
             ),
             Expanded(
               child: CupertinoDatePicker(
                 mode: CupertinoDatePickerMode.time,
-                initialDateTime: DateTime(2025, 1, 1, selected.hour, selected.minute),
+                initialDateTime: DateTime(
+                  2025,
+                  1,
+                  1,
+                  selected.hour,
+                  selected.minute,
+                ),
                 use24hFormat: true,
-                onDateTimeChanged: (value) => selected = TimeOfDay(hour: value.hour, minute: value.minute),
+                onDateTimeChanged: (value) => selected = TimeOfDay(
+                  hour: value.hour,
+                  minute: value.minute,
+                ),
               ),
             ),
           ],
@@ -2188,7 +4189,10 @@ Future<(Jalali, TimeOfDay?)?> showReminderPickerBottomSheet(
   String initialSelection = '۱ ساعت',
   DateTime? now,
 }) async {
-  final selected = await showReminderTextPickerBottomSheet(context, initialSelection);
+  final selected = await showReminderTextPickerBottomSheet(
+    context,
+    initialSelection,
+  );
   if (!context.mounted || selected == null) return null;
   if (selected == 'سفارشی') {
     final d = await pickJalaliDate(context, initialDate);
@@ -2202,22 +4206,1015 @@ Future<(Jalali, TimeOfDay?)?> showReminderPickerBottomSheet(
     tomorrowTime: initialTime,
   );
   if (target == null) return null;
-  return (Jalali.fromDateTime(target), TimeOfDay(hour: target.hour, minute: target.minute));
+  return (
+    Jalali.fromDateTime(target),
+    TimeOfDay(hour: target.hour, minute: target.minute),
+  );
 }
 
-Future<String?> showReminderTextPickerBottomSheet(BuildContext context, String current) async {
+Future<String?> showReminderTextPickerBottomSheet(
+  BuildContext context,
+  String current,
+) async {
   return showModalBottomSheet<String>(
     context: context,
     useSafeArea: true,
     builder: (_) {
-      final items = ['۱۵ دقیقه', '۳۰ دقیقه', '۱ ساعت', '۳ ساعت', '۱ روز', 'فردا', 'سفارشی'];
+      final items = [
+        'بدون یادآوری',
+        '۱۵ دقیقه',
+        '۳۰ دقیقه',
+        '۱ ساعت',
+        '۳ ساعت',
+        '۱ روز',
+        'فردا',
+        'سفارشی',
+      ];
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
         child: ListView(
           shrinkWrap: true,
-          children: items.map((e) => ListTile(title: Text(e), trailing: e == current ? const Icon(CupertinoIcons.check_mark) : null, onTap: () => Navigator.pop(context, e))).toList(),
+          children: items
+              .map(
+                (e) => ListTile(
+                  title: Text(e),
+                  trailing: e == current
+                      ? const Icon(CupertinoIcons.check_mark)
+                      : null,
+                  onTap: () => Navigator.pop(context, e),
+                ),
+              )
+              .toList(),
         ),
       );
     },
   );
+}
+
+/// A compact, platform-native share affordance shared by Deal and Settlement
+/// detail sheets. The record itself remains typed and its lifecycle is never
+/// inferred from the share presentation.
+class RecordShareButton extends StatelessWidget {
+  const RecordShareButton({
+    super.key,
+    required this.record,
+    required this.personName,
+  });
+
+  final AppRecord record;
+  final String personName;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: 'اشتراک‌گذاری',
+    onPressed: () =>
+        showRecordShareOptions(context, record: record, personName: personName),
+    icon: const Icon(CupertinoIcons.share, size: 20),
+    constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+    padding: EdgeInsets.zero,
+  );
+}
+
+/// Formats one record for messaging without exposing internal enum names or
+/// presenting a Deal as a Settlement. This is intentionally pure so it can be
+/// covered independently of platform share sheets.
+String recordShareText(AppRecord record, String personName) {
+  final lines = <String>[
+    'ZAR+ — ${record.type == RecordType.deal ? 'جزئیات معامله' : 'جزئیات تسویه'}',
+    'عملیات: ${record.operationDisplayLabel}',
+    if (record.type == RecordType.settlement) 'وضعیت: ${record.statusLabel()}',
+    'طرف حساب: $personName',
+    'دارایی: ${_shareAssetSummary(record)}',
+    'تاریخ ثبت: ${formatJalaliDate(record.date)}',
+    'ساعت ثبت: ${record.timeLabel()}',
+    if (record.tomanRate != null)
+      'نرخ/قیمت واحد: ${toPersianNumberText(record.tomanRate!)} تومان',
+    if (record.totalToman != null)
+      'مبلغ کل: ${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(record.totalToman))} تومان',
+    if ((record.note ?? '').trim().isNotEmpty)
+      'یادداشت: ${record.note!.trim()}',
+  ];
+  return lines.join('\n');
+}
+
+String _shareAssetSummary(AppRecord record) {
+  if (record.coinLines.isNotEmpty) {
+    return record.coinLines
+        .map(
+          (line) =>
+              '${toPersianDigits(line.quantity.toString())} × ${line.name}'
+              '${line.weightGrams == null ? '' : '، ${toPersianDigits(line.weightGrams!)} گرم'}'
+              '${line.fineness == null ? '' : '، عیار ${toPersianDigits(line.fineness!)}'}',
+        )
+        .join('؛ ');
+  }
+  if (record.currencyCode != null) {
+    final numeric =
+        RegExp(
+          r'[-+]?[0-9۰-۹٬,٫.]+',
+        ).firstMatch(record.amountDisplay)?.group(0) ??
+        record.amountDisplay;
+    return '${toPersianNumberText(numeric)} ${record.currencyCode}';
+  }
+  if (record.goldFineness != null || record.assetLabel == 'گرم طلا') {
+    final numeric =
+        RegExp(
+          r'[-+]?[0-9۰-۹٬,٫.]+',
+        ).firstMatch(record.amountDisplay)?.group(0) ??
+        record.amountDisplay;
+    final unit = record.goldInputUnit == 'mesghal' ? 'مثقال' : 'گرم';
+    return '${toPersianNumberText(numeric)} $unit طلا، عیار ${record.goldFineness == null ? 'نامشخص' : toPersianNumberText(record.goldFineness!)}';
+  }
+  return toPersianNumberText(record.amountDisplay);
+}
+
+/// Canonical compact asset summary shared by History and share surfaces.
+///
+/// The summary is derived from the record and keeps currency values in the
+/// existing numeric-first format so callers can place it in an explicit LTR
+/// span without changing the stored amount.
+String recordAssetSummary(AppRecord record) => _shareAssetSummary(record);
+
+Future<void> showRecordShareOptions(
+  BuildContext context, {
+  required AppRecord record,
+  required String personName,
+}) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'اشتراک‌گذاری جزئیات',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(CupertinoIcons.textbox),
+              title: const Text('ارسال متن'),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await SharePlus.instance.share(
+                  ShareParams(text: recordShareText(record, personName)),
+                );
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(CupertinoIcons.photo),
+              title: const Text('ارسال تصویر'),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await _shareRecordImage(context, record, personName);
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _shareRecordImage(
+  BuildContext context,
+  AppRecord record,
+  String personName,
+) async {
+  final boundaryKey = GlobalKey();
+  final bytes = await showModalBottomSheet<Uint8List>(
+    context: context,
+    useSafeArea: true,
+    isScrollControlled: true,
+    builder: (_) => _ShareCardCapture(
+      boundaryKey: boundaryKey,
+      record: record,
+      personName: personName,
+    ),
+  );
+  if (!context.mounted || bytes == null) return;
+  await SharePlus.instance.share(
+    ShareParams(
+      text: 'ZAR+ — ${record.operationDisplayLabel}',
+      files: [
+        XFile.fromData(
+          bytes,
+          mimeType: 'image/png',
+          name: 'zar-${record.id}.png',
+        ),
+      ],
+      fileNameOverrides: ['zar-${record.id}.png'],
+    ),
+  );
+}
+
+class _ShareCardCapture extends StatefulWidget {
+  const _ShareCardCapture({
+    required this.boundaryKey,
+    required this.record,
+    required this.personName,
+  });
+
+  final GlobalKey boundaryKey;
+  final AppRecord record;
+  final String personName;
+
+  @override
+  State<_ShareCardCapture> createState() => _ShareCardCaptureState();
+}
+
+class _ShareCardCaptureState extends State<_ShareCardCapture> {
+  bool _captured = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _capture());
+  }
+
+  Future<void> _capture() async {
+    if (_captured || !mounted) return;
+    final renderObject = widget.boundaryKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderRepaintBoundary) return;
+    try {
+      final image = await renderObject.toImage(pixelRatio: 3);
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (!mounted || data == null) return;
+      _captured = true;
+      Navigator.of(context).pop(data.buffer.asUint8List());
+    } catch (_) {
+      if (mounted) Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      child: RepaintBoundary(
+        key: widget.boundaryKey,
+        child: _RecordShareCard(
+          record: widget.record,
+          personName: widget.personName,
+        ),
+      ),
+    ),
+  );
+}
+
+class _RecordShareCard extends StatelessWidget {
+  const _RecordShareCard({required this.record, required this.personName});
+
+  final AppRecord record;
+  final String personName;
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Material(
+      color: Colors.white,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBFAF8),
+          border: Border.all(color: const Color(0xFFE4DFD7)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'ZAR+',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              record.operationDisplayLabel,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              personName,
+              style: const TextStyle(fontSize: 16, color: Color(0xFF65615C)),
+            ),
+            const Divider(height: 24),
+            Text(
+              _shareAssetSummary(record),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '${formatJalaliDate(record.date)} • ${record.timeLabel()}',
+              style: const TextStyle(color: Color(0xFF65615C)),
+            ),
+            if (record.type == RecordType.settlement) ...[
+              const SizedBox(height: 4),
+              Text(
+                record.statusLabel(),
+                style: const TextStyle(color: Color(0xFF65615C)),
+              ),
+            ],
+            if (record.totalToman != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                'مبلغ کل: ${toPersianNumberText(NumberFormat.decimalPattern('en_US').format(record.totalToman))} تومان',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Builds a current, derived account summary for one person. This is a
+/// balance/status share, not a receipt and not an accounting statement.
+String personBalanceShareText({
+  required AppPerson person,
+  required ZarCustomerOperationalBalance balance,
+  DateTime? generatedAt,
+  String? lastActivityLabel,
+}) {
+  final lines = <String>[
+    'ZAR+',
+    'وضعیت حساب با ${person.name}',
+    if ((person.phone ?? '').trim().isNotEmpty) 'شماره تماس: ${person.phone}',
+    '',
+    'باید از او بگیرم:',
+    ..._shareBucketLines(balance.receivableAssetBuckets),
+    '',
+    'باید به او بدهم:',
+    ..._shareBucketLines(balance.payableAssetBuckets),
+    if (lastActivityLabel != null) 'آخرین فعالیت: $lastActivityLabel',
+    '',
+    'تهیه‌شده در: ${_shareDateTime(generatedAt ?? DateTime.now())}',
+  ];
+  return lines.join('\n');
+}
+
+String personStatementShareText({
+  required AppPerson person,
+  required ZarCustomerOperationalBalance balance,
+  required List<AppRecord> records,
+  ZarCustomerLedgerProjection? ledger,
+  DateTime? generatedAt,
+  int? recentLimit,
+}) {
+  final personRecords =
+      records.where((item) => item.personId == person.id).toList()
+        ..sort(_compareShareRecords);
+  final open = personRecords
+      .where(
+        (item) =>
+            item.type == RecordType.settlement &&
+            item.status == SettlementStatus.open,
+      )
+      .toList(growable: false);
+  final history = personRecords
+      .where(
+        (item) =>
+            item.type == RecordType.deal ||
+            item.status != SettlementStatus.open,
+      )
+      .toList(growable: false);
+  final visibleHistory = recentLimit == null || history.length <= recentLimit
+      ? history
+      : history.take(recentLimit).toList(growable: false);
+  final unpricedDeals = visibleHistory
+      .where((item) => item.type == RecordType.deal && item.totalToman == null)
+      .toList(growable: false);
+  final lines = <String>[
+    'ZAR+',
+    'صورتحساب ${person.name}',
+    if ((person.phone ?? '').trim().isNotEmpty) 'شماره تماس: ${person.phone}',
+    '',
+    'وضعیت فعلی',
+    'باید از او بگیرم:',
+    ..._shareBucketLines(balance.receivableAssetBuckets),
+    'باید به او بدهم:',
+    ..._shareBucketLines(balance.payableAssetBuckets),
+    '',
+    'تعهدات باز',
+    if (open.isEmpty)
+      'موردی وجود ندارد.'
+    else
+      ...open.expand(_shareOpenRecordLines),
+    '',
+    'سوابق',
+    if (visibleHistory.isEmpty)
+      'موردی ثبت نشده است.'
+    else
+      ...visibleHistory.expand(_shareHistoryRecordLines),
+    if (visibleHistory.length < history.length)
+      'و ${toPersianDigits((history.length - visibleHistory.length).toString())} فعالیت دیگر',
+    if (unpricedDeals.isNotEmpty) ...[
+      '',
+      'معاملات بدون مبلغ تسویه',
+      ...unpricedDeals.map(
+        (item) =>
+            '${item.operationDisplayLabel}: ${_shareAssetSummary(item)} — مبلغ تسویه مشخص نشده',
+      ),
+    ],
+    if (ledger != null && ledger.postings.isNotEmpty) ...[
+      '',
+      'گردش حساب',
+      ...ledger
+          .statementLines()
+          .take(recentLimit ?? ledger.postings.length)
+          .map(_shareLedgerStatementLine),
+    ],
+    '',
+    'تهیه‌شده در: ${_shareDateTime(generatedAt ?? DateTime.now())}',
+  ];
+  return lines.join('\n');
+}
+
+String balanceBucketShareText({
+  required AppPerson person,
+  required ZarCustomerBalanceAssetBucket bucket,
+  DateTime? generatedAt,
+}) {
+  final direction = bucket.direction == ZarSettlementDirection.receive
+      ? 'باید از ${person.name} دریافت کنم'
+      : 'باید به ${person.name} پرداخت کنم';
+  return [
+    'ZAR+',
+    'وضعیت حساب با ${person.name}',
+    '',
+    direction,
+    _shareBucketLine(bucket),
+    if (bucket.sourceCount > 0)
+      'منشأ: ${toPersianDigits(bucket.sourceCount.toString())} رکورد',
+    '',
+    'این مورد خلاصه مانده فعلی است، نه رسید معامله.',
+    'تاریخ تهیه: ${_shareDateTime(generatedAt ?? DateTime.now())}',
+  ].join('\n');
+}
+
+Future<void> showPersonStatementShareOptions(
+  BuildContext context, {
+  required AppPerson person,
+  required ZarCustomerOperationalBalance balance,
+  required List<AppRecord> records,
+  ZarCustomerLedgerProjection? ledger,
+}) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'اشتراک‌گذاری صورتحساب',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            _shareActionTile(
+              sheetContext,
+              label: 'خلاصه حساب — ارسال متن',
+              icon: CupertinoIcons.textbox,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await SharePlus.instance.share(
+                  ShareParams(
+                    text: personBalanceShareText(
+                      person: person,
+                      balance: balance,
+                      lastActivityLabel: _latestShareActivityLabel(
+                        person,
+                        records,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            _shareActionTile(
+              sheetContext,
+              label: 'خلاصه حساب — ارسال تصویر',
+              icon: CupertinoIcons.photo,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await _sharePersonImage(
+                  context,
+                  person: person,
+                  balance: balance,
+                  records: records,
+                  full: false,
+                );
+              },
+            ),
+            _shareActionTile(
+              sheetContext,
+              label: 'صورتحساب کامل — ارسال متن',
+              icon: CupertinoIcons.doc_text,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await SharePlus.instance.share(
+                  ShareParams(
+                    text: personStatementShareText(
+                      person: person,
+                      balance: balance,
+                      records: records,
+                      ledger: ledger,
+                    ),
+                  ),
+                );
+              },
+            ),
+            _shareActionTile(
+              sheetContext,
+              label: 'صورتحساب کامل — ارسال تصویر',
+              icon: CupertinoIcons.photo_on_rectangle,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await _sharePersonImage(
+                  context,
+                  person: person,
+                  balance: balance,
+                  records: records,
+                  ledger: ledger,
+                  full: true,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+String? _latestShareActivityLabel(AppPerson person, List<AppRecord> records) {
+  final items = records.where((item) => item.personId == person.id).toList()
+    ..sort(_compareShareRecords);
+  if (items.isEmpty) return null;
+  final item = items.first;
+  return '${formatJalaliDate(item.date)} · ${item.timeLabel()}';
+}
+
+Future<void> showBalanceBucketShareOptions(
+  BuildContext context, {
+  required AppPerson person,
+  required ZarCustomerBalanceAssetBucket bucket,
+}) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'اشتراک‌گذاری این مورد',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            _shareActionTile(
+              sheetContext,
+              label: 'ارسال متن',
+              icon: CupertinoIcons.textbox,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await SharePlus.instance.share(
+                  ShareParams(
+                    text: balanceBucketShareText(
+                      person: person,
+                      bucket: bucket,
+                    ),
+                  ),
+                );
+              },
+            ),
+            _shareActionTile(
+              sheetContext,
+              label: 'ارسال تصویر',
+              icon: CupertinoIcons.photo,
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await _shareBucketImage(
+                  context,
+                  person: person,
+                  bucket: bucket,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _shareActionTile(
+  BuildContext context, {
+  required String label,
+  required IconData icon,
+  required VoidCallback onTap,
+}) => ListTile(
+  contentPadding: EdgeInsets.zero,
+  leading: Icon(icon),
+  title: Text(label),
+  onTap: onTap,
+);
+
+Future<void> _sharePersonImage(
+  BuildContext context, {
+  required AppPerson person,
+  required ZarCustomerOperationalBalance balance,
+  required List<AppRecord> records,
+  ZarCustomerLedgerProjection? ledger,
+  required bool full,
+}) async {
+  final bytes = await _captureShareCard(
+    context,
+    _PersonShareCard(
+      person: person,
+      balance: balance,
+      records: records,
+      ledger: ledger,
+      full: full,
+    ),
+  );
+  if (!context.mounted || bytes == null) return;
+  await SharePlus.instance.share(
+    ShareParams(
+      text: full ? 'صورتحساب ${person.name}' : 'وضعیت حساب با ${person.name}',
+      files: [
+        XFile.fromData(
+          bytes,
+          mimeType: 'image/png',
+          name: 'zar-person-${person.id}.png',
+        ),
+      ],
+      fileNameOverrides: ['zar-person-${person.id}.png'],
+    ),
+  );
+}
+
+Future<void> _shareBucketImage(
+  BuildContext context, {
+  required AppPerson person,
+  required ZarCustomerBalanceAssetBucket bucket,
+}) async {
+  final bytes = await _captureShareCard(
+    context,
+    _BalanceBucketShareCard(person: person, bucket: bucket),
+  );
+  if (!context.mounted || bytes == null) return;
+  await SharePlus.instance.share(
+    ShareParams(
+      text: balanceBucketShareText(person: person, bucket: bucket),
+      files: [
+        XFile.fromData(
+          bytes,
+          mimeType: 'image/png',
+          name: 'zar-balance-${person.id}.png',
+        ),
+      ],
+      fileNameOverrides: ['zar-balance-${person.id}.png'],
+    ),
+  );
+}
+
+Future<Uint8List?> _captureShareCard(BuildContext context, Widget card) async {
+  final boundaryKey = GlobalKey();
+  return showModalBottomSheet<Uint8List>(
+    context: context,
+    useSafeArea: true,
+    isScrollControlled: true,
+    builder: (_) =>
+        _GenericShareCardCapture(boundaryKey: boundaryKey, card: card),
+  );
+}
+
+class _GenericShareCardCapture extends StatefulWidget {
+  const _GenericShareCardCapture({
+    required this.boundaryKey,
+    required this.card,
+  });
+  final GlobalKey boundaryKey;
+  final Widget card;
+
+  @override
+  State<_GenericShareCardCapture> createState() =>
+      _GenericShareCardCaptureState();
+}
+
+class _GenericShareCardCaptureState extends State<_GenericShareCardCapture> {
+  bool _captured = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _capture());
+  }
+
+  Future<void> _capture() async {
+    if (_captured || !mounted) return;
+    final renderObject = widget.boundaryKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderRepaintBoundary) return;
+    try {
+      final image = await renderObject.toImage(pixelRatio: 3);
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (!mounted || data == null) return;
+      _captured = true;
+      Navigator.of(context).pop(data.buffer.asUint8List());
+    } catch (_) {
+      if (mounted) Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      child: RepaintBoundary(key: widget.boundaryKey, child: widget.card),
+    ),
+  );
+}
+
+class _PersonShareCard extends StatelessWidget {
+  const _PersonShareCard({
+    required this.person,
+    required this.balance,
+    required this.records,
+    this.ledger,
+    required this.full,
+  });
+  final AppPerson person;
+  final ZarCustomerOperationalBalance balance;
+  final List<AppRecord> records;
+  final ZarCustomerLedgerProjection? ledger;
+  final bool full;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentLedger = ledger;
+    final personRecords =
+        records.where((item) => item.personId == person.id).toList()
+          ..sort(_compareShareRecords);
+    final history = personRecords
+        .where(
+          (item) =>
+              item.type == RecordType.deal ||
+              item.status != SettlementStatus.open,
+        )
+        .take(6)
+        .toList(growable: false);
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Material(
+        color: Colors.white,
+        child: Container(
+          width: 420,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFBFAF8),
+            border: Border.all(color: const Color(0xFFE4DFD7)),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'ZAR+',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                full
+                    ? 'صورتحساب ${person.name}'
+                    : 'وضعیت حساب با ${person.name}',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Divider(height: 26),
+              _shareCardDirection(
+                'باید از او بگیرم',
+                balance.receivableAssetBuckets,
+              ),
+              const SizedBox(height: 12),
+              _shareCardDirection(
+                'باید به او بدهم',
+                balance.payableAssetBuckets,
+              ),
+              if (full) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'فعالیت اخیر',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
+                if (history.isEmpty)
+                  const Text('موردی ثبت نشده است.')
+                else
+                  ...history.map(
+                    (record) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        '${record.operationDisplayLabel} — ${_shareAssetSummary(record)}\n${formatJalaliDate(record.date)} · ${record.timeLabel()}',
+                      ),
+                    ),
+                  ),
+                if (currentLedger != null &&
+                    currentLedger.postings.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  const Text(
+                    'گردش حساب',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  ...currentLedger
+                      .statementLines()
+                      .take(6)
+                      .map(
+                        (line) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(_shareLedgerStatementLine(line)),
+                        ),
+                      ),
+                ],
+              ],
+              const SizedBox(height: 16),
+              Text(
+                'تهیه‌شده در: ${_shareDateTime(DateTime.now())}',
+                style: const TextStyle(color: Color(0xFF65615C)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BalanceBucketShareCard extends StatelessWidget {
+  const _BalanceBucketShareCard({required this.person, required this.bucket});
+  final AppPerson person;
+  final ZarCustomerBalanceAssetBucket bucket;
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Material(
+      color: Colors.white,
+      child: Container(
+        width: 420,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBFAF8),
+          border: Border.all(color: const Color(0xFFE4DFD7)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'ZAR+',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'وضعیت حساب با ${person.name}',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+            const Divider(height: 26),
+            Text(
+              bucket.direction == ZarSettlementDirection.receive
+                  ? 'باید از او دریافت کنم'
+                  : 'باید به او پرداخت کنم',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _shareBucketLine(bucket),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 16),
+            const Text('این تصویر خلاصه مانده فعلی است، نه رسید معامله.'),
+            const SizedBox(height: 12),
+            Text(
+              'تهیه‌شده در: ${_shareDateTime(DateTime.now())}',
+              style: const TextStyle(color: Color(0xFF65615C)),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _shareCardDirection(
+  String title,
+  List<ZarCustomerBalanceAssetBucket> buckets,
+) => Column(
+  crossAxisAlignment: CrossAxisAlignment.stretch,
+  children: [
+    Text(
+      title,
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+    ),
+    const SizedBox(height: 6),
+    if (buckets.isEmpty)
+      const Text('موردی وجود ندارد.')
+    else
+      ...buckets.map(
+        (bucket) => Padding(
+          padding: const EdgeInsets.only(bottom: 5),
+          child: Text(_shareBucketLine(bucket)),
+        ),
+      ),
+  ],
+);
+
+List<String> _shareBucketLines(List<ZarCustomerBalanceAssetBucket> buckets) =>
+    buckets.isEmpty
+    ? ['موردی وجود ندارد.']
+    : buckets.map(_shareBucketLine).toList(growable: false);
+
+String _shareBucketLine(ZarCustomerBalanceAssetBucket bucket) {
+  final amount = toPersianNumberText(bucket.amount);
+  return switch (bucket.assetType) {
+    ZarAssetType.currency =>
+      bucket.currencyCode == 'TOMAN'
+          ? 'تومان $amount'
+          : '${bucket.currencyCode ?? ''} $amount',
+    ZarAssetType.gold =>
+      'گرم طلا $amount — ${bucket.goldFineness == null ? 'عیار نامشخص' : 'عیار ${toPersianNumberText(bucket.goldFineness!)}'}',
+    ZarAssetType.coin => 'عدد $amount — ${bucket.displayName ?? 'سکه'}',
+  };
+}
+
+String _shareLedgerPostingLine(ZarCustomerLedgerPosting posting) {
+  final operation = switch (posting.sourceType) {
+    ZarCustomerLedgerSourceType.deal =>
+      posting.direction == ZarSettlementDirection.receive ? 'فروش' : 'خرید',
+    ZarCustomerLedgerSourceType.settlement =>
+      posting.direction == ZarSettlementDirection.deliver ? 'دریافت' : 'پرداخت',
+  };
+  final bucket = ZarCustomerBalanceAssetBucket(
+    direction: posting.direction,
+    assetType: posting.assetType,
+    amount: posting.amount,
+    currencyCode: posting.currencyCode,
+    goldFineness: posting.goldFineness,
+    coinIdentity: posting.coinIdentity,
+    displayName: posting.displayName,
+  );
+  final date = Jalali.fromDateTime(posting.occurredAt.toLocal());
+  return '$operation: ${_shareBucketLine(bucket)} · ${formatJalaliDate(date)}';
+}
+
+String _shareLedgerStatementLine(ZarCustomerLedgerStatementLine line) {
+  final posting = _shareLedgerPostingLine(line.posting);
+  if (line.runningDirection == null) return '$posting · مانده صفر';
+  final direction = line.runningDirection == ZarSettlementDirection.receive
+      ? 'باید دریافت کنم'
+      : 'باید پرداخت کنم';
+  final amount = toPersianNumberText(line.runningAmount);
+  return '$posting · مانده: $amount — $direction';
+}
+
+Iterable<String> _shareOpenRecordLines(AppRecord record) sync* {
+  yield '${record.operationDisplayLabel}: ${_shareAssetSummary(record)}';
+  yield '${formatJalaliDate(record.date)} · ${record.timeLabel()} · ${record.statusLabel()}';
+}
+
+Iterable<String> _shareHistoryRecordLines(AppRecord record) sync* {
+  yield '${record.operationDisplayLabel}: ${_shareAssetSummary(record)}';
+  yield '${formatJalaliDate(record.date)} · ${record.timeLabel()}${record.type == RecordType.settlement ? ' · ${record.statusLabel()}' : ''}';
+}
+
+int _compareShareRecords(AppRecord a, AppRecord b) {
+  final date = b.date.compareTo(a.date);
+  if (date != 0) return date;
+  final aMinutes = (a.time?.hour ?? -1) * 60 + (a.time?.minute ?? 0);
+  final bMinutes = (b.time?.hour ?? -1) * 60 + (b.time?.minute ?? 0);
+  return bMinutes.compareTo(aMinutes);
+}
+
+int _comparePersonRecords(AppRecord a, AppRecord b) =>
+    _compareShareRecords(a, b);
+
+String _shareDateTime(DateTime value) {
+  final local = value.toLocal();
+  final jalali = Jalali.fromDateTime(local);
+  final hour = toPersianDigits(local.hour.toString().padLeft(2, '0'));
+  final minute = toPersianDigits(local.minute.toString().padLeft(2, '0'));
+  return '${formatJalaliDate(jalali)} · $hour:$minute';
 }

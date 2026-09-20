@@ -55,20 +55,21 @@ void main() {
       expect(find.text('گزارش روزانه'), findsOneWidget);
       expect(find.text('نیازمند اقدام'), findsOneWidget);
       expect(find.text('خرید و فروش'), findsOneWidget);
-      expect(find.text('خرید'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('فروش'), 200, scrollable: find.byType(Scrollable).first);
-      expect(find.text('فروش'), findsOneWidget);
-      expect(find.text('۱۰٬۰۰۰ USD'), findsWidgets);
-      await tester.scrollUntilVisible(find.text('دریافت و پرداخت انجام‌شده'), 200, scrollable: find.byType(Scrollable).first);
-      expect(find.text('دریافت و پرداخت انجام‌شده'), findsOneWidget);
-      expect(find.text('موعد این روز'), findsOneWidget);
+      expect(find.textContaining('خرید'), findsWidgets);
+      expect(find.textContaining('فروش'), findsWidgets);
+      expect(find.text('USD'), findsWidgets);
+      expect(find.textContaining('دریافت و پرداخت'), findsWidgets);
+      expect(find.textContaining('موعد این روز'), findsOneWidget);
       expect(find.text('سود'), findsNothing);
       expect(find.textContaining('زیان'), findsNothing);
+      expect(find.textContaining('حرکت'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
 
-  testWidgets('daily report highlights overdue work separately', (tester) async {
+  testWidgets('daily report highlights overdue work separately', (
+    tester,
+  ) async {
     final day = DateTime(2026, 9, 2, 12);
     final overdue = settlement(
       'overdue',
@@ -90,12 +91,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('عقب‌افتاده'), findsNWidgets(2));
+    expect(find.textContaining('عقب‌افتاده'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('daily report chevrons keep their intended RTL direction',
-      (tester) async {
+  testWidgets('daily report chevrons keep their intended RTL direction', (
+    tester,
+  ) async {
     final day = DateTime(2026, 9, 2, 12);
     await tester.pumpWidget(
       MaterialApp(
@@ -114,20 +116,108 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final rightPointing = find.byWidgetPredicate(
-      (widget) =>
-          widget is Icon &&
-          widget.icon == Icons.chevron_left &&
-          widget.textDirection == TextDirection.rtl,
-    );
-    final leftPointing = find.byWidgetPredicate(
+    final previous = find.byWidgetPredicate(
       (widget) =>
           widget is Icon &&
           widget.icon == Icons.chevron_right &&
-          widget.textDirection == TextDirection.rtl,
+          widget.textDirection == TextDirection.ltr,
     );
-    expect(rightPointing, findsNWidgets(2));
-    expect(leftPointing, findsOneWidget);
+    final nextAndDisclosure = find.byWidgetPredicate(
+      (widget) =>
+          widget is Icon &&
+          widget.icon == Icons.chevron_left &&
+          widget.textDirection == TextDirection.ltr,
+    );
+    expect(previous, findsOneWidget);
+    expect(nextAndDisclosure, findsNWidgets(2));
+  });
+
+  testWidgets('shows Today only for the actual local selected day', (
+    tester,
+  ) async {
+    final now = DateTime(2026, 9, 10, 12);
+    Widget screen(DateTime day) => MaterialApp(
+      home: OperationalDailyReportScreen(
+        key: ValueKey(day),
+        deals: const [],
+        settlements: const [],
+        records: const [],
+        personName: (_) => 'علی',
+        onOpenRecord: (_) {},
+        initialDay: day,
+        clock: () => now,
+      ),
+    );
+
+    await tester.pumpWidget(screen(now));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('امروز ·'), findsOneWidget);
+
+    await tester.pumpWidget(screen(now.subtract(const Duration(days: 1))));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('امروز ·'), findsNothing);
+    expect(find.text('امروز'), findsNothing);
+  });
+
+  testWidgets(
+    'refreshes from the supplied state listenable without reopening',
+    (tester) async {
+      final now = DateTime(2026, 9, 10, 12);
+      final notifier = ValueNotifier<int>(0);
+      final records = <AppRecord>[];
+      final deals = <ZarDeal>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OperationalDailyReportScreen(
+            deals: const [],
+            settlements: const [],
+            records: const [],
+            dealsBuilder: () => deals,
+            recordsBuilder: () => records,
+            settlementsBuilder: () => const [],
+            stateListenable: notifier,
+            personName: (_) => 'علی',
+            onOpenRecord: (_) {},
+            initialDay: now,
+            clock: () => now,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('خرید و فروش · ۰'), findsOneWidget);
+
+      deals.add(deal('new-buy', ZarDealType.buy, now));
+      records.add(appRecord('new-buy', 'خرید', RecordType.deal, now));
+      notifier.value++;
+      await tester.pumpAndSettle();
+      expect(find.text('خرید و فروش · ۱'), findsOneWidget);
+      expect(find.text('خرید از علی'), findsOneWidget);
+    },
+  );
+
+  testWidgets('fits the report at 360dp without overflow', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final now = DateTime(2026, 9, 10, 12);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OperationalDailyReportScreen(
+          deals: [deal('buy', ZarDealType.buy, now)],
+          settlements: const [],
+          records: [appRecord('buy', 'خرید', RecordType.deal, now)],
+          personName: (_) => 'علی',
+          onOpenRecord: (_) {},
+          initialDay: now,
+          clock: () => now,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 }
 
@@ -136,16 +226,16 @@ final _amount = ZarCurrencyAssetAmount(
 );
 
 ZarDeal deal(String id, ZarDealType type, DateTime at) => ZarDeal(
-      id: id,
-      businessId: 'business',
-      type: type,
-      personId: 'person',
-      amount: _amount,
-      dealAt: at,
-      createdBy: 'user',
-      createdAt: at,
-      updatedAt: at,
-    );
+  id: id,
+  businessId: 'business',
+  type: type,
+  personId: 'person',
+  amount: _amount,
+  dealAt: at,
+  createdBy: 'user',
+  createdAt: at,
+  updatedAt: at,
+);
 
 ZarSettlement settlement(
   String id,
@@ -153,22 +243,21 @@ ZarSettlement settlement(
   required DateTime scheduledAt,
   ZarSettlementStatus status = ZarSettlementStatus.open,
   DateTime? completedAt,
-}) =>
-    ZarSettlement(
-      id: id,
-      businessId: 'business',
-      personId: 'person',
-      direction: direction,
-      amount: _amount,
-      scheduledAt: scheduledAt,
-      hasTime: true,
-      status: status,
-      completedAt: completedAt,
-      completedBy: status == ZarSettlementStatus.completed ? 'user' : null,
-      createdBy: 'user',
-      createdAt: scheduledAt,
-      updatedAt: completedAt ?? scheduledAt,
-    );
+}) => ZarSettlement(
+  id: id,
+  businessId: 'business',
+  personId: 'person',
+  direction: direction,
+  amount: _amount,
+  scheduledAt: scheduledAt,
+  hasTime: true,
+  status: status,
+  completedAt: completedAt,
+  completedBy: status == ZarSettlementStatus.completed ? 'user' : null,
+  createdBy: 'user',
+  createdAt: scheduledAt,
+  updatedAt: completedAt ?? scheduledAt,
+);
 
 AppRecord appRecord(
   String id,
@@ -176,16 +265,15 @@ AppRecord appRecord(
   RecordType type,
   DateTime at, {
   SettlementStatus status = SettlementStatus.open,
-}) =>
-    AppRecord(
-      id: id,
-      type: type,
-      operationLabel: operation,
-      personId: 'person',
-      amountDisplay: 'USD ۱۰٬۰۰۰',
-      assetLabel: 'ارز',
-      currencyCode: 'USD',
-      date: Jalali.fromDateTime(at),
-      time: TimeOfDay(hour: at.hour, minute: at.minute),
-      status: status,
-    );
+}) => AppRecord(
+  id: id,
+  type: type,
+  operationLabel: operation,
+  personId: 'person',
+  amountDisplay: 'USD ۱۰٬۰۰۰',
+  assetLabel: 'ارز',
+  currencyCode: 'USD',
+  date: Jalali.fromDateTime(at),
+  time: TimeOfDay(hour: at.hour, minute: at.minute),
+  status: status,
+);

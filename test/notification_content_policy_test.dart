@@ -28,7 +28,8 @@ void main() {
     );
 
     expect(content.title, contains('رضا محمدی'));
-    expect(content.body, contains(r'$10,000'));
+    expect(content.body, contains(r'$۱۰٬۰۰۰'));
+    expect(content.body, contains('۱۱:۰۰'));
   });
 
   test('limited privacy includes person but hides amount', () {

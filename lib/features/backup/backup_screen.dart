@@ -12,11 +12,13 @@ class BackupScreen extends StatefulWidget {
     required this.manager,
     this.files = const PlatformBackupFileService(),
     this.onOpenCoinCatalog,
+    this.onOpenCurrencyCatalog,
   });
 
   final ZarBackupManager manager;
   final BackupFileService files;
   final VoidCallback? onOpenCoinCatalog;
+  final VoidCallback? onOpenCurrencyCatalog;
 
   @override
   State<BackupScreen> createState() => _BackupScreenState();
@@ -131,14 +133,39 @@ class _BackupScreenState extends State<BackupScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'افراد، معاملات طلا، سکه و ارز، دریافت و پرداخت، وضعیت بایگانی و برنامه‌های یادآوری در فایل JSON نسخه ۶ نگهداری می‌شوند. فایل‌های نسخه ۲، ۳، ۴ و ۵ همچنان قابل بازیابی هستند.',
+            'افراد، معاملات طلا، سکه و ارز، دریافت و پرداخت، وضعیت بایگانی و برنامه‌های یادآوری در فایل JSON نسخه ۷ نگهداری می‌شوند. فایل‌های نسخه ۲، ۳، ۴، ۵ و ۶ همچنان قابل بازیابی هستند.',
           ),
           const SizedBox(height: 20),
-          if (widget.onOpenCoinCatalog != null) ...[
-            OutlinedButton.icon(
-              onPressed: _busy ? null : widget.onOpenCoinCatalog,
-              icon: const Icon(CupertinoIcons.circle_grid_hex),
-              label: const Text('مدیریت انواع سکه'),
+          if (widget.onOpenCoinCatalog != null ||
+              widget.onOpenCurrencyCatalog != null) ...[
+            Row(
+              children: [
+                if (widget.onOpenCoinCatalog != null)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _busy ? null : widget.onOpenCoinCatalog,
+                      icon: const Icon(CupertinoIcons.circle_grid_hex),
+                      label: const Text('مدیریت انواع سکه'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(54),
+                      ),
+                    ),
+                  ),
+                if (widget.onOpenCoinCatalog != null &&
+                    widget.onOpenCurrencyCatalog != null)
+                  const SizedBox(width: 12),
+                if (widget.onOpenCurrencyCatalog != null)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _busy ? null : widget.onOpenCurrencyCatalog,
+                      icon: const Icon(CupertinoIcons.money_dollar_circle),
+                      label: const Text('مدیریت ارزها'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(54),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const Divider(height: 40),
           ],
@@ -213,6 +240,9 @@ class _BackupSummary extends StatelessWidget {
         Text('خرید و فروش: ${toPersianDigits(preview.dealCount.toString())}'),
         Text(
           'دریافت و پرداخت: ${toPersianDigits(preview.settlementCount.toString())}',
+        ),
+        Text(
+          'انواع ارز: ${toPersianDigits(preview.currencyTypeCount.toString())}',
         ),
         Text(
           'تسویه‌های دارای یادآوری: ${toPersianDigits(preview.settlementReminderCount.toString())} '

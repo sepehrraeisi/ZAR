@@ -69,23 +69,20 @@ void main() {
       expect(result.receivableToman, BigInt.from(2000000000));
     },
   );
-  test(
-    'unallocated open cash obligation remains additional pending amount',
-    () {
-      final result = projector.project(
-        personId: 'p',
-        deals: [deal(ZarDealType.sell)],
-        settlements: [
-          payment(
-            ZarSettlementDirection.receive,
-            status: ZarSettlementStatus.open,
-          ),
-        ],
-        allocations: [],
-      );
-      expect(result.receivableToman, BigInt.from(2500000000));
-    },
-  );
+  test('open cash obligation does not affect current balance', () {
+    final result = projector.project(
+      personId: 'p',
+      deals: [deal(ZarDealType.sell)],
+      settlements: [
+        payment(
+          ZarSettlementDirection.receive,
+          status: ZarSettlementStatus.open,
+        ),
+      ],
+      allocations: [],
+    );
+    expect(result.receivableToman, BigInt.from(2000000000));
+  });
   for (final type in ZarDealType.values) {
     final direction = type == ZarDealType.buy
         ? ZarSettlementDirection.deliver
@@ -93,7 +90,7 @@ void main() {
     BigInt remaining(ZarCustomerOperationalBalance value) =>
         type == ZarDealType.buy ? value.payableToman : value.receivableToman;
     test(
-      '${type.name}: free movement leaves 2B; explicit allocation leaves 1.5B',
+      '${type.name}: completed movement reduces balance once, allocation does not double subtract',
       () {
         final source = payment(direction);
         final free = projector.project(
@@ -102,7 +99,7 @@ void main() {
           settlements: [source],
           allocations: [],
         );
-        expect(remaining(free), BigInt.from(2000000000));
+        expect(remaining(free), BigInt.from(1500000000));
         for (var repeat = 0; repeat < 3; repeat++) {
           final allocated = projector.project(
             personId: 'p',

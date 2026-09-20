@@ -24,11 +24,13 @@ import 'features/settlements/payment_allocation_sheet.dart';
 import 'features/editors/confirmed_editors.dart';
 import 'features/backup/backup_screen.dart';
 import 'features/coins/coin_catalog_screen.dart';
+import 'features/currencies/currency_catalog_screen.dart';
 import 'features/editors/confirmed_quick_add_sheet.dart';
 import 'features/history/operational_history_screen.dart';
 import 'features/notifications/native_notification_runtime.dart';
 import 'features/inventory/operational_inventory_screen.dart';
 import 'features/notifications/notification_center.dart';
+import 'features/notifications/notification_content_policy.dart';
 import 'features/people/archived_people_screen.dart';
 import 'features/people/operational_people_screen.dart';
 import 'features/reminders/record_reminder_registry.dart';
@@ -208,6 +210,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
   bool _ready = false;
   bool _writing = false;
   Object? _loadError;
+  Jalali _calendarSelectedDate = Jalali.now();
 
   @override
   void initState() {
@@ -233,13 +236,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       )
       .toList(growable: false);
 
-  List<AppRecord> get historyRecords => records
-      .where(
-        (record) =>
-            record.type == RecordType.deal ||
-            record.status != SettlementStatus.open,
-      )
-      .toList(growable: false);
+  /// History is the complete operational record, including open obligations.
+  /// The open state remains a Settlement lifecycle state; it is not promoted
+  /// into a Deal or treated as completed activity.
+  List<AppRecord> get historyRecords => records.toList(growable: false);
 
   Future<void> _load() async {
     try {
@@ -379,6 +379,21 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     }
   }
 
+  ReminderPlan _quickAddReminderPlan(QuickAddDraft draft) {
+    final customAt = draft.customReminderAt;
+    if (customAt != null) {
+      return ReminderPlan(
+        rules: [
+          ReminderRule.custom(
+            id: 'quick-add-custom-${customAt.microsecondsSinceEpoch}',
+            customAt: customAt.toLocal(),
+          ),
+        ],
+      );
+    }
+    return reminderPlanFromLegacyLabel(draft.reminder);
+  }
+
   Future<void> _saveQuickAddDraftOrThrow(
     QuickAddDraft draft, {
     ValueChanged<String>? onSaved,
@@ -439,6 +454,8 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             ),
           )
         : toPersianDigits(ZarAmountParser.gold(draft.amount).decimal);
+    final transactionTime =
+        draft.time ?? TimeOfDay.fromDateTime(DateTime.now());
 
     final record = AppRecord(
       id: 'n${DateTime.now().microsecondsSinceEpoch}',
@@ -453,7 +470,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           : 'گرم طلا',
       currencyCode: currencyCode,
       date: draft.date,
-      time: draft.time,
+      time: transactionTime,
       note: draft.note.isEmpty ? null : draft.note,
       goldFineness: !isCurrency ? draft.goldFineness : null,
       goldPriceReferenceFineness: !isCurrency
@@ -470,7 +487,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       totalToman: totalToman,
     );
     final runtimePlan = isSettlement
-        ? reminderPlanFromLegacyLabel(draft.reminder)
+        ? _quickAddReminderPlan(draft)
         : const ReminderPlan();
 
     setState(() => _writing = true);
@@ -510,20 +527,22 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     if (draft.coinLines.isEmpty) {
       throw const FormatException('Coin lines are required.');
     }
-    final now = DateTime.now().toUtc();
+    final nowLocal = DateTime.now();
+    final now = nowLocal.toUtc();
+    final transactionTime = draft.time ?? TimeOfDay.fromDateTime(nowLocal);
     final gregorian = draft.date.toGregorian();
     final eventAt = DateTime(
       gregorian.year,
       gregorian.month,
       gregorian.day,
-      draft.time?.hour ?? 12,
-      draft.time?.minute ?? 0,
+      transactionTime.hour,
+      transactionTime.minute,
     ).toUtc();
     final id = 'n${DateTime.now().microsecondsSinceEpoch}';
     setState(() => _writing = true);
     try {
       if (isSettlement) {
-        final runtimePlan = reminderPlanFromLegacyLabel(draft.reminder);
+        final runtimePlan = _quickAddReminderPlan(draft);
         await _store.saveCoinSettlement(
           ZarSettlement(
             id: id,
@@ -534,7 +553,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
                 : ZarSettlementDirection.deliver,
             amount: ZarCoinBundleAmount(draft.coinLines),
             scheduledAt: eventAt,
-            hasTime: draft.time != null,
+            hasTime: true,
             reminderPlan: reminderPlanToDomain(runtimePlan),
             coinValuation: draft.coinSettlementValuation,
             note: draft.note.isEmpty ? null : draft.note,
@@ -615,8 +634,25 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     return true;
   }
 
-  Future<void> _openQuickAdd() async {
+  Future<void> _openQuickAdd({
+    String? initialOperation,
+    String? initialAsset,
+    String? initialCurrencyCode,
+    String? initialGoldFineness,
+    String? initialCoinTypeId,
+    String? initialPersonId,
+    Jalali? initialDate,
+  }) async {
     String? savedRecordId;
+    final recentPeople = <AppPerson>[];
+    final seenPeople = <String>{};
+    for (final record in _store.records) {
+      if (seenPeople.add(record.personId)) {
+        final person = _store.personById(record.personId);
+        if (person != null && !person.archived) recentPeople.add(person);
+      }
+      if (recentPeople.length == 3) break;
+    }
     final result = await showModalBottomSheet<QuickAddDraft>(
       context: context,
       isScrollControlled: true,
@@ -625,7 +661,16 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       enableDrag: !_writing,
       builder: (_) => ConfirmedQuickAddSheet(
         people: _store.activePeople,
+        recentPeople: recentPeople,
         coinTypes: _store.coinTypes,
+        currencies: _store.currencyTypes,
+        initialOperation: initialOperation,
+        initialAsset: initialAsset,
+        initialCurrencyCode: initialCurrencyCode,
+        initialGoldFineness: initialGoldFineness,
+        initialCoinTypeId: initialCoinTypeId,
+        initialPersonId: initialPersonId,
+        initialDate: initialDate,
         onSave: (draft) => _saveQuickAddDraftOrThrow(
           draft,
           onSaved: (id) => savedRecordId = id,
@@ -783,9 +828,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        builder: (_) => DealDetailSheet(
+        builder: (_) => HistoryDealDetailSheet(
           record: record,
           personName: _store.personName(record.personId),
+          accountingStatus: _dealAccountingStatus(record),
           linkedSettlements: records
               .where((item) => record.linkedSettlementIds.contains(item.id))
               .toList(growable: false),
@@ -873,6 +919,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             builder: (_) => ConfirmedRecordEditorSheet(
               record: record,
               personName: _store.personName(record.personId),
+              currencies: _store.currencyTypes,
               onSave: (updated) => _saveRecordOrThrow(updated),
             ),
           );
@@ -933,6 +980,13 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
                   name: person.name,
                   phone: person.phone,
                   openObligations: _store.openCountFor(person.id),
+                  dealCount: records
+                      .where(
+                        (item) =>
+                            item.personId == person.id &&
+                            item.type == RecordType.deal,
+                      )
+                      .length,
                 ),
               )
               .toList(growable: false),
@@ -954,92 +1008,111 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     if (mounted) setState(() {});
   }
 
-  Widget _buildPersonDetail(AppPerson person) => PersonDetailScreen(
-    person: person,
-    records: records,
-    position: _store.customerPositionFor(person.id),
-    balance: _store.balanceFor(person.id),
-    personName: _store.personName,
-    onTapRecord: _openRecord,
-    onEditPerson: (target) async {
-      await showModalBottomSheet<AppPerson>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        builder: (_) => ConfirmedPersonEditorSheet(
-          existing: target,
-          onSave: _savePersonOrThrow,
+  Widget _buildPersonDetail(AppPerson person) => AnimatedBuilder(
+    animation: _store,
+    builder: (context, _) {
+      final currentPerson = _store.personById(person.id) ?? person;
+      return PersonDetailScreen(
+        person: currentPerson,
+        records: records,
+        position: _store.customerPositionFor(person.id),
+        balance: _store.balanceFor(person.id),
+        ledger: _store.ledgerFor(person.id),
+        onShareStatement: () => unawaited(
+          showPersonStatementShareOptions(
+            context,
+            person: currentPerson,
+            balance: _store.balanceFor(person.id),
+            records: records,
+            ledger: _store.ledgerFor(person.id),
+          ),
         ),
+        onShareBalanceBucket: (bucket) => unawaited(
+          showBalanceBucketShareOptions(
+            context,
+            person: currentPerson,
+            bucket: bucket,
+          ),
+        ),
+        onQuickEntry: () =>
+            unawaited(_openQuickAdd(initialPersonId: currentPerson.id)),
+        personName: _store.personName,
+        onTapRecord: _openRecord,
+        onEditPerson: (target) async {
+          await showModalBottomSheet<AppPerson>(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            builder: (_) => ConfirmedPersonEditorSheet(
+              existing: target,
+              onSave: _savePersonOrThrow,
+            ),
+          );
+        },
+        onArchivePerson: (_) => _archivePerson(currentPerson),
       );
     },
-    onArchivePerson: (_) => _archivePerson(person),
   );
 
   List<ZarNotificationItem> _notificationItemsFor(
     Iterable<AppRecord> source, {
     bool overdue = false,
   }) => source
-      .map(
-        (record) => ZarNotificationItem(
+      .map((record) {
+        final content = const ZarNotificationContentPolicy().forRecord(
+          record: record,
+          personName: _store.personName(record.personId),
+          privacy: _notificationPreferences.privacy,
+        );
+        return ZarNotificationItem(
           id: 'notification-${record.id}',
           recordId: record.id,
-          title:
-              '${record.operationDisplayLabel} • ${_store.personName(record.personId)}',
-          subtitle:
-              _notificationPreferences.privacy == NotificationPrivacy.private
-              ? 'یک یادآوری کاری دارید.'
-              : _notificationPreferences.privacy == NotificationPrivacy.limited
-              ? '${record.operationDisplayLabel} برای ${_store.personName(record.personId)}'
-              : _recordAmountLabel(record),
+          title: content.title,
+          subtitle: content.body,
           timeLabel: record.timeLabel(),
           isOverdue: overdue,
-        ),
-      )
+        );
+      })
       .toList(growable: false);
 
-  String _recordAmountLabel(AppRecord record) {
-    if (record.coinLines.isNotEmpty) return record.amountDisplay;
-    final numeric =
-        RegExp(
-          r'[-+]?[0-9۰-۹٬,٫.]+',
-        ).firstMatch(record.amountDisplay)?.group(0) ??
-        record.amountDisplay;
-    final amount = toPersianNumberText(numeric);
-    if (record.currencyCode != null) return '$amount ${record.currencyCode}';
-    if (record.assetLabel == 'وجه نقد') return '$amount تومان';
-    return '$amount ${record.assetLabel}';
-  }
-
   Future<void> _openNotificationCenter() async {
-    final currentTime = DateTime.now();
-    final currentDate = Jalali.fromDateTime(currentTime);
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => NotificationCenterScreen(
-          overdue: _notificationItemsFor(
-            openObligations.where(
-              (record) => isRecordOverdueAt(record, currentTime),
-            ),
-            overdue: true,
-          ),
-          today: _notificationItemsFor(
-            openObligations.where(
-              (record) =>
-                  isSameJalali(record.date, currentDate) &&
-                  !isRecordOverdueAt(record, currentTime),
-            ),
-          ),
-          upcoming: _notificationItemsFor(
-            openObligations.where(
-              (record) => record.date.compareTo(currentDate) > 0,
-            ),
-          ),
-          onOpenRecord: (recordId) {
-            final target = _store.recordById(recordId);
-            Navigator.of(context).pop();
-            if (target != null) unawaited(_openRecord(target));
+        builder: (_) => AnimatedBuilder(
+          animation: Listenable.merge([
+            _store,
+            ZarNativeNotificationRuntime.instance,
+          ]),
+          builder: (_, _) {
+            final currentTime = DateTime.now();
+            final currentDate = Jalali.fromDateTime(currentTime);
+            return NotificationCenterScreen(
+              overdue: _notificationItemsFor(
+                openObligations.where(
+                  (record) => isRecordOverdueAt(record, currentTime),
+                ),
+                overdue: true,
+              ),
+              today: _notificationItemsFor(
+                openObligations.where(
+                  (record) =>
+                      isSameJalali(record.date, currentDate) &&
+                      !isRecordOverdueAt(record, currentTime),
+                ),
+              ),
+              upcoming: _notificationItemsFor(
+                openObligations.where(
+                  (record) => record.date.compareTo(currentDate) > 0,
+                ),
+              ),
+              onOpenRecord: (recordId) {
+                final target = _store.recordById(recordId);
+                Navigator.of(context).pop();
+                if (target != null) unawaited(_openRecord(target));
+              },
+              onOpenSettings: _openNotificationSettings,
+            );
           },
-          onOpenSettings: _openNotificationSettings,
         ),
       ),
     );
@@ -1063,6 +1136,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         builder: (_) => BackupScreen(
           manager: _backupManager,
           onOpenCoinCatalog: _openCoinCatalog,
+          onOpenCurrencyCatalog: _openCurrencyCatalog,
         ),
       ),
     );
@@ -1091,6 +1165,28 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     );
   }
 
+  Future<void> _openCurrencyCatalog() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CurrencyCatalogScreen(
+          types: _store.currencyTypes,
+          onSave: (value) async {
+            await _store.saveCurrencyType(value);
+            if (mounted) setState(() {});
+          },
+          onArchive: (value) async {
+            await _store.archiveCurrencyType(value);
+            if (mounted) setState(() {});
+          },
+          onRestore: (value) async {
+            await _store.restoreCurrencyType(value);
+            if (mounted) setState(() {});
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _openInventory() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -1100,13 +1196,58 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             settlements: _store.settlements,
             allocations: _store.paymentAllocations,
           ),
+          stateListenable: _store,
+          projectionBuilder: _inventoryProjection,
           personName: _store.personName,
           onOpenRecord: (id) {
             final record = _store.recordById(id);
             if (record != null) _openRecord(record);
           },
+          onQuickAction: (operation) => unawaited(
+            _openQuickAdd(
+              initialOperation: operation == 'پرداخت' ? 'تحویل' : operation,
+            ),
+          ),
+          onQuickActionWithContext: (operation, item) =>
+              unawaited(_openInventoryQuickAction(operation, item)),
         ),
       ),
+    );
+  }
+
+  ZarOperationalInventoryProjection _inventoryProjection() =>
+      const ZarOperationalInventoryProjector().project(
+        deals: _store.deals,
+        settlements: _store.settlements,
+        allocations: _store.paymentAllocations,
+      );
+
+  Future<void> _openInventoryQuickAction(
+    String operation,
+    ZarOperationalInventoryItem item,
+  ) {
+    String? asset;
+    String? currencyCode;
+    String? goldFineness;
+    String? coinTypeId;
+    switch (item) {
+      case ZarCurrencyInventoryItem(:final code):
+        asset = code == 'TOMAN' ? 'وجه نقد' : 'ارز';
+        currencyCode = code;
+      case ZarGoldInventoryItem(:final fineness):
+        asset = 'طلا';
+        goldFineness = fineness;
+      case ZarCoinInventoryItem(:final identity):
+        asset = 'سکه';
+        final raw = identity.substring('coin:'.length);
+        coinTypeId = raw.split('|').first;
+    }
+    return _openQuickAdd(
+      initialOperation: operation == 'پرداخت' ? 'تحویل' : operation,
+      initialAsset: asset,
+      initialCurrencyCode: currencyCode,
+      initialGoldFineness: goldFineness,
+      initialCoinTypeId: coinTypeId,
     );
   }
 
@@ -1164,6 +1305,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           records: records,
           personName: _store.personName,
           onOpenRecord: _openRecord,
+          stateListenable: _store,
+          dealsBuilder: () => _store.deals,
+          settlementsBuilder: () => _store.settlements,
+          recordsBuilder: () => _store.records,
         ),
       ),
     );
@@ -1225,6 +1370,9 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         records: records,
         personName: _store.personName,
         onTapRecord: _openRecord,
+        onSelectedDateChanged: (date) => _calendarSelectedDate = date,
+        onAdd: () =>
+            unawaited(_openQuickAdd(initialDate: _calendarSelectedDate)),
       ),
       const SizedBox.shrink(),
       OperationalPeopleScreen(
@@ -1249,6 +1397,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       OperationalHistoryScreen(
         records: historyRecords,
         personName: _store.personName,
+        people: _store.people,
         onTapRecord: _openRecord,
       ),
     ];
@@ -1263,7 +1412,11 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             currentIndex: _index,
             onTap: (value) {
               if (value == 2) {
-                unawaited(_openQuickAdd());
+                unawaited(
+                  _openQuickAdd(
+                    initialDate: _index == 1 ? _calendarSelectedDate : null,
+                  ),
+                );
               } else {
                 setState(() => _index = value);
               }
@@ -1289,5 +1442,21 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           ),
       ],
     );
+  }
+
+  String? _dealAccountingStatus(AppRecord record) {
+    final deal = _store.dealById(record.id);
+    if (deal == null) return null;
+    final status = const ZarCustomerLedgerProjector().accountingStatusForDeal(
+      deal: deal,
+      settlements: _store.settlements,
+    );
+    return switch (status) {
+      ZarCustomerDealAccountingStatus.cancelled => 'لغو شده',
+      ZarCustomerDealAccountingStatus.unpriced => 'مبلغ تسویه مشخص نشده',
+      ZarCustomerDealAccountingStatus.unsettled => 'تسویه نشده',
+      ZarCustomerDealAccountingStatus.partiallySettled => 'بخشی تسویه شده',
+      ZarCustomerDealAccountingStatus.settled => 'تسویه شده',
+    };
   }
 }

@@ -119,7 +119,7 @@ class _PaymentAllocationSheetState extends State<PaymentAllocationSheet> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'فقط مقصدهایی که برایشان مبلغ وارد می‌کنید تسویه می‌شوند. بدون تخصیص، این ثبت آزاد می‌ماند.',
+            'تخصیص فقط رابطه این دریافت/پرداخت با یک تعهد را ثبت می‌کند. بدون تخصیص، ثبت آزاد می‌ماند اما در مانده همان دارایی اثر دارد.',
           ),
           if (widget.source.isOpen)
             const Text(

@@ -21,16 +21,18 @@ class ZarNotificationContentPolicy {
     required String personName,
     required NotificationPrivacy privacy,
   }) {
+    final dueTime = record.time == null ? '' : 'ساعت ${record.timeLabel()} • ';
     switch (privacy) {
       case NotificationPrivacy.full:
         return ZarNotificationContent(
           title: '${record.operationDisplayLabel} • $personName',
-          body: '${record.assetLabel} • ${record.amountDisplay}',
+          body:
+              '$dueTime${record.assetLabel} • ${toPersianNumberText(record.amountDisplay)}',
         );
       case NotificationPrivacy.limited:
         return ZarNotificationContent(
           title: 'یادآوری ${record.operationDisplayLabel}',
-          body: '${record.operationDisplayLabel} برای $personName',
+          body: '$dueTime${record.operationDisplayLabel} برای $personName',
         );
       case NotificationPrivacy.private:
         return const ZarNotificationContent(

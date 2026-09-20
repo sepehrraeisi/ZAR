@@ -249,18 +249,131 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('۳۲۰٬۰۰۰٬۰۰۰ تومان'), findsOneWidget);
-    expect(find.text('۴۰۰ USD'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('۳۲۰٬۰۰۰٬۰۰۰'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('۳۲۰٬۰۰۰٬۰۰۰'), findsOneWidget);
+    expect(find.text('تومان'), findsOneWidget);
+    expect(find.text('۴۰۰'), findsOneWidget);
+    expect(find.text('USD'), findsWidgets);
     expect(
       find.byWidgetPredicate(
         (widget) =>
             widget is Icon &&
             widget.icon == Icons.chevron_left &&
-            widget.textDirection == TextDirection.rtl,
+            widget.textDirection == TextDirection.ltr,
       ),
       findsNWidgets(2),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'inventory puts pending obligations first and shows movement context',
+    (tester) async {
+      final projection = projector.project(
+        settlements: [
+          settlement(
+            'pending-usd',
+            amount: currency('USD', 500, 0),
+            status: ZarSettlementStatus.open,
+          ),
+          settlement(
+            'actual-usd',
+            amount: currency('USD', 400, 0),
+            status: ZarSettlementStatus.completed,
+          ),
+        ],
+      );
+      final actions = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OperationalInventoryScreen(
+            projection: projection,
+            personName: (_) => 'علی',
+            onQuickAction: actions.add,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('تعهدهای در انتظار'), findsOneWidget);
+      expect(find.text('موجودی واقعی'), findsOneWidget);
+      expect(find.text('موجودی فعلی'), findsNothing);
+      expect(find.text('USD'), findsWidgets);
+      expect(find.textContaining('دریافت از علی'), findsWidgets);
+      expect(find.text('فعالیت اخیر'), findsNothing);
+      expect(
+        tester.getTopLeft(find.text('تعهدهای در انتظار')).dy,
+        lessThan(tester.getTopLeft(find.text('موجودی واقعی')).dy),
+      );
+
+      await tester.scrollUntilVisible(
+        find.text('۴۰۰'),
+        400,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.text('۴۰۰'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find
+            .ancestor(
+              of: find.text('۴۰۰'),
+              matching: find.byType(InkWell),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('موجودی فعلی'), findsOneWidget);
+      expect(find.text('مقدار ثبت‌شده'), findsNothing);
+      expect(find.text('ثبت سریع'), findsOneWidget);
+      await tester.tap(find.text('خرید'));
+      expect(actions, ['خرید']);
+    },
+  );
+
+  testWidgets('inventory projection refreshes while the route remains open', (
+    tester,
+  ) async {
+    var projection = projector.project(
+      settlements: [
+        settlement(
+          'live-usd',
+          amount: currency('USD', 400, 0),
+          status: ZarSettlementStatus.completed,
+        ),
+      ],
+    );
+    final state = ValueNotifier<int>(0);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OperationalInventoryScreen(
+          projection: projection,
+          stateListenable: state,
+          projectionBuilder: () => projection,
+          personName: (_) => 'علی',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('۴۰۰'), findsOneWidget);
+
+    projection = projector.project(
+      settlements: [
+        settlement(
+          'live-usd',
+          amount: currency('USD', 500, 0),
+          status: ZarSettlementStatus.completed,
+        ),
+      ],
+    );
+    state.value++;
+    await tester.pump();
+    expect(find.text('۴۰۰'), findsNothing);
+    expect(find.text('۵۰۰'), findsOneWidget);
+    state.dispose();
   });
 }
 

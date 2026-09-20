@@ -36,6 +36,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/zar_plus_logo_horizontal.png
   fonts:
     - family: Vazirmatn
       fonts:

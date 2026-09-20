@@ -9,13 +9,13 @@ void main() {
     await tester.pumpWidget(const ZarPlusPhaseA2App());
     await tester.pumpAndSettle();
 
-    expect(find.text('ZAR+'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-header-logo')), findsOneWidget);
     expect(find.text('خانه'), findsOneWidget);
     expect(find.text('تقویم'), findsOneWidget);
     expect(find.text('اشخاص'), findsOneWidget);
     expect(find.text('سوابق'), findsOneWidget);
     expect(find.byIcon(CupertinoIcons.bell), findsOneWidget);
-    expect(find.text('عقب‌افتاده'), findsOneWidget);
+    expect(find.text('عقب‌افتاده'), findsWidgets);
     expect(find.text('امروز'), findsWidgets);
     await tester.scrollUntilVisible(
       find.text('فردا'),

@@ -29,6 +29,8 @@ void main() {
 
     expect(find.text('عیار واقعی'), findsOneWidget);
     expect(find.text('واحد وزن'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButtonFormField<ZarGoldUnit>).first);
+    await tester.pump();
     expect(find.text('مثقال'), findsOneWidget);
     expect(find.text('قیمت هر گرم (تومان)'), findsOneWidget);
     expect(find.text('واحد قیمت'), findsOneWidget);

@@ -17,7 +17,8 @@ class ZarDomainBackupBundle {
     required this.deals,
     required this.settlements,
     this.coinTypes = const [],
-    this.exportVersion = 6,
+    this.currencyTypes = const [],
+    this.exportVersion = 7,
     this.paymentAllocations = const [],
   });
 
@@ -28,14 +29,15 @@ class ZarDomainBackupBundle {
   final List<ZarDeal> deals;
   final List<ZarSettlement> settlements;
   final List<ZarCoinType> coinTypes;
+  final List<ZarCurrencyType> currencyTypes;
   final List<ZarPaymentAllocation> paymentAllocations;
 }
 
 class ZarDomainBackupCodec {
   const ZarDomainBackupCodec();
 
-  static const supportedVersion = 6;
-  static const supportedImportVersions = {2, 3, 4, 5, 6};
+  static const supportedVersion = 7;
+  static const supportedImportVersions = {2, 3, 4, 5, 6, 7};
 
   String encodeJson(ZarDomainBackupBundle bundle) {
     if (bundle.exportVersion != supportedVersion) {
@@ -67,6 +69,9 @@ class ZarDomainBackupCodec {
           .map(_settlementToMap)
           .toList(growable: false),
       'coinTypes': bundle.coinTypes
+          .map((item) => item.toMap())
+          .toList(growable: false),
+      'currencyTypes': bundle.currencyTypes
           .map((item) => item.toMap())
           .toList(growable: false),
     };
@@ -112,6 +117,13 @@ class ZarDomainBackupCodec {
             (raw['paymentAllocations']! as List).isNotEmpty)) {
       throw const FormatException('Allocation data requires backup version 6.');
     }
+    final currencyTypes = version >= 7
+        ? _requiredCollection(
+            raw['currencyTypes'],
+            'currencyTypes',
+            ZarCurrencyType.fromMap,
+          )
+        : const <ZarCurrencyType>[];
     validateZarPaymentAllocations(
       deals: deals,
       settlements: settlements,
@@ -123,6 +135,7 @@ class ZarDomainBackupCodec {
       deals: deals,
       settlements: settlements,
       coinTypes: coinTypes,
+      currencyTypes: currencyTypes,
       requireCoinCatalog: version >= 5,
     );
 
@@ -135,6 +148,7 @@ class ZarDomainBackupCodec {
       deals: deals,
       settlements: settlements,
       coinTypes: coinTypes,
+      currencyTypes: currencyTypes,
     );
   }
 
@@ -149,6 +163,15 @@ class ZarDomainBackupCodec {
           return mapper(Map<String, Object?>.from(item));
         })
         .toList(growable: false);
+  }
+
+  List<T> _requiredCollection<T>(
+    Object? raw,
+    String field,
+    T Function(Map<String, Object?>) mapper,
+  ) {
+    if (raw is! List) throw FormatException('$field is required.');
+    return _mapList(raw, mapper);
   }
 
   Map<String, Object?> _personToMap(ZarPerson person) => {
@@ -307,15 +330,20 @@ class ZarDomainBackupCodec {
     required List<ZarDeal> deals,
     required List<ZarSettlement> settlements,
     required List<ZarCoinType> coinTypes,
+    required List<ZarCurrencyType> currencyTypes,
     required bool requireCoinCatalog,
   }) {
     final peopleIds = people.map((p) => p.id).toSet();
     final dealIds = deals.map((d) => d.id).toSet();
     final coinTypeIds = coinTypes.map((item) => item.id).toSet();
+    final currencyTypeIds = currencyTypes.map((item) => item.id).toSet();
+    final currencyCodes = currencyTypes.map((item) => item.code).toSet();
 
     if (peopleIds.length != people.length ||
         dealIds.length != deals.length ||
-        coinTypeIds.length != coinTypes.length) {
+        coinTypeIds.length != coinTypes.length ||
+        currencyTypeIds.length != currencyTypes.length ||
+        currencyCodes.length != currencyTypes.length) {
       throw const FormatException('Backup contains duplicate identifiers.');
     }
     final settlementIds = settlements.map((s) => s.id).toSet();

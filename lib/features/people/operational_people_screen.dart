@@ -26,7 +26,8 @@ class OperationalPeopleScreen extends StatefulWidget {
   final ZarCustomerOperationalBalance Function(String)? balanceFor;
 
   @override
-  State<OperationalPeopleScreen> createState() => _OperationalPeopleScreenState();
+  State<OperationalPeopleScreen> createState() =>
+      _OperationalPeopleScreenState();
 }
 
 class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
@@ -36,7 +37,12 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
   Widget build(BuildContext context) {
     final query = _query.trim();
     final filtered = widget.people
-        .where((person) => query.isEmpty || person.name.contains(query) || (person.phone ?? '').contains(query))
+        .where(
+          (person) =>
+              query.isEmpty ||
+              person.name.contains(query) ||
+              (person.phone ?? '').contains(query),
+        )
         .toList(growable: false);
 
     return Scaffold(
@@ -71,10 +77,14 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton.icon(
+                OutlinedButton.icon(
                   onPressed: widget.onAddPerson,
                   icon: const Icon(CupertinoIcons.add, size: 16),
                   label: const Text('افزودن'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 44),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
                 ),
               ],
             ),
@@ -85,7 +95,10 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text('مشتری‌ها و اشخاص', style: Theme.of(context).textTheme.titleMedium),
+                  child: Text(
+                    'مشتری‌ها و اشخاص',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
                 Text(
                   '${toPersianDigits(filtered.length.toString())} نفر',
@@ -105,10 +118,19 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
                     itemBuilder: (_, index) {
                       final person = filtered[index];
                       final open = widget.records
-                          .where((record) => record.personId == person.id && record.isObligation && record.status == SettlementStatus.open)
+                          .where(
+                            (record) =>
+                                record.personId == person.id &&
+                                record.isObligation &&
+                                record.status == SettlementStatus.open,
+                          )
                           .length;
                       final deals = widget.records
-                          .where((record) => record.personId == person.id && record.type == RecordType.deal)
+                          .where(
+                            (record) =>
+                                record.personId == person.id &&
+                                record.type == RecordType.deal,
+                          )
                           .length;
                       final last = _lastActivity(person.id);
                       return _PersonCard(
@@ -128,7 +150,9 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
   }
 
   AppRecord? _lastActivity(String personId) {
-    final items = widget.records.where((record) => record.personId == personId).toList(growable: false);
+    final items = widget.records
+        .where((record) => record.personId == personId)
+        .toList(growable: false);
     if (items.isEmpty) return null;
     items.sort((a, b) {
       final date = b.date.compareTo(a.date);
@@ -162,6 +186,12 @@ class _PersonCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final initial = person.name.trim().isEmpty ? '-' : person.name.trim()[0];
+    final hasBalance =
+        balance != null &&
+        (balance!.receivableAssetBuckets.isNotEmpty ||
+            balance!.payableAssetBuckets.isNotEmpty ||
+            balance!.receivableToman != BigInt.zero ||
+            balance!.payableToman != BigInt.zero);
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -172,65 +202,123 @@ class _PersonCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.11),
-                child: Text(
-                  initial,
-                  style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.primary),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header: identity on the right and disclosure on the far
+                // left. Counts stay with identity so they scan as one unit.
+                Row(
+                  textDirection: TextDirection.rtl,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(person.name, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
-                    if ((person.phone ?? '').trim().isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(person.phone!, style: theme.textTheme.bodyMedium),
-                    ],
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        _CountPill(label: 'معامله', count: dealCount),
-                        _CountPill(label: 'تعهد باز', count: openCount, emphasize: openCount > 0),
-                      ],
-                    ),
-                    if (balance != null) ...[
-                      const SizedBox(height: 10),
-                      CustomerBalanceCard(balance: balance!, compact: true),
-                    ],
-                    if (lastActivity != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'آخرین فعالیت: ${lastActivity!.operationDisplayLabel} • ${formatJalaliDate(lastActivity!.date)}',
-                        style: theme.textTheme.bodyMedium,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: theme.colorScheme.primary.withValues(
+                        alpha: 0.11,
                       ),
-                    ],
+                      child: Text(
+                        initial,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            person.name,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if ((person.phone ?? '').trim().isNotEmpty) ...[
+                            const SizedBox(height: 1),
+                            Directionality(
+                              textDirection: TextDirection.ltr,
+                              child: Text(
+                                person.phone!,
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 5),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                '${toPersianDigits(dealCount.toString())} معامله',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              _CountPill(
+                                label: 'تعهد باز',
+                                count: openCount,
+                                emphasize: openCount > 0,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 3),
+                      child: Icon(CupertinoIcons.chevron_left, size: 18),
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(CupertinoIcons.chevron_left, size: 18),
-            ],
+                if (hasBalance) ...[
+                  const SizedBox(height: 10),
+                  Divider(height: 1, color: theme.dividerColor),
+                  const SizedBox(height: 9),
+                  // Financial Summary is part of the person card itself;
+                  // compact mode deliberately does not add another Card.
+                  CustomerBalanceCard(balance: balance!, compact: true),
+                ],
+                if (lastActivity != null) ...[
+                  const SizedBox(height: 9),
+                  Divider(height: 1, color: theme.dividerColor),
+                  const SizedBox(height: 8),
+                  Text(
+                    _compactActivityLabel(lastActivity!),
+                    style: theme.textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  String _compactActivityLabel(AppRecord record) {
+    final date =
+        '${toPersianDigits(record.date.day.toString())} ${monthName(record.date.month)}';
+    final time = record.time == null ? '' : '، ${record.timeLabel()}';
+    return '${record.operationDisplayLabel} • $date$time';
+  }
 }
 
 class _CountPill extends StatelessWidget {
-  const _CountPill({required this.label, required this.count, this.emphasize = false});
+  const _CountPill({
+    required this.label,
+    required this.count,
+    this.emphasize = false,
+  });
 
   final String label;
   final int count;
@@ -239,7 +327,17 @@ class _CountPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = emphasize ? theme.colorScheme.primary : theme.textTheme.bodyMedium?.color;
+    final labelText = '${toPersianDigits(count.toString())} $label';
+    if (!emphasize) {
+      return Text(
+        labelText,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.textTheme.bodySmall?.color,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    }
+    final color = theme.colorScheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
@@ -249,7 +347,7 @@ class _CountPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(99),
       ),
       child: Text(
-        '${toPersianDigits(count.toString())} $label',
+        labelText,
         style: theme.textTheme.bodyMedium?.copyWith(
           color: color,
           fontWeight: FontWeight.w600,
@@ -264,22 +362,25 @@ class _PeopleEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(CupertinoIcons.person_2, size: 34),
-              const SizedBox(height: 10),
-              Text('شخصی پیدا نشد.', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                'عبارت جستجو را تغییر دهید یا شخص جدید اضافه کنید.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(CupertinoIcons.person_2, size: 34),
+          const SizedBox(height: 10),
+          Text(
+            'شخصی پیدا نشد.',
+            style: Theme.of(context).textTheme.titleMedium,
           ),
-        ),
-      );
+          const SizedBox(height: 4),
+          Text(
+            'عبارت جستجو را تغییر دهید یا شخص جدید اضافه کنید.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    ),
+  );
 }

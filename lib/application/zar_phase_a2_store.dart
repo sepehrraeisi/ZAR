@@ -1,4 +1,5 @@
 import '../app_core.dart';
+import 'package:flutter/foundation.dart';
 import '../data/zar_domain_repository.dart';
 import '../domain/zar_domain_models.dart';
 import '../domain/zar_reminder_plan.dart';
@@ -12,7 +13,7 @@ import 'customer_operational_balance_projector.dart';
 /// Typed domain entities are the sole owned business state. The current widgets
 /// still consume `AppPerson` / `AppRecord`, so those values are derived at the
 /// presentation boundary rather than retained as a second mutable state graph.
-class ZarPhaseA2Store {
+class ZarPhaseA2Store extends ChangeNotifier {
   ZarPhaseA2Store({
     required ZarDomainRepository repository,
     required ZarLegacyPresentationBridge bridge,
@@ -39,6 +40,7 @@ class ZarPhaseA2Store {
       List.unmodifiable(_domainSettlements.values);
   List<ZarDeal> get deals => List.unmodifiable(_domainDeals.values);
   List<ZarCoinType> _coinTypes = const [];
+  List<ZarCurrencyType> _currencyTypes = const [];
   List<ZarPaymentAllocation> _allocations = const [];
   List<ZarPaymentAllocation> get paymentAllocations =>
       List.unmodifiable(_allocations);
@@ -49,6 +51,14 @@ class ZarPhaseA2Store {
         deals: deals,
         settlements: settlements,
         allocations: _allocations,
+      );
+
+  ZarCustomerLedgerProjection ledgerFor(String personId, {DateTime? asOf}) =>
+      const ZarCustomerLedgerProjector().project(
+        personId: personId,
+        deals: deals,
+        settlements: settlements,
+        asOf: asOf,
       );
 
   Future<void> savePaymentAllocations(
@@ -67,6 +77,7 @@ class ZarPhaseA2Store {
   }
 
   List<ZarCoinType> get coinTypes => List.unmodifiable(_coinTypes);
+  List<ZarCurrencyType> get currencyTypes => List.unmodifiable(_currencyTypes);
 
   List<AppPerson> get people =>
       List.unmodifiable(_domainPeople.values.map(_bridge.personToUi));
@@ -96,6 +107,7 @@ class ZarPhaseA2Store {
       final settlements = snapshot.settlements;
       final deals = snapshot.deals;
       final coinTypes = snapshot.coinTypes;
+      final currencyTypes = snapshot.currencyTypes;
 
       _domainPeople
         ..clear()
@@ -107,7 +119,11 @@ class ZarPhaseA2Store {
         ..clear()
         ..addEntries(deals.map((item) => MapEntry(item.id, item)));
       _coinTypes = coinTypes;
+      _currencyTypes = currencyTypes.isEmpty
+          ? zarInitialCurrencyTypes()
+          : currencyTypes;
       _allocations = snapshot.paymentAllocations;
+      notifyListeners();
     } catch (error) {
       _lastError = error;
       rethrow;
@@ -143,6 +159,7 @@ class ZarPhaseA2Store {
     );
     await _repository.savePerson(domain);
     _domainPeople[domain.id] = domain;
+    notifyListeners();
   }
 
   Future<void> archivePerson(AppPerson person) async {
@@ -155,6 +172,7 @@ class ZarPhaseA2Store {
       now: _clock(),
     );
     _domainPeople[archived.id] = archived;
+    notifyListeners();
   }
 
   Future<void> restorePerson(AppPerson person) async {
@@ -167,6 +185,7 @@ class ZarPhaseA2Store {
       now: _clock(),
     );
     _domainPeople[restored.id] = restored;
+    notifyListeners();
   }
 
   Future<void> saveRecord(
@@ -197,16 +216,19 @@ class ZarPhaseA2Store {
       await _repository.saveDeal(domain, auditAction: auditAction);
       _domainDeals[domain.id] = domain;
     }
+    notifyListeners();
   }
 
   Future<void> saveCoinDeal(ZarDeal deal) async {
     await _repository.saveDeal(deal, auditAction: 'create');
     _domainDeals[deal.id] = deal;
+    notifyListeners();
   }
 
   Future<void> saveCoinSettlement(ZarSettlement settlement) async {
     await _repository.saveSettlement(settlement, auditAction: 'create');
     _domainSettlements[settlement.id] = settlement;
+    notifyListeners();
   }
 
   Future<void> saveCoinType(ZarCoinType coinType) async {
@@ -217,6 +239,7 @@ class ZarPhaseA2Store {
     final coinCatalog = catalog as ZarCoinCatalogRepository;
     await coinCatalog.saveCoinType(coinType);
     await _refreshCoinTypes(coinCatalog);
+    notifyListeners();
   }
 
   Future<void> archiveCoinType(ZarCoinType coinType) async {
@@ -227,6 +250,7 @@ class ZarPhaseA2Store {
     final coinCatalog = catalog as ZarCoinCatalogRepository;
     await coinCatalog.archiveCoinType(coinType);
     await _refreshCoinTypes(coinCatalog);
+    notifyListeners();
   }
 
   Future<void> restoreCoinType(ZarCoinType coinType) async {
@@ -237,10 +261,50 @@ class ZarPhaseA2Store {
     final coinCatalog = catalog as ZarCoinCatalogRepository;
     await coinCatalog.restoreCoinType(coinType);
     await _refreshCoinTypes(coinCatalog);
+    notifyListeners();
+  }
+
+  Future<void> saveCurrencyType(ZarCurrencyType currencyType) async {
+    final catalog = _repository;
+    if (catalog is! ZarCurrencyCatalogRepository) {
+      throw StateError('Currency catalog is unavailable.');
+    }
+    final currencyCatalog = catalog as ZarCurrencyCatalogRepository;
+    await currencyCatalog.saveCurrencyType(currencyType);
+    await _refreshCurrencyTypes(currencyCatalog);
+    notifyListeners();
+  }
+
+  Future<void> archiveCurrencyType(ZarCurrencyType currencyType) async {
+    final catalog = _repository;
+    if (catalog is! ZarCurrencyCatalogRepository) {
+      throw StateError('Currency catalog is unavailable.');
+    }
+    final currencyCatalog = catalog as ZarCurrencyCatalogRepository;
+    await currencyCatalog.archiveCurrencyType(currencyType);
+    await _refreshCurrencyTypes(currencyCatalog);
+    notifyListeners();
+  }
+
+  Future<void> restoreCurrencyType(ZarCurrencyType currencyType) async {
+    final catalog = _repository;
+    if (catalog is! ZarCurrencyCatalogRepository) {
+      throw StateError('Currency catalog is unavailable.');
+    }
+    final currencyCatalog = catalog as ZarCurrencyCatalogRepository;
+    await currencyCatalog.restoreCurrencyType(currencyType);
+    await _refreshCurrencyTypes(currencyCatalog);
+    notifyListeners();
   }
 
   Future<void> _refreshCoinTypes(ZarCoinCatalogRepository catalog) async {
     _coinTypes = await catalog.loadCoinTypes(includeArchived: true);
+  }
+
+  Future<void> _refreshCurrencyTypes(
+    ZarCurrencyCatalogRepository catalog,
+  ) async {
+    _currencyTypes = await catalog.loadCurrencyTypes(includeArchived: true);
   }
 
   ZarReminderPlan reminderPlanFor(String recordId) =>
@@ -265,6 +329,7 @@ class ZarPhaseA2Store {
     );
     await _repository.saveSettlement(updated, auditAction: auditAction);
     _domainSettlements[updated.id] = updated;
+    notifyListeners();
   }
 
   Future<void> completeSettlement(AppRecord record) => saveRecord(

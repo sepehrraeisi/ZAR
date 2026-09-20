@@ -1,14 +1,17 @@
 import 'dart:io';
 
 import 'package:drift/native.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/application/operational_dashboard_projector.dart';
 import 'package:flutter_app/app_core.dart';
 import 'package:flutter_app/data/local/zar_local_database.dart';
 import 'package:flutter_app/data/local/zar_local_repository.dart';
 import 'package:flutter_app/domain/zar_domain_models.dart';
 import 'package:flutter_app/main_phase_a2.dart';
+import 'package:flutter_app/widgets/zar_amount_display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 
 void main() {
   const projector = ZarOperationalDashboardProjector();
@@ -177,49 +180,387 @@ void main() {
             onTapRecord: (_) {},
             onOpenNotifications: () {},
             unreadCount: 0,
+            onOpenInventory: () {},
+            onOpenDailyReport: () {},
             dashboard: dashboard,
             now: now,
           ),
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('موجودی واقعی'), findsOneWidget);
-      expect(find.text('باید دریافت کنم'), findsOneWidget);
-      expect(find.text('باید پرداخت کنم'), findsOneWidget);
+      expect(find.text('موجودی واقعی'), findsNothing);
+      expect(find.text('موجودی'), findsOneWidget);
+      expect(find.text('گزارش روزانه'), findsOneWidget);
+      expect(find.text('دریافتنی‌ها'), findsOneWidget);
+      expect(find.text('پرداختنی‌ها'), findsOneWidget);
       expect(
         find.byWidgetPredicate(
           (widget) => widget is RichText && widget.text.toPlainText() == '۱۰ گرم طلا',
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         find.byWidgetPredicate(
           (widget) => widget is RichText && widget.text.toPlainText() == '۲۰٬۰۰۰ USD',
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         find.byWidgetPredicate(
           (widget) => widget is RichText && widget.text.toPlainText() == '۶۰٬۰۰۰ AED',
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         find.byWidgetPredicate(
           (widget) => widget is RichText && widget.text.toPlainText() == '۱٬۴۸۰ گرم طلا',
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         find.byWidgetPredicate(
           (widget) => widget is RichText && widget.text.toPlainText() == '۳۵۰٬۰۰۰٬۰۰۰ تومان',
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(find.text('۱ مورد'), findsNWidgets(2));
+      final receiveCard = tester.getSize(
+        find.byKey(const ValueKey('home-obligation-دریافتنی‌ها')),
+      );
+      final deliverCard = tester.getSize(
+        find.byKey(const ValueKey('home-obligation-پرداختنی‌ها')),
+      );
+      expect(receiveCard.height, deliverCard.height);
+      final inventoryButton = tester.getSize(
+        find.widgetWithText(OutlinedButton, 'موجودی'),
+      );
+      final reportButton = tester.getSize(
+        find.widgetWithText(OutlinedButton, 'گزارش روزانه'),
+      );
+      expect(inventoryButton, reportButton);
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('Home activity rows retain complete asset units', (tester) async {
+    final gold = AppRecord(
+      id: 'home-gold',
+      type: RecordType.deal,
+      operationLabel: 'خرید',
+      personId: 'person',
+      amountDisplay: '۲۵۰',
+      assetLabel: 'گرم طلا',
+      goldFineness: '750',
+      goldInputUnit: ZarGoldUnit.gram.name,
+      date: Jalali.now(),
+      time: const TimeOfDay(hour: 16, minute: 45),
+    );
+    final currency = AppRecord(
+      id: 'home-currency',
+      type: RecordType.deal,
+      operationLabel: 'فروش',
+      personId: 'person',
+      amountDisplay: '۲۰٬۰۰۰ USD',
+      assetLabel: 'ارز',
+      currencyCode: 'USD',
+      date: Jalali.now(),
+    );
+    final coin = AppRecord(
+      id: 'home-coin',
+      type: RecordType.settlement,
+      operationLabel: 'دریافت',
+      personId: 'person',
+      amountDisplay: '۲۵ × ربع‌سکه',
+      assetLabel: 'سکه',
+      coinLines: const [AppCoinLine(name: 'ربع‌سکه', quantity: 25)],
+      date: Jalali.now(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhaseA2HomeScreen(
+          records: const <AppRecord>[],
+          personName: (_) => 'علی',
+          onTapRecord: (_) {},
+          onOpenNotifications: () {},
+          unreadCount: 0,
+          dashboard: projector.project(
+            deals: const [],
+            settlements: const [],
+            now: DateTime.now(),
+          ),
+          recentRecords: [gold, currency, coin],
+          now: DateTime.now(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('۲۵۰'), findsOneWidget);
+    expect(find.text('گرم طلا'), findsOneWidget);
+    expect(find.text('عیار ۷۵۰'), findsOneWidget);
+    expect(find.text('امروز · ۱۶:۴۵'), findsOneWidget);
+    expect(find.text('۲۰٬۰۰۰'), findsOneWidget);
+    expect(find.text('USD'), findsOneWidget);
+    expect(find.text('۲۵'), findsOneWidget);
+    expect(find.text('عدد ربع‌سکه'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home header is one compact row at phone width', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() async => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: PhaseA2HomeScreen(
+            records: const <AppRecord>[],
+            personName: (_) => 'علی',
+            onTapRecord: (_) {},
+            onOpenNotifications: () {},
+            onOpenSettings: () {},
+            unreadCount: 7,
+            onOpenInventory: () {},
+            onOpenDailyReport: () {},
+            now: now,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final headerRect = tester.getRect(find.byKey(const ValueKey('home-header')));
+    final headerRowRect = tester.getRect(
+      find.byKey(const ValueKey('home-header-row')),
+    );
+    final todayRect = tester.getRect(
+      find.byKey(const ValueKey('home-header-today')),
+    );
+    final logoRect = tester.getRect(
+      find.byKey(const ValueKey('home-header-logo')),
+    );
+    final quickActionsRect = tester.getRect(
+      find.byKey(const ValueKey('home-quick-actions')),
+    );
+    final bellRect = tester.getRect(
+      find.byKey(const ValueKey('home-notification-bell')),
+    );
+    final settingsRect = tester.getRect(
+      find.byKey(const ValueKey('home-settings-button')),
+    );
+    final badgeRect = tester.getRect(
+      find.byKey(const ValueKey('home-notification-badge')),
+    );
+
+    expect(find.byKey(const ValueKey('home-header-logo')), findsOneWidget);
+    expect(find.text('امروز'), findsOneWidget);
+    expect(find.text('·'), findsOneWidget);
+    expect(find.text(formatJalaliDate(Jalali.fromDateTime(now))), findsOneWidget);
+    expect(headerRect.height, lessThanOrEqualTo(60));
+    expect(headerRowRect.height, 44);
+    expect(logoRect.size, const Size(64, 26));
+    expect(bellRect.size, const Size(44, 44));
+    expect(settingsRect.size, const Size(44, 44));
+    expect(tester.getRect(find.byTooltip('اعلان‌ها')).size, const Size(44, 44));
+    expect(tester.getRect(find.byTooltip('تنظیمات و داده‌ها')).size, const Size(44, 44));
+    expect(badgeRect.width, lessThan(bellRect.width));
+    expect(badgeRect.height, lessThan(bellRect.height));
+    expect(badgeRect.left, greaterThanOrEqualTo(bellRect.left));
+    expect(badgeRect.top, greaterThanOrEqualTo(bellRect.top));
+    expect(badgeRect.right, lessThanOrEqualTo(bellRect.right));
+    expect(badgeRect.bottom, lessThanOrEqualTo(bellRect.bottom));
+    expect(todayRect.height, lessThanOrEqualTo(headerRowRect.height));
+    expect(todayRect.center.dy, closeTo(headerRowRect.center.dy, 4));
+    expect(quickActionsRect.top - headerRowRect.bottom, inInclusiveRange(16, 22));
+    expect(headerRect.bottom, lessThanOrEqualTo(quickActionsRect.top));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home amount display keeps unit physically before number in RTL', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Center(
+            child: ZarAmountDisplay(amount: '۲۰٬۰۰۰', unit: 'USD', purity: 'عیار ۷۵۰'),
+          ),
+        ),
+      ),
+    );
+    final unitRect = tester.getRect(find.text('USD'));
+    final amountRect = tester.getRect(find.text('۲۰٬۰۰۰'));
+    expect(unitRect.left, lessThan(amountRect.left));
+    expect(find.text('عیار ۷۵۰'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home amount display covers currency, gold, and negative values', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: SizedBox(
+            width: 320,
+            child: Column(
+              children: [
+                ZarAmountDisplay(amount: '۲۰٬۰۰۰', unit: 'USD'),
+                ZarAmountDisplay(amount: '۴۵٬۰۰۰', unit: 'EUR'),
+                ZarAmountDisplay(amount: '۶۰٬۰۰۰', unit: 'AED'),
+                ZarAmountDisplay(amount: '۶۰۰', unit: 'GBP'),
+                ZarAmountDisplay(amount: '۶۵۰٬۰۰۰', unit: 'TRY'),
+                ZarAmountDisplay(amount: '۱٬۴۸۰', unit: 'گرم طلا'),
+                ZarAmountDisplay(amount: '۵۶۰', unit: 'گرم طلا'),
+                ZarAmountDisplay(amount: '۵۰۰', unit: 'USD', negative: true),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    for (final pair in const [
+      ('USD', '۲۰٬۰۰۰'),
+      ('EUR', '۴۵٬۰۰۰'),
+      ('AED', '۶۰٬۰۰۰'),
+      ('GBP', '۶۰۰'),
+      ('TRY', '۶۵۰٬۰۰۰'),
+      ('گرم طلا', '۱٬۴۸۰'),
+    ]) {
+      final unitRect = tester.getRect(find.text(pair.$1).first);
+      final amountRect = tester.getRect(find.text(pair.$2));
+      expect(unitRect.left, lessThan(amountRect.left));
+    }
+    expect(find.text('۵۶۰'), findsOneWidget);
+    expect(find.text('-۵۰۰'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home buy activity uses an exchange icon', (tester) async {
+    final buy = AppRecord(
+      id: 'home-buy',
+      type: RecordType.deal,
+      operationLabel: 'خرید',
+      personId: 'person',
+      amountDisplay: '۲۰٬۰۰۰ USD',
+      assetLabel: 'ارز',
+      currencyCode: 'USD',
+      date: Jalali.now(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhaseA2HomeScreen(
+          records: const <AppRecord>[],
+          personName: (_) => 'علی',
+          onTapRecord: (_) {},
+          onOpenNotifications: () {},
+          unreadCount: 0,
+          recentRecords: [buy],
+          now: DateTime.now(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byIcon(CupertinoIcons.arrow_2_squarepath), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home obligation preview aligns person with its amount', (tester) async {
+    final due = now.add(const Duration(days: 1));
+    final record = AppRecord(
+      id: 'home-preview',
+      type: RecordType.settlement,
+      operationLabel: 'دریافت',
+      personId: 'person',
+      amountDisplay: '۲۰٬۰۰۰ USD',
+      assetLabel: 'ارز',
+      currencyCode: 'USD',
+      date: Jalali.fromDateTime(due),
+      time: const TimeOfDay(hour: 10, minute: 0),
+      status: SettlementStatus.open,
+    );
+    final dashboard = projector.project(
+      deals: const [],
+      settlements: [settlement('home-preview', due, amount: currency('USD', 20000, 0))],
+      now: now,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhaseA2HomeScreen(
+          records: [record],
+          personName: (_) => 'علی',
+          onTapRecord: (_) {},
+          onOpenNotifications: () {},
+          unreadCount: 0,
+          dashboard: dashboard,
+          now: now,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final personRect = tester.getRect(find.text('علی').first);
+    final amountRect = tester.getRect(find.text('۲۰٬۰۰۰').first);
+    expect((personRect.top - amountRect.top).abs(), lessThan(5));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home dashboard remains readable at compact phone width', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() async => tester.binding.setSurfaceSize(null));
+    final dashboard = projector.project(
+      deals: const [],
+      settlements: [
+        settlement('compact-r', now.add(const Duration(days: 1))),
+        settlement('compact-d', now.add(const Duration(days: 2)), direction: ZarSettlementDirection.deliver),
+      ],
+      now: now,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhaseA2HomeScreen(
+          records: const <AppRecord>[],
+          personName: (_) => 'علی',
+          onTapRecord: (_) {},
+          onOpenNotifications: () {},
+          unreadCount: 0,
+          dashboard: dashboard,
+          now: now,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-دریافتنی‌ها'))).height, 160);
+    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-پرداختنی‌ها'))).height, 160);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home shows same-day overdue context after its due time', (tester) async {
+    final now = DateTime(2026, 9, 2, 12);
+    final overdue = AppRecord(
+      id: 'home-overdue',
+      type: RecordType.settlement,
+      operationLabel: 'دریافت',
+      personId: 'person',
+      amountDisplay: '۵۰۰',
+      assetLabel: 'گرم طلا',
+      goldFineness: '750',
+      date: Jalali.fromDateTime(now),
+      time: const TimeOfDay(hour: 10, minute: 0),
+      status: SettlementStatus.open,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhaseA2HomeScreen(
+          records: [overdue],
+          personName: (_) => 'علی',
+          onTapRecord: (_) {},
+          onOpenNotifications: () {},
+          unreadCount: 0,
+          now: now,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('عقب‌افتاده'), findsNWidgets(2));
+    expect(find.text('در انتظار'), findsNothing);
+  });
 }
 
 ZarPerson person() => ZarPerson(

@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'native_notification_capacity.dart';
+import '../notifications/notification_permission.dart';
 import 'reminder_model.dart';
 import 'reminder_scheduler.dart';
 
@@ -63,6 +65,9 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   static const _channelName = 'یادآوری‌های ZAR+';
   static const _channelDescription = 'یادآوری پرداخت، دریافت و تعهدات کاری';
   static const _payloadPrefix = 'zar-record:';
+  static const _permissionChannel = MethodChannel(
+    'zarplus/notification_permission',
+  );
 
   final FlutterLocalNotificationsPlugin _plugin;
   final String timeZoneName;
@@ -75,7 +80,20 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   bool _enableVibration;
   bool _persistentAlarm;
   bool _initialized = false;
+  Future<void>? _initializing;
+  Future<void> _operations = Future<void>.value();
   late tz.Location _location;
+
+  // Native pending-list reads and cancel/schedule writes must not interleave.
+  // A later completion must always win over an earlier reschedule.
+  Future<void> _serial(Future<void> Function() action) {
+    final result = _operations.then((_) => action());
+    _operations = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {},
+    );
+    return result;
+  }
 
   bool get initialized => _initialized;
   bool get enabled => _enabled;
@@ -89,7 +107,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     required bool playSound,
     required bool enableVibration,
     bool persistentAlarm = false,
-  }) async {
+  }) => _serial(() async {
     _enabled = enabled;
     _playSound = playSound;
     _enableVibration = enableVibration;
@@ -108,15 +126,22 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     }
 
     final specs = List<_NativeReminderSpec>.from(_specs.values);
-    await _cancelAllNative();
+    // A startup rebuild must not dismiss an already-delivered, still-actionable
+    // persistent notification. Content replacements reconcile those separately.
+    await _plugin.cancelAllPendingNotifications();
     for (final spec in specs) {
       await _scheduleSpec(spec);
     }
+  });
+
+  Future<void> initialize() {
+    if (_initialized || kIsWeb) return Future<void>.value();
+    return _initializing ??= _initialize().whenComplete(
+      () => _initializing = null,
+    );
   }
 
-  Future<void> initialize() async {
-    if (_initialized || kIsWeb) return;
-
+  Future<void> _initialize() async {
     tzdata.initializeTimeZones();
     _location = tz.getLocation(timeZoneName);
 
@@ -138,13 +163,16 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
         iOS: ios,
         windows: windows,
       ),
-      onDidReceiveNotificationResponse: (response) {
+      onDidReceiveNotificationResponse: (response) async {
         final recordId = _recordIdFromPayload(response.payload);
         if (response.id != null) {
-          _plugin.cancel(id: response.id!);
+          await _plugin.cancel(id: response.id!);
           if (defaultTargetPlatform == TargetPlatform.android &&
               recordId != null) {
-            _plugin.cancel(id: response.id!, tag: '$_payloadPrefix$recordId');
+            await _plugin.cancel(
+              id: response.id!,
+              tag: '$_payloadPrefix$recordId',
+            );
           }
         }
         if (recordId != null) onRecordTapped?.call(recordId);
@@ -162,12 +190,17 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
           IOSFlutterLocalNotificationsPlugin
         >();
     if (ios != null) {
-      return await ios.requestPermissions(
+      final result =
+          await ios.requestPermissions(
             alert: true,
             badge: true,
             sound: _playSound,
           ) ??
           false;
+      final state = await readPermissionState();
+      return state.isGranted ||
+          (state.status == ZarNotificationPermissionStatus.unsupported &&
+              result);
     }
 
     final android = _plugin
@@ -175,10 +208,119 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (android != null) {
-      return await android.requestNotificationsPermission() ?? false;
+      final result = await android.requestNotificationsPermission() ?? false;
+      // The native adapter records only that a request was attempted. The
+      // authoritative state is read again from Android below; it is never
+      // inferred from a cached Dart boolean.
+      try {
+        await _permissionChannel.invokeMethod<void>('markPermissionRequested');
+      } on MissingPluginException {
+        // Tests and platforms without the optional native bridge use the
+        // plugin result as a best-effort fallback.
+      } on PlatformException {
+        // A missing/older host implementation must not block reminders.
+      }
+      final state = await readPermissionState();
+      return state.isGranted ||
+          (state.status == ZarNotificationPermissionStatus.unsupported &&
+              result);
     }
 
     return false;
+  }
+
+  /// Reads notification authorization from the operating system.
+  ///
+  /// Android uses a tiny host bridge to distinguish a first request from a
+  /// previously denied permission and to separate app-level notification
+  /// disablement from POST_NOTIFICATIONS. iOS maps the native authorization
+  /// status, including provisional authorization. If a host bridge is not
+  /// available (for example in a widget test), the plugin APIs remain a safe
+  /// fallback.
+  Future<ZarNotificationPermissionState> readPermissionState() async {
+    if (kIsWeb) return const ZarNotificationPermissionState.unsupported();
+    await initialize();
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        final raw = await _permissionChannel.invokeMethod<Object?>(
+          'getPermissionState',
+        );
+        if (raw is Map) {
+          final status = raw['status']?.toString();
+          return switch (status) {
+            'granted' => const ZarNotificationPermissionState.granted(),
+            'disabled' => const ZarNotificationPermissionState.disabled(),
+            'notDetermined' =>
+              const ZarNotificationPermissionState.notDetermined(),
+            'denied' => const ZarNotificationPermissionState.denied(),
+            _ => const ZarNotificationPermissionState.unsupported(),
+          };
+        }
+      } on MissingPluginException {
+        // Fall through to the plugin API for tests/older hosts.
+      } on PlatformException {
+        // Fall through to the plugin API for a graceful compatibility path.
+      }
+
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android == null) {
+        return const ZarNotificationPermissionState.unsupported();
+      }
+      final enabled = await android.areNotificationsEnabled();
+      if (enabled == null) {
+        return const ZarNotificationPermissionState.unsupported();
+      }
+      return enabled
+          ? const ZarNotificationPermissionState.granted()
+          : const ZarNotificationPermissionState.denied();
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      try {
+        final raw = await _permissionChannel.invokeMethod<Object?>(
+          'getPermissionState',
+        );
+        if (raw is Map) {
+          final status = raw['status']?.toString();
+          return switch (status) {
+            'granted' => const ZarNotificationPermissionState.granted(),
+            'provisional' => const ZarNotificationPermissionState.provisional(),
+            'notDetermined' =>
+              const ZarNotificationPermissionState.notDetermined(),
+            'denied' => const ZarNotificationPermissionState.denied(),
+            _ => const ZarNotificationPermissionState.unsupported(),
+          };
+        }
+      } on MissingPluginException {
+        // Fall through to the plugin API for tests/older hosts.
+      } on PlatformException {
+        // Fall through to the plugin API for a graceful compatibility path.
+      }
+
+      final ios = _plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
+      if (ios == null) {
+        return const ZarNotificationPermissionState.unsupported();
+      }
+      final options = await ios.checkPermissions();
+      if (options == null) {
+        return const ZarNotificationPermissionState.unsupported();
+      }
+      if (options.isProvisionalEnabled) {
+        return const ZarNotificationPermissionState.provisional();
+      }
+      return options.isEnabled
+          ? const ZarNotificationPermissionState.granted()
+          : const ZarNotificationPermissionState.denied();
+    }
+
+    return const ZarNotificationPermissionState.unsupported();
   }
 
   Future<bool> openSystemNotificationSettings() async {
@@ -202,7 +344,7 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     required ReminderPlan plan,
     required String title,
     required String body,
-  }) async {
+  }) => _serial(() async {
     final spec = _NativeReminderSpec(
       recordId: recordId,
       dueAt: dueAt,
@@ -215,13 +357,14 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
     await initialize();
 
     if (_isIos) {
+      await _cancelNativeForRecord(recordId, keepMatching: spec);
       await _rebuildIosQueue();
       return;
     }
 
-    await _cancelNativeForRecord(recordId);
+    await _cancelNativeForRecord(recordId, keepMatching: spec);
     if (_enabled) await _scheduleSpec(spec);
-  }
+  });
 
   Future<void> _rebuildIosQueue() async {
     await _plugin.cancelAllPendingNotifications();
@@ -245,11 +388,8 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   }
 
   Future<void> _cancelAllNative() async {
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      await _plugin.cancelAll();
-      return;
-    }
-    await _plugin.cancelAllPendingNotifications();
+    // Also remove already displayed persistent/private-content notifications.
+    await _plugin.cancelAll();
   }
 
   Future<void> _scheduleSpec(_NativeReminderSpec spec) async {
@@ -304,20 +444,24 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
   }
 
   @override
-  Future<void> cancelForRecord(String recordId) async {
+  Future<void> cancelForRecord(String recordId) => _serial(() async {
     _specs.remove(recordId);
     if (kIsWeb) return;
     await initialize();
 
     if (_isIos) {
+      await _cancelNativeForRecord(recordId);
       await _rebuildIosQueue();
       return;
     }
 
     await _cancelNativeForRecord(recordId);
-  }
+  });
 
-  Future<void> _cancelNativeForRecord(String recordId) async {
+  Future<void> _cancelNativeForRecord(
+    String recordId, {
+    _NativeReminderSpec? keepMatching,
+  }) async {
     final payload = '$_payloadPrefix$recordId';
     final pending = await _plugin.pendingNotificationRequests();
     for (final request in pending.where((item) => item.payload == payload)) {
@@ -326,11 +470,27 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
         await _plugin.cancel(id: request.id, tag: payload);
       }
     }
-    if (defaultTargetPlatform == TargetPlatform.android) {
+    if (defaultTargetPlatform == TargetPlatform.android || _isIos) {
       final active = await _plugin.getActiveNotifications();
-      for (final notification in active.where((item) => item.tag == payload)) {
+      for (final notification in active.where(
+        (item) => item.tag == payload || item.payload == payload,
+      )) {
+        final unchanged =
+            keepMatching != null &&
+            notification.title == keepMatching.title &&
+            notification.body == keepMatching.body &&
+            keepMatching.plan
+                .resolveTimes(keepMatching.dueAt)
+                .any(
+                  (time) =>
+                      _stableNotificationId(recordId, time) == notification.id,
+                );
+        if (unchanged) continue;
         if (notification.id != null) {
-          await _plugin.cancel(id: notification.id!, tag: payload);
+          await _plugin.cancel(
+            id: notification.id!,
+            tag: _isIos ? null : payload,
+          );
         }
       }
     }
@@ -338,7 +498,30 @@ class FlutterLocalNotificationScheduler implements ReminderScheduler {
 
   @override
   Future<List<ScheduledReminder>> pendingForRecord(String recordId) async {
-    return const [];
+    await _operations;
+    if (kIsWeb || !_enabled) return const [];
+    await initialize();
+    final spec = _specs[recordId];
+    if (spec == null) return const [];
+    final pendingIds = (await _plugin.pendingNotificationRequests())
+        .where((item) => item.payload == '$_payloadPrefix$recordId')
+        .map((item) => item.id)
+        .toSet();
+    return spec.plan
+        .resolveTimes(spec.dueAt)
+        .where((time) {
+          return pendingIds.contains(_stableNotificationId(recordId, time));
+        })
+        .map(
+          (time) => ScheduledReminder(
+            id: _stableNotificationId(recordId, time).toString(),
+            recordId: recordId,
+            scheduledAt: time,
+            title: spec.title,
+            body: spec.body,
+          ),
+        )
+        .toList(growable: false);
   }
 
   static String? _recordIdFromPayload(String? payload) {

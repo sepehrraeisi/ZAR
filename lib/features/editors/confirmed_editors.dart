@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../app_core.dart';
 import '../../domain/zar_amount_formatter.dart';
 import '../../domain/zar_amount_parser.dart';
+import '../../domain/zar_domain_models.dart';
 import 'persian_numeric_input_formatter.dart';
 
 /// Person editor that owns the persistence attempt. It never dismisses the
@@ -121,11 +122,13 @@ class ConfirmedRecordEditorSheet extends StatefulWidget {
     required this.record,
     required this.personName,
     required this.onSave,
+    this.currencies = const [],
   });
 
   final AppRecord record;
   final String personName;
   final Future<void> Function(AppRecord record) onSave;
+  final List<ZarCurrencyType> currencies;
 
   @override
   State<ConfirmedRecordEditorSheet> createState() =>
@@ -147,7 +150,14 @@ class _ConfirmedRecordEditorSheetState
   bool _saving = false;
   String? _error;
 
-  CurrencyOption? get _selectedCurrency => currencyByCode(_currencyCode);
+  CurrencyOption? get _selectedCurrency {
+    final code = _currencyCode;
+    if (code == null) return null;
+    for (final currency in widget.currencies) {
+      if (currency.code == code) return currencyOptionFromDomain(currency);
+    }
+    return currencyByCode(code);
+  }
 
   @override
   void dispose() {
@@ -224,6 +234,12 @@ class _ConfirmedRecordEditorSheetState
                 final selected = await showCurrencyPickerBottomSheet(
                   context,
                   _currencyCode,
+                  options: widget.currencies.isEmpty
+                      ? kCurrencyOptions
+                      : widget.currencies
+                            .where((currency) => !currency.archived)
+                            .map(currencyOptionFromDomain)
+                            .toList(growable: false),
                 );
                 if (mounted && selected != null) {
                   setState(() => _currencyCode = selected.code);

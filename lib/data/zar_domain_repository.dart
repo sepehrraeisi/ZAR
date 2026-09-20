@@ -7,6 +7,7 @@ class ZarDomainSnapshot {
     required this.deals,
     required this.settlements,
     this.coinTypes = const [],
+    this.currencyTypes = const [],
     this.paymentAllocations = const [],
   });
 
@@ -14,6 +15,7 @@ class ZarDomainSnapshot {
   final List<ZarDeal> deals;
   final List<ZarSettlement> settlements;
   final List<ZarCoinType> coinTypes;
+  final List<ZarCurrencyType> currencyTypes;
   final List<ZarPaymentAllocation> paymentAllocations;
 }
 
@@ -86,16 +88,27 @@ abstract interface class ZarCoinCatalogRepository {
   Future<void> restoreCoinType(ZarCoinType coinType);
 }
 
+abstract interface class ZarCurrencyCatalogRepository {
+  Future<List<ZarCurrencyType>> loadCurrencyTypes({
+    bool includeArchived = false,
+  });
+  Future<void> saveCurrencyType(ZarCurrencyType currencyType);
+  Future<void> archiveCurrencyType(ZarCurrencyType currencyType);
+  Future<void> restoreCurrencyType(ZarCurrencyType currencyType);
+}
+
 class InMemoryZarDomainRepository
     implements
         ZarDomainRepository,
         ZarCoinCatalogRepository,
+        ZarCurrencyCatalogRepository,
         ZarPaymentAllocationRepository {
   InMemoryZarDomainRepository({
     Iterable<ZarPerson> people = const [],
     Iterable<ZarDeal> deals = const [],
     Iterable<ZarSettlement> settlements = const [],
     Iterable<ZarCoinType>? coinTypes,
+    Iterable<ZarCurrencyType>? currencyTypes,
   }) : _people = {for (final item in people) item.id: item},
        _deals = {for (final item in deals) item.id: item},
        _settlements = {for (final item in settlements) item.id: item},
@@ -103,12 +116,19 @@ class InMemoryZarDomainRepository
          for (final item
              in coinTypes ?? zarInitialCoinTypes(now: DateTime.utc(2026)))
            item.id: item,
+       },
+       _currencyTypes = {
+         for (final item
+             in currencyTypes ??
+                 zarInitialCurrencyTypes(now: DateTime.utc(2026)))
+           item.id: item,
        };
 
   final Map<String, ZarPerson> _people;
   final Map<String, ZarDeal> _deals;
   final Map<String, ZarSettlement> _settlements;
   final Map<String, ZarCoinType> _coinTypes;
+  final Map<String, ZarCurrencyType> _currencyTypes;
   final List<Map<String, Object?>> auditEvents = [];
   List<ZarPaymentAllocation> _paymentAllocations = [];
 
@@ -139,6 +159,7 @@ class InMemoryZarDomainRepository
     deals: List.unmodifiable(_deals.values),
     settlements: List.unmodifiable(_settlements.values),
     coinTypes: List.unmodifiable(_coinTypes.values),
+    currencyTypes: List.unmodifiable(_currencyTypes.values),
     paymentAllocations: List.unmodifiable(_paymentAllocations),
   );
 
@@ -155,6 +176,9 @@ class InMemoryZarDomainRepository
       for (final item in snapshot.settlements) item.id: item,
     };
     final coinTypes = {for (final item in snapshot.coinTypes) item.id: item};
+    final currencyTypes = {
+      for (final item in snapshot.currencyTypes) item.id: item,
+    };
     _people
       ..clear()
       ..addAll(people);
@@ -173,6 +197,18 @@ class InMemoryZarDomainRepository
                   item.id: item,
               }
             : coinTypes,
+      );
+    _currencyTypes
+      ..clear()
+      ..addAll(
+        currencyTypes.isEmpty
+            ? {
+                for (final item in zarInitialCurrencyTypes(
+                  now: DateTime.utc(2026),
+                ))
+                  item.id: item,
+              }
+            : currencyTypes,
       );
     _audit('complete-backup', 'business', 'restore_replace');
     _paymentAllocations = List.unmodifiable(snapshot.paymentAllocations);
@@ -327,6 +363,47 @@ class InMemoryZarDomainRepository
   Future<void> restoreCoinType(ZarCoinType coinType) => saveCoinType(
     coinType.copyWith(archived: false, updatedAt: DateTime.now().toUtc()),
   );
+
+  @override
+  Future<List<ZarCurrencyType>> loadCurrencyTypes({
+    bool includeArchived = false,
+  }) async {
+    final result =
+        _currencyTypes.values
+            .where((item) => includeArchived || !item.archived)
+            .toList(growable: false)
+          ..sort((a, b) => a.name.compareTo(b.name));
+    return result;
+  }
+
+  @override
+  Future<void> saveCurrencyType(ZarCurrencyType currencyType) async {
+    final duplicate = _currencyTypes.values.any(
+      (item) => item.code == currencyType.code && item.id != currencyType.id,
+    );
+    if (duplicate) {
+      throw const FormatException('Currency code already exists.');
+    }
+    _currencyTypes[currencyType.id] = currencyType;
+  }
+
+  @override
+  Future<void> archiveCurrencyType(ZarCurrencyType currencyType) =>
+      saveCurrencyType(
+        currencyType.copyWith(
+          archived: true,
+          updatedAt: DateTime.now().toUtc(),
+        ),
+      );
+
+  @override
+  Future<void> restoreCurrencyType(ZarCurrencyType currencyType) =>
+      saveCurrencyType(
+        currencyType.copyWith(
+          archived: false,
+          updatedAt: DateTime.now().toUtc(),
+        ),
+      );
 
   @override
   Future<void> archivePerson(ZarPerson person) async {

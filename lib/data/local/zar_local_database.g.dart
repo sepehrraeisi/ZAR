@@ -6504,6 +6504,424 @@ class ZarPaymentAllocationsCompanion
   }
 }
 
+class $ZarCurrencyTypesTable extends ZarCurrencyTypes
+    with TableInfo<$ZarCurrencyTypesTable, LocalCurrencyTypeRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ZarCurrencyTypesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _codeMeta = const VerificationMeta('code');
+  @override
+  late final GeneratedColumn<String> code = GeneratedColumn<String>(
+    'code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _archivedMeta = const VerificationMeta(
+    'archived',
+  );
+  @override
+  late final GeneratedColumn<bool> archived = GeneratedColumn<bool>(
+    'archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMicrosMeta = const VerificationMeta(
+    'createdAtMicros',
+  );
+  @override
+  late final GeneratedColumn<int> createdAtMicros = GeneratedColumn<int>(
+    'created_at_micros',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMicrosMeta = const VerificationMeta(
+    'updatedAtMicros',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAtMicros = GeneratedColumn<int>(
+    'updated_at_micros',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    code,
+    archived,
+    createdAtMicros,
+    updatedAtMicros,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'zar_currency_types';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalCurrencyTypeRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('code')) {
+      context.handle(
+        _codeMeta,
+        code.isAcceptableOrUnknown(data['code']!, _codeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_codeMeta);
+    }
+    if (data.containsKey('archived')) {
+      context.handle(
+        _archivedMeta,
+        archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
+      );
+    }
+    if (data.containsKey('created_at_micros')) {
+      context.handle(
+        _createdAtMicrosMeta,
+        createdAtMicros.isAcceptableOrUnknown(
+          data['created_at_micros']!,
+          _createdAtMicrosMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMicrosMeta);
+    }
+    if (data.containsKey('updated_at_micros')) {
+      context.handle(
+        _updatedAtMicrosMeta,
+        updatedAtMicros.isAcceptableOrUnknown(
+          data['updated_at_micros']!,
+          _updatedAtMicrosMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMicrosMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalCurrencyTypeRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalCurrencyTypeRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      code: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}code'],
+      )!,
+      archived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}archived'],
+      )!,
+      createdAtMicros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at_micros'],
+      )!,
+      updatedAtMicros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at_micros'],
+      )!,
+    );
+  }
+
+  @override
+  $ZarCurrencyTypesTable createAlias(String alias) {
+    return $ZarCurrencyTypesTable(attachedDatabase, alias);
+  }
+}
+
+class LocalCurrencyTypeRow extends DataClass
+    implements Insertable<LocalCurrencyTypeRow> {
+  final String id;
+  final String name;
+  final String code;
+  final bool archived;
+  final int createdAtMicros;
+  final int updatedAtMicros;
+  const LocalCurrencyTypeRow({
+    required this.id,
+    required this.name,
+    required this.code,
+    required this.archived,
+    required this.createdAtMicros,
+    required this.updatedAtMicros,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['code'] = Variable<String>(code);
+    map['archived'] = Variable<bool>(archived);
+    map['created_at_micros'] = Variable<int>(createdAtMicros);
+    map['updated_at_micros'] = Variable<int>(updatedAtMicros);
+    return map;
+  }
+
+  ZarCurrencyTypesCompanion toCompanion(bool nullToAbsent) {
+    return ZarCurrencyTypesCompanion(
+      id: Value(id),
+      name: Value(name),
+      code: Value(code),
+      archived: Value(archived),
+      createdAtMicros: Value(createdAtMicros),
+      updatedAtMicros: Value(updatedAtMicros),
+    );
+  }
+
+  factory LocalCurrencyTypeRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalCurrencyTypeRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      code: serializer.fromJson<String>(json['code']),
+      archived: serializer.fromJson<bool>(json['archived']),
+      createdAtMicros: serializer.fromJson<int>(json['createdAtMicros']),
+      updatedAtMicros: serializer.fromJson<int>(json['updatedAtMicros']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'code': serializer.toJson<String>(code),
+      'archived': serializer.toJson<bool>(archived),
+      'createdAtMicros': serializer.toJson<int>(createdAtMicros),
+      'updatedAtMicros': serializer.toJson<int>(updatedAtMicros),
+    };
+  }
+
+  LocalCurrencyTypeRow copyWith({
+    String? id,
+    String? name,
+    String? code,
+    bool? archived,
+    int? createdAtMicros,
+    int? updatedAtMicros,
+  }) => LocalCurrencyTypeRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    code: code ?? this.code,
+    archived: archived ?? this.archived,
+    createdAtMicros: createdAtMicros ?? this.createdAtMicros,
+    updatedAtMicros: updatedAtMicros ?? this.updatedAtMicros,
+  );
+  LocalCurrencyTypeRow copyWithCompanion(ZarCurrencyTypesCompanion data) {
+    return LocalCurrencyTypeRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      code: data.code.present ? data.code.value : this.code,
+      archived: data.archived.present ? data.archived.value : this.archived,
+      createdAtMicros: data.createdAtMicros.present
+          ? data.createdAtMicros.value
+          : this.createdAtMicros,
+      updatedAtMicros: data.updatedAtMicros.present
+          ? data.updatedAtMicros.value
+          : this.updatedAtMicros,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCurrencyTypeRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('code: $code, ')
+          ..write('archived: $archived, ')
+          ..write('createdAtMicros: $createdAtMicros, ')
+          ..write('updatedAtMicros: $updatedAtMicros')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, code, archived, createdAtMicros, updatedAtMicros);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalCurrencyTypeRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.code == this.code &&
+          other.archived == this.archived &&
+          other.createdAtMicros == this.createdAtMicros &&
+          other.updatedAtMicros == this.updatedAtMicros);
+}
+
+class ZarCurrencyTypesCompanion extends UpdateCompanion<LocalCurrencyTypeRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> code;
+  final Value<bool> archived;
+  final Value<int> createdAtMicros;
+  final Value<int> updatedAtMicros;
+  final Value<int> rowid;
+  const ZarCurrencyTypesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.code = const Value.absent(),
+    this.archived = const Value.absent(),
+    this.createdAtMicros = const Value.absent(),
+    this.updatedAtMicros = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ZarCurrencyTypesCompanion.insert({
+    required String id,
+    required String name,
+    required String code,
+    this.archived = const Value.absent(),
+    required int createdAtMicros,
+    required int updatedAtMicros,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       code = Value(code),
+       createdAtMicros = Value(createdAtMicros),
+       updatedAtMicros = Value(updatedAtMicros);
+  static Insertable<LocalCurrencyTypeRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? code,
+    Expression<bool>? archived,
+    Expression<int>? createdAtMicros,
+    Expression<int>? updatedAtMicros,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (code != null) 'code': code,
+      if (archived != null) 'archived': archived,
+      if (createdAtMicros != null) 'created_at_micros': createdAtMicros,
+      if (updatedAtMicros != null) 'updated_at_micros': updatedAtMicros,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ZarCurrencyTypesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? code,
+    Value<bool>? archived,
+    Value<int>? createdAtMicros,
+    Value<int>? updatedAtMicros,
+    Value<int>? rowid,
+  }) {
+    return ZarCurrencyTypesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      code: code ?? this.code,
+      archived: archived ?? this.archived,
+      createdAtMicros: createdAtMicros ?? this.createdAtMicros,
+      updatedAtMicros: updatedAtMicros ?? this.updatedAtMicros,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (code.present) {
+      map['code'] = Variable<String>(code.value);
+    }
+    if (archived.present) {
+      map['archived'] = Variable<bool>(archived.value);
+    }
+    if (createdAtMicros.present) {
+      map['created_at_micros'] = Variable<int>(createdAtMicros.value);
+    }
+    if (updatedAtMicros.present) {
+      map['updated_at_micros'] = Variable<int>(updatedAtMicros.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ZarCurrencyTypesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('code: $code, ')
+          ..write('archived: $archived, ')
+          ..write('createdAtMicros: $createdAtMicros, ')
+          ..write('updatedAtMicros: $updatedAtMicros, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$ZarLocalDatabase extends GeneratedDatabase {
   _$ZarLocalDatabase(QueryExecutor e) : super(e);
   $ZarLocalDatabaseManager get managers => $ZarLocalDatabaseManager(this);
@@ -6524,6 +6942,9 @@ abstract class _$ZarLocalDatabase extends GeneratedDatabase {
       $ZarSettlementCoinLinesTable(this);
   late final $ZarPaymentAllocationsTable zarPaymentAllocations =
       $ZarPaymentAllocationsTable(this);
+  late final $ZarCurrencyTypesTable zarCurrencyTypes = $ZarCurrencyTypesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6538,6 +6959,7 @@ abstract class _$ZarLocalDatabase extends GeneratedDatabase {
     zarDealCoinLines,
     zarSettlementCoinLines,
     zarPaymentAllocations,
+    zarCurrencyTypes,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -11173,6 +11595,239 @@ typedef $$ZarPaymentAllocationsTableProcessedTableManager =
       LocalPaymentAllocationRow,
       PrefetchHooks Function({bool settlementId})
     >;
+typedef $$ZarCurrencyTypesTableCreateCompanionBuilder =
+    ZarCurrencyTypesCompanion Function({
+      required String id,
+      required String name,
+      required String code,
+      Value<bool> archived,
+      required int createdAtMicros,
+      required int updatedAtMicros,
+      Value<int> rowid,
+    });
+typedef $$ZarCurrencyTypesTableUpdateCompanionBuilder =
+    ZarCurrencyTypesCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> code,
+      Value<bool> archived,
+      Value<int> createdAtMicros,
+      Value<int> updatedAtMicros,
+      Value<int> rowid,
+    });
+
+class $$ZarCurrencyTypesTableFilterComposer
+    extends Composer<_$ZarLocalDatabase, $ZarCurrencyTypesTable> {
+  $$ZarCurrencyTypesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get code => $composableBuilder(
+    column: $table.code,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAtMicros => $composableBuilder(
+    column: $table.createdAtMicros,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAtMicros => $composableBuilder(
+    column: $table.updatedAtMicros,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ZarCurrencyTypesTableOrderingComposer
+    extends Composer<_$ZarLocalDatabase, $ZarCurrencyTypesTable> {
+  $$ZarCurrencyTypesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get code => $composableBuilder(
+    column: $table.code,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAtMicros => $composableBuilder(
+    column: $table.createdAtMicros,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAtMicros => $composableBuilder(
+    column: $table.updatedAtMicros,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ZarCurrencyTypesTableAnnotationComposer
+    extends Composer<_$ZarLocalDatabase, $ZarCurrencyTypesTable> {
+  $$ZarCurrencyTypesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get code =>
+      $composableBuilder(column: $table.code, builder: (column) => column);
+
+  GeneratedColumn<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAtMicros => $composableBuilder(
+    column: $table.createdAtMicros,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get updatedAtMicros => $composableBuilder(
+    column: $table.updatedAtMicros,
+    builder: (column) => column,
+  );
+}
+
+class $$ZarCurrencyTypesTableTableManager
+    extends
+        RootTableManager<
+          _$ZarLocalDatabase,
+          $ZarCurrencyTypesTable,
+          LocalCurrencyTypeRow,
+          $$ZarCurrencyTypesTableFilterComposer,
+          $$ZarCurrencyTypesTableOrderingComposer,
+          $$ZarCurrencyTypesTableAnnotationComposer,
+          $$ZarCurrencyTypesTableCreateCompanionBuilder,
+          $$ZarCurrencyTypesTableUpdateCompanionBuilder,
+          (
+            LocalCurrencyTypeRow,
+            BaseReferences<
+              _$ZarLocalDatabase,
+              $ZarCurrencyTypesTable,
+              LocalCurrencyTypeRow
+            >,
+          ),
+          LocalCurrencyTypeRow,
+          PrefetchHooks Function()
+        > {
+  $$ZarCurrencyTypesTableTableManager(
+    _$ZarLocalDatabase db,
+    $ZarCurrencyTypesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ZarCurrencyTypesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ZarCurrencyTypesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ZarCurrencyTypesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> code = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
+                Value<int> createdAtMicros = const Value.absent(),
+                Value<int> updatedAtMicros = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ZarCurrencyTypesCompanion(
+                id: id,
+                name: name,
+                code: code,
+                archived: archived,
+                createdAtMicros: createdAtMicros,
+                updatedAtMicros: updatedAtMicros,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String code,
+                Value<bool> archived = const Value.absent(),
+                required int createdAtMicros,
+                required int updatedAtMicros,
+                Value<int> rowid = const Value.absent(),
+              }) => ZarCurrencyTypesCompanion.insert(
+                id: id,
+                name: name,
+                code: code,
+                archived: archived,
+                createdAtMicros: createdAtMicros,
+                updatedAtMicros: updatedAtMicros,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ZarCurrencyTypesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ZarLocalDatabase,
+      $ZarCurrencyTypesTable,
+      LocalCurrencyTypeRow,
+      $$ZarCurrencyTypesTableFilterComposer,
+      $$ZarCurrencyTypesTableOrderingComposer,
+      $$ZarCurrencyTypesTableAnnotationComposer,
+      $$ZarCurrencyTypesTableCreateCompanionBuilder,
+      $$ZarCurrencyTypesTableUpdateCompanionBuilder,
+      (
+        LocalCurrencyTypeRow,
+        BaseReferences<
+          _$ZarLocalDatabase,
+          $ZarCurrencyTypesTable,
+          LocalCurrencyTypeRow
+        >,
+      ),
+      LocalCurrencyTypeRow,
+      PrefetchHooks Function()
+    >;
 
 class $ZarLocalDatabaseManager {
   final _$ZarLocalDatabase _db;
@@ -11198,4 +11853,6 @@ class $ZarLocalDatabaseManager {
       );
   $$ZarPaymentAllocationsTableTableManager get zarPaymentAllocations =>
       $$ZarPaymentAllocationsTableTableManager(_db, _db.zarPaymentAllocations);
+  $$ZarCurrencyTypesTableTableManager get zarCurrencyTypes =>
+      $$ZarCurrencyTypesTableTableManager(_db, _db.zarCurrencyTypes);
 }

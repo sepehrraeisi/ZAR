@@ -64,6 +64,11 @@ class ZarLegacyPresentationBridge {
       time: settlement.hasTime
           ? TimeOfDay(hour: local.hour, minute: local.minute)
           : null,
+      calendarAt:
+          (settlement.status == ZarSettlementStatus.completed
+                  ? settlement.completedAt
+                  : settlement.scheduledAt)
+              ?.toLocal(),
       status: _settlementStatusToUi(settlement.status),
       note: settlement.note,
       goldFineness: settlement.amount is ZarGoldAssetAmount
@@ -125,6 +130,7 @@ class ZarLegacyPresentationBridge {
       currencyCode: _currencyCode(deal.amount),
       date: Jalali.fromDateTime(local),
       time: TimeOfDay(hour: local.hour, minute: local.minute),
+      calendarAt: deal.dealAt.toLocal(),
       status: _dealStatusToUi(deal.status),
       note: deal.note,
       goldFineness: deal.pricing is ZarGoldDealPricing

@@ -10,6 +10,7 @@ class ZarLocalRepository
     implements
         ZarDomainRepository,
         ZarCoinCatalogRepository,
+        ZarCurrencyCatalogRepository,
         ZarPaymentAllocationRepository {
   ZarLocalRepository(this.database);
 
@@ -18,6 +19,7 @@ class ZarLocalRepository
   Future<void> ensureReady() async {
     await database.ensureReady();
     await _seedMissingCoinTypes();
+    await _seedMissingCurrencyTypes();
   }
 
   Future<void> close() => database.close();
@@ -90,6 +92,9 @@ class ZarLocalRepository
         )..orderBy([(row) => OrderingTerm.asc(row.position)])).get(),
       );
       final coinTypes = await database.select(database.zarCoinTypes).get();
+      final currencyTypes = await database
+          .select(database.zarCurrencyTypes)
+          .get();
       return ZarDomainSnapshot(
         people: people.map(_personFromRow).toList(growable: false),
         deals: deals
@@ -105,6 +110,9 @@ class ZarLocalRepository
             )
             .toList(growable: false),
         coinTypes: coinTypes.map(_coinTypeFromRow).toList(growable: false),
+        currencyTypes: currencyTypes
+            .map(_currencyTypeFromRow)
+            .toList(growable: false),
         paymentAllocations:
             (await database.select(database.zarPaymentAllocations).get())
                 .map(
@@ -139,6 +147,7 @@ class ZarLocalRepository
       await database.delete(database.zarDeals).go();
       await database.delete(database.zarPeople).go();
       await database.delete(database.zarCoinTypes).go();
+      await database.delete(database.zarCurrencyTypes).go();
       for (final person in snapshot.people) {
         await database.into(database.zarPeople).insert(_personToRow(person));
       }
@@ -156,6 +165,14 @@ class ZarLocalRepository
         await database
             .into(database.zarCoinTypes)
             .insert(_coinTypeToRow(coinType));
+      }
+      final currencyCatalog = snapshot.currencyTypes.isEmpty
+          ? zarInitialCurrencyTypes()
+          : snapshot.currencyTypes;
+      for (final currencyType in currencyCatalog) {
+        await database
+            .into(database.zarCurrencyTypes)
+            .insert(_currencyTypeToRow(currencyType));
       }
     });
   }
@@ -306,6 +323,53 @@ class ZarLocalRepository
   Future<void> restoreCoinType(ZarCoinType coinType) => saveCoinType(
     coinType.copyWith(archived: false, updatedAt: DateTime.now().toUtc()),
   );
+
+  @override
+  Future<List<ZarCurrencyType>> loadCurrencyTypes({
+    bool includeArchived = false,
+  }) async {
+    final query = database.select(database.zarCurrencyTypes);
+    if (!includeArchived) query.where((row) => row.archived.equals(false));
+    query.orderBy([(row) => OrderingTerm.asc(row.name)]);
+    return (await query.get())
+        .map(_currencyTypeFromRow)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> saveCurrencyType(ZarCurrencyType currencyType) async {
+    final duplicate =
+        await (database.select(database.zarCurrencyTypes)..where(
+              (row) =>
+                  row.code.equals(currencyType.code) &
+                  row.id.isNotIn([currencyType.id]),
+            ))
+            .getSingleOrNull();
+    if (duplicate != null) {
+      throw const FormatException('Currency code already exists.');
+    }
+    await database
+        .into(database.zarCurrencyTypes)
+        .insertOnConflictUpdate(_currencyTypeToRow(currencyType));
+  }
+
+  @override
+  Future<void> archiveCurrencyType(ZarCurrencyType currencyType) =>
+      saveCurrencyType(
+        currencyType.copyWith(
+          archived: true,
+          updatedAt: DateTime.now().toUtc(),
+        ),
+      );
+
+  @override
+  Future<void> restoreCurrencyType(ZarCurrencyType currencyType) =>
+      saveCurrencyType(
+        currencyType.copyWith(
+          archived: false,
+          updatedAt: DateTime.now().toUtc(),
+        ),
+      );
 
   @override
   Future<void> archivePerson(ZarPerson person) =>
@@ -527,6 +591,26 @@ class ZarLocalRepository
         updatedAtMicros: _micros(value.updatedAt),
       );
 
+  ZarCurrencyType _currencyTypeFromRow(LocalCurrencyTypeRow row) =>
+      ZarCurrencyType(
+        id: row.id,
+        name: row.name,
+        code: row.code,
+        archived: row.archived,
+        createdAt: _date(row.createdAtMicros),
+        updatedAt: _date(row.updatedAtMicros),
+      );
+
+  ZarCurrencyTypesCompanion _currencyTypeToRow(ZarCurrencyType value) =>
+      ZarCurrencyTypesCompanion.insert(
+        id: value.id,
+        name: value.name,
+        code: value.code,
+        archived: Value(value.archived),
+        createdAtMicros: _micros(value.createdAt),
+        updatedAtMicros: _micros(value.updatedAt),
+      );
+
   Future<void> _seedMissingCoinTypes() async {
     final existing = (await database.select(database.zarCoinTypes).get())
         .map((e) => e.id)
@@ -534,6 +618,19 @@ class ZarLocalRepository
     for (final seed in zarInitialCoinTypes()) {
       if (!existing.contains(seed.id)) {
         await database.into(database.zarCoinTypes).insert(_coinTypeToRow(seed));
+      }
+    }
+  }
+
+  Future<void> _seedMissingCurrencyTypes() async {
+    final existing = (await database.select(database.zarCurrencyTypes).get())
+        .map((e) => e.id)
+        .toSet();
+    for (final seed in zarInitialCurrencyTypes()) {
+      if (!existing.contains(seed.id)) {
+        await database
+            .into(database.zarCurrencyTypes)
+            .insert(_currencyTypeToRow(seed));
       }
     }
   }
@@ -935,10 +1032,16 @@ class ZarLocalRepository
     final deals = snapshot.deals.map((item) => item.id).toSet();
     final settlements = snapshot.settlements.map((item) => item.id).toSet();
     final coinTypes = snapshot.coinTypes.map((item) => item.id).toSet();
+    final currencyTypes = snapshot.currencyTypes.map((item) => item.id).toSet();
+    final currencyCodes = snapshot.currencyTypes
+        .map((item) => item.code)
+        .toSet();
     if (people.length != snapshot.people.length ||
         deals.length != snapshot.deals.length ||
         settlements.length != snapshot.settlements.length ||
-        coinTypes.length != snapshot.coinTypes.length) {
+        coinTypes.length != snapshot.coinTypes.length ||
+        currencyTypes.length != snapshot.currencyTypes.length ||
+        currencyCodes.length != snapshot.currencyTypes.length) {
       throw const FormatException('Snapshot contains duplicate identifiers.');
     }
     for (final deal in snapshot.deals) {
