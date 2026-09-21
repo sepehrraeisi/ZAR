@@ -126,6 +126,9 @@ class ZarPhaseA2Store extends ChangeNotifier {
       notifyListeners();
     } catch (error) {
       _lastError = error;
+      // The store's error state changed; listeners must see it even when the
+      // caller rethrows and shows its own error UI.
+      notifyListeners();
       rethrow;
     } finally {
       _loading = false;

@@ -213,6 +213,11 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
   Object? _loadError;
   Jalali _calendarSelectedDate = Jalali.now();
 
+  /// Obligation records the user has already seen through the notification
+  /// center or a direct record open. The bell badge counts only unseen open
+  /// obligations, so it clears on review and re-arms for genuinely new items.
+  final Set<String> _seenNotificationRecordIds = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -275,6 +280,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         );
         return;
       }
+      setState(() => _seenNotificationRecordIds.add(recordId));
       unawaited(_openRecord(record));
     });
   }
@@ -1079,6 +1085,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       .toList(growable: false);
 
   Future<void> _openNotificationCenter() async {
+    _seenNotificationRecordIds.addAll(
+      openObligations.map((record) => record.id),
+    );
+    if (mounted) setState(() {});
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => AnimatedBuilder(
@@ -1367,7 +1377,9 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             _openPending(ZarSettlementDirection.receive),
         onOpenPendingDeliver: () =>
             _openPending(ZarSettlementDirection.deliver),
-        unreadCount: openObligations.length,
+        unreadCount: openObligations
+            .where((record) => !_seenNotificationRecordIds.contains(record.id))
+            .length,
       ),
       CalendarScreen(
         records: records,

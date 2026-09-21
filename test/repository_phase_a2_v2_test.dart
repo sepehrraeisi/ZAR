@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_app/features/history/operational_history_screen.dart';
 import 'package:flutter_app/features/people/operational_people_screen.dart';
 import 'package:flutter_app/features/reports/operational_daily_report_screen.dart';
+import 'package:flutter_app/features/notifications/notification_center.dart';
 import 'package:flutter_app/repository_phase_a2_app_v2.dart';
 
 void main() {
@@ -61,5 +62,30 @@ void main() {
     await tester.tap(find.text('سوابق').last);
     await tester.pumpAndSettle();
     expect(find.byType(OperationalHistoryScreen), findsOneWidget);
+  });
+
+  testWidgets('notification badge clears after reviewing the center', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const RepositoryZarPlusAppV2());
+    await tester.pumpAndSettle();
+
+    // Preview data seeds open obligations, so the badge is visible at start.
+    expect(
+      find.byKey(const ValueKey('home-notification-badge')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('home-notification-bell')));
+    await tester.pumpAndSettle();
+    expect(find.byType(NotificationCenterScreen), findsOneWidget);
+
+    Navigator.of(tester.element(find.byType(NotificationCenterScreen))).pop();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('home-notification-badge')),
+      findsNothing,
+    );
   });
 }

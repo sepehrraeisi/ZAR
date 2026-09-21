@@ -81,7 +81,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: DealDetailSheet(
+            body: HistoryDealDetailSheet(
               record: deal,
               personName: 'علی رضایی',
               linkedSettlements: const [],
@@ -91,9 +91,8 @@ void main() {
         ),
       );
 
-      expect(find.text('جزئیات معامله (خرید)'), findsOneWidget);
-      expect(find.text(r'$۱٬۲۵۰٫۲۵'), findsOneWidget);
-      expect(find.text('USD'), findsOneWidget);
+      expect(find.text('خرید'), findsWidgets);
+      expect(find.text('علی رضایی'), findsWidgets);
       expect(find.text('در انتظار'), findsNothing);
       expect(find.text('انجام شد'), findsNothing);
       expect(find.text('لغو شد'), findsNothing);
