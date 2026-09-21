@@ -152,6 +152,20 @@ class ZarDomainBackupCodec {
     );
   }
 
+  /// Per-record JSON for the cloud repositories (PocketBase `data` field) —
+  /// exactly the V7 backup per-entity encoding, provider-neutral ISO strings.
+  Map<String, Object?> personRecord(ZarPerson person) => _personToMap(person);
+  ZarPerson personFromRecord(Map<String, Object?> map) => _personFromMap(map);
+  Map<String, Object?> dealRecord(ZarDeal deal) => _dealToMap(deal);
+  ZarDeal dealFromRecord(Map<String, Object?> map, String businessId) =>
+      _dealFromMap(map, businessId);
+  Map<String, Object?> settlementRecord(ZarSettlement settlement) =>
+      _settlementToMap(settlement);
+  ZarSettlement settlementFromRecord(
+    Map<String, Object?> map,
+    String businessId,
+  ) => _settlementFromMap(map, businessId);
+
   List<T> _mapList<T>(Object? raw, T Function(Map<String, Object?>) mapper) {
     if (raw == null) return const [];
     if (raw is! List) throw const FormatException('Invalid backup collection.');
