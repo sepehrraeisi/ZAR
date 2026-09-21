@@ -6,10 +6,15 @@ class LoginScreen extends StatefulWidget {
     super.key,
     required this.onSignIn,
     required this.onResetPassword,
+    this.onSignUp,
   });
 
   final Future<void> Function(String email, String password) onSignIn;
   final Future<void> Function(String email) onResetPassword;
+
+  /// When provided (cloud mode) a sign-up toggle appears so the workspace
+  /// owner can create their account with the same email+password.
+  final Future<void> Function(String email, String password)? onSignUp;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -20,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   bool _obscure = true;
   bool _busy = false;
+  bool _signUpMode = false;
   String? _error;
 
   @override
@@ -29,24 +35,18 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _signIn() async {
+  Future<void> _submit() async {
     final email = _email.text.trim();
     final password = _password.text;
     if (email.isEmpty || password.isEmpty) {
       setState(() => _error = 'ایمیل و رمز عبور را وارد کنید.');
       return;
     }
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      await widget.onSignIn(email, password);
-    } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    await _run(
+      _signUpMode
+          ? () => widget.onSignUp!(email, password)
+          : () => widget.onSignIn(email, password),
+    );
   }
 
   Future<void> _resetPassword() async {
@@ -55,18 +55,27 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _error = 'ابتدا ایمیل خود را وارد کنید.');
       return;
     }
+    final sent = await _run(() => widget.onResetPassword(email));
+    if (sent && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لینک بازیابی رمز عبور ارسال شد.')),
+      );
+    }
+  }
+
+  /// Runs the auth action, returning whether it succeeded. Auth failures carry
+  /// ready-to-show Persian messages (`ZarAuthException.toString`).
+  Future<bool> _run(Future<void> Function() action) async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await widget.onResetPassword(email);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لینک بازیابی رمز عبور ارسال شد.')),
-      );
+      await action();
+      return true;
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
+      return false;
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -97,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'ورود به فضای کاری',
+                        _signUpMode ? 'ساخت فضای کاری مشترک' : 'ورود به فضای کاری',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
@@ -120,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         obscureText: _obscure,
                         textDirection: TextDirection.ltr,
                         autofillHints: const [AutofillHints.password],
-                        onSubmitted: (_) => _signIn(),
+                        onSubmitted: (_) => _submit(),
                         decoration: InputDecoration(
                           labelText: 'رمز عبور',
                           prefixIcon: const Icon(CupertinoIcons.lock),
@@ -140,20 +149,35 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                       const SizedBox(height: 18),
                       FilledButton(
-                        onPressed: _busy ? null : _signIn,
+                        onPressed: _busy ? null : _submit,
                         child: _busy
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Text('ورود'),
+                            : Text(_signUpMode ? 'ساخت حساب' : 'ورود'),
                       ),
+                      if (widget.onSignUp != null)
+                        TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => setState(() {
+                                  _signUpMode = !_signUpMode;
+                                  _error = null;
+                                }),
+                          child: Text(
+                            _signUpMode
+                                ? 'قبلاً حساب ساخته‌اید؟ وارد شوید'
+                                : 'حساب ندارید؟ ساخت حساب',
+                          ),
+                        ),
                       const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: _busy ? null : _resetPassword,
-                        child: const Text('فراموشی رمز عبور'),
-                      ),
+                      if (!_signUpMode)
+                        TextButton(
+                          onPressed: _busy ? null : _resetPassword,
+                          child: const Text('فراموشی رمز عبور'),
+                        ),
                     ],
                   ),
                 ),

@@ -1,38 +1,56 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
-class ZarAuthException implements Exception {
-  const ZarAuthException(this.message, {this.code});
+import 'zar_auth_service.dart' show ZarAuthException, ZarAuthUser, ZarAuthService;
 
-  final String message;
-  final String? code;
-
-  @override
-  String toString() => message;
-}
-
-class FirebaseAuthService {
-  FirebaseAuthService({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
+class FirebaseAuthService implements ZarAuthService {
+  FirebaseAuthService({FirebaseAuth? auth})
+    : _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseAuth _auth;
 
-  User? get currentUser => _auth.currentUser;
+  @override
+  ZarAuthUser? get currentUser {
+    final user = _auth.currentUser;
+    return user == null ? null : _toUser(user);
+  }
 
-  Stream<User?> authStateChanges() => _auth.authStateChanges();
+  @override
+  Stream<ZarAuthUser?> get authStateChanges =>
+      _auth.authStateChanges().map((user) => user == null ? null : _toUser(user));
 
-  Future<UserCredential> signIn({
+  @override
+  Future<ZarAuthUser> signIn({
     required String email,
     required String password,
   }) async {
     try {
-      return await _auth.signInWithEmailAndPassword(
+      final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
+      return _toUser(credential.user!);
     } on FirebaseAuthException catch (error) {
       throw ZarAuthException(_persianMessage(error), code: error.code);
     }
   }
 
+  @override
+  Future<ZarAuthUser> signUp({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      return _toUser(credential.user!);
+    } on FirebaseAuthException catch (error) {
+      throw ZarAuthException(_persianMessage(error), code: error.code);
+    }
+  }
+
+  @override
   Future<void> sendPasswordReset(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
@@ -41,12 +59,20 @@ class FirebaseAuthService {
     }
   }
 
+  @override
   Future<void> signOut() => _auth.signOut();
+
+  ZarAuthUser _toUser(User user) =>
+      ZarAuthUser(uid: user.uid, email: user.email);
 
   String _persianMessage(FirebaseAuthException error) {
     switch (error.code) {
       case 'invalid-email':
         return 'ایمیل واردشده معتبر نیست.';
+      case 'email-already-in-use':
+        return 'با این ایمیل قبلاً حساب ساخته شده است. وارد شوید.';
+      case 'weak-password':
+        return 'رمز عبور کوتاه است. حداقل ۶ نویسه انتخاب کنید.';
       case 'invalid-credential':
       case 'wrong-password':
       case 'user-not-found':
