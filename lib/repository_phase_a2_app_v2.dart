@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 import 'app_core.dart';
 import 'application/persisted_reminder_coordinator.dart';
 import 'application/operational_dashboard_projector.dart';
 import 'application/operational_inventory_projector.dart';
+import 'application/zar_auto_backup.dart';
 import 'application/zar_backup_manager.dart';
 import 'application/zar_legacy_presentation_bridge.dart';
 import 'application/zar_phase_a2_store.dart';
@@ -255,6 +258,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         _ready = true;
         _loadError = null;
       });
+      unawaited(_runAutoBackup());
       ZarNativeNotificationRuntime.instance.setRecordTapHandler(
         _handleNativeRecordTap,
       );
@@ -266,6 +270,26 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       }
     } catch (error) {
       if (mounted) setState(() => _loadError = error);
+    }
+  }
+
+  /// Silent rolling local backup. A business losing its phone must not lose
+  /// its books, so every successful startup refreshes the rolling history in
+  /// the app documents directory. Backup problems are never surfaced as app
+  /// errors — the manual backup screen remains the explicit user path.
+  Future<void> _runAutoBackup() async {
+    try {
+      final docs = await getApplicationDocumentsDirectory();
+      final coordinator = ZarAutoBackupCoordinator(
+        backupManager: _backupManager,
+        directory: Directory(
+          '${docs.path}${Platform.pathSeparator}auto-backups',
+        ),
+        onError: (_) {},
+      );
+      await coordinator.runIfNeeded();
+    } catch (_) {
+      // Auto backup is best-effort by design.
     }
   }
 
