@@ -1,3 +1,5 @@
+import 'zar_id_generator.dart';
+
 /// Persistence-safe reminder data owned by the business domain.
 ///
 /// This file deliberately has no Flutter imports. Native/local notification
@@ -112,7 +114,7 @@ class ZarReminderPlan {
   /// Adds a custom reminder with a stable unique identifier.
   ZarReminderPlan withCustom(DateTime customAt, {String? id}) {
     final utc = customAt.toUtc();
-    final ruleId = id ?? 'custom-${utc.microsecondsSinceEpoch}';
+    final ruleId = id ?? zarNewId('custom');
     return copyWith(
       rules: [
         ...rules.where((rule) => rule.id != ruleId),

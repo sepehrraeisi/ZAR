@@ -15,6 +15,7 @@ import 'package:share_plus/share_plus.dart';
 import 'features/reminders/reminder_model.dart';
 import 'application/customer_position_projector.dart';
 import 'domain/zar_domain_models.dart';
+import 'domain/zar_id_generator.dart';
 import 'widgets/zar_amount_display.dart';
 
 void main() {
@@ -196,6 +197,7 @@ class AppRecord {
     this.time,
     this.status = SettlementStatus.open,
     this.note,
+    this.dealId,
     this.linkedSettlementIds = const [],
     this.calendarAt,
     this.goldFineness,
@@ -224,6 +226,11 @@ class AppRecord {
   final TimeOfDay? time;
   final SettlementStatus status;
   final String? note;
+
+  /// Domain settlement linkage to the priced deal this movement belongs to.
+  /// Populated by the presentation bridge; the live V2 shell derives linked
+  /// settlements from it.
+  final String? dealId;
   final List<String> linkedSettlementIds;
 
   /// Optional semantic timestamp used by Calendar projections. For deals this
@@ -257,6 +264,7 @@ class AppRecord {
     bool clearTime = false,
     SettlementStatus? status,
     String? note,
+    String? dealId,
     DateTime? calendarAt,
     String? goldFineness,
     String? goldPriceReferenceFineness,
@@ -280,6 +288,7 @@ class AppRecord {
       time: clearTime ? null : (time ?? this.time),
       status: status ?? this.status,
       note: note ?? this.note,
+      dealId: dealId ?? this.dealId,
       linkedSettlementIds: linkedSettlementIds,
       calendarAt: calendarAt ?? this.calendarAt,
       goldFineness: goldFineness ?? this.goldFineness,
@@ -679,7 +688,7 @@ class _ZarShellState extends State<ZarShell> {
 
     final isCurrency = draft.asset == 'ارز';
     final newRecord = AppRecord(
-      id: 'n${DateTime.now().millisecondsSinceEpoch}',
+      id: zarNewId('n'),
       type: (draft.operation == 'دریافت' || draft.operation == 'تحویل')
           ? RecordType.settlement
           : RecordType.deal,
@@ -3551,7 +3560,7 @@ class _PersonEditorSheetState extends State<PersonEditorSheet> {
                   final person = AppPerson(
                     id:
                         widget.existing?.id ??
-                        'p${DateTime.now().millisecondsSinceEpoch}',
+                        zarNewId('p'),
                     name: name,
                     phone: _phoneController.text.trim().isEmpty
                         ? null

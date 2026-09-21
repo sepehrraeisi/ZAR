@@ -71,6 +71,7 @@ class ZarLegacyPresentationBridge {
               ?.toLocal(),
       status: _settlementStatusToUi(settlement.status),
       note: settlement.note,
+      dealId: settlement.dealId,
       goldFineness: settlement.amount is ZarGoldAssetAmount
           ? (settlement.amount as ZarGoldAssetAmount).value.purity
           : null,

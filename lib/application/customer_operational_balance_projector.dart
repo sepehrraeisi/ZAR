@@ -446,9 +446,13 @@ class ZarCustomerLedgerProjection {
 class ZarCustomerLedgerProjector {
   const ZarCustomerLedgerProjector();
 
+  /// Returns the deal's derived consideration status. Coverage counts both
+  /// deal-linked completed movements (`settlement.dealId`) and explicit
+  /// payment allocations completed against the deal.
   ZarCustomerDealAccountingStatus accountingStatusForDeal({
     required ZarDeal deal,
     required Iterable<ZarSettlement> settlements,
+    Iterable<ZarPaymentAllocation> allocations = const [],
   }) {
     if (deal.status == ZarDealStatus.cancelled) {
       return ZarCustomerDealAccountingStatus.cancelled;
@@ -469,6 +473,25 @@ class ZarCustomerLedgerProjector {
       }
       final value = zarWholeToman(settlement.amount);
       if (value != null) covered += value;
+    }
+    for (final allocation in allocations) {
+      if (allocation.targetType != ZarPaymentAllocationTarget.deal ||
+          allocation.targetId != deal.id) {
+        continue;
+      }
+      ZarSettlement? source;
+      for (final settlement in settlements) {
+        if (settlement.id == allocation.settlementId) {
+          source = settlement;
+          break;
+        }
+      }
+      if (source == null ||
+          source.status != ZarSettlementStatus.completed ||
+          source.direction != expectedDirection) {
+        continue;
+      }
+      covered += BigInt.from(allocation.amount.wholeTomans);
     }
     final total = BigInt.from(pricing.totalToman.wholeTomans);
     if (covered >= total) return ZarCustomerDealAccountingStatus.settled;

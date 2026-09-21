@@ -5,6 +5,7 @@ import '../../app_core.dart';
 import '../../domain/zar_amount_formatter.dart';
 import '../../domain/zar_amount_parser.dart';
 import '../../domain/zar_domain_models.dart';
+import '../../domain/zar_id_generator.dart';
 import 'persian_numeric_input_formatter.dart';
 
 /// Person editor that owns the persistence attempt. It never dismisses the
@@ -56,7 +57,7 @@ class _ConfirmedPersonEditorSheetState
     });
 
     final person = AppPerson(
-      id: widget.existing?.id ?? 'p${DateTime.now().microsecondsSinceEpoch}',
+      id: widget.existing?.id ?? zarNewId('p'),
       name: name,
       phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
       note: _note.text.trim().isEmpty ? null : _note.text.trim(),

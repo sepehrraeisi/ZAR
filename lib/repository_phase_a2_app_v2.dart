@@ -41,6 +41,7 @@ import 'features/settlements/operational_pending_screen.dart';
 import 'features/settlements/repository_settlement_action_sheet.dart';
 import 'main_phase_a2.dart' show PhaseA2HomeScreen, isRecordOverdueAt;
 import 'data/zar_preview_repository.dart';
+import 'domain/zar_id_generator.dart';
 
 /// Phase A.2 live shell with persisted reminder editing and confirmed editor
 /// writes wired into the approved Persian-first UI.
@@ -385,7 +386,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       return ReminderPlan(
         rules: [
           ReminderRule.custom(
-            id: 'quick-add-custom-${customAt.microsecondsSinceEpoch}',
+            id: zarNewId('quick-add-custom'),
             customAt: customAt.toLocal(),
           ),
         ],
@@ -458,7 +459,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         draft.time ?? TimeOfDay.fromDateTime(DateTime.now());
 
     final record = AppRecord(
-      id: 'n${DateTime.now().microsecondsSinceEpoch}',
+      id: zarNewId('n'),
       type: isSettlement ? RecordType.settlement : RecordType.deal,
       operationLabel: draft.operation,
       personId: draft.personId,
@@ -538,7 +539,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       transactionTime.hour,
       transactionTime.minute,
     ).toUtc();
-    final id = 'n${DateTime.now().microsecondsSinceEpoch}';
+    final id = zarNewId('n');
     setState(() => _writing = true);
     try {
       if (isSettlement) {
@@ -833,7 +834,9 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           personName: _store.personName(record.personId),
           accountingStatus: _dealAccountingStatus(record),
           linkedSettlements: records
-              .where((item) => record.linkedSettlementIds.contains(item.id))
+              .where((item) =>
+                  item.dealId == record.id ||
+                  record.linkedSettlementIds.contains(item.id))
               .toList(growable: false),
           onOpenSettlement: (settlement) {
             Navigator.of(context).pop();
@@ -1450,6 +1453,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     final status = const ZarCustomerLedgerProjector().accountingStatusForDeal(
       deal: deal,
       settlements: _store.settlements,
+      allocations: _store.paymentAllocations,
     );
     return switch (status) {
       ZarCustomerDealAccountingStatus.cancelled => 'لغو شده',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_core.dart';
 import '../../domain/zar_domain_models.dart';
+import '../../domain/zar_id_generator.dart';
 import '../editors/persian_numeric_input_formatter.dart';
 
 class CoinCatalogScreen extends StatefulWidget {
@@ -291,7 +292,7 @@ class _CoinEditorSheetState extends State<_CoinEditorSheet> {
     final now = DateTime.now().toUtc();
     try {
       final value = ZarCoinType(
-        id: widget.existing?.id ?? 'coin-custom-${now.microsecondsSinceEpoch}',
+        id: widget.existing?.id ?? zarNewId('coin-custom'),
         name: _name.text,
         category: _category,
         defaultWeightGrams: _weight.text.trim().isEmpty ? null : _weight.text,

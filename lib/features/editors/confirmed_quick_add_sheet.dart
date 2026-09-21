@@ -6,6 +6,7 @@ import 'package:shamsi_date/shamsi_date.dart';
 import '../../app_core.dart';
 import 'persian_numeric_input_formatter.dart';
 import '../../domain/zar_domain_models.dart';
+import '../../domain/zar_id_generator.dart';
 import 'quick_entry_preferences.dart';
 
 class ConfirmedQuickAddSheet extends StatefulWidget {
@@ -1419,7 +1420,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
 
 class _CoinDraftRow {
   _CoinDraftRow(ZarCoinType type)
-    : id = 'coin-line-${DateTime.now().microsecondsSinceEpoch}',
+    : id = zarNewId('coin-line'),
       type = type,
       method = type.defaultPricingMethod,
       weight = TextEditingController(

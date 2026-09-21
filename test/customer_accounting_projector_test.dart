@@ -344,4 +344,86 @@ void main() {
       );
     },
   );
+
+  test('explicit allocations targeting the deal count toward coverage', () {
+    final projector = const ZarCustomerLedgerProjector();
+    final deal = _deal(
+      type: ZarDealType.buy,
+      totalToman: 2000,
+      id: 'deal-alloc',
+    );
+    final source = _settlement(
+      id: 'payment',
+      direction: ZarSettlementDirection.deliver,
+      amount: _money('TOMAN', 1200),
+    );
+    final allocation = ZarPaymentAllocation(
+      settlementId: source.id,
+      targetType: ZarPaymentAllocationTarget.deal,
+      targetId: deal.id,
+      amount: ZarTomanAmount(1200),
+    );
+
+    expect(
+      projector.accountingStatusForDeal(
+        deal: deal,
+        settlements: [source],
+        allocations: [allocation],
+      ),
+      ZarCustomerDealAccountingStatus.partiallySettled,
+    );
+
+    final second = ZarPaymentAllocation(
+      settlementId: source.id,
+      targetType: ZarPaymentAllocationTarget.deal,
+      targetId: deal.id,
+      amount: ZarTomanAmount(800),
+    );
+    expect(
+      projector.accountingStatusForDeal(
+        deal: deal,
+        settlements: [source],
+        allocations: [allocation, second],
+      ),
+      ZarCustomerDealAccountingStatus.settled,
+    );
+  });
+
+  test('open or cancelled allocation sources never discharge a deal', () {
+    final projector = const ZarCustomerLedgerProjector();
+    final deal = _deal(
+      type: ZarDealType.buy,
+      totalToman: 2000,
+      id: 'deal-open',
+    );
+    ZarPaymentAllocation allocationFor(String settlementId) =>
+        ZarPaymentAllocation(
+          settlementId: settlementId,
+          targetType: ZarPaymentAllocationTarget.deal,
+          targetId: deal.id,
+          amount: ZarTomanAmount(2000),
+        );
+
+    final open = _settlement(
+      id: 'open-source',
+      direction: ZarSettlementDirection.deliver,
+      amount: _money('TOMAN', 2000),
+      status: ZarSettlementStatus.open,
+    );
+    final cancelled = _settlement(
+      id: 'cancelled-source',
+      direction: ZarSettlementDirection.deliver,
+      amount: _money('TOMAN', 2000),
+      status: ZarSettlementStatus.cancelled,
+    );
+
+    expect(
+      projector.accountingStatusForDeal(
+        deal: deal,
+        settlements: [open, cancelled],
+        allocations: [allocationFor(open.id), allocationFor(cancelled.id)],
+      ),
+      ZarCustomerDealAccountingStatus.unsettled,
+    );
+  });
 }

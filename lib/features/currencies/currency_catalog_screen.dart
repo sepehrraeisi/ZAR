@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../domain/zar_domain_models.dart';
+import '../../domain/zar_id_generator.dart';
 import '../../app_core.dart' show toPersianDigits;
 
 class CurrencyCatalogScreen extends StatefulWidget {
@@ -295,7 +296,7 @@ class _CurrencyEditorSheetState extends State<_CurrencyEditorSheet> {
         ZarCurrencyType(
           id:
               widget.existing?.id ??
-              'currency-custom-${now.microsecondsSinceEpoch}',
+              zarNewId('currency-custom'),
           name: name,
           code: widget.existing?.code ?? code,
           archived: widget.existing?.archived ?? false,
