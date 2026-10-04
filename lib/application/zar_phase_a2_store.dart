@@ -7,6 +7,7 @@ import 'zar_legacy_presentation_bridge.dart';
 import 'customer_position_projector.dart';
 import '../domain/zar_payment_allocation.dart';
 import 'customer_operational_balance_projector.dart';
+import '../domain/zar_cash_entry.dart';
 
 /// Repository-backed presentation store for the current Phase A.2 widgets.
 ///
@@ -42,6 +43,25 @@ class ZarPhaseA2Store extends ChangeNotifier {
   List<ZarCoinType> _coinTypes = const [];
   List<ZarCurrencyType> _currencyTypes = const [];
   List<ZarPaymentAllocation> _allocations = const [];
+  List<ZarCashEntry> _cashEntries = const [];
+  List<ZarCashEntry> get cashEntries => List.unmodifiable(_cashEntries);
+  bool get supportsCash => _repository is ZarCashRepository;
+
+  Future<void> appendCashEntry(ZarCashEntry entry) async {
+    final repository = _repository;
+    if (repository is! ZarCashRepository) throw UnsupportedError('Cash journal unavailable.');
+    await (repository as ZarCashRepository).appendCashEntry(entry);
+    // A successful append is committed. Do not report it as a failed write if a
+    // subsequent network refresh fails (which would invite duplicate retries).
+    if (!_cashEntries.any((e) => e.id == entry.id)) _cashEntries = [..._cashEntries, entry];
+    notifyListeners();
+  }
+
+  Future<void> saveCashSettlement(ZarSettlement settlement) async {
+    await _repository.saveSettlement(settlement, auditAction: 'cash_movement');
+    _domainSettlements[settlement.id] = settlement;
+    notifyListeners();
+  }
   List<ZarPaymentAllocation> get paymentAllocations =>
       List.unmodifiable(_allocations);
 
@@ -59,6 +79,7 @@ class ZarPhaseA2Store extends ChangeNotifier {
         deals: deals,
         settlements: settlements,
         asOf: asOf,
+        allocations: _allocations,
       );
 
   Future<void> savePaymentAllocations(
@@ -123,6 +144,7 @@ class ZarPhaseA2Store extends ChangeNotifier {
           ? zarInitialCurrencyTypes()
           : currencyTypes;
       _allocations = snapshot.paymentAllocations;
+      _cashEntries = snapshot.cashEntries;
       notifyListeners();
     } catch (error) {
       _lastError = error;
@@ -225,6 +247,30 @@ class ZarPhaseA2Store extends ChangeNotifier {
   Future<void> saveCoinDeal(ZarDeal deal) async {
     await _repository.saveDeal(deal, auditAction: 'create');
     _domainDeals[deal.id] = deal;
+    notifyListeners();
+  }
+
+  /// Commercially cancels a deal. No money or goods move; the deal simply
+  /// stops counting toward positions, inventory and reports.
+  Future<void> cancelDeal(String dealId) async {
+    final deal = _domainDeals[dealId];
+    if (deal == null || deal.status == ZarDealStatus.cancelled) return;
+    final cancelled = ZarDeal(
+      id: deal.id,
+      businessId: deal.businessId,
+      type: deal.type,
+      personId: deal.personId,
+      amount: deal.amount,
+      pricing: deal.pricing,
+      dealAt: deal.dealAt,
+      status: ZarDealStatus.cancelled,
+      note: deal.note,
+      createdBy: deal.createdBy,
+      createdAt: deal.createdAt,
+      updatedAt: _clock().toUtc(),
+    );
+    await _repository.saveDeal(cancelled, auditAction: 'cancel');
+    _domainDeals[cancelled.id] = cancelled;
     notifyListeners();
   }
 

@@ -59,6 +59,9 @@ class ZarFirestoreRepository implements ZarDomainRepository {
 
   @override
   Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
+    if (snapshot.cashEntries.isNotEmpty) {
+      throw UnsupportedError('Cash journal restore requires a cash-capable repository.');
+    }
     if (snapshot.paymentAllocations.isNotEmpty) {
       throw UnsupportedError('Explicit payment allocations currently require local storage.');
     }

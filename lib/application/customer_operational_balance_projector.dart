@@ -1,5 +1,6 @@
 import '../domain/zar_domain_models.dart';
 import '../domain/zar_payment_allocation.dart';
+import '../domain/zar_cash_entry.dart';
 
 /// A typed, derived asset bucket for a person's current operational position.
 ///
@@ -261,6 +262,7 @@ class ZarCustomerOperationalBalanceProjector {
       personId: personId,
       deals: deals,
       settlements: settlements,
+      allocations: allocations,
     );
     return ZarCustomerOperationalBalance(
       result,
@@ -465,8 +467,12 @@ class ZarCustomerLedgerProjector {
         ? ZarSettlementDirection.deliver
         : ZarSettlementDirection.receive;
     var covered = BigInt.zero;
+    final explicitlyAllocated = allocations.map((e) => e.settlementId).toSet();
     for (final settlement in settlements) {
       if (settlement.dealId != deal.id ||
+          explicitlyAllocated.contains(settlement.id) ||
+          settlement.personId != deal.personId ||
+          settlement.businessId != deal.businessId ||
           settlement.status != ZarSettlementStatus.completed ||
           settlement.direction != expectedDirection) {
         continue;
@@ -506,6 +512,7 @@ class ZarCustomerLedgerProjector {
     required Iterable<ZarDeal> deals,
     required Iterable<ZarSettlement> settlements,
     DateTime? asOf,
+    Iterable<ZarPaymentAllocation> allocations = const [],
   }) {
     final postings = <ZarCustomerLedgerPosting>[];
     for (final deal in deals) {
@@ -541,7 +548,23 @@ class ZarCustomerLedgerProjector {
           _after(occurredAt, asOf)) {
         continue;
       }
-      _addSettlementPostings(postings, settlement, occurredAt);
+      final effective = zarEffectiveSettlementAmount(settlement, settlements, allocations);
+      if (effective == null) continue;
+      final linked = deals.where((d) => d.id == settlement.dealId && d.personId == settlement.personId && d.businessId == settlement.businessId);
+      final excluded = <String>{};
+      if (linked.isNotEmpty) {
+        final deal = linked.first;
+        if (settlement.direction == (deal.type == ZarDealType.buy ? ZarSettlementDirection.receive : ZarSettlementDirection.deliver)) {
+          excluded.addAll(cashQuantities(deal.amount).keys);
+        }
+      }
+      final before = postings.length;
+      _addSettlementPostings(postings, settlement, occurredAt, effective);
+      if (excluded.isNotEmpty) {
+        final retained = postings.sublist(before).where((p) => !excluded.contains(p.assetKey)).toList();
+        postings.removeRange(before, postings.length);
+        postings.addAll(retained);
+      }
     }
     postings.sort(_comparePosting);
     final net = _net(postings);
@@ -556,6 +579,7 @@ class ZarCustomerLedgerProjector {
     List<ZarCustomerLedgerPosting> postings,
     ZarSettlement settlement,
     DateTime occurredAt,
+    ZarAssetAmount effective,
   ) {
     // Receiving an asset reduces what the customer is owed; paying/delivering
     // reduces what the customer owes. Reversing the position naturally models
@@ -564,7 +588,7 @@ class ZarCustomerLedgerProjector {
         settlement.direction == ZarSettlementDirection.receive
         ? ZarSettlementDirection.deliver
         : ZarSettlementDirection.receive;
-    switch (settlement.amount) {
+    switch (effective) {
       case ZarCurrencyAssetAmount(:final value):
         final code = value.code.toUpperCase();
         postings.add(

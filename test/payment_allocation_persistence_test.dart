@@ -45,6 +45,7 @@ void main() {
             file,
             setup: (raw) {
               raw.execute('DROP TABLE zar_payment_allocations');
+              raw.execute('DROP TABLE zar_cash_entries');
               raw.execute(
                 "UPDATE zar_local_metadata SET value = '6' WHERE key = 'domain_schema_version'",
               );

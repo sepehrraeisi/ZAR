@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../domain/zar_domain_models.dart';
 import '../domain/zar_payment_allocation.dart';
 import '../domain/zar_reminder_plan.dart';
+import '../domain/zar_cash_entry.dart';
 
 /// Lossless backup format for production business data.
 ///
@@ -18,11 +19,13 @@ class ZarDomainBackupBundle {
     required this.settlements,
     this.coinTypes = const [],
     this.currencyTypes = const [],
-    this.exportVersion = 7,
+    this.exportVersion = 8,
+    this.cashEntries = const [],
     this.paymentAllocations = const [],
   });
 
   final int exportVersion;
+  final List<ZarCashEntry> cashEntries;
   final String businessId;
   final DateTime generatedAt;
   final List<ZarPerson> people;
@@ -36,10 +39,11 @@ class ZarDomainBackupBundle {
 class ZarDomainBackupCodec {
   const ZarDomainBackupCodec();
 
-  static const supportedVersion = 7;
-  static const supportedImportVersions = {2, 3, 4, 5, 6, 7};
+  static const supportedVersion = 8;
+  static const supportedImportVersions = {2, 3, 4, 5, 6, 7, 8};
 
   String encodeJson(ZarDomainBackupBundle bundle) {
+    validateCashEntries(entries: bundle.cashEntries, deals: bundle.deals, settlements: bundle.settlements);
     if (bundle.exportVersion != supportedVersion) {
       throw FormatException(
         'Unsupported ZAR+ domain export version: ${bundle.exportVersion}',
@@ -56,6 +60,7 @@ class ZarDomainBackupCodec {
 
     final payload = <String, Object?>{
       'app': 'ZAR+',
+      'cashEntries': bundle.cashEntries.map((e) => e.toMap()).toList(),
       'format': 'domain-backup',
       'exportVersion': bundle.exportVersion,
       'businessId': bundle.businessId,
@@ -139,7 +144,12 @@ class ZarDomainBackupCodec {
       requireCoinCatalog: version >= 5,
     );
 
+    final cashEntries = version >= 8
+        ? _requiredCollection(raw['cashEntries'], 'cashEntries', ZarCashEntry.fromMap)
+        : const <ZarCashEntry>[];
+    validateCashEntries(entries: cashEntries, deals: deals, settlements: settlements);
     return ZarDomainBackupBundle(
+      cashEntries: cashEntries,
       exportVersion: version,
       paymentAllocations: allocations,
       businessId: businessId,

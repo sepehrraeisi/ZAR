@@ -1,5 +1,8 @@
 import '../domain/zar_domain_models.dart';
 import '../domain/zar_payment_allocation.dart';
+import '../domain/zar_cash_entry.dart';
+import 'dart:convert';
+import '../application/zar_cash_projector.dart';
 
 class ZarDomainSnapshot {
   const ZarDomainSnapshot({
@@ -9,6 +12,7 @@ class ZarDomainSnapshot {
     this.coinTypes = const [],
     this.currencyTypes = const [],
     this.paymentAllocations = const [],
+    this.cashEntries = const [],
   });
 
   final List<ZarPerson> people;
@@ -17,6 +21,11 @@ class ZarDomainSnapshot {
   final List<ZarCoinType> coinTypes;
   final List<ZarCurrencyType> currencyTypes;
   final List<ZarPaymentAllocation> paymentAllocations;
+  final List<ZarCashEntry> cashEntries;
+}
+
+abstract interface class ZarCashRepository {
+  Future<void> appendCashEntry(ZarCashEntry entry);
 }
 
 abstract interface class ZarPaymentAllocationRepository {
@@ -102,7 +111,8 @@ class InMemoryZarDomainRepository
         ZarDomainRepository,
         ZarCoinCatalogRepository,
         ZarCurrencyCatalogRepository,
-        ZarPaymentAllocationRepository {
+        ZarPaymentAllocationRepository,
+        ZarCashRepository {
   InMemoryZarDomainRepository({
     Iterable<ZarPerson> people = const [],
     Iterable<ZarDeal> deals = const [],
@@ -131,6 +141,19 @@ class InMemoryZarDomainRepository
   final Map<String, ZarCurrencyType> _currencyTypes;
   final List<Map<String, Object?>> auditEvents = [];
   List<ZarPaymentAllocation> _paymentAllocations = [];
+  final Map<String, ZarCashEntry> _cashEntries = {};
+
+  @override
+  Future<void> appendCashEntry(ZarCashEntry entry) async {
+    final previous = _cashEntries[entry.id];
+    if (previous != null) {
+      if (jsonEncode(previous.toMap()) != jsonEncode(entry.toMap())) throw StateError('Cash entries are immutable.');
+      return;
+    }
+    validateNewCashEntry(entry, _cashEntries.values, _deals.values, _settlements.values);
+    validateCashCount(entry, _cashEntries.values, _settlements.values, _paymentAllocations);
+    _cashEntries[entry.id] = entry;
+  }
 
   @override
   Future<void> savePaymentAllocations(
@@ -161,10 +184,12 @@ class InMemoryZarDomainRepository
     coinTypes: List.unmodifiable(_coinTypes.values),
     currencyTypes: List.unmodifiable(_currencyTypes.values),
     paymentAllocations: List.unmodifiable(_paymentAllocations),
+    cashEntries: List.unmodifiable(_cashEntries.values),
   );
 
   @override
   Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
+    validateCashEntries(entries: snapshot.cashEntries, deals: snapshot.deals, settlements: snapshot.settlements);
     validateZarPaymentAllocations(
       deals: snapshot.deals,
       settlements: snapshot.settlements,
@@ -212,6 +237,7 @@ class InMemoryZarDomainRepository
       );
     _audit('complete-backup', 'business', 'restore_replace');
     _paymentAllocations = List.unmodifiable(snapshot.paymentAllocations);
+    _cashEntries..clear()..addEntries(snapshot.cashEntries.map((e) => MapEntry(e.id, e)));
   }
 
   @override
@@ -321,6 +347,8 @@ class InMemoryZarDomainRepository
 
   @override
   Future<void> saveDeal(ZarDeal deal, {String auditAction = 'edit'}) async {
+    validateCashEntries(entries: _cashEntries.values,
+      deals: [..._deals.values.where((d) => d.id != deal.id), deal], settlements: _settlements.values);
     validateZarPaymentAllocations(
       deals: [..._deals.values.where((item) => item.id != deal.id), deal],
       settlements: _settlements.values,
@@ -337,6 +365,8 @@ class InMemoryZarDomainRepository
     String auditAction = 'edit',
   }) async {
     final existed = _settlements.containsKey(settlement.id);
+    validateCashEntries(entries: _cashEntries.values, deals: _deals.values,
+      settlements: [..._settlements.values.where((s) => s.id != settlement.id), settlement]);
     validateZarPaymentAllocations(
       deals: _deals.values,
       settlements: [

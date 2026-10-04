@@ -61,6 +61,7 @@ class ZarBackupManager {
         coinTypes: snapshot.coinTypes,
         currencyTypes: snapshot.currencyTypes,
         paymentAllocations: snapshot.paymentAllocations,
+        cashEntries: snapshot.cashEntries,
       ),
     );
   }
@@ -83,6 +84,7 @@ class ZarBackupManager {
         coinTypes: bundle.coinTypes,
         currencyTypes: bundle.currencyTypes,
         paymentAllocations: bundle.paymentAllocations,
+        cashEntries: bundle.cashEntries,
       ),
     );
     await _store.refresh();

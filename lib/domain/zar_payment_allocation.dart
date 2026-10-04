@@ -129,3 +129,24 @@ BigInt? zarWholeToman(ZarAssetAmount amount) {
   final divisor = BigInt.from(10).pow(amount.value.minorUnitScale);
   return minor.remainder(divisor) == BigInt.zero ? minor ~/ divisor : null;
 }
+
+/// Actual movement represented by an original obligation after partial
+/// payments. Shared by customer and cash ledgers, including historical views.
+ZarAssetAmount? zarEffectiveSettlementAmount(ZarSettlement settlement,
+    Iterable<ZarSettlement> settlements, Iterable<ZarPaymentAllocation> allocations) {
+  final total = zarWholeToman(settlement.amount);
+  if (total == null) return settlement.amount;
+  final sources = {for (final item in settlements) item.id: item};
+  var paid = BigInt.zero;
+  for (final row in allocations) {
+    final source = sources[row.settlementId];
+    if (row.targetType == ZarPaymentAllocationTarget.settlement &&
+        row.targetId == settlement.id && source?.status == ZarSettlementStatus.completed &&
+        (settlement.completedAt == null || !source!.completedAt!.isAfter(settlement.completedAt!))) {
+      paid += BigInt.from(row.amount.wholeTomans);
+    }
+  }
+  final remaining = total - paid;
+  if (remaining <= BigInt.zero) return null;
+  return ZarCurrencyAssetAmount(ZarCurrencyAmount(code: 'TOMAN', minorUnits: remaining.toInt(), minorUnitScale: 0));
+}

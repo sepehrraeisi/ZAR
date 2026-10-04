@@ -50,3 +50,5 @@ android/release-key.jks
 .env.*
 *.secret
 
+.cc-bridge-out/
+design_ref/

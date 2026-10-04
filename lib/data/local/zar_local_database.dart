@@ -206,7 +206,7 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
 
   ZarLocalDatabase.defaults() : super(driftDatabase(name: 'zar_plus_local'));
 
-  static const currentSchemaVersion = 8;
+  static const currentSchemaVersion = 9;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -215,10 +215,11 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) async {
       await migrator.createAll();
+      await _createCashJournal();
       await into(zarLocalMetadata).insert(
         ZarLocalMetadataCompanion.insert(
           key: 'domain_schema_version',
-          value: '8',
+          value: '9',
         ),
       );
     },
@@ -308,6 +309,10 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
               ..where((row) => row.key.equals('domain_schema_version')))
             .write(const ZarLocalMetadataCompanion(value: Value('8')));
       }
+      if (from < 9) {
+        await _createCashJournal();
+        await customStatement("UPDATE zar_local_metadata SET value = '9' WHERE key = 'domain_schema_version'");
+      }
       if (to > currentSchemaVersion) {
         throw StateError(
           'Unsupported ZAR+ local database migration from $from to $to.',
@@ -325,4 +330,13 @@ class ZarLocalDatabase extends _$ZarLocalDatabase {
   Future<void> ensureReady() async {
     await (select(zarLocalMetadata)..limit(1)).get();
   }
+
+  // Explicit SQL journal avoids changing Flutter-generated table APIs. Payload
+  // is the exact versioned domain JSON, never a formatted balance.
+  Future<void> _createCashJournal() => customStatement('''
+    CREATE TABLE zar_cash_entries (
+      id TEXT NOT NULL PRIMARY KEY,
+      payload TEXT NOT NULL
+    )
+  ''');
 }

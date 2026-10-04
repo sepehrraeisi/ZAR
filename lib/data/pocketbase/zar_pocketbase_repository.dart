@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import '../../domain/zar_domain_models.dart';
 import '../../domain/zar_payment_allocation.dart';
+import '../../domain/zar_cash_entry.dart';
 import '../zar_domain_backup_codec.dart';
 import '../zar_domain_repository.dart';
 import 'zar_pocketbase_client.dart';
@@ -20,7 +21,8 @@ class ZarPocketBaseRepository
         ZarDomainRepository,
         ZarCoinCatalogRepository,
         ZarCurrencyCatalogRepository,
-        ZarPaymentAllocationRepository {
+        ZarPaymentAllocationRepository,
+        ZarCashRepository {
   ZarPocketBaseRepository({
     required ZarPocketBaseClient client,
     required String workspaceId,
@@ -41,6 +43,19 @@ class ZarPocketBaseRepository
   static const _coinTypes = 'zar_coin_types';
   static const _currencyTypes = 'zar_currency_types';
   static const _allocations = 'zar_allocations';
+  static const _cash = 'zar_cash_entries';
+
+  @override
+  Future<void> appendCashEntry(ZarCashEntry entry) async {
+    final snapshot = await loadCompleteSnapshot();
+    final existing = snapshot.cashEntries.where((e) => e.id == entry.id);
+    if (existing.isNotEmpty) {
+      if (jsonEncode(existing.single.toMap()) != jsonEncode(entry.toMap())) throw StateError('Cash entries are immutable.');
+      return;
+    }
+    validateCashEntries(entries: [...snapshot.cashEntries, entry], deals: snapshot.deals, settlements: snapshot.settlements);
+    await _client.createRecord(_cash, {'id': entry.id, ..._row(entry.toMap())});
+  }
 
   Map<String, Object?> _row(Object payload) =>
       {'workspace': _workspaceId, 'data': payload};
@@ -70,8 +85,10 @@ class ZarPocketBaseRepository
       _client.listRecords(_coinTypes),
       _client.listRecords(_currencyTypes),
       _client.listRecords(_allocations),
+      _client.listRecords(_cash),
     ]);
     return ZarDomainSnapshot(
+      cashEntries: results[6].map((row) => ZarCashEntry.fromMap(_data(row))).toList(),
       people: results[0]
           .map((row) => _codec.personFromRecord(_data(row)))
           .toList(growable: false),
@@ -104,6 +121,8 @@ class ZarPocketBaseRepository
 
   @override
   Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
+    validateCashEntries(entries: snapshot.cashEntries, deals: snapshot.deals, settlements: snapshot.settlements);
+    final operations = <({String method, String url, Map<String, Object?>? body})>[];
     validateZarPaymentAllocations(
       deals: snapshot.deals,
       settlements: snapshot.settlements,
@@ -124,7 +143,7 @@ class ZarPocketBaseRepository
             body: null,
           ),
       ];
-      if (deletes.isNotEmpty) await _client.batch(deletes.toList());
+       operations.addAll(deletes);
       final creates = [
         for (final record in records)
           (
@@ -133,9 +152,7 @@ class ZarPocketBaseRepository
             body: {'id': record.id, ..._row(record.payload)},
           ),
       ];
-      for (var i = 0; i < creates.length; i += _batchChunk) {
-        await _client.batch(creates.sublist(i, (i + _batchChunk) < creates.length ? i + _batchChunk : creates.length));
-      }
+      operations.addAll(creates);
     }
 
     await replaceAll(
@@ -180,6 +197,9 @@ class ZarPocketBaseRepository
           (id: _allocationId(allocation), payload: allocation.toMap()),
       ],
     );
+    await replaceAll(_cash, [for (final entry in snapshot.cashEntries) (id: entry.id, payload: entry.toMap())]);
+    if (operations.length > 500) throw StateError('Atomic restore exceeds the server batch limit.');
+    if (operations.isNotEmpty) await _client.batch(operations);
   }
 
   static const _batchChunk = 400;

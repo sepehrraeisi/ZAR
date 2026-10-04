@@ -58,6 +58,7 @@ class _ZarCloudShellState extends State<ZarCloudShell> {
             }
             final workspaceId = workspaceSnapshot.data!;
             return RepositoryZarPlusAppV2(
+              businessId: workspaceId,
               key: ValueKey('cloud-shell-$workspaceId'),
               repository: ZarPocketBaseRepository(
                 client: widget.client,
