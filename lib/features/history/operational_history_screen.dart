@@ -99,7 +99,7 @@ class _OperationalHistoryScreenState extends State<OperationalHistoryScreen> {
         _operation != HistoryFilter.all || _advanced.activeCount > 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('سوابق')),
+      appBar: AppBar(title: const Text('تاریخچه')),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         child: Column(
@@ -186,6 +186,21 @@ class _OperationalHistoryScreenState extends State<OperationalHistoryScreen> {
                   ),
               ],
             ),
+            const SizedBox(height: 6),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                textDirection: TextDirection.rtl,
+                children: [
+                  _dateDropdownChip(context),
+                  const SizedBox(width: 6),
+                  _personDropdownChip(context),
+                  const SizedBox(width: 6),
+                  _assetDropdownChip(context),
+                ],
+              ),
+            ),
             const SizedBox(height: 8),
             Row(
               textDirection: TextDirection.rtl,
@@ -214,20 +229,61 @@ class _OperationalHistoryScreenState extends State<OperationalHistoryScreen> {
                           ? _clearAll
                           : null,
                     )
-                  : ListView.separated(
+                  : Builder(
                       key: const ValueKey('history-list'),
-                      padding: const EdgeInsets.only(bottom: 28),
-                      itemCount: items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (_, index) {
-                        final record = items[index];
-                        return _HistoryCard(
-                          key: ValueKey('history-record-${record.id}'),
-                          record: record,
-                          personName: widget.personName(record.personId),
-                          onTap: widget.onTapRecord == null
-                              ? null
-                              : () => widget.onTapRecord!(record),
+                      builder: (context) {
+                        final today = Jalali.fromDateTime(DateTime.now());
+                        final yesterday = today.addDays(-1);
+                        final sections = <String, List<AppRecord>>{};
+                        for (final record in items) {
+                          final key =
+                              '${record.date.year}-${record.date.month}-${record.date.day}';
+                          (sections[key] ??= []).add(record);
+                        }
+                        final rows = <Widget>[];
+                        for (final group in sections.entries) {
+                          final first = group.value.first.date;
+                          final header = isSameJalali(first, today)
+                              ? 'امروز · ${formatJalaliDate(first)}'
+                              : isSameJalali(first, yesterday)
+                              ? 'دیروز · ${formatJalaliDate(first)}'
+                              : formatJalaliDate(first);
+                          rows.add(Padding(
+                            padding: const EdgeInsets.only(top: 8, bottom: 4),
+                            child: Row(
+                              textDirection: TextDirection.rtl,
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  header,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: theme
+                                        .colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                Text(
+                                  '${toPersianDigits(group.value.length.toString())} مورد',
+                                  style: theme.textTheme.labelSmall,
+                                ),
+                              ],
+                            ),
+                          ));
+                          for (final record in group.value) {
+                            rows.add(_HistoryCard(
+                              key: ValueKey('history-record-${record.id}'),
+                              record: record,
+                              personName: widget.personName(record.personId),
+                              onTap: widget.onTapRecord == null
+                                  ? null
+                                  : () => widget.onTapRecord!(record),
+                            ));
+                            rows.add(const SizedBox(height: 8));
+                          }
+                        }
+                        return ListView(
+                          padding: const EdgeInsets.only(bottom: 28),
+                          children: rows,
                         );
                       },
                     ),
@@ -238,12 +294,165 @@ class _OperationalHistoryScreenState extends State<OperationalHistoryScreen> {
     );
   }
 
+  Jalali get _todayJalali => Jalali.fromDateTime(DateTime.now());
+
+  ({Jalali from, Jalali to})? _rangeForPreset(String preset) {
+    final today = _todayJalali;
+    final gregorianToday = today.toDateTime();
+    switch (preset) {
+      case 'امروز':
+        return (from: today, to: today);
+      case 'دیروز':
+        final yesterday = today.addDays(-1);
+        return (from: yesterday, to: yesterday);
+      case 'این هفته':
+        final offset = ((gregorianToday.weekday + 1) % 7);
+        return (from: today.addDays(-offset), to: today);
+      case 'این ماه':
+        final monthStart = Jalali(today.year, today.month, 1);
+        final monthEnd = monthStart.addMonths(1).addDays(-1);
+        return (from: monthStart, to: monthEnd);
+      default:
+        return null;
+    }
+  }
+
+  String get _dateChipLabel {
+    final from = _advanced.from;
+    final to = _advanced.to;
+    if (from == null || to == null) return 'این هفته';
+    if (from == to) {
+      if (from == _todayJalali) return 'امروز';
+      if (from == _todayJalali.addDays(-1)) return 'دیروز';
+    }
+    if (from == _rangeForPreset('این هفته')?.from) return 'این هفته';
+    if (from == _rangeForPreset('این ماه')?.from) return 'این ماه';
+    return 'بازه دلخواه';
+  }
+
+  Widget _historyDropdownChip({
+    required String iconDefault,
+    required String icon,
+    required String label,
+    required List<PopupMenuEntry<String>> items,
+    required ValueChanged<String> onSelected,
+    Key? key,
+  }) => PopupMenuButton<String>(
+    key: key,
+    onSelected: onSelected,
+    itemBuilder: (_) => items,
+    child: Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_iconByName(icon), size: 16,
+            color: Theme.of(context).colorScheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(width: 4),
+          const Icon(CupertinoIcons.chevron_down, size: 14),
+        ],
+      ),
+    ),
+  );
+
+  static IconData _iconByName(String name) => switch (name) {
+    'calendar_today' => CupertinoIcons.calendar,
+    'person' => CupertinoIcons.person,
+    'diamond' => CupertinoIcons.tag,
+    _ => CupertinoIcons.tag,
+  };
+
+  Widget _dateDropdownChip(BuildContext context) {
+    final presets = ['امروز', 'دیروز', 'این هفته', 'این ماه'];
+    return _historyDropdownChip(
+      key: const ValueKey('history-date-chip'),
+      icon: 'calendar_today',
+      iconDefault: 'calendar_today',
+      label: _dateChipLabel,
+      items: [
+        for (final preset in presets)
+          PopupMenuItem(value: preset, child: Text(preset)),
+        const PopupMenuDivider(),
+        const PopupMenuItem(value: 'custom', child: Text('بازه دلخواه…')),
+      ],
+      onSelected: (value) {
+        if (value == 'custom') {
+          _openAdvancedFilters();
+          return;
+        }
+        final range = _rangeForPreset(value);
+        setState(() {
+          _advanced = _advanced.copyWith(from: range?.from, to: range?.to);
+        });
+      },
+    );
+  }
+
+  Widget _personDropdownChip(BuildContext context) {
+    final selectedId = _advanced.personId;
+    final selected = widget.people
+        .where((person) => person.id == selectedId)
+        .firstOrNull;
+    return _historyDropdownChip(
+      key: const ValueKey('history-person-chip'),
+      icon: 'person',
+      iconDefault: 'person',
+      label: selected?.name ?? 'شخص',
+      items: [
+        const PopupMenuItem(value: 'all', child: Text('همه اشخاص')),
+        for (final person in widget.people)
+          PopupMenuItem(value: person.id, child: Text(person.name)),
+      ],
+      onSelected: (value) => setState(() {
+        _advanced = _advanced.copyWith(
+          personId: value == 'all' ? null : value,
+        );
+      }),
+    );
+  }
+
+  Widget _assetDropdownChip(BuildContext context) {
+    const options = [
+      ('all', 'همه دارایی‌ها'),
+      ('gold', 'طلا'),
+      ('coin', 'سکه'),
+      ('currency', 'ارز'),
+      ('cash', 'وجه نقد'),
+    ];
+    return _historyDropdownChip(
+      key: const ValueKey('history-asset-chip'),
+      icon: 'diamond',
+      iconDefault: 'diamond',
+      label: options
+          .where((option) => option.$1 == _advanced.asset.name)
+          .map((option) => option.$2)
+          .firstOrNull ?? 'دارایی',
+      items: [
+        for (final (value, label) in options)
+          PopupMenuItem(value: value, child: Text(label)),
+      ],
+      onSelected: (value) => setState(() {
+        _advanced = _advanced.copyWith(
+          asset: HistoryAssetFilter.values
+              .where((asset) => asset.name == value)
+              .first,
+        );
+      }),
+    );
+  }
+
   Widget _operationChip(
     BuildContext context,
     String label,
     HistoryFilter value,
-  ) {
-    final selected = _operation == value;
+  ) {    final selected = _operation == value;
     final theme = Theme.of(context);
     return ChoiceChip(
       key: ValueKey('history-operation-${value.name}'),
@@ -839,6 +1048,22 @@ class _OperationPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDeal = record.type == RecordType.deal;
+    if (record.status == SettlementStatus.cancelled) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(99),
+        ),
+        child: Text(
+          'لغو شده',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.error,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
     final color = isDeal
         ? theme.colorScheme.primary
         : record.operationLabel == 'دریافت'

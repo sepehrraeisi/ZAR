@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_core.dart';
 import '../../application/customer_operational_balance_projector.dart';
+import '../theme/zar_theme.dart';
 import 'customer_balance_card.dart';
 
 class OperationalPeopleScreen extends StatefulWidget {
@@ -30,8 +31,69 @@ class OperationalPeopleScreen extends StatefulWidget {
       _OperationalPeopleScreenState();
 }
 
+enum _PeopleSort { lastActivity, name, receivable, payable }
+
+extension _PeopleSortLabel on _PeopleSort {
+  String get label => switch (this) {
+    _PeopleSort.lastActivity => 'آخرین فعالیت',
+    _PeopleSort.name => 'نام (الفبا)',
+    _PeopleSort.receivable => 'بیشترین طلب',
+    _PeopleSort.payable => 'بیشترین بدهی',
+  };
+}
+
 class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
   String _query = '';
+  String _filter = 'all';
+  _PeopleSort _sort = _PeopleSort.lastActivity;
+
+  static const _avatarPalette = [
+    (Color(0xFFF7E4C6), Color(0xFF7F5600)),
+    (Color(0xFFDDF2E6), Color(0xFF1F7A50)),
+    (Color(0xFFFBE3E0), Color(0xFFB3261E)),
+    (Color(0xFFE5E1F5), Color(0xFF4A4380)),
+    (Color(0xFFDCEAF7), Color(0xFF2E5C8A)),
+  ];
+
+  ZarCustomerOperationalBalance? _balanceOf(AppPerson person) =>
+      widget.balanceFor?.call(person.id);
+
+  String? _netStatusLabel(AppPerson person) {
+    final b = _balanceOf(person);
+    if (b == null) return null;
+    final net = b.receivableToman - b.payableToman;
+    final hasAssetBuckets =
+        b.receivableAssetBuckets.isNotEmpty || b.payableAssetBuckets.isNotEmpty;
+    if (net == BigInt.zero && !hasAssetBuckets) return 'تسویه';
+    if (net > BigInt.zero) return 'طلبکار';
+    if (net < BigInt.zero) return 'بدهکار';
+    return hasAssetBuckets ? 'مانده ارزی/طلایی' : 'تسویه';
+  }
+
+  bool _matchesFilter(AppPerson person) {
+    switch (_filter) {
+      case 'receivable':
+        return _netStatusLabel(person) == 'طلبکار' ||
+            _netStatusLabel(person) == 'مانده ارزی/طلایی' &&
+                (_balanceOf(person)?.receivableAssetBuckets.isNotEmpty ?? false);
+      case 'payable':
+        return _netStatusLabel(person) == 'بدهکار';
+      case 'settled':
+        return _netStatusLabel(person) == 'تسویه';
+      default:
+        return true;
+    }
+  }
+
+  int _countFilter(String filter) {
+    final previous = _filter;
+    _filter = filter;
+    try {
+      return widget.people.where(_matchesFilter).length;
+    } finally {
+      _filter = previous;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,57 +101,142 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
     final filtered = widget.people
         .where(
           (person) =>
-              query.isEmpty ||
-              person.name.contains(query) ||
-              (person.phone ?? '').contains(query),
+              (query.isEmpty ||
+                  person.name.contains(query) ||
+                  (person.phone ?? '').contains(query)) &&
+              _matchesFilter(person),
         )
         .toList(growable: false);
+
+    final sorted = filtered.toList(growable: false)..sort(_comparePeople);
+    final sortLabel = _sort.label;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('اشخاص'),
         actions: [
-          TextButton.icon(
-            onPressed: widget.onOpenArchive,
-            icon: const Icon(CupertinoIcons.archivebox, size: 17),
-            label: Text(
-              widget.archivedCount == 0
-                  ? 'بایگانی'
-                  : 'بایگانی (${toPersianDigits(widget.archivedCount.toString())})',
+          IconButton(
+            key: const ValueKey('people-sort-button'),
+            tooltip: 'مرتب‌سازی',
+            icon: const Icon(CupertinoIcons.sort_down),
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              builder: (sheetContext) => SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final sort in _PeopleSort.values)
+                      ListTile(
+                        leading: const Icon(CupertinoIcons.sort_down),
+                        title: Text(sort.label),
+                        trailing: sort == _sort
+                            ? const Icon(CupertinoIcons.check_mark)
+                            : null,
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          setState(() => _sort = sort);
+                        },
+                      ),
+                  ],
+                ),
+              ),
             ),
+          ),
+          PopupMenuButton<String>(
+            key: const ValueKey('people-more-button'),
+            tooltip: 'گزینه‌های بیشتر',
+            onSelected: (value) {
+              if (value == 'archive') widget.onOpenArchive();
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'archive',
+                child: Text('بایگانی'),
+              ),
+              const PopupMenuItem(
+                value: 'import',
+                enabled: false,
+                child: Text('ورود از مخاطبین'),
+              ),
+              const PopupMenuItem(
+                value: 'export',
+                enabled: false,
+                child: Text('خروجی فهرست اشخاص'),
+              ),
+            ],
           ),
           const SizedBox(width: 6),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const ValueKey('people-add-fab'),
+        heroTag: 'people-add-person',
+        onPressed: widget.onAddPerson,
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: const Icon(CupertinoIcons.person_add),
+        label: const Text('شخص جدید'),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'جستجوی نام یا شماره…',
+                prefixIcon: const Icon(CupertinoIcons.search),
+                suffixIcon: IconButton(
+                  tooltip: 'اسکن QR',
+                  icon: const Icon(CupertinoIcons.qrcode_viewfinder),
+                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('اسکن QR در نسخه بعدی فعال می‌شود.')),
+                  ),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              onChanged: (value) => setState(() => _query = value),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                Expanded(
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      hintText: 'نام یا شماره تماس',
-                      prefixIcon: Icon(CupertinoIcons.search),
-                    ),
-                    onChanged: (value) => setState(() => _query = value),
+                for (final (label, value) in const [
+                  ('همه', 'all'),
+                  ('طلبکاران', 'receivable'),
+                  ('بدهکاران', 'payable'),
+                  ('تسویه‌شده', 'settled'),
+                ] ) ...[
+                  FilterChip(
+                    label: Text('$label ${toPersianDigits(_countFilter(value).toString())}'),
+                    selected: _filter == value,
+                    showCheckmark: false,
+                    onSelected: (v) => setState(() => _filter = v ? value : 'all'),
                   ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: widget.onAddPerson,
-                  icon: const Icon(CupertinoIcons.add, size: 16),
-                  label: const Text('افزودن'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, 44),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                ),
+                  const SizedBox(width: 8),
+                ],
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -101,7 +248,7 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
                   ),
                 ),
                 Text(
-                  '${toPersianDigits(filtered.length.toString())} نفر',
+                  '${toPersianDigits(filtered.length.toString())} نفر · $sortLabel',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -109,14 +256,14 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: filtered.isEmpty
+            child: sorted.isEmpty
                 ? const _PeopleEmptyState()
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (_, index) {
-                      final person = filtered[index];
+                      final person = sorted[index];
                       final open = widget.records
                           .where(
                             (record) =>
@@ -163,6 +310,44 @@ class _OperationalPeopleScreenState extends State<OperationalPeopleScreen> {
     });
     return items.first;
   }
+
+  int _comparePeople(AppPerson a, AppPerson b) {
+    switch (_sort) {
+      case _PeopleSort.name:
+        return a.name.compareTo(b.name);
+      case _PeopleSort.lastActivity:
+        final aLast = _lastActivity(a.id);
+        final bLast = _lastActivity(b.id);
+        if (aLast == null && bLast == null) return 0;
+        if (aLast == null) return 1;
+        if (bLast == null) return -1;
+        final date = bLast.date.compareTo(aLast.date);
+        if (date != 0) return date;
+        final aMinutes = (aLast.time?.hour ?? -1) * 60 + (aLast.time?.minute ?? 0);
+        final bMinutes = (bLast.time?.hour ?? -1) * 60 + (bLast.time?.minute ?? 0);
+        return bMinutes.compareTo(aMinutes);
+      case _PeopleSort.receivable:
+      case _PeopleSort.payable:
+        int netOf(AppPerson person) {
+          final balance = widget.balanceFor?.call(person.id);
+          if (balance == null) return 0;
+          final net = balance.receivableToman - balance.payableToman;
+          return _sort == _PeopleSort.receivable
+              ? net > BigInt.zero ? net.toInt() : -1
+              : net < BigInt.zero ? -net.toInt() : -1;
+        }
+        return netOf(b).compareTo(netOf(a));
+    }
+  }
+}
+
+(Color, Color) _avatarColors(String name) {
+  var hash = 0;
+  for (final code in name.codeUnits) {
+    hash = (hash * 31 + code) & 0x7fffffff;
+  }
+  return _OperationalPeopleScreenState._avatarPalette[
+      hash % _OperationalPeopleScreenState._avatarPalette.length];
 }
 
 class _PersonCard extends StatelessWidget {
@@ -192,6 +377,15 @@ class _PersonCard extends StatelessWidget {
             balance!.payableAssetBuckets.isNotEmpty ||
             balance!.receivableToman != BigInt.zero ||
             balance!.payableToman != BigInt.zero);
+    final netLabel = hasBalance && balance != null
+        ? _netLabelOf(balance!)
+        : null;
+    final semantic = context.zarSemantic;
+    final netColor = switch (netLabel) {
+      'طلبکار' => semantic.positive,
+      'بدهکار' => semantic.negative,
+      _ => theme.textTheme.bodySmall?.color,
+    };
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -217,13 +411,11 @@ class _PersonCard extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 20,
-                      backgroundColor: theme.colorScheme.primary.withValues(
-                        alpha: 0.11,
-                      ),
+                      backgroundColor: _avatarColors(person.name).$1,
                       child: Text(
                         initial,
                         style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.primary,
+                          color: _avatarColors(person.name).$2,
                         ),
                       ),
                     ),
@@ -271,6 +463,24 @@ class _PersonCard extends StatelessWidget {
                         ],
                       ),
                     ),
+                    if (netLabel != null) ...[
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            netLabel,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: netColor,
+                            ),
+                          ),
+                          Text(
+                            'مانده خالص',
+                            style: theme.textTheme.labelSmall,
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(width: 8),
                     const Padding(
                       padding: EdgeInsets.only(top: 3),
@@ -303,6 +513,16 @@ class _PersonCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String? _netLabelOf(ZarCustomerOperationalBalance b) {
+    final net = b.receivableToman - b.payableToman;
+    final hasAssetBuckets =
+        b.receivableAssetBuckets.isNotEmpty || b.payableAssetBuckets.isNotEmpty;
+    if (net == BigInt.zero && !hasAssetBuckets) return 'تسویه';
+    if (net > BigInt.zero) return 'طلبکار';
+    if (net < BigInt.zero) return 'بدهکار';
+    return 'مانده ارزی/طلایی';
   }
 
   String _compactActivityLabel(AppRecord record) {

@@ -38,7 +38,7 @@ void main() {
     await tester.tap(find.text('اشخاص').last);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('افزودن'));
+    await tester.tap(find.byKey(const ValueKey('people-add-fab')));
     await tester.pumpAndSettle();
 
     final addPerson = find.text('افزودن شخص');
@@ -49,7 +49,9 @@ void main() {
     await tester.pumpWidget(const RepositoryZarPlusAppV2());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('گزارش روزانه'));
+    await tester.tap(find.text('صندوق').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('cashbox-daily-report')));
     await tester.pumpAndSettle();
     expect(find.byType(OperationalDailyReportScreen), findsOneWidget);
 
@@ -59,7 +61,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(OperationalPeopleScreen), findsOneWidget);
 
-    await tester.tap(find.text('سوابق').last);
+    await tester.tap(find.text('تاریخچه').last);
     await tester.pumpAndSettle();
     expect(find.byType(OperationalHistoryScreen), findsOneWidget);
   });

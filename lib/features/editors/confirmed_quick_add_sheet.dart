@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' show NumberFormat;
 import 'package:shamsi_date/shamsi_date.dart';
 
 import '../../app_core.dart';
@@ -8,6 +7,8 @@ import 'persian_numeric_input_formatter.dart';
 import '../../domain/zar_domain_models.dart';
 import '../../domain/zar_id_generator.dart';
 import 'quick_entry_preferences.dart';
+import '../../application/customer_operational_balance_projector.dart';
+import '../theme/zar_theme.dart';
 
 class ConfirmedQuickAddSheet extends StatefulWidget {
   const ConfirmedQuickAddSheet({
@@ -26,6 +27,8 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
     this.initialCoinTypeId,
     this.initialPersonId,
     this.initialDate,
+    this.balanceFor,
+    this.deals = const [],
   });
   final List<AppPerson> people;
   final Future<void> Function(QuickAddDraft draft) onSave;
@@ -41,6 +44,8 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
   final String? initialCoinTypeId;
   final String? initialPersonId;
   final Jalali? initialDate;
+  final ZarCustomerOperationalBalance Function(String personId)? balanceFor;
+  final List<ZarDeal> deals;
   @override
   State<ConfirmedQuickAddSheet> createState() => _ConfirmedQuickAddSheetState();
 }
@@ -558,8 +563,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   String get _submitLabel =>
       'ثبت ${_operation == 'تحویل' ? 'پرداخت' : _operation ?? ''} ${_asset ?? ''}'
           .trim();
-  String _toman(int value) =>
-      toPersianDigits(NumberFormat.decimalPattern('en_US').format(value));
+  String _toman(int value) => toPersianNumberText(value.toString());
   String _confirmation(ZarDealPricing? pricing) {
     final unit = _isGold
         ? (_weightUnit == ZarGoldUnit.gram ? 'گرم' : 'مثقال')
@@ -605,7 +609,8 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.sizeOf(context).height * .92;
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final maxHeight = MediaQuery.sizeOf(context).height * .92 - keyboard;
     // WillPopScope also intercepts barrier/drag dismissal so a dirty draft is never lost.
     // ignore: deprecated_member_use
     return WillPopScope(
@@ -613,9 +618,9 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       child: SafeArea(
         top: false,
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
+          constraints: BoxConstraints(maxHeight: (maxHeight + keyboard).clamp(120, double.infinity)),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+            padding: EdgeInsets.fromLTRB(20, 10, 20, keyboard),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -727,11 +732,7 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _label('نوع عملیات'),
-        _choices(
-          ['خرید', 'فروش', 'دریافت', 'تحویل'],
-          _operation,
-          _selectOperation,
-        ),
+        _operationTiles(['خرید', 'فروش', 'دریافت', 'تحویل'], _operation, _selectOperation),
         if (_operation != null) ...[
           const SizedBox(height: 10),
           _label('نوع دارایی'),
@@ -747,12 +748,97 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
     );
   }
 
+  /// Latest priced gold deal rate per gram for the active fineness, exact only
+  /// when that deal was priced per gram.
+  String? _lastGoldRate() {
+    for (final deal in widget.deals) {
+      final pricing = deal.pricing;
+      if (pricing is! ZarGoldDealPricing) continue;
+      if (deal.status == ZarDealStatus.cancelled) continue;
+      if (pricing.priceUnit != ZarGoldUnit.gram) continue;
+      if (_isGold &&
+          _fineness.text.trim().isNotEmpty &&
+          pricing.fineness != _fineness.text.trim() &&
+          pricing.fineness != normalizeDecimal(_fineness.text.trim())) {
+        continue;
+      }
+      final perGram = pricing.pricePerUnitToman.wholeTomans;
+      return toPersianNumberText(perGram.toString());
+    }
+    return null;
+  }
+
+  /// Latest priced gold deal rate per gram for the active fineness, exact only
+  (String, Color)? _personBalanceTag(BuildContext context) {
+    final balance = widget.balanceFor?.call(_person?.id ?? '');
+    if (balance == null) return null;
+    final semantic = context.zarSemantic;
+    final net = balance.receivableToman - balance.payableToman;
+    final hasBuckets =
+        balance.receivableAssetBuckets.isNotEmpty ||
+        balance.payableAssetBuckets.isNotEmpty;
+    if (net == BigInt.zero && !hasBuckets) return null;
+    final grouped = toPersianNumberText(net.abs().toString());
+    if (net > BigInt.zero) {
+      return ('طلبکار $grouped تومان', semantic.positive);
+    }
+    if (net < BigInt.zero) {
+      return ('بدهکار $grouped تومان', semantic.negative);
+    }
+    return ('مانده ارزی/طلایی دارد', _mutedColor(context));
+  }
+
+  Color _mutedColor(BuildContext context) =>
+      Theme.of(context).colorScheme.onSurfaceVariant;
+
   Widget _transactionFields() => _card([
     ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: EdgeInsets.zero,      leading: _person == null
+          ? CircleAvatar(
+              radius: 18,
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+              child: const Icon(CupertinoIcons.person, size: 18),
+            )
+          : CircleAvatar(
+              radius: 18,
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              child: Text(
+                _person!.name.trim().isEmpty
+                    ? '-'
+                    : _person!.name.trim()[0],
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
       title: const Text('طرف حساب'),
       subtitle: Text(_person?.name ?? 'انتخاب طرف حساب'),
-      trailing: const Icon(CupertinoIcons.chevron_down),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_person != null && _personBalanceTag(context) != null)
+            Container(
+              height: 22,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: _personBalanceTag(context)!.$2.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                _personBalanceTag(context)!.$1,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _personBalanceTag(context)!.$2,
+                ),
+              ),
+            ),
+          const SizedBox(width: 6),
+          const Icon(CupertinoIcons.chevron_down),
+        ],
+      ),
       onTap: () async {
         final selected = await showPersonPickerBottomSheet(
           context,
@@ -963,6 +1049,29 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       ],
     ),
     if (_isGold) ...[
+      const SizedBox(height: 6),
+      Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (_lastGoldRate() case final lastRate?)
+            ActionChip(
+              key: const ValueKey('quick-add-last-rate'),
+              label: Text('نرخ آخرین معامله: ${toPersianNumberText(lastRate)}'),
+              onPressed: () => setState(() {
+                _startedInput = true;
+                _rate.text = toPersianNumberText(lastRate);
+              }),
+            ),
+          FilterChip(
+            label: const Text('اجرت ۰٪'),
+            selected: true,
+            showCheckmark: false,
+            onSelected: null,
+          ),
+        ],
+      ),
       Align(
         alignment: AlignmentDirectional.centerStart,
         child: TextButton(
@@ -991,14 +1100,18 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       const SizedBox(height: 10),
       Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF9A6700).withValues(alpha: .08),
-          borderRadius: BorderRadius.circular(14),
+          color: Theme.of(context).colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(18),
         ),
         child: Text(
           summary,
-          style: const TextStyle(fontWeight: FontWeight.w600, height: 1.65),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            height: 1.65,
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
         ),
       ),
     ],
@@ -1174,6 +1287,66 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
     ),
   );
+  Widget _operationTiles(
+    List<String> values,
+    String? selected,
+    ValueChanged<String> changed,
+  ) {
+    final theme = Theme.of(context);
+    final icons = {
+      'خرید': Icons.shopping_bag_outlined,
+      'فروش': Icons.sell_outlined,
+      'دریافت': Icons.south_west,
+      'تحویل': Icons.north_east,
+    };
+    return Row(
+      children: [
+        for (final (index, v) in values.indexed) ...[
+          if (index > 0) const SizedBox(width: 8),
+          Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: _saving ? null : () => changed(v),
+              child: Container(
+                height: 64,
+                decoration: BoxDecoration(
+                  color: toPersianNumberText(selected ?? '') ==
+                          toPersianNumberText(v)
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      icons[v] ?? Icons.circle,
+                      size: 20,
+                      color: toPersianNumberText(selected ?? '') ==
+                              toPersianNumberText(v)
+                          ? theme.colorScheme.onPrimary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      toPersianDigits(v == 'تحویل' ? 'پرداخت' : v),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: toPersianNumberText(selected ?? '') ==
+                                toPersianNumberText(v)
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _choices(
     List<String> values,
     String? selected,

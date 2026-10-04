@@ -203,7 +203,7 @@ void main() {
       coinTypes: catalog,
     );
     final restored = codec.decodeJson(codec.encodeJson(source));
-    expect(restored.exportVersion, 7);
+    expect(restored.exportVersion, 8);
     expect(restored.coinTypes, hasLength(7));
     expect(
       (restored.deals.single.amount as ZarCoinBundleAmount)

@@ -6,6 +6,14 @@ Private Persian-first Flutter application for operational gold and currency work
 
 - Persian RTL + Jalali operational UI
 - strict Deal vs Settlement separation
+- physical cashbox journal («صندوق»): real on-hand balances for cash, currency,
+  gold and coins, opening balances, own-fund entries (contribution, withdrawal,
+  expense), counted adjustments with a reason, reversible entries with evidence,
+  and per-deal partial physical deliveries that never auto-create inventory
+- deals, physical deliveries and customer payments are separate effects; a
+  priced deal without a recorded delivery does not change cashbox balances
+- partial obligation completion is applied once across the cashbox, the
+  customer ledger and deal accounting status
 - repository-backed application state
 - exact gold decimal strings and currency integer minor units
 - Notification Center + archived people flows

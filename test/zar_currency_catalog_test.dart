@@ -88,7 +88,7 @@ void main() {
       );
 
       final restored = codec.decodeJson(codec.encodeJson(source));
-      expect(restored.exportVersion, 7);
+      expect(restored.exportVersion, 8);
       expect(restored.currencyTypes.map((item) => item.code), contains('USD'));
 
       final v6 =
