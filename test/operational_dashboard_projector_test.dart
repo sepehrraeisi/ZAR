@@ -180,8 +180,6 @@ void main() {
             onTapRecord: (_) {},
             onOpenNotifications: () {},
             unreadCount: 0,
-            onOpenInventory: () {},
-            onOpenDailyReport: () {},
             dashboard: dashboard,
             now: now,
           ),
@@ -189,8 +187,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('موجودی واقعی'), findsNothing);
-      expect(find.text('موجودی'), findsOneWidget);
-      expect(find.text('گزارش روزانه'), findsOneWidget);
+      expect(find.text('صندوق'), findsNothing);
+      expect(find.text('گزارش روزانه'), findsNothing);
       expect(find.text('دریافتنی‌ها'), findsOneWidget);
       expect(find.text('پرداختنی‌ها'), findsOneWidget);
       expect(
@@ -231,13 +229,6 @@ void main() {
         find.byKey(const ValueKey('home-obligation-پرداختنی‌ها')),
       );
       expect(receiveCard.height, deliverCard.height);
-      final inventoryButton = tester.getSize(
-        find.widgetWithText(OutlinedButton, 'موجودی'),
-      );
-      final reportButton = tester.getSize(
-        find.widgetWithText(OutlinedButton, 'گزارش روزانه'),
-      );
-      expect(inventoryButton, reportButton);
       expect(tester.takeException(), isNull);
     },
   );
@@ -319,8 +310,6 @@ void main() {
             onOpenNotifications: () {},
             onOpenSettings: () {},
             unreadCount: 7,
-            onOpenInventory: () {},
-            onOpenDailyReport: () {},
             now: now,
           ),
         ),
@@ -332,14 +321,8 @@ void main() {
     final headerRowRect = tester.getRect(
       find.byKey(const ValueKey('home-header-row')),
     );
-    final todayRect = tester.getRect(
-      find.byKey(const ValueKey('home-header-today')),
-    );
     final logoRect = tester.getRect(
       find.byKey(const ValueKey('home-header-logo')),
-    );
-    final quickActionsRect = tester.getRect(
-      find.byKey(const ValueKey('home-quick-actions')),
     );
     final bellRect = tester.getRect(
       find.byKey(const ValueKey('home-notification-bell')),
@@ -352,26 +335,25 @@ void main() {
     );
 
     expect(find.byKey(const ValueKey('home-header-logo')), findsOneWidget);
-    expect(find.text('امروز'), findsOneWidget);
-    expect(find.text('·'), findsOneWidget);
-    expect(find.text(formatJalaliDate(Jalali.fromDateTime(now))), findsOneWidget);
-    expect(headerRect.height, lessThanOrEqualTo(60));
-    expect(headerRowRect.height, 44);
-    expect(logoRect.size, const Size(64, 26));
-    expect(bellRect.size, const Size(44, 44));
-    expect(settingsRect.size, const Size(44, 44));
-    expect(tester.getRect(find.byTooltip('اعلان‌ها')).size, const Size(44, 44));
-    expect(tester.getRect(find.byTooltip('تنظیمات و داده‌ها')).size, const Size(44, 44));
+    expect(
+      find.text('گالری طلای مهر · چهارشنبه ۱۱ شهریور'),
+      findsOneWidget,
+    );
+    expect(find.text('ZAR+'), findsOneWidget);
+    expect(headerRect.height, lessThanOrEqualTo(72));
+    expect(headerRowRect.height, lessThanOrEqualTo(64));
+    expect(logoRect.size, const Size(36, 36));
+    expect(bellRect.size, const Size(48, 48));
+    expect(settingsRect.size, const Size(48, 48));
+    expect(tester.getRect(find.byTooltip('اعلان‌ها')).size, const Size(48, 48));
+    expect(tester.getRect(find.byTooltip('تنظیمات و داده‌ها')).size, const Size(48, 48));
     expect(badgeRect.width, lessThan(bellRect.width));
     expect(badgeRect.height, lessThan(bellRect.height));
     expect(badgeRect.left, greaterThanOrEqualTo(bellRect.left));
     expect(badgeRect.top, greaterThanOrEqualTo(bellRect.top));
     expect(badgeRect.right, lessThanOrEqualTo(bellRect.right));
     expect(badgeRect.bottom, lessThanOrEqualTo(bellRect.bottom));
-    expect(todayRect.height, lessThanOrEqualTo(headerRowRect.height));
-    expect(todayRect.center.dy, closeTo(headerRowRect.center.dy, 4));
-    expect(quickActionsRect.top - headerRowRect.bottom, inInclusiveRange(16, 22));
-    expect(headerRect.bottom, lessThanOrEqualTo(quickActionsRect.top));
+    expect(find.byKey(const ValueKey('home-quick-actions')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -526,8 +508,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-دریافتنی‌ها'))).height, 160);
-    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-پرداختنی‌ها'))).height, 160);
+    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-دریافتنی‌ها'))).height, 168);
+    expect(tester.getSize(find.byKey(const ValueKey('home-obligation-پرداختنی‌ها'))).height, 168);
     expect(tester.takeException(), isNull);
   });
 

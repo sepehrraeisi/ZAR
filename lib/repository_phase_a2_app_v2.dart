@@ -10,10 +10,10 @@ import 'package:shamsi_date/shamsi_date.dart';
 import 'app_core.dart';
 import 'application/persisted_reminder_coordinator.dart';
 import 'application/operational_dashboard_projector.dart';
-import 'application/operational_inventory_projector.dart';
 import 'application/zar_auto_backup.dart';
 import 'application/zar_backup_manager.dart';
 import 'application/zar_legacy_presentation_bridge.dart';
+import 'application/zar_cash_projector.dart';
 import 'application/zar_phase_a2_store.dart';
 import 'application/zar_write_coordinator.dart';
 import 'data/zar_domain_repository.dart';
@@ -31,7 +31,7 @@ import 'features/currencies/currency_catalog_screen.dart';
 import 'features/editors/confirmed_quick_add_sheet.dart';
 import 'features/history/operational_history_screen.dart';
 import 'features/notifications/native_notification_runtime.dart';
-import 'features/inventory/operational_inventory_screen.dart';
+import 'features/inventory/cashbox_screen.dart';
 import 'features/notifications/notification_center.dart';
 import 'features/notifications/notification_content_policy.dart';
 import 'features/people/archived_people_screen.dart';
@@ -42,6 +42,7 @@ import 'features/reminders/reminder_plan_editor.dart';
 import 'features/reports/operational_daily_report_screen.dart';
 import 'features/settlements/operational_pending_screen.dart';
 import 'features/settlements/repository_settlement_action_sheet.dart';
+import 'features/theme/zar_theme.dart';
 import 'main_phase_a2.dart' show PhaseA2HomeScreen, isRecordOverdueAt;
 import 'data/zar_preview_repository.dart';
 import 'domain/zar_id_generator.dart';
@@ -84,89 +85,7 @@ class RepositoryZarPlusAppV2 extends StatelessWidget {
     );
   }
 
-  ThemeData _theme(Brightness brightness) {
-    final isDark = brightness == Brightness.dark;
-    const accent = Color(0xFFC08A3D);
-    final surface = isDark ? const Color(0xFF151515) : const Color(0xFFFBFAF8);
-    final card = isDark ? const Color(0xFF1D1D1D) : Colors.white;
-    final primary = isDark ? const Color(0xFFF4F4F4) : const Color(0xFF121212);
-    final secondary = isDark
-        ? const Color(0xFFA9A9A9)
-        : const Color(0xFF707070);
-
-    return ThemeData(
-      useMaterial3: true,
-      brightness: brightness,
-      scaffoldBackgroundColor: surface,
-      fontFamily: 'Vazirmatn',
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: accent,
-        brightness: brightness,
-        surface: card,
-      ),
-      dividerColor: isDark ? const Color(0xFF303030) : const Color(0xFFECEAE6),
-      textTheme: TextTheme(
-        headlineSmall: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-          color: primary,
-          height: 1.35,
-        ),
-        titleLarge: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: primary,
-          height: 1.35,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w600,
-          color: primary,
-          height: 1.45,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: primary,
-          height: 1.55,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          color: secondary,
-          height: 1.6,
-        ),
-      ),
-      appBarTheme: AppBarTheme(
-        elevation: 0,
-        backgroundColor: surface,
-        foregroundColor: primary,
-        centerTitle: false,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: isDark ? const Color(0xFF252525) : const Color(0xFFF6F4F1),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: accent, width: 1.2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 13,
-        ),
-      ),
-      bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: card,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-      ),
-    );
-  }
+  ThemeData _theme(Brightness brightness) => zarBuildTheme(brightness);
 }
 
 class _RepositoryPhaseA2ShellV2 extends StatefulWidget {
@@ -184,9 +103,9 @@ class _RepositoryPhaseA2ShellV2 extends StatefulWidget {
 }
 
 class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
-  static const _bridge = ZarLegacyPresentationBridge(
-    businessId: 'preview-business',
-    userId: 'preview-user',
+  late final _bridge = ZarLegacyPresentationBridge(
+    businessId: widget.businessId,
+    userId: 'local-user',
   );
 
   late final ZarPhaseA2Store _store = ZarPhaseA2Store(
@@ -211,6 +130,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
 
   late ZarNotificationPreferences _notificationPreferences;
   int _index = 0;
+  final ValueNotifier<int> _cashboxTab = ValueNotifier<int>(0);
   bool _ready = false;
   bool _writing = false;
   Object? _loadError;
@@ -695,6 +615,8 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         recentPeople: recentPeople,
         coinTypes: _store.coinTypes,
         currencies: _store.currencyTypes,
+        balanceFor: _store.balanceFor,
+        deals: _store.deals,
         initialOperation: initialOperation,
         initialAsset: initialAsset,
         initialCurrencyCode: initialCurrencyCode,
@@ -871,6 +793,11 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           onOpenSettlement: (settlement) {
             Navigator.of(context).pop();
             unawaited(_openRecord(settlement));
+          },
+          onCancelDeal: () async {
+            Navigator.of(context).pop();
+            await _runWrite(() => _store.cancelDeal(record.id));
+            if (mounted) setState(() {});
           },
         ),
       );
@@ -1224,70 +1151,6 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     );
   }
 
-  Future<void> _openInventory() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => OperationalInventoryScreen(
-          projection: const ZarOperationalInventoryProjector().project(
-            deals: _store.deals,
-            settlements: _store.settlements,
-            allocations: _store.paymentAllocations,
-          ),
-          stateListenable: _store,
-          projectionBuilder: _inventoryProjection,
-          personName: _store.personName,
-          onOpenRecord: (id) {
-            final record = _store.recordById(id);
-            if (record != null) _openRecord(record);
-          },
-          onQuickAction: (operation) => unawaited(
-            _openQuickAdd(
-              initialOperation: operation == 'پرداخت' ? 'تحویل' : operation,
-            ),
-          ),
-          onQuickActionWithContext: (operation, item) =>
-              unawaited(_openInventoryQuickAction(operation, item)),
-        ),
-      ),
-    );
-  }
-
-  ZarOperationalInventoryProjection _inventoryProjection() =>
-      const ZarOperationalInventoryProjector().project(
-        deals: _store.deals,
-        settlements: _store.settlements,
-        allocations: _store.paymentAllocations,
-      );
-
-  Future<void> _openInventoryQuickAction(
-    String operation,
-    ZarOperationalInventoryItem item,
-  ) {
-    String? asset;
-    String? currencyCode;
-    String? goldFineness;
-    String? coinTypeId;
-    switch (item) {
-      case ZarCurrencyInventoryItem(:final code):
-        asset = code == 'TOMAN' ? 'وجه نقد' : 'ارز';
-        currencyCode = code;
-      case ZarGoldInventoryItem(:final fineness):
-        asset = 'طلا';
-        goldFineness = fineness;
-      case ZarCoinInventoryItem(:final identity):
-        asset = 'سکه';
-        final raw = identity.substring('coin:'.length);
-        coinTypeId = raw.split('|').first;
-    }
-    return _openQuickAdd(
-      initialOperation: operation == 'پرداخت' ? 'تحویل' : operation,
-      initialAsset: asset,
-      initialCurrencyCode: currencyCode,
-      initialGoldFineness: goldFineness,
-      initialCoinTypeId: coinTypeId,
-    );
-  }
-
   Future<void> _openPending(ZarSettlementDirection direction) async {
     final filtered = openObligations
         .where(
@@ -1391,19 +1254,41 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         onTapRecord: _openRecord,
         onOpenNotifications: _openNotificationCenter,
         onOpenSettings: _openBackup,
-        onOpenInventory: _openInventory,
-        onOpenDailyReport: _openDailyReport,
         onOpenOverdue: _openOverdue,
         onOpenHistory: () => setState(() => _index = 4),
+        onOpenSearch: () => setState(() => _index = 4),
         dashboard: dashboard,
         recentRecords: recentRecords,
         onOpenPendingReceive: () =>
             _openPending(ZarSettlementDirection.receive),
         onOpenPendingDeliver: () =>
             _openPending(ZarSettlementDirection.deliver),
+        cash: const ZarCashProjector().project(
+          entries: _store.cashEntries,
+          settlements: _store.settlements,
+          allocations: _store.paymentAllocations,
+        ),
+        onOpenCommitments: () {
+          _cashboxTab.value = 2;
+          setState(() => _index = 1);
+        },
         unreadCount: openObligations
             .where((record) => !_seenNotificationRecordIds.contains(record.id))
             .length,
+      ),
+      CashboxScreen(
+        store: _store,
+        businessId: widget.businessId,
+        onOpenRecord: (id) {
+          final record = _store.recordById(id);
+          if (record != null) _openRecord(record);
+        },
+        onOpenDailyReport: _openDailyReport,
+        tabNotifier: _cashboxTab,
+        onChanged: () {
+          if (mounted) setState(() {});
+          unawaited(_persistedReminders.reconcileAll(records));
+        },
       ),
       CalendarScreen(
         records: records,
@@ -1413,7 +1298,6 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         onAdd: () =>
             unawaited(_openQuickAdd(initialDate: _calendarSelectedDate)),
       ),
-      const SizedBox.shrink(),
       OperationalPeopleScreen(
         balanceFor: _store.balanceFor,
         people: _store.activePeople,
@@ -1447,19 +1331,55 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           body: SafeArea(
             child: IndexedStack(index: _index, children: pages),
           ),
-          bottomNavigationBar: ZBottomBar(
-            currentIndex: _index,
-            onTap: (value) {
-              if (value == 2) {
-                unawaited(
-                  _openQuickAdd(
-                    initialDate: _index == 1 ? _calendarSelectedDate : null,
+          floatingActionButton: _index == 0
+              ? FloatingActionButton.extended(
+                  key: const ValueKey('home-quick-add-fab'),
+                  onPressed: () => unawaited(_openQuickAdd()),
+                  backgroundColor:
+                      Theme.of(context).colorScheme.primaryContainer,
+                  foregroundColor:
+                      Theme.of(context).colorScheme.onPrimaryContainer,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                );
-              } else {
-                setState(() => _index = value);
-              }
-            },
+                  heroTag: 'home-quick-add',
+                  icon: const Icon(CupertinoIcons.add),
+                  label: const Text('ثبت سریع'),
+                )
+              : null,
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.startFloat,
+          bottomNavigationBar: NavigationBar(
+            height: 80,
+            selectedIndex: _index.clamp(0, 4),
+            onDestinationSelected: (value) =>
+                setState(() => _index = value),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'خانه',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.account_balance_wallet_outlined),
+                selectedIcon: Icon(Icons.account_balance_wallet),
+                label: 'صندوق',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.calendar_month_outlined),
+                selectedIcon: Icon(Icons.calendar_month),
+                label: 'تقویم',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.group_outlined),
+                selectedIcon: Icon(Icons.group),
+                label: 'اشخاص',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.history),
+                label: 'تاریخچه',
+              ),
+            ],
           ),
         ),
         if (_writing)

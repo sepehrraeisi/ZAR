@@ -16,10 +16,10 @@ void main() {
     expect(find.text('خانه'), findsOneWidget);
     expect(find.text('تقویم'), findsOneWidget);
     expect(find.text('اشخاص'), findsOneWidget);
-    expect(find.text('سوابق'), findsOneWidget);
+    expect(find.text('تاریخچه'), findsOneWidget);
     expect(find.byIcon(CupertinoIcons.bell), findsOneWidget);
     expect(find.text('عقب‌افتاده'), findsWidgets);
-    expect(find.text('امروز'), findsWidgets);
+    expect(find.text('ثبت سریع'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('فردا'),
       200,

@@ -472,23 +472,28 @@ class ZBottomBar extends StatelessWidget {
                   navItem(index: 0, icon: CupertinoIcons.house, label: 'خانه'),
                   navItem(
                     index: 1,
+                    icon: CupertinoIcons.money_dollar_circle,
+                    label: 'صندوق',
+                  ),
+                  navItem(
+                    index: 2,
                     icon: CupertinoIcons.calendar,
                     label: 'تقویم',
                   ),
                   const SizedBox(width: 76),
                   navItem(
-                    index: 3,
+                    index: 4,
                     icon: CupertinoIcons.person_2,
                     label: 'اشخاص',
                   ),
-                  navItem(index: 4, icon: CupertinoIcons.clock, label: 'سوابق'),
+                  navItem(index: 5, icon: CupertinoIcons.clock, label: 'سوابق'),
                 ],
               ),
               Semantics(
                 button: true,
                 label: 'ثبت معامله جدید',
                 child: GestureDetector(
-                  onTap: () => onTap(2),
+                  onTap: () => onTap(3),
                   child: Container(
                     width: 46,
                     height: 46,
@@ -544,6 +549,7 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   Jalali _month = Jalali.now().withDay(1);
   Jalali _selected = Jalali.now();
+  String _view = 'ماه';
 
   DateTime get _now => widget.clock?.call() ?? DateTime.now();
 
@@ -568,17 +574,56 @@ class _CalendarScreenState extends State<CalendarScreen> {
     widget.onSelectedDateChanged?.call(_selected);
   }
 
+  void _jumpTo(Jalali target) {
+    setState(() {
+      _month = target.withDay(1);
+      _selected = target;
+    });
+    widget.onSelectedDateChanged?.call(_selected);
+  }
+
+  Map<String, List<Color>> _dotColorsFor(
+    List<_CalendarActivity> activities,
+    ThemeData theme,
+  ) {
+    final colors = <String, List<Color>>{};
+    for (final item in activities) {
+      final key = '${item.date.year}-${item.date.month}-${item.date.day}';
+      final list = colors.putIfAbsent(key, () => <Color>[]);
+      final color = _dotColorFor(item, theme);
+      if (!list.contains(color) && list.length < 3) list.add(color);
+    }
+    return colors;
+  }
+
+  Color _dotColorFor(_CalendarActivity item, ThemeData theme) {
+    if (item.record.type == RecordType.deal) return theme.colorScheme.primary;
+    return item.record.operationLabel == 'دریافت'
+        ? const Color(0xFF2F7D4C)
+        : theme.colorScheme.error;
+  }
+
   Widget _monthSection(
     BuildContext context,
     List<_CalendarActivity> activities,
   ) {
     final theme = Theme.of(context);
-    final eventDays = activities.map((item) => item.date).toSet().toList();
+    final eventDays = activities
+        .where((item) => item.record.status != SettlementStatus.cancelled)
+        .map((item) => item.date)
+        .toSet()
+        .toList();
     final overdueDays = activities
         .where((item) => item.overdue)
         .map((item) => item.date)
         .toSet()
         .toList();
+    final dotColors = _dotColorsFor(
+      activities
+          .where((item) => item.record.status != SettlementStatus.cancelled)
+          .toList(growable: false),
+      theme,
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Column(
@@ -597,9 +642,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
               Expanded(
                 child: Center(
-                  child: Text(
-                    '${monthName(_month.month)} ${toPersianDigits(_month.year.toString())}',
-                    style: theme.textTheme.titleMedium,
+                  child: TextButton.icon(
+                    key: const ValueKey('calendar-month-picker'),
+                    onPressed: _pickMonthYear,
+                    icon: Text(
+                      '${monthName(_month.month)} ${toPersianDigits(_month.year.toString())}',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    label: const Icon(CupertinoIcons.chevron_down, size: 16),
                   ),
                 ),
               ),
@@ -614,14 +664,204 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ],
           ),
-          CalendarMonthGrid(
-            month: _month,
-            selected: _selected,
-            eventDays: eventDays,
-            overdueDays: overdueDays,
-            onDayTap: _selectDate,
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 44,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<String>(
+                style: const ButtonStyle(
+                  visualDensity: VisualDensity(horizontal: -2, vertical: -2),
+                ),
+                segments: const [
+                  ButtonSegment(value: 'روز', label: Text('روز')),
+                  ButtonSegment(value: 'هفته', label: Text('هفته')),
+                  ButtonSegment(value: 'ماه', label: Text('ماه')),
+                  ButtonSegment(value: 'فهرست', label: Text('فهرست')),
+                ],
+                selected: {_view},
+                showSelectedIcon: false,
+                onSelectionChanged: (selection) =>
+                    setState(() => _view = selection.first),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          GestureDetector(
+            onHorizontalDragEnd: (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              if (velocity < 0) {
+                _moveMonth(1);
+              } else if (velocity > 0) {
+                _moveMonth(-1);
+              }
+            },
+            child: switch (_view) {
+              'روز' => CalendarMonthGrid(
+                month: _month,
+                selected: _selected,
+                eventDays: eventDays,
+                overdueDays: overdueDays,
+                dayDotColors: dotColors,
+                visibleDays: [_selected.day],
+                leadingBlanks:
+                    ((_selected.toDateTime().weekday + 1) % 7),
+                onDayTap: _selectDate,
+              ),
+              'هفته' => CalendarMonthGrid(
+                month: _month,
+                selected: _selected,
+                eventDays: eventDays,
+                overdueDays: overdueDays,
+                dayDotColors: dotColors,
+                visibleDays: _weekDays(_selected),
+                leadingBlanks:
+                    ((_selected.toDateTime().weekday + 1) % 7),
+                onDayTap: _selectDate,
+              ),
+              'فهرست' => _monthList(),
+              _ => CalendarMonthGrid(
+                month: _month,
+                selected: _selected,
+                eventDays: eventDays,
+                overdueDays: overdueDays,
+                dayDotColors: dotColors,
+                onDayTap: _selectDate,
+              ),
+            },
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 14,
+            runSpacing: 4,
+            children: [
+              _legendDot(theme, theme.colorScheme.primary, 'تحویل طلا'),
+              _legendDot(theme, theme.colorScheme.error, 'پرداخت وجه / چک'),
+              _legendDot(theme, const Color(0xFF2F7D4C), 'دریافت وجه'),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _legendDot(ThemeData theme, Color color, String label) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 5,
+        height: 5,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      const SizedBox(width: 4),
+      Text(label, style: theme.textTheme.labelSmall),
+    ],
+  );
+
+  List<int> _weekDays(Jalali date) {
+    final offset = (date.toDateTime().weekday + 1) % 7;
+    final start = date.addDays(-offset);
+    return [for (var i = 0; i < 7; i++) start.addDays(i)]
+        .where((day) => day.month == _month.month && day.year == _month.year)
+        .map((day) => day.day)
+        .toList();
+  }
+
+  Widget _monthList() {
+    final monthActivities = _activities
+        .where((item) => item.date.year == _month.year && item.date.month == _month.month)
+        .toList()
+      ..sort(_compareCalendarActivities);
+    if (monthActivities.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: Center(child: Text('فعالیتی در این ماه نیست')),
+      );
+    }
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        children: [
+          for (final (index, item) in monthActivities.indexed) ...[
+            if (index > 0) Divider(height: 1, color: Theme.of(context).dividerColor),
+            ListTile(
+              dense: true,
+              title: Text(widget.personName(item.record.personId)),
+              subtitle: Text(
+                '${toPersianDigits(item.date.day.toString())} ${monthName(item.date.month)}'
+                '${item.time == null ? '' : '، ${item.time!.format(context)}'}',
+              ),
+              trailing: Text(item.record.operationDisplayLabel),
+              onTap: () => widget.onTapRecord(item.record),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickMonthYear() {
+    var year = _month.year;
+    return showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      onPressed: () => setSheetState(() => year -= 1),
+                      icon: const Icon(CupertinoIcons.chevron_right),
+                    ),
+                    Text(
+                      toPersianDigits(year.toString()),
+                      style: Theme.of(sheetContext).textTheme.titleLarge,
+                    ),
+                    IconButton(
+                      onPressed: () => setSheetState(() => year += 1),
+                      icon: const Icon(CupertinoIcons.chevron_left),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                GridView.count(
+                  shrinkWrap: true,
+                  crossAxisCount: 4,
+                  childAspectRatio: 2.2,
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 6,
+                  children: [
+                    for (var month = 1; month <= 12; month++)
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor:
+                              month == _month.month && year == _month.year
+                              ? Theme.of(sheetContext)
+                                    .colorScheme
+                                    .secondaryContainer
+                              : null,
+                        ),
+                        onPressed: () {
+                          Navigator.pop(sheetContext);
+                          _jumpTo(Jalali(year, month, 1));
+                        },
+                        child: Text(monthName(month)),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -633,50 +873,82 @@ class _CalendarScreenState extends State<CalendarScreen> {
         activities.where((e) => isSameJalali(e.date, _selected)).toList()
           ..sort(_compareCalendarActivities);
 
-    return CustomScrollView(
-      key: const ValueKey('calendar-scroll'),
-      slivers: [
-        SliverAppBar(title: const Text('تقویم'), pinned: true),
-        SliverToBoxAdapter(child: _monthSection(context, activities)),
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _CalendarAgendaHeaderDelegate(
-            selected: _selected,
-            summary: _agendaSummary(selectedEvents),
-          ),
-        ),
-        if (selectedEvents.isEmpty)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 34, 20, 34),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('برای این روز فعالیتی ثبت نشده'),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: widget.onAdd,
-                      child: const Text('ثبت جدید'),
-                    ),
-                  ],
+    return Stack(
+      children: [
+        CustomScrollView(
+          key: const ValueKey('calendar-scroll'),
+          slivers: [
+            SliverAppBar(
+              title: const Text('تقویم'),
+              pinned: true,
+              actions: [
+                TextButton(
+                  key: const ValueKey('calendar-today-button'),
+                  onPressed: () => _jumpTo(Jalali.fromDateTime(_now)),
+                  style: TextButton.styleFrom(
+                    side: BorderSide(color: Theme.of(context).dividerColor),
+                  ),
+                  child: const Text('امروز'),
                 ),
+                const SizedBox(width: 8),
+              ],
+            ),
+            SliverToBoxAdapter(child: _monthSection(context, activities)),
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _CalendarAgendaHeaderDelegate(
+                selected: _selected,
+                summary: _agendaSummary(selectedEvents),
               ),
             ),
-          )
-        else
-          SliverList.builder(
-            itemCount: selectedEvents.length,
-            itemBuilder: (context, index) {
-              final item = selectedEvents[index];
-              return _CalendarAgendaRow(
-                activity: item,
-                personName: widget.personName(item.record.personId),
-                onTap: () => widget.onTapRecord(item.record),
-              );
-            },
+            if (selectedEvents.isEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 34, 20, 34),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('برای این روز فعالیتی ثبت نشده'),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: widget.onAdd,
+                          child: const Text('ثبت جدید'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else
+              SliverList.builder(
+                itemCount: selectedEvents.length,
+                itemBuilder: (context, index) {
+                  final item = selectedEvents[index];
+                  return _CalendarAgendaRow(
+                    activity: item,
+                    personName: widget.personName(item.record.personId),
+                    onTap: () => widget.onTapRecord(item.record),
+                  );
+                },
+              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 96)),
+          ],
+        ),
+        if (widget.onAdd != null)
+          PositionedDirectional(
+            bottom: 16,
+            start: 16,
+            child: FloatingActionButton(
+              key: const ValueKey('calendar-add-fab'),
+              heroTag: 'calendar-add',
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              foregroundColor:
+                  Theme.of(context).colorScheme.onPrimaryContainer,
+              onPressed: widget.onAdd,
+              child: const Icon(CupertinoIcons.add),
+            ),
           ),
-        const SliverToBoxAdapter(child: SizedBox(height: 96)),
       ],
     );
   }
@@ -1373,7 +1645,7 @@ class PersonDetailScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                radius: 25,
+                radius: 32,
                 backgroundColor: theme.colorScheme.primary.withValues(
                   alpha: 0.14,
                 ),
@@ -1382,6 +1654,7 @@ class PersonDetailScreen extends StatelessWidget {
                   style: theme.textTheme.titleLarge?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w700,
+                    fontSize: 26,
                   ),
                 ),
               ),
@@ -1406,6 +1679,45 @@ class PersonDetailScreen extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (hasPhone)
+                            Container(
+                              height: 22,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHigh,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Directionality(
+                                textDirection: TextDirection.ltr,
+                                child: Text(
+                                  person.phone!,
+                                  style: theme.textTheme.labelSmall,
+                                ),
+                              ),
+                            ),
+                          Container(
+                            height: 22,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${toPersianDigits(position.activityCount.toString())} معامله',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       if (note.isNotEmpty) ...[
                         const SizedBox(height: 2),
@@ -1891,6 +2203,7 @@ class HistoryDealDetailSheet extends StatelessWidget {
     required this.linkedSettlements,
     required this.onOpenSettlement,
     this.accountingStatus,
+    this.onCancelDeal,
   });
 
   final AppRecord record;
@@ -1898,6 +2211,7 @@ class HistoryDealDetailSheet extends StatelessWidget {
   final List<AppRecord> linkedSettlements;
   final ValueChanged<AppRecord> onOpenSettlement;
   final String? accountingStatus;
+  final Future<void> Function()? onCancelDeal;
 
   @override
   Widget build(BuildContext context) {
@@ -1982,6 +2296,51 @@ class HistoryDealDetailSheet extends StatelessWidget {
                         ),
                       )
                       .toList(growable: false),
+                ),
+              ),
+            ],
+            if (onCancelDeal != null &&
+                record.status != SettlementStatus.cancelled) ...[
+              const SizedBox(height: 10),
+              TextButton.icon(
+                key: const ValueKey('deal-cancel-action'),
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('لغو معامله'),
+                      content: const Text(
+                        'معامله لغو می‌شود و دیگر در محاسبات و صندوق حساب نمی‌آید. پول و جنس جابه‌جاشده برگردانده نمی‌شود؛ اگر برگشته، آن را جداگانه ثبت کن.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.pop(dialogContext, false),
+                          child: const Text('انصراف'),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.pop(dialogContext, true),
+                          child: Text(
+                            'لغو معامله',
+                            style: TextStyle(
+                              color: Theme.of(dialogContext).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) await onCancelDeal!();
+                },
+                icon: Icon(
+                  CupertinoIcons.xmark_circle,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                label: Text(
+                  'لغو معامله',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
             ],
@@ -2197,6 +2556,10 @@ class CalendarMonthGrid extends StatelessWidget {
     required this.selected,
     required this.eventDays,
     this.overdueDays = const [],
+    this.dayDotColors = const {},
+    this.visibleDays,
+    this.leadingBlanks,
+    this.showLeadingBlanks = true,
     required this.onDayTap,
   });
 
@@ -2204,6 +2567,12 @@ class CalendarMonthGrid extends StatelessWidget {
   final Jalali selected;
   final List<Jalali> eventDays;
   final List<Jalali> overdueDays;
+
+  /// Day-level dot colors (up to 3 per day), keyed 'y-m-d'.
+  final Map<String, List<Color>> dayDotColors;
+  final List<int>? visibleDays;
+  final int? leadingBlanks;
+  final bool showLeadingBlanks;
   final ValueChanged<Jalali> onDayTap;
 
   @override
@@ -2228,14 +2597,28 @@ class CalendarMonthGrid extends StatelessWidget {
         ),
       );
     }
-    for (int i = 0; i < firstWeekday; i++) {
-      cells.add(const SizedBox());
+    final blanks = visibleDays == null ? firstWeekday : (leadingBlanks ?? 0);
+    if (showLeadingBlanks || visibleDays != null) {
+      for (int i = 0; i < blanks; i++) {
+        cells.add(const SizedBox());
+      }
     }
-    for (int day = 1; day <= daysInMonth; day++) {
+    final days = visibleDays ??
+        List<int>.generate(daysInMonth, (index) => index + 1);
+    for (final day in days) {
       final date = month.withDay(day);
       final hasEvent = eventDays.any((e) => isSameJalali(e, date));
       final hasOverdue = overdueDays.any((e) => isSameJalali(e, date));
       final isSelected = isSameJalali(date, selected);
+      final isFriday = date.toDateTime().weekday == DateTime.friday;
+      final dots = dayDotColors['${date.year}-${date.month}-${date.day}'] ??
+          (hasEvent
+              ? [
+                  hasOverdue
+                      ? const Color(0xFFB23A3A)
+                      : Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                ]
+              : const <Color>[]);
       cells.add(
         InkWell(
           key: ValueKey('calendar-day-$day'),
@@ -2258,21 +2641,29 @@ class CalendarMonthGrid extends StatelessWidget {
                   toPersianDigits(day.toString()),
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontWeight: isSelected ? FontWeight.w600 : null,
+                    color: isFriday
+                        ? Theme.of(context).colorScheme.error
+                        : null,
                   ),
                 ),
                 const SizedBox(height: 2),
-                if (hasEvent)
-                  Container(
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: hasOverdue
-                          ? const Color(0xFFB23A3A)
-                          : Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.75),
-                      shape: BoxShape.circle,
-                    ),
+                if (dots.isNotEmpty)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final (index, dotColor) in dots.take(3).indexed)
+                        Container(
+                          width: 5,
+                          height: 5,
+                          margin: EdgeInsetsDirectional.only(
+                            start: index == 0 ? 0 : 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: dotColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
                   )
                 else
                   const SizedBox(height: 5),
