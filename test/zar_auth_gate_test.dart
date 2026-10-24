@@ -105,7 +105,7 @@ void main() {
     expect(find.text('ساخت حساب'), findsWidgets);
 
     await tester.enterText(find.byType(TextField).at(0), 'owner@gmail.com');
-    await tester.enterText(find.byType(TextField).at(1), 'secret1');
+    await tester.enterText(find.byType(TextField).at(1), 'secret123');
     await tester.tap(find.text('ساخت حساب').first);
     await tester.pumpAndSettle();
 

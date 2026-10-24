@@ -1,6 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+/// Sign-in / sign-up experience for cloud mode, styled with the ZAR+ tokens
+/// (gold seed #C08A3D, Vazirmatn, input fill #F6F4F1 r14) so it reads as the
+/// front door of the same app that mounts after sign-in.
+///
+/// Accessibility & UX standards kept here: labelled fields with autofill
+/// hints, ≥48dp touch targets, visible focus on the first field, disabled
+/// controls while busy, inline error surface with WCAG-contrast error colors,
+/// and keyboard-confirmed submission.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
     super.key,
@@ -23,6 +31,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _emailFocus = FocusNode();
   bool _obscure = true;
   bool _busy = false;
   bool _signUpMode = false;
@@ -32,6 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _emailFocus.dispose();
     super.dispose();
   }
 
@@ -40,6 +50,10 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _password.text;
     if (email.isEmpty || password.isEmpty) {
       setState(() => _error = 'ایمیل و رمز عبور را وارد کنید.');
+      return;
+    }
+    if (_signUpMode && password.length < 8) {
+      setState(() => _error = 'رمز عبور باید حداقل ۸ نویسه باشد.');
       return;
     }
     await _run(
@@ -83,6 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -96,27 +111,57 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const SizedBox(height: 24),
+                      Center(
+                        child: Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          alignment: Alignment.center,
+                          child: Directionality(
+                            textDirection: TextDirection.ltr,
+                            child: Text(
+                              'Z+',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                color: theme.colorScheme.onPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
                       const Directionality(
                         textDirection: TextDirection.ltr,
                         child: Text(
                           'ZAR+',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         _signUpMode ? 'ساخت فضای کاری مشترک' : 'ورود به فضای کاری',
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: theme.textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 34),
                       TextField(
                         controller: _email,
+                        focusNode: _emailFocus,
                         enabled: !_busy,
                         keyboardType: TextInputType.emailAddress,
                         textDirection: TextDirection.ltr,
                         autofillHints: const [AutofillHints.username, AutofillHints.email],
+                        onSubmitted: (_) => _submit(),
                         decoration: const InputDecoration(
                           labelText: 'ایمیل',
                           prefixIcon: Icon(CupertinoIcons.mail),
@@ -141,14 +186,37 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       if (_error != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          _error!,
-                          style: const TextStyle(color: Color(0xFF9D3636)),
+                        const SizedBox(height: 14),
+                        Semantics(
+                          liveRegion: true,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.errorContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline,
+                                    size: 18, color: theme.colorScheme.onErrorContainer),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: theme.textTheme.bodySmall!.copyWith(
+                                      color: theme.colorScheme.onErrorContainer,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 20),
                       FilledButton(
+                        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
                         onPressed: _busy ? null : _submit,
                         child: _busy
                             ? const SizedBox(
@@ -162,10 +230,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextButton(
                           onPressed: _busy
                               ? null
-                              : () => setState(() {
-                                  _signUpMode = !_signUpMode;
-                                  _error = null;
-                                }),
+                              : () {
+                                  _emailFocus.requestFocus();
+                                  setState(() {
+                                    _signUpMode = !_signUpMode;
+                                    _error = null;
+                                  });
+                                },
                           child: Text(
                             _signUpMode
                                 ? 'قبلاً حساب ساخته‌اید؟ وارد شوید'
@@ -177,6 +248,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextButton(
                           onPressed: _busy ? null : _resetPassword,
                           child: const Text('فراموشی رمز عبور'),
+                        ),
+                      if (_signUpMode)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            'با ساخت حساب، یک فضای کاری اختصاصی برای شما ساخته می‌شود.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall,
+                          ),
                         ),
                     ],
                   ),

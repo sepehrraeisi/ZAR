@@ -884,7 +884,7 @@ _HomeAmountParts _homeRecordParts(AppRecord record) {
   }
   if (record.currencyCode != null) {
     final numeric = RegExp(r'[-+]?[0-9۰-۹٬,٫.]+').firstMatch(record.amountDisplay)?.group(0) ?? record.amountDisplay;
-    return _HomeAmountParts(toPersianNumberText(numeric), record.currencyCode!, null);
+    return _HomeAmountParts(toPersianNumberText(numeric), record.currencyCode == 'TOMAN' ? 'تومان' : record.currencyCode!, null);
   }
   if (record.assetLabel == 'وجه نقد') {
     final numeric = RegExp(r'[-+]?[0-9۰-۹٬,٫.]+').firstMatch(record.amountDisplay)?.group(0) ?? record.amountDisplay;

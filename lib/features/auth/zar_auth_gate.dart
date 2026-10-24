@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+import '../../features/theme/zar_theme.dart';
 import 'login_screen.dart';
 import 'zar_auth_service.dart';
 
@@ -22,14 +24,35 @@ class ZarAuthGate extends StatelessWidget {
       stream: service.authStateChanges,
       initialData: null,
       builder: (context, snapshot) {
-        final user = snapshot.data;
+        // `service.currentUser` covers the restore-session path: the service
+        // emits before the gate subscribes (runApp happens after
+        // restoreSession), and a broadcast stream drops that event.
+        final user = snapshot.data ?? service.currentUser;
         if (user != null) return child;
-        return LoginScreen(
-          onSignIn: (email, password) =>
-              service.signIn(email: email, password: password),
-          onSignUp: (email, password) =>
-              service.signUp(email: email, password: password),
-          onResetPassword: service.sendPasswordReset,
+        // The login screen renders before any MaterialApp exists (the shell's
+        // MaterialApp mounts only after sign-in), so provide one here —
+        // TextField/Theme need MaterialLocalizations. It carries the ZAR+
+        // design tokens (gold seed, Vazirmatn) and Persian localizations so
+        // the sign-in experience matches the rest of the app.
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: zarBuildTheme(Brightness.light),
+          darkTheme: zarBuildTheme(Brightness.dark),
+          themeMode: ThemeMode.system,
+          locale: const Locale('fa'),
+          supportedLocales: const [Locale('fa'), Locale('en')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: LoginScreen(
+            onSignIn: (email, password) =>
+                service.signIn(email: email, password: password),
+            onSignUp: (email, password) =>
+                service.signUp(email: email, password: password),
+            onResetPassword: service.sendPasswordReset,
+          ),
         );
       },
     );
