@@ -8,6 +8,7 @@ import 'features/auth/firebase_auth_service.dart';
 import 'features/auth/zar_auth_gate.dart';
 import 'features/auth/zar_cloud_shell.dart';
 import 'features/auth/zar_pocketbase_auth_service.dart';
+import 'features/backup/backup_screen.dart';
 import 'features/notifications/native_notification_runtime.dart';
 import 'repository_phase_a2_app_v2.dart';
 
@@ -45,11 +46,16 @@ Future<void> main() async {
   const useFirebase = bool.fromEnvironment('ZAR_USE_FIREBASE');
   if (useFirebase) {
     await Firebase.initializeApp();
+    final fbAuth = FirebaseAuthService();
     runApp(
       ZarAuthGate(
-        auth: FirebaseAuthService(),
+        auth: fbAuth,
         child: RepositoryZarPlusAppV2(
           repository: ZarLocalRepository(ZarLocalDatabase.defaults()),
+          account: ZarAccountSection(
+            email: fbAuth.currentUser?.email ?? '',
+            onSignOut: fbAuth.signOut,
+          ),
         ),
       ),
     );

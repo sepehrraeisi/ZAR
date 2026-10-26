@@ -13,6 +13,8 @@ class ZarPocketBaseClient {
       _client = client ?? http.Client();
 
   final String _baseUrl;
+
+  String get baseUrl => _baseUrl;
   final http.Client _client;
 
   String? authToken;

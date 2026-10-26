@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../data/pocketbase/zar_pocketbase_client.dart';
 import '../../data/pocketbase/zar_pocketbase_repository.dart';
 import '../../repository_phase_a2_app_v2.dart';
+import '../backup/backup_screen.dart';
 import 'zar_auth_service.dart';
 
 /// Cloud-mode shell: after sign-in it resolves (or bootstraps) the user's
@@ -64,6 +65,11 @@ class _ZarCloudShellState extends State<ZarCloudShell> {
                 client: widget.client,
                 workspaceId: workspaceId,
                 businessId: workspaceId,
+              ),
+              account: ZarAccountSection(
+                email: user.email ?? '',
+                serverUrl: widget.client.baseUrl,
+                onSignOut: widget.auth.signOut,
               ),
             );
           },

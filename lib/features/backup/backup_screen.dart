@@ -6,6 +6,20 @@ import '../../application/zar_backup_manager.dart';
 import '../../app_core.dart' show formatJalaliDate, toPersianDigits;
 import 'backup_file_service.dart';
 
+/// Signed-in cloud account shown as a section on the settings screen.
+/// Null in local mode — the section disappears entirely.
+class ZarAccountSection {
+  const ZarAccountSection({
+    required this.email,
+    required this.onSignOut,
+    this.serverUrl,
+  });
+
+  final String email;
+  final String? serverUrl;
+  final Future<void> Function() onSignOut;
+}
+
 class BackupScreen extends StatefulWidget {
   const BackupScreen({
     super.key,
@@ -13,12 +27,14 @@ class BackupScreen extends StatefulWidget {
     this.files = const PlatformBackupFileService(),
     this.onOpenCoinCatalog,
     this.onOpenCurrencyCatalog,
+    this.account,
   });
 
   final ZarBackupManager manager;
   final BackupFileService files;
   final VoidCallback? onOpenCoinCatalog;
   final VoidCallback? onOpenCurrencyCatalog;
+  final ZarAccountSection? account;
 
   @override
   State<BackupScreen> createState() => _BackupScreenState();
@@ -127,6 +143,10 @@ class _BackupScreenState extends State<BackupScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          if (widget.account != null) ...[
+            _AccountCard(account: widget.account!),
+            const Divider(height: 40),
+          ],
           Text(
             'نسخه پشتیبان کامل',
             style: Theme.of(context).textTheme.titleLarge,
@@ -207,6 +227,118 @@ class _BackupScreenState extends State<BackupScreen> {
           const Text(
             'CSV فقط برای گزارش است و برای بازیابی کامل استفاده نمی‌شود.',
             style: TextStyle(fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountCard extends StatelessWidget {
+  const _AccountCard({required this.account});
+
+  final ZarAccountSection account;
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final theme = Theme.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('خروج از حساب'),
+        content: Text(
+          'از حساب ${account.email} خارج می‌شوید. برای ورود دوباره به ایمیل و رمز عبور نیاز دارید.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('انصراف'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+              foregroundColor: theme.colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('خروج'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await account.onSignOut();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final initial = account.email.isEmpty
+        ? '?'
+        : account.email.characters.first.toUpperCase();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: theme.colorScheme.primary,
+                child: Text(
+                  initial,
+                  style: TextStyle(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Text(
+                        account.email,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall,
+                      ),
+                    ),
+                    if (account.serverUrl != null) ...[
+                      const SizedBox(height: 2),
+                      Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Text(
+                          account.serverUrl!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              foregroundColor: theme.colorScheme.error,
+              side: BorderSide(color: theme.colorScheme.error),
+            ),
+            onPressed: () => _confirmSignOut(context),
+            icon: const Icon(CupertinoIcons.square_arrow_right),
+            label: const Text('خروج از حساب'),
           ),
         ],
       ),

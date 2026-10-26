@@ -54,10 +54,12 @@ class RepositoryZarPlusAppV2 extends StatelessWidget {
     super.key,
     this.repository,
     this.businessId = 'preview-business',
+    this.account,
   });
 
   final ZarDomainRepository? repository;
   final String businessId;
+  final ZarAccountSection? account;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +83,7 @@ class RepositoryZarPlusAppV2 extends StatelessWidget {
       home: _RepositoryPhaseA2ShellV2(
         repository: repository ?? buildPhaseA2PreviewRepository(),
         businessId: businessId,
+        account: account,
       ),
     );
   }
@@ -92,10 +95,12 @@ class _RepositoryPhaseA2ShellV2 extends StatefulWidget {
   const _RepositoryPhaseA2ShellV2({
     required this.repository,
     required this.businessId,
+    this.account,
   });
 
   final ZarDomainRepository repository;
   final String businessId;
+  final ZarAccountSection? account;
 
   @override
   State<_RepositoryPhaseA2ShellV2> createState() =>
@@ -1101,6 +1106,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           manager: _backupManager,
           onOpenCoinCatalog: _openCoinCatalog,
           onOpenCurrencyCatalog: _openCurrencyCatalog,
+          account: widget.account,
         ),
       ),
     );
