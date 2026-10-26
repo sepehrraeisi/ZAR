@@ -29,6 +29,10 @@ class ZarPocketBaseAuthService implements ZarAuthService {
 
   /// Restores a persisted session (if any) by validating its token against
   /// the server. Await this before the gate renders in cloud mode.
+  ///
+  /// A rejected token (401/403) clears the persisted session, but transient
+  /// failures (offline, 5xx) keep it — the next launch retries instead of
+  /// signing the user out over a network blip.
   Future<void> restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey);
@@ -43,8 +47,10 @@ class ZarPocketBaseAuthService implements ZarAuthService {
           email: (record['email'] as String?) ?? prefs.getString(_userEmailKey),
         ),
       );
-    } catch (_) {
-      await _clear(prefs);
+    } on ZarPocketBaseException catch (error) {
+      if (error.statusCode == 401 || error.statusCode == 403) {
+        await _clear(prefs);
+      }
     }
   }
 
