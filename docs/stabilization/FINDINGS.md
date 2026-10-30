@@ -106,14 +106,16 @@ The green baseline is valuable but does not prove production safety. Existing te
 - PocketBase previously ran as root, bound `0.0.0.0:8090`, and stored its database as `0644`. **Contained on 2026-10-30:** locked `zarapp` service account, loopback-only listener, `0700` data directory, `0600` database, empty capabilities, write confinement and a `2.8 OK` systemd exposure score.
 - SSH previously permitted password and direct root login under sustained brute-force traffic. **Contained on 2026-10-30:** named `zaradmin`, key-only authentication, root login disabled, password authentication disabled, `MaxAuthTries=3`, `LoginGraceTime=30`.
 - Admin UI is publicly reachable, although authentication is required.
-- Required next: verified backup automation, rate limiting and admin UI access restriction.
+- Required next: rate limiting and admin UI access restriction.
 
 ### ZAR-REC-001 — backups are not disaster-recovery ready
 
-- Current backups are local, same-disk, seven-day copies of only `data.db`.
+- Initial backups were local, same-disk, seven-day copies of only `data.db` with unsafe deletion scope and no checksum/integrity gate.
 - All captured files passed SQLite `quick_check`.
 - A production-derived backup was successfully restored and reconciled in isolation on 2026-10-30 with zero domain-table differences; the source hash remained unchanged and PocketBase health passed.
 - The local drill is now reproducible through `server/tools/verify_recovery_set.py` and `docs/stabilization/RESTORE-RUNBOOK.md`.
+- **Contained locally on 2026-10-30:** versioned atomic systemd backup timer, `0600` snapshots, SHA-256, metadata, quick/integrity/schema verification, exact-name 30-day/minimum-seven retention, no-network sandbox and a successful isolated restore of the generated format.
+- The first naturally scheduled timer event is still pending observation; the installed systemd service run passed.
 - Off-site encrypted replication, automated age monitoring, owner-approved RPO/RTO and a second-operator drill still do not exist.
 - Required: full recovery set, 3-2-1 placement, encryption, retention, automated age/integrity monitoring and isolated restore with zero unexplained reconciliation difference.
 
@@ -146,8 +148,8 @@ Stabilization of security, recovery and current data integrity can continue with
 
 1. Push the complete checkpoint and open a PR so GitHub is no longer behind the deployed containment migrations.
 2. Decide and enforce the intended public-signup policy.
-3. Version hardened Caddy/systemd/backup templates and replace the temporary recovery exception before customer data or 2026-11-30.
+3. Restrict the public admin UI, add rate limiting/monitoring, and replace the temporary off-site recovery exception before customer data or 2026-11-30. Hardened PocketBase and backup systemd artifacts are now versioned and deployed.
 4. Define the full reversal/tombstone and append-only audit model for the remaining historical collections.
-5. Harden service/SSH/storage only after a separate reviewed plan and a safe second administrative session.
+5. Service, SSH and storage hardening changes passed their separate reviewed plans; preserve their evidence and rollback artifacts.
 6. Address token storage, Android backup policy, concurrency/idempotency and server-side invariant enforcement in small reviewed changes.
 

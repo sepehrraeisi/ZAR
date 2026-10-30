@@ -1,90 +1,120 @@
-# ZAR+ Server — راهنمای استقرار PocketBase
+# ZAR+ Server — راهنمای امن استقرار PocketBase
 
-سرور اپ، یک فایل اجرایی «PocketBase» است: دیتابیس SQLite + احراز هویت ایمیل/پسورد + API.
-هر سرور لینوکسی ارزان (1GB RAM کافی است) برای سال‌ها کافی است.
+این پوشه منبع حقیقت migrationها، ابزارهای recovery و templateهای عملیاتی سرور است. استقرار production باید فقط از commit بازبینی‌شده و با backup/restore/rollback ثبت‌شده انجام شود؛ اجرای مستقیم دستورهای آزمایشی روی production مجاز نیست.
 
-## ۱. آپلود فایل‌ها
+نسخهٔ فعلی مبنا:
 
-روی سرور (SSH):
-
-```bash
-mkdir -p /opt/zar/server && cd /opt/zar/server
-
-# آخرین نسخه PocketBase برای لینوکس (amd64) را دانلود کنید:
-curl -L -o pb.zip \
-  https://github.com/pocketbase/pocketbase/releases/download/v0.40.4/pocketbase_0.40.4_linux_amd64.zip
-unzip pb.zip pocketbase.exe 2>/dev/null || unzip pb.zip
-# فایل pocketbase باید کنار همین پوشه pb_migrations باشد:
-#   /opt/zar/server/pocketbase
-#   /opt/zar/server/pb_migrations/1758400000_zar_collections.js   (از این ریپو)
-chmod +x pocketbase
+```text
+PocketBase 0.40.4 linux/amd64
+SHA-256: 14ec215bc7aaceda356713cd4b29aa7fcfee854ff2ae1151c5ddba41b43aec8a
 ```
 
-پوشه `pb_migrations` را از این ریپو کنار فایل اجرایی کپی کنید — کالکشن‌ها و
-قوانین دسترسی در اولین اجرا خودکار ساخته می‌شوند.
+## ساختار production
 
-## ۲. اولین اجرا و حساب مدیر
-
-```bash
-cd /opt/zar/server
-./pocketbase serve --http=0.0.0.0:8090
-
-# در یک ترمینال دیگر، حساب مدیر سرور را بسازید:
-./pocketbase superuser upsert ADMIN@YOUR.COM "A-Long-Password!"
+```text
+/opt/zar/server/pocketbase        root:root 0755
+/opt/zar/server/pb_migrations/    root:root 0755 (files 0644)
+/opt/zar/server/pb_data/          zarapp:zarapp 0700 (files 0600)
 ```
 
-از این لحظه:
-- اپ‌ها به `http://SERVER_IP:8090` وصل می‌شوند
-- پنل مدیریت در `http://SERVER_IP:8090/_/` است (فقط برای شما)
+- سرویس با حساب system و بدون login به نام `zarapp` اجرا می‌شود؛ هرگز با root اجرا نشود.
+- PocketBase فقط روی `127.0.0.1:8090` گوش می‌دهد.
+- Caddy تنها مسیر عمومی HTTPS است و به loopback reverse proxy می‌کند.
+- پورت 8090 نباید روی IP عمومی باز باشد.
 
-## ۳. اجرای دائمی (systemd)
+## آماده‌سازی artifact
+
+باینری را از release رسمی بگیرید، hash و نسخه را قبل از نصب بررسی کنید و migrationها را بدون تغییر نام/تاریخ از همین commit کپی کنید. فایل migration اعمال‌شده را بازنویسی نکنید؛ هر اصلاح باید یک migration جدید و forward-only باشد.
 
 ```bash
-cat >/etc/systemd/system/zar-server.service <<'UNIT'
-[Unit]
-Description=ZAR+ PocketBase server
-After=network.target
-
-[Service]
-WorkingDirectory=/opt/zar/server
-ExecStart=/opt/zar/server/pocketbase serve --http=0.0.0.0:8090
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-systemctl enable --now zar-server
+/opt/zar/server/pocketbase --version
+sha256sum /opt/zar/server/pocketbase
+sha256sum /opt/zar/server/pb_migrations/*.js
 ```
 
-## ۴. HTTPS (اختیاری ولی توصیه‌شده)
+قبل از اولین start:
 
-- اگر دامنه دارید: Caddy با یک رکورد A و دو خط config، گواهی خودکار می‌دهد.
-- اگر ندارید: `cloudflared tunnel` (رایگان) آدرس HTTPS می‌دهد بدون باز کردن پورت.
-- در هر دو حالت، آدرس نهایی را همان‌جا که اپ را می‌سازید به‌صورت
-  `--dart-define=ZAR_SERVER_URL=https://YOUR-ADDRESS` پاس می‌دهید.
+1. حساب `zarapp` با password قفل‌شده و shell برابر `/usr/sbin/nologin` ایجاد شود.
+2. فقط `pb_data` به `zarapp` واگذار شود؛ باینری و migrationها root-owned بمانند.
+3. `server/deploy/zar-server.service` با `systemd-analyze verify` بررسی شود.
+4. یک restore/canary ایزوله با همان unit و migrationها پاس شود.
+5. سپس unit نصب، `daemon-reload` و start شود.
 
-## ۵. بکاپ
+template نسخه‌شده:
 
-همه‌ی داده‌ها یک فایل است: `pb_data_zar/data.db` (یا `pb_data/data.db`).
-- کپی روزانهٔ خودکار همین فایل کافی است:
-  `0 3 * * * sqlite3 /opt/zar/server/pb_data/data.db ".backup '/backups/zar-$(date +\%F).db'"`
-- خروجی JSON قابل حمل هم از داخل خود اپ (بخش پشتیبان‌گیری) همیشه در دسترس است.
+```text
+server/deploy/zar-server.service
+```
 
-## ۶. ساخت اپ در حالت ابری
+شواهد deployment فعلی در این فایل‌هاست:
+
+```text
+docs/stabilization/POCKETBASE-SERVICE-HARDENING-PLAN.md
+docs/stabilization/POCKETBASE-SERVICE-HARDENING-EVIDENCE-2026-10-30.md
+```
+
+## HTTPS و پنل مدیریت
+
+Caddy باید به `127.0.0.1:8090` proxy کند. API و health از HTTPS عمومی تست می‌شوند، اما پنل `/_/` نباید بدون تصمیم و کنترل جداگانه در اینترنت رها شود. روش پیشنهادی عملیات، بستن `/_/` در Caddy و استفاده از SSH local forwarding برای دسترسی مدیر است؛ این تغییر باید plan/rollback مستقل داشته باشد.
+
+هیچ اپ موبایل نباید مستقیماً به IP و پورت 8090 متصل شود. URL زمان build باید HTTPS باشد:
 
 ```powershell
 flutter build apk --release `
   --dart-define=ZAR_SERVER_URL=https://YOUR-ADDRESS
 ```
 
-ثبت‌نام اولین نفر (مالک فضای کاری) از داخل خود اپ انجام می‌شود؛ فضای کاری
-هم به‌صورت خودکار ساخته می‌شود. اعضای بعدی را می‌توانید از پنل مدیریت سرور
-(`zar_workspaces` → members) اضافه کنید.
+## backup روزانه
 
-## نکته‌های امنیتی
+از cron خطی یا کپی مستقیم فایل SQLite در زمان اجرا استفاده نکنید. artifactهای نسخه‌شده:
 
-- قوانین کالکشن‌ها فقط اعضای همان فضای کاری اجازهٔ خواندن/نوشتن می‌دهند.
-- ثبت‌نام عمومی باز است (برای رویboarding خودکار مالک)؛ اگر خواستید ببندید،
-  در پنل مدیریت `users` → `createRule` را خالی بگذارید.
-- هرگز فایل `pb_data` را عمومی نکنید؛ حساب superuser را فقط برای خودتان بسازید.
+```text
+server/tools/zar_backup.sh
+server/deploy/zar-backup.service
+server/deploy/zar-backup.timer
+```
+
+فرآیند deployment:
+
+1. `/backups/zar-daily` را `0700 root:root` بسازید.
+2. script را در `/usr/local/sbin/zar-backup` با `0750 root:root` نصب کنید.
+3. unit/timer را با `0644 root:root` نصب و `systemd-analyze verify` کنید.
+4. ابتدا `systemctl start zar-backup.service` را دستی اجرا کنید.
+5. checksum، quick/integrity/schema، migrationها، countها و restore ایزوله را بررسی کنید.
+6. فقط پس از pass شدن run دستی، timer را enable کنید.
+
+هر snapshot به‌صورت یک دایرکتوری اتمیک منتشر می‌شود:
+
+```text
+/backups/zar-daily/zar-YYYYMMDDTHHMMSSZ/
+  data.db
+  SHA256SUMS
+  METADATA
+```
+
+retention فعلی ۳۰ روز و حداقل ۷ snapshot موفق است. این backupها روی همان سرورند و جای backup مستقل/رمزشده را نمی‌گیرند. قبل از customer، دادهٔ مالی واقعی، launch یا 2026-11-30 باید استثنای موقت حذف شود.
+
+راهنما و verifier:
+
+```text
+docs/stabilization/RESTORE-RUNBOOK.md
+server/tools/verify_recovery_set.py
+docs/stabilization/BACKUP-AUTOMATION-EVIDENCE-2026-10-30.md
+```
+
+## superuser و ثبت‌نام
+
+- credential را در Git، مستندات، shell history یا پیام‌ها قرار ندهید.
+- ساخت/چرخش superuser باید در پنجرهٔ عملیاتی کنترل‌شده و با ثبت evidence غیرحساس انجام شود.
+- عمومی‌بودن signup یک تصمیم محصول/امنیت است و اکنون finding باز محسوب می‌شود؛ آن را از پنل به‌شکل ad hoc تغییر ندهید.
+- bootstrap workspace باید در نهایت به command سروری atomic/idempotent منتقل شود؛ اتکای فعلی به چند درخواست client برای production-ready کافی نیست.
+
+## گیت‌های پس از هر تغییر
+
+- `PRAGMA quick_check` و `integrity_check` برابر `ok`.
+- migration history، ruleها و countهای دامنه با baseline برابر.
+- health داخلی و هر دو URL عمومی برابر HTTP 200.
+- `NRestarts=0` و journal بدون خطای جدید.
+- port 8090 از بیرون بسته و listener فقط loopback.
+- backup جدید checksum/restore/reconciliation را پاس کند.
+- rollback artifact و handoff به‌روز شوند.

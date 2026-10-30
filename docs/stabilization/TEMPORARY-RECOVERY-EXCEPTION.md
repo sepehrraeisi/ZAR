@@ -12,7 +12,7 @@ This exception is deliberately narrow. It permits the tested containment migrati
 
 ## Temporarily accepted risk
 
-- Automated backups remain on the production server with seven-day retention.
+- Automated backups remain on the production server. Since 2026-10-30 they use verified atomic snapshots with 30-day retention and a minimum of seven successful copies, but they are still same-host copies.
 - The secondary recovery copy is on the owner's Windows computer, not in an independent cloud account or second physical medium.
 - The local encrypted bundle key is protected by Windows DPAPI and therefore depends on the same Windows user and Windows installation.
 - Loss of both the server and this Windows computer could still cause permanent data loss.
@@ -29,6 +29,7 @@ This exception is deliberately narrow. It permits the tested containment migrati
 - Bundle SHA-256: `3b3d24d964217a1ba7580f5086101e7fc73f625a44a14710e611029bb95059e6`.
 - The protected key uses Windows DPAPI CurrentUser scope; the directory ACL permits only the owner and SYSTEM.
 - The bundle was decrypted immediately after creation and all 10 manifest hashes matched.
+- The legacy inline cron was replaced on 2026-10-30 by a versioned, locked, atomic, checksum/integrity/schema-verified systemd backup timer. A generated snapshot passed an isolated PocketBase restore and full record reconciliation.
 - The fresh database copy passed PocketBase health, SQLite integrity, migration and all eight domain-table reconciliation checks.
 - Production changes are limited to the two reviewed deletion-lock migrations; unrelated hardening is excluded from the same window.
 - After containment, a second full recovery set was restored, encrypted and decrypted successfully. Its bundle SHA-256 is `90aefdfed3ebdbc3fff84cf2be3b81d2516c2b0f54d381f4ba8c5e5334a289ec` with 12 verified files.

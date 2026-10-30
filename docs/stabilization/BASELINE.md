@@ -57,7 +57,7 @@ The first tracked migration is byte-identical to Git. The cash-journal migration
 
 The database file permissions are a confirmed security finding. Do not change them until a dedicated service user, backup, restore evidence and rollback sequence are prepared together.
 
-## Database and current backup evidence
+## Database and initial backup evidence
 
 - Live `data.db` SQLite `PRAGMA quick_check`: `ok` at capture.
 - Backups are local on the same server and do not yet satisfy disaster recovery requirements.
@@ -66,7 +66,7 @@ The database file permissions are a confirmed security finding. Do not change th
 - The backup was copied read-only into local quarantine and restored with PocketBase `0.40.4` in a disposable environment.
 - Source/restored `quick_check` and `integrity_check`: `ok`; restored health: pass; all eight domain-table counts and canonical content hashes reconciled exactly.
 - The pending workspace-deletion and cash-journal deletion-lock migrations applied only to the disposable restored copy; production remained unchanged.
-- Backup files are mode `0644` and therefore also require containment.
+- Backup files were mode `0644` at initial capture. Existing files were normalized to `0600` and the legacy job was replaced on 2026-10-30; see the checkpoint below.
 
 ```text
 zar-2026-10-25.db  size=266240  quick_check=ok  sha256=1f491301e7ce5194593ea2ebb63e83cc613b2d171e6612410ace6eb492498c12
@@ -114,6 +114,16 @@ zar-2026-10-28.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f7068
 - `pb_data`/database modes are now `0700`/`0600`.
 - Systemd exposure improved from `9.6 UNSAFE` to `2.8 OK`.
 - Counts, migration history, SQLite integrity, public health, external port closure, logs and restart count passed after an approximately one-second maintenance interval.
+
+## Local backup automation checkpoint — 2026-10-30
+
+- Replaced broad inline cron with versioned `zar_backup.sh` and a hardened systemd oneshot/timer.
+- Snapshots are atomically published with SHA-256, metadata, immutable quick/integrity/schema checks, `0700/0600` modes and a concurrency lock.
+- Retention is scoped only to exact daily snapshot directories, 30 days and never fewer than seven; named rollback artifacts are excluded.
+- Candidate success, corrupt-source cleanup, concurrency rejection and retention safety tests passed.
+- The first installed snapshot matched production hash/counts/migrations and passed the full isolated PocketBase recovery verifier.
+- The timer is active; the first naturally scheduled trigger remains to be captured.
+- This improves local recovery but does not close the independent/off-site backup gate.
 
 ## Baseline limitations
 

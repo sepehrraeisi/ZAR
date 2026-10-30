@@ -1,0 +1,39 @@
+[Unit]
+Description=ZAR+ PocketBase server
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/zar/server
+ExecStart=/opt/zar/server/pocketbase serve --http=127.0.0.1:8090
+Restart=always
+RestartSec=5
+User=zarapp
+Group=zarapp
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/zar/server/pb_data
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictNamespaces=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

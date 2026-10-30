@@ -1,7 +1,7 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-10-30 15:30 +03:30 (Asia/Tehran)
-Status: **IN PROGRESS — critical data containment, key-only administration and least-privilege PocketBase service passed; broader reliability work remains**
+Last updated: 2026-10-30 23:35 +03:30 (Asia/Tehran)
+Status: **IN PROGRESS — critical containment, host/service hardening and verified local backup automation passed; product/data correctness work remains**
 Change freeze: no feature work and no direct production mutation until the backup/restore and rollback gates below pass.
 
 ## 1. Objective
@@ -37,6 +37,8 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - SSH hardening evidence: `docs/stabilization/SSH-HARDENING-EVIDENCE-2026-10-30.md`
 - PocketBase service hardening plan: `docs/stabilization/POCKETBASE-SERVICE-HARDENING-PLAN.md`
 - PocketBase service hardening evidence: `docs/stabilization/POCKETBASE-SERVICE-HARDENING-EVIDENCE-2026-10-30.md`
+- Local backup automation plan: `docs/stabilization/BACKUP-AUTOMATION-PLAN.md`
+- Local backup automation evidence: `docs/stabilization/BACKUP-AUTOMATION-EVIDENCE-2026-10-30.md`
 - Temporary pre-customer recovery exception: `docs/stabilization/TEMPORARY-RECOVERY-EXCEPTION.md`
 - Recovery verifier: `server/tools/verify_recovery_set.py`
 - Local machine-readable recovery evidence: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\recovery-evidence-20261030\restore-report.json`
@@ -55,8 +57,9 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Production migrations: `/opt/zar/server/pb_migrations`
 - systemd unit: `/etc/systemd/system/zar-server.service`
 - Caddy config: `/etc/caddy/Caddyfile`
-- Backup cron: `/etc/cron.d/zar-backup`
-- Local backups: `/backups/zar-YYYY-MM-DD.db`
+- Verified backup script/service/timer: `/usr/local/sbin/zar-backup`, `/etc/systemd/system/zar-backup.{service,timer}`
+- Local daily snapshots: `/backups/zar-daily/zar-YYYYMMDDTHHMMSSZ/`
+- Disabled legacy cron and rollback evidence: `/root/zar-backup-automation-20261030T200203Z`
 - Public application URL: `https://app.titangold.ir`
 - Alternate URL: `https://zar.185-126-202-104.sslip.io`
 
@@ -82,14 +85,13 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 ### Production
 
 - Ubuntu 24.04, PocketBase `v0.40.4`, Caddy, BIND9, Postfix/OpenDKIM and SSH are active.
-- PocketBase is reverse-proxied by Caddy, but currently binds to `0.0.0.0:8090`; UFW blocks direct public access.
-- Service currently runs as `root` without meaningful systemd hardening.
-- Production database and parent permissions are too broad (`0644` database files observed).
-- SSH currently permits direct root and password authentication; the host is under continuous brute-force traffic.
-- Backups are local-only, same-disk, seven-day retention and cover only `data.db`. A local production-derived restore/reconciliation drill passed on 2026-10-30, but no encrypted off-site recovery set or second-operator drill exists.
+- PocketBase is reverse-proxied by Caddy and now binds only to `127.0.0.1:8090`; direct external TCP 8090 is closed/filtered.
+- PocketBase runs as locked system account `zarapp` with `0700/0600` data modes, write confinement, no effective capabilities and a `2.8 OK` systemd exposure score.
+- SSH uses named `zaradmin`, public-key-only authentication; direct root/password authentication is disabled.
+- Local backups use atomic verified systemd snapshots with 30-day/minimum-seven retention. The generated format passed isolated restore/reconciliation, but the copies remain on the same server and the first naturally scheduled run is pending observation.
 - Production schema has a critical authorization defect: `zar_workspaces.deleteRule` is empty/public. Public user signup is also enabled.
-- No production monitoring/alerting or tested incident/rollback runbook was found.
-- Server audit was read-only. No production change has been made in this stabilization session.
+- No external monitoring/alerting channel exists yet. Tested recovery, containment, SSH, service and backup change/rollback evidence now exists.
+- Production was changed only through the documented gated changes recorded below; each passed health/integrity/reconciliation checks and no rollback was required.
 
 ## 4. Non-negotiable gates before production changes
 
@@ -136,6 +138,7 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-10-30 15:20 +03:30: Pushed `codex/stabilization-baseline` and opened Draft PR #3 against `master`. GitGuardian and the real PocketBase authorization job passed immediately; Flutter CI was still running at this checkpoint. No merge was performed.
 - 2026-10-30 15:24 +03:30: Created and tested `zaradmin`, captured an off-server SSH/sudo rollback archive, kept a live root rollback session, installed and validated key-only SSH policy, reloaded SSH, proved new admin/sudo access, proved new root and password-only access are rejected, updated the local alias, and then closed the preserved root session. PocketBase remained active.
 - 2026-10-30 15:30 +03:30: Proved the proposed PocketBase sandbox with an isolated canary, captured stopped-state database and full-data rollback artifacts, then moved the live service from root to locked system account `zarapp`, restricted writes to `pb_data`, changed data modes to `0700/0600` and bound port `8090` to loopback. Counts/migrations/integrity/public health/external port/log/restart gates all passed; downtime was approximately one second and the systemd exposure score improved from `9.6 UNSAFE` to `2.8 OK`. The disposable canary data copy was removed after validation.
+- 2026-10-30 23:35 +03:30: Replaced the unsafe inline backup cron only after candidate success/failure/concurrency/retention tests and a successful installed systemd run. The generated atomic snapshot matched production and passed checksum, integrity, schema, counts, migrations and the full isolated PocketBase restore verifier. Timer is enabled for daily 03:00 UTC execution; the first scheduled event remains to be observed. Temporary unencrypted test copies were deleted after the machine-readable report was retained.
 
 ### Local commit checkpoint
 
@@ -160,10 +163,11 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 ### Next safe actions
 
 1. Complete Draft PR #3 CI/review; do not merge without an explicit decision.
-2. Decide whether public signup should remain enabled in the pre-customer environment.
-3. Prepare separate change plans for non-root SSH administration, service-user/filesystem hardening and loopback/admin-UI restriction.
-4. Define server-enforced audit and reversal behavior for the remaining historical collections.
-5. Replace the temporary backup exception before customer data, launch or 2026-11-30.
+2. Observe and record the first timer-triggered backup after 03:00 UTC.
+3. Decide whether public signup should remain enabled in the pre-customer environment.
+4. Restrict the public admin UI and add SSH/HTTP rate limiting through separate reviewed changes.
+5. Define server-enforced audit, reversal, concurrency and invariant behavior for the remaining historical collections.
+6. Replace the temporary independent-backup exception before customer data, launch or 2026-11-30.
 
 ## 6. Known P0/P1 queue
 
@@ -222,7 +226,7 @@ Scope conflict requiring owner decision: current repository documentation says t
 
 - No direct inspection of the Android APK currently installed on the user's phone has been performed.
 - Production signing key possession and backup have not been verified.
-- The local recovery drill passed, but the only automated production backups remain on the same server with seven-day retention.
+- The local recovery drill and new 30-day/minimum-seven automation passed, but scheduled production snapshots remain on the same server; first natural timer execution is pending evidence.
 - Business scope (operational assistant versus full accounting ledger) is not yet confirmed.
 - Legal/tax/retention requirements and authoritative jurisdiction are not yet confirmed.
 - RPO, RTO, maximum tolerable downtime and availability SLO require owner decisions.
