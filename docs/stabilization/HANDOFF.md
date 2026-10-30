@@ -121,29 +121,31 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-10-30 15:03 +03:30: Recovered the two production-only email-template migrations byte-for-byte into the local branch. Fresh-install, production-clone and existing-developer migration lineages pass.
 - 2026-10-30 15:05 +03:30: Added the non-destructive recovery verifier and exercised restore/reconciliation runbook. A deliberately wrong source hash is correctly rejected.
 - 2026-10-30 15:10 +03:30: Added `1793347200_lock_cash_entry_deletion.js`. Disposable API tests prove cash create remains `200`, update/delete are `403`, the original survives, and a reversal entry can still be created (`200`). Production-clone restore and all migration lineages still pass with both security migrations pending.
+- 2026-10-30 15:12 +03:30: Preserved the server/migration checkpoint in `87f4a6e` and the recovery verifier/runbook in `5af2907`. The working tree was clean before this ledger update.
 
 ### Local commit checkpoint
 
 - `f3aab5d` — `docs(stabilization): add baseline findings and handoff`
 - `0c68859` — `fix(server): prevent workspace deletion through record API`
 - `088d86a` — `fix(cloud): scope snapshots to selected workspace`
-- Branch is three commits ahead of `origin/master`; the working tree was clean at checkpoint.
-- These commits have **not** been pushed, opened as a PR, merged or deployed.
+- `87f4a6e` — `fix(server): reconcile migrations and protect cash history`
+- `5af2907` — `feat(recovery): add isolated restore verification`
+- All implementation and recovery changes through the local restore gate are committed.
+- These commits have **not** been pushed, opened as a PR, merged or deployed. Production is unchanged.
 
 ### Running now
 
-- Review and packaging of the recovery verifier, runbook, recovered migrations and lineage tests.
 - Design of encrypted off-site backup and monitoring; the current backup remains same-server only.
 - Design of the broader reversal/tombstone and append-only audit model for remaining historical collections.
+- Preparation of an exact production migration, validation and rollback change sheet; execution remains blocked by the off-site recovery prerequisite.
 
 ### Next safe actions
 
-1. Review and locally commit the recovery verifier, runbook, recovered migrations and migration-lineage test.
+1. Review the five committed checkpoints above, then decide whether to push/open a PR for external review.
 2. Design encrypted off-site backup, retention and age/integrity monitoring; agree RPO/RTO with the owner.
 3. Prepare the exact production migration/health/rollback change sheet for the two tested containment migrations.
 4. Define server-enforced audit and reversal behavior for the remaining historical collections.
-5. Push/open a PR only after the full local checkpoint is ready for external review.
-6. Execute no production mutation until the off-site recovery and rollback prerequisites are approved.
+5. Execute no production mutation until the off-site recovery and rollback prerequisites are approved.
 
 ## 6. Known P0/P1 queue
 
@@ -158,7 +160,7 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 
 ### P1 — establish a reliable source of truth
 
-- Reconcile production migrations/configuration with Git; production appears to contain more migration material than the two currently tracked files.
+- Production migration history is reconciled locally: the two missing email-template migrations now match production byte-for-byte. Sanitized, hardened operational configuration still needs to be versioned.
 - Prove clean builds/tests, record the Flutter/Android/JDK toolchain and create dependency/SBOM evidence.
 - Capture the currently installed APK version, package, signing-certificate fingerprint and artifact hash from a trusted device/build archive.
 - Protect `master`, require CI review, sign releases/commits as policy permits, and create versioned releases/checksums.

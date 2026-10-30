@@ -1,6 +1,6 @@
 # ZAR+ Stabilization Findings Register
 
-Updated: 2026-10-29 15:54 +03:30 (Asia/Tehran)  
+Updated: 2026-10-30 15:12 +03:30 (Asia/Tehran)
 Baseline source: `e60d68dda3c1876dc5af99e36c1f455b76fd8a50`  
 Working branch: `codex/stabilization-baseline`
 
@@ -65,7 +65,7 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Evidence: normal members have delete rights on financial collections. `zar_cash_entries` blocks updates but permits member deletion; a real isolated API test returned `204` for cash-entry deletion.
 - `auditAction` parameters in the PocketBase repository are ignored; actor identity is also recorded as `local-user` in cloud presentation paths.
 - Required remediation: deny hard delete for financial/history collections, introduce reversal/tombstone flows, append-only audit events, server time, authenticated actor, reason, request/idempotency ID and before/after linkage.
-- Local containment: `1793347200_lock_cash_entry_deletion.js` denies hard deletion in both migration directions. Real API regression proves create `200`, update/delete `403`, original record survival and reversal create `200`.
+- Local containment in commit `87f4a6e`: `1793347200_lock_cash_entry_deletion.js` denies hard deletion in both migration directions. Real API regression proves create `200`, update/delete `403`, original record survival and reversal create `200`.
 - Status: cash-journal deletion is **locally contained and tested; not pushed or deployed**. Hard delete for other historical collections and the full audit design remain open.
 
 ### ZAR-DATA-005 — workspace bootstrap is non-atomic and non-idempotent
