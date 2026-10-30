@@ -1,6 +1,6 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-10-30 15:20 +03:30 (Asia/Tehran)
+Last updated: 2026-10-30 15:15 +03:30 (Asia/Tehran)
 Status: **IN PROGRESS — local recovery gate passed; first Phase 1 containment fixes remain undeployed**
 Change freeze: no feature work and no direct production mutation until the backup/restore and rollback gates below pass.
 
@@ -31,6 +31,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Findings register: `docs/stabilization/FINDINGS.md`
 - Restore/reconciliation runbook: `docs/stabilization/RESTORE-RUNBOOK.md`
 - Production containment change plan: `docs/stabilization/PRODUCTION-CONTAINMENT-CHANGE-PLAN.md`
+- Temporary pre-customer recovery exception: `docs/stabilization/TEMPORARY-RECOVERY-EXCEPTION.md`
 - Recovery verifier: `server/tools/verify_recovery_set.py`
 - Local machine-readable recovery evidence: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\recovery-evidence-20261030\restore-report.json`
 - Sanitized server audit notes: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\server-review-notes.md`
@@ -123,7 +124,8 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-10-30 15:05 +03:30: Added the non-destructive recovery verifier and exercised restore/reconciliation runbook. A deliberately wrong source hash is correctly rejected.
 - 2026-10-30 15:10 +03:30: Added `1793347200_lock_cash_entry_deletion.js`. Disposable API tests prove cash create remains `200`, update/delete are `403`, the original survives, and a reversal entry can still be created (`200`). Production-clone restore and all migration lineages still pass with both security migrations pending.
 - 2026-10-30 15:12 +03:30: Preserved the server/migration checkpoint in `87f4a6e` and the recovery verifier/runbook in `5af2907`. The working tree was clean before this ledger update.
-- 2026-10-30 15:20 +03:30: Re-ran Flutter analysis, workspace-isolation tests, real PocketBase authorization/lineage tests and the production-clone restore; all passed. Drafted the exact production containment preflight, execution, stop and full-restore rollback plan. No production command was executed.
+- 2026-10-30 15:10 +03:30: Re-ran Flutter analysis, workspace-isolation tests, real PocketBase authorization/lineage tests and the production-clone restore; all passed. Drafted the exact production containment preflight, execution, stop and full-restore rollback plan. No production command was executed.
+- 2026-10-30 15:15 +03:30: Owner confirmed there are no customers and no independent backup destination. Captured a fresh production SQLite backup, copied the full recovery set off-server to the owner's Windows computer, encrypted it with AES-256, restricted ACLs, decrypted it, verified all 10 manifest hashes and re-ran the isolated restore successfully. Recorded a temporary exception expiring before customer data or 2026-11-30.
 
 ### Local commit checkpoint
 

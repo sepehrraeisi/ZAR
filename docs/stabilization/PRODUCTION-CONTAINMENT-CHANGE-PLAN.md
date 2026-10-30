@@ -30,7 +30,7 @@ Any mismatch is a stop condition. Do not normalize, rename, squash or edit an al
 
 Do not start the maintenance window until all blockers are cleared:
 
-- an encrypted recovery set has been copied off the production server and its remote checksum verified;
+- an encrypted recovery set has been copied off the production server and its checksum verified;
 - the exact recovery set has passed `verify_recovery_set.py` on a separate machine;
 - the owner has approved RPO, RTO, maximum downtime and a maintenance window;
 - a named primary operator and rollback operator are present;
@@ -40,7 +40,7 @@ Do not start the maintenance window until all blockers are cleared:
 - the release artifact and commands below have been reviewed by a second person;
 - users have been notified that writes must stop during the window.
 
-Current blocker at handoff: production backups remain same-server only, so this plan is not executable yet.
+Pre-customer exception: the owner explicitly accepted the temporary lack of an independent cloud/second-media copy in `TEMPORARY-RECOVERY-EXCEPTION.md`. A fresh encrypted bundle on the owner's Windows computer was decrypted and verified, and the exact database passed the isolated restore gate. This exception permits only the two containment migrations and expires before customer data, launch, or 2026-11-30.
 
 ## Rehearsal evidence required
 
