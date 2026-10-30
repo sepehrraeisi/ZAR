@@ -1,6 +1,6 @@
 # ZAR+ Stabilization Findings Register
 
-Updated: 2026-10-30 15:12 +03:30 (Asia/Tehran)
+Updated: 2026-10-30 15:18 +03:30 (Asia/Tehran)
 Baseline source: `e60d68dda3c1876dc5af99e36c1f455b76fd8a50`  
 Working branch: `codex/stabilization-baseline`
 
@@ -26,10 +26,10 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Severity: Critical.
 - Evidence: `server/pb_migrations/1758400000_zar_collections.js:43` sets `deleteRule: ''`.
 - Real integration reproduction: anonymous `DELETE` returned HTTP `204`; the workspace was gone.
-- Production: vulnerable at last read-only verification.
+- Production: **contained on 2026-10-30**; `deleteRule=NULL` verified after migration and restart.
 - Local remediation: `server/pb_migrations/1793260800_lock_workspace_deletion.js` sets the rule to `null` in both migration directions.
 - Regression evidence: anonymous delete `403`, member delete `403`, member view/update remain `200`, record survives.
-- Status: **locally fixed and tested in commit `0c68859`; not pushed or deployed**.
+- Status: **fixed in production and tested**. The Git branch still requires remote publication/review.
 - Production gate: verified full backup/restore point, migration checksum, maintenance plan, health/auth test and rollback procedure.
 
 ### ZAR-DATA-001 — cloud reads/restores were not scoped to the selected workspace
@@ -66,7 +66,7 @@ The green baseline is valuable but does not prove production safety. Existing te
 - `auditAction` parameters in the PocketBase repository are ignored; actor identity is also recorded as `local-user` in cloud presentation paths.
 - Required remediation: deny hard delete for financial/history collections, introduce reversal/tombstone flows, append-only audit events, server time, authenticated actor, reason, request/idempotency ID and before/after linkage.
 - Local containment in commit `87f4a6e`: `1793347200_lock_cash_entry_deletion.js` denies hard deletion in both migration directions. Real API regression proves create `200`, update/delete `403`, original record survival and reversal create `200`.
-- Status: cash-journal deletion is **locally contained and tested; not pushed or deployed**. Hard delete for other historical collections and the full audit design remain open.
+- Status: cash-journal update/delete is **contained in production and tested**. Hard delete for other historical collections and the full audit design remain open.
 
 ### ZAR-DATA-005 — workspace bootstrap is non-atomic and non-idempotent
 
@@ -144,11 +144,10 @@ Stabilization of security, recovery and current data integrity can continue with
 
 ## Next implementation order
 
-1. Review and commit the recovery verifier, runbook, recovered historical migrations and migration-lineage test.
-2. Push/open a PR only when the complete local checkpoint is ready for external review.
-3. Version hardened Caddy/systemd/backup templates and design encrypted off-site replication.
+1. Push the complete checkpoint and open a PR so GitHub is no longer behind the deployed containment migrations.
+2. Decide and enforce the intended public-signup policy.
+3. Version hardened Caddy/systemd/backup templates and replace the temporary recovery exception before customer data or 2026-11-30.
 4. Define the full reversal/tombstone and append-only audit model for the remaining historical collections.
-5. Prepare and rehearse production migration, health validation and rollback.
-6. Harden service/SSH/storage only after verified recovery and a safe second administrative session.
-7. Address token storage, Android backup policy, concurrency/idempotency and server-side invariant enforcement in small reviewed changes.
+5. Harden service/SSH/storage only after a separate reviewed plan and a safe second administrative session.
+6. Address token storage, Android backup policy, concurrency/idempotency and server-side invariant enforcement in small reviewed changes.
 

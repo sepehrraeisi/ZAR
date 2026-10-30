@@ -84,7 +84,18 @@ zar-2026-10-28.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f7068
 3. Repository deployment documentation creates a root-run systemd service; this must be replaced by a least-privilege versioned unit.
 4. Repository backup documentation describes only a local copy of `data.db`; it omits configuration, migrations, keys/certificates where applicable, encryption, off-site retention and restore/reconciliation.
 5. `zar_workspaces.deleteRule` is committed as an empty string and is present in production; a new forward migration is required rather than editing applied migration history.
-6. The two production-only email-template migrations were recovered byte-for-byte into the local branch on 2026-10-30. Their raw SHA-256 values match the production baseline; they are not yet pushed or deployed.
+6. The two production-only email-template migrations were recovered byte-for-byte into the local branch on 2026-10-30. Their raw SHA-256 values match the already-applied production files; the branch is not yet pushed.
+
+## Production containment checkpoint — 2026-10-30
+
+- `1793260800_lock_workspace_deletion.js` applied successfully.
+- `1793347200_lock_cash_entry_deletion.js` applied successfully.
+- Workspace delete, cash update and cash delete rules are now `NULL` in production.
+- All eight domain-table record counts remained unchanged.
+- Internal and both public health endpoints returned HTTP `200`; `NRestarts=0`.
+- Direct external port `8090` remained unreachable.
+- Post-change backup SHA-256: `1e69709378b3d9fe816d86639f5517e8b7af10676b00d597c4ee69e43d7e9ee8`.
+- Post-change isolated restore and encrypted local bundle verification passed.
 
 ## Baseline limitations
 

@@ -1,6 +1,6 @@
 # ZAR+ Production Containment Change Plan
 
-Status: draft and rehearsal input only. This document does not authorize execution.
+Status: executed successfully on 2026-10-30. Evidence is recorded in `PRODUCTION-CONTAINMENT-EVIDENCE-2026-10-30.md`.
 
 ## Objective and scope
 

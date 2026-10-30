@@ -31,6 +31,7 @@ This exception is deliberately narrow. It permits the tested containment migrati
 - The bundle was decrypted immediately after creation and all 10 manifest hashes matched.
 - The fresh database copy passed PocketBase health, SQLite integrity, migration and all eight domain-table reconciliation checks.
 - Production changes are limited to the two reviewed deletion-lock migrations; unrelated hardening is excluded from the same window.
+- After containment, a second full recovery set was restored, encrypted and decrypted successfully. Its bundle SHA-256 is `90aefdfed3ebdbc3fff84cf2be3b81d2516c2b0f54d381f4ba8c5e5334a289ec` with 12 verified files.
 
 Local protected recovery location:
 

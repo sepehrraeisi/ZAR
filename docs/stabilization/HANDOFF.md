@@ -1,7 +1,7 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-10-30 15:15 +03:30 (Asia/Tehran)
-Status: **IN PROGRESS — local recovery gate passed; first Phase 1 containment fixes remain undeployed**
+Last updated: 2026-10-30 15:18 +03:30 (Asia/Tehran)
+Status: **IN PROGRESS — first production containment change passed; broader hardening remains**
 Change freeze: no feature work and no direct production mutation until the backup/restore and rollback gates below pass.
 
 ## 1. Objective
@@ -31,6 +31,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Findings register: `docs/stabilization/FINDINGS.md`
 - Restore/reconciliation runbook: `docs/stabilization/RESTORE-RUNBOOK.md`
 - Production containment change plan: `docs/stabilization/PRODUCTION-CONTAINMENT-CHANGE-PLAN.md`
+- Production containment evidence: `docs/stabilization/PRODUCTION-CONTAINMENT-EVIDENCE-2026-10-30.md`
 - Temporary pre-customer recovery exception: `docs/stabilization/TEMPORARY-RECOVERY-EXCEPTION.md`
 - Recovery verifier: `server/tools/verify_recovery_set.py`
 - Local machine-readable recovery evidence: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\recovery-evidence-20261030\restore-report.json`
@@ -126,6 +127,7 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-10-30 15:12 +03:30: Preserved the server/migration checkpoint in `87f4a6e` and the recovery verifier/runbook in `5af2907`. The working tree was clean before this ledger update.
 - 2026-10-30 15:10 +03:30: Re-ran Flutter analysis, workspace-isolation tests, real PocketBase authorization/lineage tests and the production-clone restore; all passed. Drafted the exact production containment preflight, execution, stop and full-restore rollback plan. No production command was executed.
 - 2026-10-30 15:15 +03:30: Owner confirmed there are no customers and no independent backup destination. Captured a fresh production SQLite backup, copied the full recovery set off-server to the owner's Windows computer, encrypted it with AES-256, restricted ACLs, decrypted it, verified all 10 manifest hashes and re-ran the isolated restore successfully. Recorded a temporary exception expiring before customer data or 2026-11-30.
+- 2026-10-30 15:18 +03:30: Applied the two reviewed containment migrations to production during a 27-second maintenance interval. SQLite integrity, migration/rule state, record counts, internal/public health, restart count and logs all passed. Created, restored and encrypted a verified post-change recovery set. Rollback was not required.
 
 ### Local commit checkpoint
 
@@ -134,30 +136,34 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - `088d86a` — `fix(cloud): scope snapshots to selected workspace`
 - `87f4a6e` — `fix(server): reconcile migrations and protect cash history`
 - `5af2907` — `feat(recovery): add isolated restore verification`
-- All implementation and recovery changes through the local restore gate are committed.
-- These commits have **not** been pushed, opened as a PR, merged or deployed. Production is unchanged.
+- `d3f8e92` — `docs(stabilization): record recovery checkpoint`
+- `0699bfd` — `docs(stabilization): add production containment plan`
+- `e71b69a` — `feat(recovery): add encrypted local bundle fallback`
+- All implementation and recovery changes through the production containment gate are committed or included in the current evidence update.
+- The branch has **not** been pushed or opened as a PR. The two containment migrations are now deployed, so production is intentionally ahead of `origin/master` until the branch is published and reviewed.
 
 ### Running now
 
-- Design of encrypted off-site backup and monitoring; the current backup remains same-server only.
+- Publish the recovery/containment branch and open a reviewable PR so GitHub catches up with production.
+- Observe post-change service health and preserve the pre/post encrypted recovery bundles.
 - Design of the broader reversal/tombstone and append-only audit model for remaining historical collections.
-- Review of the exact production migration, validation and rollback change sheet; execution remains blocked by the off-site recovery prerequisite.
+- Prepare the next separate hardening plans; do not combine SSH, service-user, filesystem and proxy changes.
 
 ### Next safe actions
 
-1. Review the five committed checkpoints above, then decide whether to push/open a PR for external review.
-2. Design encrypted off-site backup, retention and age/integrity monitoring; agree RPO/RTO with the owner.
-3. Review the exact production migration/health/rollback change sheet for the two tested containment migrations.
+1. Push `codex/stabilization-baseline` and open a PR against `master`; do not merge without review.
+2. Decide whether public signup should remain enabled in the pre-customer environment.
+3. Prepare separate change plans for non-root SSH administration, service-user/filesystem hardening and loopback/admin-UI restriction.
 4. Define server-enforced audit and reversal behavior for the remaining historical collections.
-5. Execute no production mutation until the off-site recovery and rollback prerequisites are approved.
+5. Replace the temporary backup exception before customer data, launch or 2026-11-30.
 
 ## 6. Known P0/P1 queue
 
 ### P0 — contain before normal development
 
-- Close unauthenticated deletion of `zar_workspaces` using a versioned, tested PocketBase migration. **Prepared and tested locally in `0c68859`; production remains vulnerable until gated deployment.**
+- Close unauthenticated deletion of `zar_workspaces` using a versioned, tested PocketBase migration. **Completed in production on 2026-10-30; delete rule verified `NULL`.**
 - Decide and enforce the intended signup policy; do not rely on an accidental empty rule.
-- Establish an off-site encrypted backup. **A production-derived local restore/reconciliation passed on 2026-10-30; off-site placement and a second-operator drill remain open.**
+- Establish an off-site encrypted backup. **Pre/post encrypted bundles now exist on the owner's Windows computer under a temporary pre-customer exception; independent placement and a second-operator drill remain mandatory before launch/customer data.**
 - Restrict SSH to a non-root administrative path with key authentication, then disable password/root login safely.
 - Run PocketBase as a dedicated least-privilege service user and restrict `pb_data` permissions.
 - Bind PocketBase to loopback and restrict the admin UI.
@@ -188,7 +194,7 @@ Scope conflict requiring owner decision: current repository documentation says t
 2. In the local clone, run `git status --short --branch` and confirm the active branch is `codex/stabilization-baseline`.
 3. Confirm `git rev-parse master` still equals the recorded baseline or record any upstream change before rebasing/merging.
 4. Read the latest entries in the action log and finding register when added.
-5. Do not repeat production discovery unless evidence is stale; all server actions must remain read-only until the gates in section 4 pass.
+5. Do not repeat production discovery unless evidence is stale; every further server mutation requires its own scoped plan, fresh recovery evidence and rollback gate.
 6. Continue from the single item marked “next safe action,” update this handoff, then mirror it to the `outputs` path.
 7. Before committing, run the applicable format/analyze/test checks and record their exact result.
 8. Do not push, open a PR, merge, deploy, reboot or alter production unless that specific step has been prepared with evidence and is within the owner-approved workstream.
