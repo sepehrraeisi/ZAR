@@ -1,6 +1,6 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-10-30 15:18 +03:30 (Asia/Tehran)
+Last updated: 2026-10-30 15:20 +03:30 (Asia/Tehran)
 Status: **IN PROGRESS — first production containment change passed; broader hardening remains**
 Change freeze: no feature work and no direct production mutation until the backup/restore and rollback gates below pass.
 
@@ -15,6 +15,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 ### GitHub
 
 - Repository: `https://github.com/sepehrraeisi/ZAR`
+- Draft stabilization PR: `https://github.com/sepehrraeisi/ZAR/pull/3`
 - Default branch: `master`
 - Baseline commit: `e60d68dda3c1876dc5af99e36c1f455b76fd8a50`
 - Baseline commit is unsigned.
@@ -128,6 +129,7 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-10-30 15:10 +03:30: Re-ran Flutter analysis, workspace-isolation tests, real PocketBase authorization/lineage tests and the production-clone restore; all passed. Drafted the exact production containment preflight, execution, stop and full-restore rollback plan. No production command was executed.
 - 2026-10-30 15:15 +03:30: Owner confirmed there are no customers and no independent backup destination. Captured a fresh production SQLite backup, copied the full recovery set off-server to the owner's Windows computer, encrypted it with AES-256, restricted ACLs, decrypted it, verified all 10 manifest hashes and re-ran the isolated restore successfully. Recorded a temporary exception expiring before customer data or 2026-11-30.
 - 2026-10-30 15:18 +03:30: Applied the two reviewed containment migrations to production during a 27-second maintenance interval. SQLite integrity, migration/rule state, record counts, internal/public health, restart count and logs all passed. Created, restored and encrypted a verified post-change recovery set. Rollback was not required.
+- 2026-10-30 15:20 +03:30: Pushed `codex/stabilization-baseline` and opened Draft PR #3 against `master`. GitGuardian and the real PocketBase authorization job passed immediately; Flutter CI was still running at this checkpoint. No merge was performed.
 
 ### Local commit checkpoint
 
@@ -140,18 +142,18 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - `0699bfd` — `docs(stabilization): add production containment plan`
 - `e71b69a` — `feat(recovery): add encrypted local bundle fallback`
 - All implementation and recovery changes through the production containment gate are committed or included in the current evidence update.
-- The branch has **not** been pushed or opened as a PR. The two containment migrations are now deployed, so production is intentionally ahead of `origin/master` until the branch is published and reviewed.
+- The branch is published in Draft PR #3 and remains unmerged. Production contains the two reviewed migrations; `master` will remain behind until CI, review and an explicit merge decision.
 
 ### Running now
 
-- Publish the recovery/containment branch and open a reviewable PR so GitHub catches up with production.
+- Monitor Draft PR #3 CI and address only evidence-backed failures; do not merge automatically.
 - Observe post-change service health and preserve the pre/post encrypted recovery bundles.
 - Design of the broader reversal/tombstone and append-only audit model for remaining historical collections.
 - Prepare the next separate hardening plans; do not combine SSH, service-user, filesystem and proxy changes.
 
 ### Next safe actions
 
-1. Push `codex/stabilization-baseline` and open a PR against `master`; do not merge without review.
+1. Complete Draft PR #3 CI/review; do not merge without an explicit decision.
 2. Decide whether public signup should remain enabled in the pre-customer environment.
 3. Prepare separate change plans for non-root SSH administration, service-user/filesystem hardening and loopback/admin-UI restriction.
 4. Define server-enforced audit and reversal behavior for the remaining historical collections.
