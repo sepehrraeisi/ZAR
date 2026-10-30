@@ -33,6 +33,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Restore/reconciliation runbook: `docs/stabilization/RESTORE-RUNBOOK.md`
 - Production containment change plan: `docs/stabilization/PRODUCTION-CONTAINMENT-CHANGE-PLAN.md`
 - Production containment evidence: `docs/stabilization/PRODUCTION-CONTAINMENT-EVIDENCE-2026-10-30.md`
+- SSH hardening plan: `docs/stabilization/SSH-HARDENING-PLAN.md`
 - Temporary pre-customer recovery exception: `docs/stabilization/TEMPORARY-RECOVERY-EXCEPTION.md`
 - Recovery verifier: `server/tools/verify_recovery_set.py`
 - Local machine-readable recovery evidence: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\recovery-evidence-20261030\restore-report.json`
