@@ -33,8 +33,10 @@ jobs:
           chmod +x pocketbase
           ./pocketbase --version
 
-      - name: Test PocketBase authorization boundaries
-        run: python3 server/tests/pocketbase_authz_test.py --pocketbase "$PWD/pocketbase"
+      - name: Test PocketBase authorization and migration lineages
+        run: |
+          python3 server/tests/pocketbase_authz_test.py --pocketbase "$PWD/pocketbase"
+          python3 server/tests/pocketbase_migration_lineage_test.py --pocketbase "$PWD/pocketbase"
 
   flutter-checks:
     runs-on: ubuntu-latest

@@ -127,7 +127,7 @@ def run(pocketbase: Path) -> None:
         shutil.copytree(source_migrations, migrations_dir)
 
         _migrate(pocketbase, data_dir, migrations_dir, "up")
-        _migrate(pocketbase, data_dir, migrations_dir, "down", "1")
+        _migrate(pocketbase, data_dir, migrations_dir, "down", "2")
         _migrate(pocketbase, data_dir, migrations_dir, "up")
 
         with log_path.open("w", encoding="utf-8") as log:
@@ -211,6 +211,90 @@ def run(pocketbase: Path) -> None:
 
                 status, _ = _request(base_url, "GET", record_path, token=token)
                 _expect("workspace survives denied deletes", status, 200)
+
+                cash_id = "cash00000000001"
+                cash_path = f"/api/collections/zar_cash_entries/records/{cash_id}"
+                cash_amount = {
+                    "assetType": "currency",
+                    "currency": {
+                        "code": "TOMAN",
+                        "minorUnits": 1000,
+                        "minorUnitScale": 0,
+                    },
+                }
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/collections/zar_cash_entries/records",
+                    body={
+                        "id": cash_id,
+                        "workspace": workspace_id,
+                        "data": {
+                            "id": cash_id,
+                            "businessId": workspace_id,
+                            "kind": "contribution",
+                            "direction": "receive",
+                            "amount": cash_amount,
+                            "occurredAt": "2026-01-01T00:00:00.000Z",
+                            "note": "Authorization test contribution",
+                            "dealId": None,
+                            "reversesId": None,
+                            "countedQuantity": None,
+                            "expectedQuantity": None,
+                        },
+                    },
+                    token=token,
+                )
+                _expect("member cash entry create", status, 200)
+
+                status, _ = _request(
+                    base_url,
+                    "PATCH",
+                    cash_path,
+                    body={"data": {"note": "Forbidden rewrite"}},
+                    token=token,
+                )
+                _expect("member cash entry update denied", status, 403)
+
+                status, _ = _request(base_url, "DELETE", cash_path)
+                _expect("anonymous cash entry delete denied", status, 403)
+
+                status, _ = _request(
+                    base_url,
+                    "DELETE",
+                    cash_path,
+                    token=token,
+                )
+                _expect("member cash entry delete denied", status, 403)
+
+                status, _ = _request(base_url, "GET", cash_path, token=token)
+                _expect("cash entry survives denied mutations", status, 200)
+
+                reversal_id = "cash00000000002"
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/collections/zar_cash_entries/records",
+                    body={
+                        "id": reversal_id,
+                        "workspace": workspace_id,
+                        "data": {
+                            "id": reversal_id,
+                            "businessId": workspace_id,
+                            "kind": "reversal",
+                            "direction": "deliver",
+                            "amount": cash_amount,
+                            "occurredAt": "2026-01-02T00:00:00.000Z",
+                            "note": "Authorization test reversal",
+                            "dealId": None,
+                            "reversesId": cash_id,
+                            "countedQuantity": None,
+                            "expectedQuantity": None,
+                        },
+                    },
+                    token=token,
+                )
+                _expect("member reversal create remains allowed", status, 200)
             except Exception:
                 log.flush()
                 details = log_path.read_text(encoding="utf-8", errors="replace")
