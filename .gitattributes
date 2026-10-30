@@ -1,0 +1,4 @@
+server/pb_migrations/*.js text eol=lf
+server/tools/*.sh text eol=lf
+server/deploy/*.service text eol=lf
+server/deploy/*.timer text eol=lf
