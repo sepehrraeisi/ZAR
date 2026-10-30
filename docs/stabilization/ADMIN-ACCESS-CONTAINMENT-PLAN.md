@@ -17,7 +17,9 @@ PocketBase 0.40.4 official source registers these superuser-only route groups:
 - PocketBase-native backups: `/api/backups`;
 - cron management: `/api/crons`;
 - SQL execution: `/api/sql`;
-- superuser auth/records: `/api/collections/_superusers/...`;
+- superuser auth/records by either collection name or PocketBase's fixed system
+  collection ID: `/api/collections/_superusers/...` and
+  `/api/collections/pbc_3142635823/...`;
 - record impersonation: `/api/collections/{collection}/impersonate/{recordId}`.
 
 Normal client routes that must remain public include:
@@ -89,10 +91,13 @@ No password, token, superuser record or customer row is read or recorded by this
 
 ## Rollback
 
-1. Restore the archived Caddyfile and reload Caddy.
-2. Stop PocketBase, revert the settings migration with `pocketbase migrate down 1`
-   as `zarapp`, and remove the deployed migration only after history is clean.
-3. Start PocketBase and verify the reverted settings.
+1. Keep the filtering Caddy configuration active while settings are reverted.
+2. Stop PocketBase, verify this is the latest applied migration, revert it with
+   `pocketbase migrate down 1` as `zarapp`, and remove the deployed migration
+   only after history is clean.
+3. While PocketBase remains stopped, restore the archived Caddyfile, validate it
+   and reload Caddy.
+4. Start PocketBase and verify the reverted settings and public health.
 4. Re-run health, allowed-route, SQLite, count, migration, restart and log checks.
 
 If only Caddy validation fails, do not change settings or reload either service.
