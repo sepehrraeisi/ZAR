@@ -1,7 +1,7 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-10-30 15:20 +03:30 (Asia/Tehran)
-Status: **IN PROGRESS — first production containment change passed; broader hardening remains**
+Last updated: 2026-10-30 15:24 +03:30 (Asia/Tehran)
+Status: **IN PROGRESS — production data containment and SSH key-only administration passed; broader hardening remains**
 Change freeze: no feature work and no direct production mutation until the backup/restore and rollback gates below pass.
 
 ## 1. Objective
@@ -34,6 +34,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Production containment change plan: `docs/stabilization/PRODUCTION-CONTAINMENT-CHANGE-PLAN.md`
 - Production containment evidence: `docs/stabilization/PRODUCTION-CONTAINMENT-EVIDENCE-2026-10-30.md`
 - SSH hardening plan: `docs/stabilization/SSH-HARDENING-PLAN.md`
+- SSH hardening evidence: `docs/stabilization/SSH-HARDENING-EVIDENCE-2026-10-30.md`
 - Temporary pre-customer recovery exception: `docs/stabilization/TEMPORARY-RECOVERY-EXCEPTION.md`
 - Recovery verifier: `server/tools/verify_recovery_set.py`
 - Local machine-readable recovery evidence: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\recovery-evidence-20261030\restore-report.json`
@@ -131,6 +132,7 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-10-30 15:15 +03:30: Owner confirmed there are no customers and no independent backup destination. Captured a fresh production SQLite backup, copied the full recovery set off-server to the owner's Windows computer, encrypted it with AES-256, restricted ACLs, decrypted it, verified all 10 manifest hashes and re-ran the isolated restore successfully. Recorded a temporary exception expiring before customer data or 2026-11-30.
 - 2026-10-30 15:18 +03:30: Applied the two reviewed containment migrations to production during a 27-second maintenance interval. SQLite integrity, migration/rule state, record counts, internal/public health, restart count and logs all passed. Created, restored and encrypted a verified post-change recovery set. Rollback was not required.
 - 2026-10-30 15:20 +03:30: Pushed `codex/stabilization-baseline` and opened Draft PR #3 against `master`. GitGuardian and the real PocketBase authorization job passed immediately; Flutter CI was still running at this checkpoint. No merge was performed.
+- 2026-10-30 15:24 +03:30: Created and tested `zaradmin`, captured an off-server SSH/sudo rollback archive, kept a live root rollback session, installed and validated key-only SSH policy, reloaded SSH, proved new admin/sudo access, proved new root and password-only access are rejected, updated the local alias, and then closed the preserved root session. PocketBase remained active.
 
 ### Local commit checkpoint
 
@@ -167,7 +169,7 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - Close unauthenticated deletion of `zar_workspaces` using a versioned, tested PocketBase migration. **Completed in production on 2026-10-30; delete rule verified `NULL`.**
 - Decide and enforce the intended signup policy; do not rely on an accidental empty rule.
 - Establish an off-site encrypted backup. **Pre/post encrypted bundles now exist on the owner's Windows computer under a temporary pre-customer exception; independent placement and a second-operator drill remain mandatory before launch/customer data.**
-- Restrict SSH to a non-root administrative path with key authentication, then disable password/root login safely.
+- Restrict SSH to a non-root administrative path with key authentication, then disable password/root login safely. **Completed and independently retested on 2026-10-30.**
 - Run PocketBase as a dedicated least-privilege service user and restrict `pb_data` permissions.
 - Bind PocketBase to loopback and restrict the admin UI.
 

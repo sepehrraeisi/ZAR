@@ -1,6 +1,6 @@
 # ZAR+ SSH Hardening Change Plan
 
-Status: prepared; execute as a separate change from PocketBase/service hardening.
+Status: executed successfully on 2026-10-30. Evidence is recorded in `SSH-HARDENING-EVIDENCE-2026-10-30.md`.
 
 ## Objective
 

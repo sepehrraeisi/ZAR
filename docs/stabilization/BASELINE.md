@@ -97,6 +97,14 @@ zar-2026-10-28.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f7068
 - Post-change backup SHA-256: `1e69709378b3d9fe816d86639f5517e8b7af10676b00d597c4ee69e43d7e9ee8`.
 - Post-change isolated restore and encrypted local bundle verification passed.
 
+## SSH hardening checkpoint — 2026-10-30
+
+- Created and verified non-root administrative account `zaradmin` using the existing ED25519 key.
+- Disabled direct root login, password authentication and keyboard-interactive authentication.
+- Required public-key authentication; reduced `MaxAuthTries` from `6` to `3` and `LoginGraceTime` from `120` to `30` seconds.
+- `sshd -t`, new admin login, non-interactive sudo, root rejection and password-only rejection all passed.
+- SSH and PocketBase services remained active; rollback was not required.
+
 ## Baseline limitations
 
 - No hash or signing-certificate fingerprint of the APK installed on the user's phone is captured yet.
