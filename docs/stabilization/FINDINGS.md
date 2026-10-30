@@ -15,7 +15,7 @@ This register is evidence-driven. “Locally fixed” means code and tests exist
 - Raw line coverage: `10,058 / 17,595 = 57.16%`.
 - Non-generated line coverage (excluding Drift `.g.dart`): `8,617 / 12,445 = 69.24%`.
 - Critical coverage gaps: PocketBase auth service `0%`, cloud shell `0%`, backup screen `0%`, PocketBase repository `22.8%` at baseline.
-- PocketBase `0.40.4` isolated integration test: passed, including migration `up / down 1 / up`.
+- PocketBase `0.40.4` isolated integration tests: passed, including security migration `up / down 2 / up` and supported migration lineages.
 
 The green baseline is valuable but does not prove production safety. Existing tests are strong around exact numeric domain behavior, local Drift transactions, projections, UI and backup codecs; they are weak around real PocketBase authorization, multi-device concurrency, Android data protection and disaster recovery.
 
@@ -29,7 +29,7 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Production: vulnerable at last read-only verification.
 - Local remediation: `server/pb_migrations/1793260800_lock_workspace_deletion.js` sets the rule to `null` in both migration directions.
 - Regression evidence: anonymous delete `403`, member delete `403`, member view/update remain `200`, record survives.
-- Status: **locally fixed and tested; not deployed**.
+- Status: **locally fixed and tested in commit `0c68859`; not pushed or deployed**.
 - Production gate: verified full backup/restore point, migration checksum, maintenance plan, health/auth test and rollback procedure.
 
 ### ZAR-DATA-001 — cloud reads/restores were not scoped to the selected workspace
@@ -39,7 +39,7 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Impact: a user who is a member of multiple workspaces could load a mixed snapshot; restoring one workspace could delete records visible from another.
 - Local remediation: every cloud snapshot read and restore-discovery query now uses `workspace='<selected id>'`.
 - Regression evidence: `test/zar_pocketbase_repository_test.dart` proves all 14 load/restore discovery requests are scoped to `w1`.
-- Status: **locally fixed; targeted tests and analyzer pass; not released**.
+- Status: **locally fixed in commit `088d86a`; targeted tests and analyzer pass; not pushed or released**.
 
 ### ZAR-DATA-002 — multi-device last-write-wins can silently lose changes
 
@@ -65,7 +65,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Evidence: normal members have delete rights on financial collections. `zar_cash_entries` blocks updates but permits member deletion; a real isolated API test returned `204` for cash-entry deletion.
 - `auditAction` parameters in the PocketBase repository are ignored; actor identity is also recorded as `local-user` in cloud presentation paths.
 - Required remediation: deny hard delete for financial/history collections, introduce reversal/tombstone flows, append-only audit events, server time, authenticated actor, reason, request/idempotency ID and before/after linkage.
-- Status: open; cash-journal lock should be the next small migration after validating reversal behavior.
+- Local containment: `1793347200_lock_cash_entry_deletion.js` denies hard deletion in both migration directions. Real API regression proves create `200`, update/delete `403`, original record survival and reversal create `200`.
+- Status: cash-journal deletion is **locally contained and tested; not pushed or deployed**. Hard delete for other historical collections and the full audit design remain open.
 
 ### ZAR-DATA-005 — workspace bootstrap is non-atomic and non-idempotent
 
@@ -110,7 +111,10 @@ The green baseline is valuable but does not prove production safety. Existing te
 ### ZAR-REC-001 — backups are not disaster-recovery ready
 
 - Current backups are local, same-disk, seven-day copies of only `data.db`.
-- All four captured files passed SQLite `quick_check`, but no off-site encrypted restore/reconciliation drill exists.
+- All captured files passed SQLite `quick_check`.
+- A production-derived backup was successfully restored and reconciled in isolation on 2026-10-30 with zero domain-table differences; the source hash remained unchanged and PocketBase health passed.
+- The local drill is now reproducible through `server/tools/verify_recovery_set.py` and `docs/stabilization/RESTORE-RUNBOOK.md`.
+- Off-site encrypted replication, automated age monitoring, owner-approved RPO/RTO and a second-operator drill still do not exist.
 - Required: full recovery set, 3-2-1 placement, encryption, retention, automated age/integrity monitoring and isolated restore with zero unexplained reconciliation difference.
 
 ### ZAR-CI-001 — release/supply-chain controls are incomplete
@@ -140,10 +144,10 @@ Stabilization of security, recovery and current data integrity can continue with
 
 ## Next implementation order
 
-1. Review and locally commit the workspace-delete migration, real PocketBase auth test and workspace-isolation fix.
-2. Build a sanitized staging restore and reconciliation harness before production deployment.
-3. Add cash-journal deletion lock plus reversal/audit characterization tests.
-4. Recover production-only migrations and version sanitized Caddy/systemd/backup templates.
+1. Review and commit the recovery verifier, runbook, recovered historical migrations and migration-lineage test.
+2. Push/open a PR only when the complete local checkpoint is ready for external review.
+3. Version hardened Caddy/systemd/backup templates and design encrypted off-site replication.
+4. Define the full reversal/tombstone and append-only audit model for the remaining historical collections.
 5. Prepare and rehearse production migration, health validation and rollback.
 6. Harden service/SSH/storage only after verified recovery and a safe second administrative session.
 7. Address token storage, Android backup policy, concurrency/idempotency and server-side invariant enforcement in small reviewed changes.

@@ -1,7 +1,7 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-10-29 15:55 +03:30 (Asia/Tehran)  
-Status: **IN PROGRESS — Phase 0 / baseline and containment design**  
+Last updated: 2026-10-30 15:05 +03:30 (Asia/Tehran)
+Status: **IN PROGRESS — local recovery gate passed; first Phase 1 containment fixes remain undeployed**
 Change freeze: no feature work and no direct production mutation until the backup/restore and rollback gates below pass.
 
 ## 1. Objective
@@ -29,6 +29,9 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Handoff (canonical): `docs/stabilization/HANDOFF.md`
 - Baseline evidence manifest: `docs/stabilization/BASELINE.md`
 - Findings register: `docs/stabilization/FINDINGS.md`
+- Restore/reconciliation runbook: `docs/stabilization/RESTORE-RUNBOOK.md`
+- Recovery verifier: `server/tools/verify_recovery_set.py`
+- Local machine-readable recovery evidence: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\recovery-evidence-20261030\restore-report.json`
 - Sanitized server audit notes: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\server-review-notes.md`
 - User-facing handoff mirror: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\outputs\ZAR-STABILIZATION-HANDOFF.md`
 
@@ -61,10 +64,10 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 
 - Flutter/Dart multi-platform application with Android, iOS, Windows, Linux, macOS and web scaffolding.
 - Source includes local Drift/SQLite, PocketBase and dormant/opt-in Firebase paths.
-- `server/pb_migrations` currently contains two tracked migrations.
-- CI file exists at `.github/workflows/phase_a2_ci.yml`; it runs analyze, tests, and a debug web build on pushes/PRs to `master`.
+- `server/pb_migrations` contains the two original migrations, two byte-identical recovered production email-template migrations and two new undeployed deletion locks for workspaces and cash-journal entries on the current local branch.
+- CI file exists at `.github/workflows/phase_a2_ci.yml`; the current local change adds real PocketBase authorization and migration-lineage jobs alongside analyze, tests and a debug web build.
 - README describes exact money handling (integer minor units) and exact gold decimal strings.
-- Existing tests are substantial but baseline execution is still pending in this work session.
+- The full Flutter baseline passed: 327 tests, zero failures. Raw line coverage is 57.16%; non-generated line coverage is 69.24%.
 - Android release guide exists, but actual signing-key possession, installed APK identity, and clean release build are not yet proven.
 - Product documentation currently defines ZAR+ as an operational gold/currency assistant and explicitly excludes a full accounting ledger, profit/loss, tax and financial statements. The owner must confirm whether “accounting application” means this operational scope or a true general ledger before architecture changes.
 
@@ -75,7 +78,7 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - Service currently runs as `root` without meaningful systemd hardening.
 - Production database and parent permissions are too broad (`0644` database files observed).
 - SSH currently permits direct root and password authentication; the host is under continuous brute-force traffic.
-- Backups are local-only, same-disk, seven-day retention and cover only `data.db`; no off-site encrypted recovery set or full restore drill has been demonstrated.
+- Backups are local-only, same-disk, seven-day retention and cover only `data.db`. A local production-derived restore/reconciliation drill passed on 2026-10-30, but no encrypted off-site recovery set or second-operator drill exists.
 - Production schema has a critical authorization defect: `zar_workspaces.deleteRule` is empty/public. Public user signup is also enabled.
 - No production monitoring/alerting or tested incident/rollback runbook was found.
 - Server audit was read-only. No production change has been made in this stabilization session.
@@ -112,29 +115,43 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-10-29 15:52 +03:30: Added local forward migration `1793260800_lock_workspace_deletion.js`, a real PocketBase authorization test and checksum-verified CI job. Migration `up / down 1 / up` and all API assertions pass locally.
 - 2026-10-29 15:53 +03:30: Scoped all PocketBase snapshot/load/restore-discovery queries to the selected workspace and added a regression test covering all 14 requests. Targeted tests and analyzer pass.
 - 2026-10-29 15:55 +03:30: Added the evidence-based findings register and updated the interactive stabilization roadmap.
+- 2026-10-29 15:56 +03:30: Preserved the checkpoint in three local commits: `f3aab5d` (docs/handoff), `0c68859` (workspace deletion containment and CI integration test), and `088d86a` (workspace-scoped cloud queries).
+- 2026-10-30 14:58 +03:30: Copied the latest server-created SQLite backup and operational/migration artifacts read-only into local quarantine. All known production migration and config hashes matched the baseline.
+- 2026-10-30 15:01 +03:30: Restored the production-derived backup with PocketBase 0.40.4 in a disposable loopback-only environment. Health, SQLite integrity, domain references and all eight table count/content reconciliations passed with zero difference.
+- 2026-10-30 15:03 +03:30: Recovered the two production-only email-template migrations byte-for-byte into the local branch. Fresh-install, production-clone and existing-developer migration lineages pass.
+- 2026-10-30 15:05 +03:30: Added the non-destructive recovery verifier and exercised restore/reconciliation runbook. A deliberately wrong source hash is correctly rejected.
+- 2026-10-30 15:10 +03:30: Added `1793347200_lock_cash_entry_deletion.js`. Disposable API tests prove cash create remains `200`, update/delete are `403`, the original survives, and a reversal entry can still be created (`200`). Production-clone restore and all migration lineages still pass with both security migrations pending.
+
+### Local commit checkpoint
+
+- `f3aab5d` — `docs(stabilization): add baseline findings and handoff`
+- `0c68859` — `fix(server): prevent workspace deletion through record API`
+- `088d86a` — `fix(cloud): scope snapshots to selected workspace`
+- Branch is three commits ahead of `origin/master`; the working tree was clean at checkpoint.
+- These commits have **not** been pushed, opened as a PR, merged or deployed.
 
 ### Running now
 
-- Review and packaging of the first two local P0 fixes.
-- Design of a sanitized restore/reconciliation drill before production deployment.
-- Production-to-repository migration and configuration recovery.
+- Review and packaging of the recovery verifier, runbook, recovered migrations and lineage tests.
+- Design of encrypted off-site backup and monitoring; the current backup remains same-server only.
+- Design of the broader reversal/tombstone and append-only audit model for remaining historical collections.
 
 ### Next safe actions
 
-1. Review and locally commit the tested workspace-delete migration, CI authorization test and workspace-isolation query fix.
-2. Build the sanitized restore/reconciliation harness and prove the recovery gate.
-3. Add a separate cash-journal deletion lock only after reversal behavior is characterized.
-4. Recover the two production-only email-template migrations into Git.
-5. Prepare full backup/restore and production migration/rollback runbooks.
-6. Execute no production mutation until the recovery gate passes.
+1. Review and locally commit the recovery verifier, runbook, recovered migrations and migration-lineage test.
+2. Design encrypted off-site backup, retention and age/integrity monitoring; agree RPO/RTO with the owner.
+3. Prepare the exact production migration/health/rollback change sheet for the two tested containment migrations.
+4. Define server-enforced audit and reversal behavior for the remaining historical collections.
+5. Push/open a PR only after the full local checkpoint is ready for external review.
+6. Execute no production mutation until the off-site recovery and rollback prerequisites are approved.
 
 ## 6. Known P0/P1 queue
 
 ### P0 — contain before normal development
 
-- Close unauthenticated deletion of `zar_workspaces` using a versioned, tested PocketBase migration.
+- Close unauthenticated deletion of `zar_workspaces` using a versioned, tested PocketBase migration. **Prepared and tested locally in `0c68859`; production remains vulnerable until gated deployment.**
 - Decide and enforce the intended signup policy; do not rely on an accidental empty rule.
-- Establish an off-site encrypted backup and prove restore plus reconciliation.
+- Establish an off-site encrypted backup. **A production-derived local restore/reconciliation passed on 2026-10-30; off-site placement and a second-operator drill remain open.**
 - Restrict SSH to a non-root administrative path with key authentication, then disable password/root login safely.
 - Run PocketBase as a dedicated least-privilege service user and restrict `pb_data` permissions.
 - Bind PocketBase to loopback and restrict the admin UI.
@@ -185,6 +202,7 @@ Scope conflict requiring owner decision: current repository documentation says t
 
 - No direct inspection of the Android APK currently installed on the user's phone has been performed.
 - Production signing key possession and backup have not been verified.
+- The local recovery drill passed, but the only automated production backups remain on the same server with seven-day retention.
 - Business scope (operational assistant versus full accounting ledger) is not yet confirmed.
 - Legal/tax/retention requirements and authoritative jurisdiction are not yet confirmed.
 - RPO, RTO, maximum tolerable downtime and availability SLO require owner decisions.

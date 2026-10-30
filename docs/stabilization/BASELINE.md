@@ -61,6 +61,11 @@ The database file permissions are a confirmed security finding. Do not change th
 
 - Live `data.db` SQLite `PRAGMA quick_check`: `ok` at capture.
 - Backups are local on the same server and do not yet satisfy disaster recovery requirements.
+- Latest verified server-created SQLite backup at the 2026-10-30 drill: `/backups/zar-2026-10-30.db`.
+- Backup SHA-256: `a0da2edc42d46ddff0737ccaa4e40be7f5b141b3be92188c7cbae00828948907`.
+- The backup was copied read-only into local quarantine and restored with PocketBase `0.40.4` in a disposable environment.
+- Source/restored `quick_check` and `integrity_check`: `ok`; restored health: pass; all eight domain-table counts and canonical content hashes reconciled exactly.
+- The pending workspace-deletion and cash-journal deletion-lock migrations applied only to the disposable restored copy; production remained unchanged.
 - Backup files are mode `0644` and therefore also require containment.
 
 ```text
@@ -79,6 +84,7 @@ zar-2026-10-28.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f7068
 3. Repository deployment documentation creates a root-run systemd service; this must be replaced by a least-privilege versioned unit.
 4. Repository backup documentation describes only a local copy of `data.db`; it omits configuration, migrations, keys/certificates where applicable, encryption, off-site retention and restore/reconciliation.
 5. `zar_workspaces.deleteRule` is committed as an empty string and is present in production; a new forward migration is required rather than editing applied migration history.
+6. The two production-only email-template migrations were recovered byte-for-byte into the local branch on 2026-10-30. Their raw SHA-256 values match the production baseline; they are not yet pushed or deployed.
 
 ## Baseline limitations
 
