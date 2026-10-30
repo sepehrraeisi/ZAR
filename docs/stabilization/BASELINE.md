@@ -105,6 +105,16 @@ zar-2026-10-28.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f7068
 - `sshd -t`, new admin login, non-interactive sudo, root rejection and password-only rejection all passed.
 - SSH and PocketBase services remained active; rollback was not required.
 
+## PocketBase service hardening checkpoint — 2026-10-30
+
+- A separate canary restored from production data passed the proposed service sandbox before the live change.
+- PocketBase now runs as locked, non-login system account `zarapp`, with no effective Linux capabilities and `NoNewPrivileges=1`.
+- PocketBase now listens only on `127.0.0.1:8090`; Caddy remains the only public path.
+- Application code/migrations remain root-owned; only `pb_data` is writable to the service.
+- `pb_data`/database modes are now `0700`/`0600`.
+- Systemd exposure improved from `9.6 UNSAFE` to `2.8 OK`.
+- Counts, migration history, SQLite integrity, public health, external port closure, logs and restart count passed after an approximately one-second maintenance interval.
+
 ## Baseline limitations
 
 - No hash or signing-certificate fingerprint of the APK installed on the user's phone is captured yet.

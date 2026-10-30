@@ -1,6 +1,6 @@
 # ZAR+ PocketBase Service Hardening Change Plan
 
-Status: prepared; canary and production evidence must be appended after execution.
+Status: executed successfully on 2026-10-30. Evidence is recorded in `POCKETBASE-SERVICE-HARDENING-EVIDENCE-2026-10-30.md`.
 
 ## Objective
 

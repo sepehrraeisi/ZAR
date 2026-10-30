@@ -103,10 +103,10 @@ The green baseline is valuable but does not prove production safety. Existing te
 
 ### ZAR-OPS-001 — production service hardening is below baseline
 
-- PocketBase runs as root, binds `0.0.0.0:8090`, and database/backup files were mode `0644`.
+- PocketBase previously ran as root, bound `0.0.0.0:8090`, and stored its database as `0644`. **Contained on 2026-10-30:** locked `zarapp` service account, loopback-only listener, `0700` data directory, `0600` database, empty capabilities, write confinement and a `2.8 OK` systemd exposure score.
 - SSH previously permitted password and direct root login under sustained brute-force traffic. **Contained on 2026-10-30:** named `zaradmin`, key-only authentication, root login disabled, password authentication disabled, `MaxAuthTries=3`, `LoginGraceTime=30`.
 - Admin UI is publicly reachable, although authentication is required.
-- Required next: dedicated PocketBase service account, loopback binding, least-privilege permissions, rate limiting, admin access restriction and tested rollback.
+- Required next: verified backup automation, rate limiting and admin UI access restriction.
 
 ### ZAR-REC-001 — backups are not disaster-recovery ready
 

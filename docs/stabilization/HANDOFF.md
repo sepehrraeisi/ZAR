@@ -1,7 +1,7 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-10-30 15:24 +03:30 (Asia/Tehran)
-Status: **IN PROGRESS — production data containment and SSH key-only administration passed; broader hardening remains**
+Last updated: 2026-10-30 15:30 +03:30 (Asia/Tehran)
+Status: **IN PROGRESS — critical data containment, key-only administration and least-privilege PocketBase service passed; broader reliability work remains**
 Change freeze: no feature work and no direct production mutation until the backup/restore and rollback gates below pass.
 
 ## 1. Objective
@@ -35,6 +35,8 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Production containment evidence: `docs/stabilization/PRODUCTION-CONTAINMENT-EVIDENCE-2026-10-30.md`
 - SSH hardening plan: `docs/stabilization/SSH-HARDENING-PLAN.md`
 - SSH hardening evidence: `docs/stabilization/SSH-HARDENING-EVIDENCE-2026-10-30.md`
+- PocketBase service hardening plan: `docs/stabilization/POCKETBASE-SERVICE-HARDENING-PLAN.md`
+- PocketBase service hardening evidence: `docs/stabilization/POCKETBASE-SERVICE-HARDENING-EVIDENCE-2026-10-30.md`
 - Temporary pre-customer recovery exception: `docs/stabilization/TEMPORARY-RECOVERY-EXCEPTION.md`
 - Recovery verifier: `server/tools/verify_recovery_set.py`
 - Local machine-readable recovery evidence: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\recovery-evidence-20261030\restore-report.json`
@@ -133,6 +135,7 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-10-30 15:18 +03:30: Applied the two reviewed containment migrations to production during a 27-second maintenance interval. SQLite integrity, migration/rule state, record counts, internal/public health, restart count and logs all passed. Created, restored and encrypted a verified post-change recovery set. Rollback was not required.
 - 2026-10-30 15:20 +03:30: Pushed `codex/stabilization-baseline` and opened Draft PR #3 against `master`. GitGuardian and the real PocketBase authorization job passed immediately; Flutter CI was still running at this checkpoint. No merge was performed.
 - 2026-10-30 15:24 +03:30: Created and tested `zaradmin`, captured an off-server SSH/sudo rollback archive, kept a live root rollback session, installed and validated key-only SSH policy, reloaded SSH, proved new admin/sudo access, proved new root and password-only access are rejected, updated the local alias, and then closed the preserved root session. PocketBase remained active.
+- 2026-10-30 15:30 +03:30: Proved the proposed PocketBase sandbox with an isolated canary, captured stopped-state database and full-data rollback artifacts, then moved the live service from root to locked system account `zarapp`, restricted writes to `pb_data`, changed data modes to `0700/0600` and bound port `8090` to loopback. Counts/migrations/integrity/public health/external port/log/restart gates all passed; downtime was approximately one second and the systemd exposure score improved from `9.6 UNSAFE` to `2.8 OK`. The disposable canary data copy was removed after validation.
 
 ### Local commit checkpoint
 
@@ -170,8 +173,8 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - Decide and enforce the intended signup policy; do not rely on an accidental empty rule.
 - Establish an off-site encrypted backup. **Pre/post encrypted bundles now exist on the owner's Windows computer under a temporary pre-customer exception; independent placement and a second-operator drill remain mandatory before launch/customer data.**
 - Restrict SSH to a non-root administrative path with key authentication, then disable password/root login safely. **Completed and independently retested on 2026-10-30.**
-- Run PocketBase as a dedicated least-privilege service user and restrict `pb_data` permissions.
-- Bind PocketBase to loopback and restrict the admin UI.
+- Run PocketBase as a dedicated least-privilege service user and restrict `pb_data` permissions. **Completed and independently retested on 2026-10-30.**
+- Bind PocketBase to loopback. **Completed and independently retested on 2026-10-30.** Restrict the admin UI through Caddy after choosing the required operator access method.
 
 ### P1 — establish a reliable source of truth
 
