@@ -86,19 +86,25 @@ No password, token, superuser record or customer row is read or recorded by this
 - A public request is recorded with its non-loopback client IP after the change;
   PocketBase no longer sees all Caddy traffic as `127.0.0.1`.
 - Caddy config validates; Caddy/PocketBase/SSH remain active.
-- PocketBase `NRestarts=0`, SQLite checks pass, domain counts/migrations are unchanged, and bounded journals contain no new errors.
+- PocketBase `NRestarts=0`, SQLite checks pass, domain counts are unchanged,
+  migration history gains exactly `1793394000_trust_caddy_client_ip.js`, and
+  bounded journals contain no new errors.
 - Direct external TCP 8090 remains closed/filtered.
 
 ## Rollback
 
 1. Keep the filtering Caddy configuration active while settings are reverted.
-2. Stop PocketBase, verify this is the latest applied migration, revert it with
-   `pocketbase migrate down 1` as `zarapp`, and remove the deployed migration
-   only after history is clean.
+2. Stop PocketBase and refuse automatic rollback unless this remains the latest
+   applied migration and the three settings still equal the deployed expected
+   values. Revert it with `pocketbase migrate down 1` as `zarapp`, passing the
+   explicit production `--dir` and `--migrationsDir` paths, and remove the
+   deployed migration only after history is clean. Its down body deliberately
+   restores the captured empty/false baseline and must not overwrite an
+   intervening operator edit.
 3. While PocketBase remains stopped, restore the archived Caddyfile, validate it
    and reload Caddy.
 4. Start PocketBase and verify the reverted settings and public health.
-4. Re-run health, allowed-route, SQLite, count, migration, restart and log checks.
+5. Re-run health, allowed-route, SQLite, count, migration, restart and log checks.
 
 If only Caddy validation fails, do not change settings or reload either service.
 
