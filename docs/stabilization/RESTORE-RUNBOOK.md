@@ -112,7 +112,19 @@ The lineage test must pass for:
 - an older developer/staging database that already applied the workspace lock before the two recovered email-template migrations appeared;
 - a production clone where the email-template migrations are already applied and only reviewed forward migrations remain pending.
 
-Never run `migrate down` against production migration history. Correct a deployed migration with a new forward-only migration or restore the entire verified recovery set.
+Never run `migrate down` for a production schema, authorization-rule or domain
+data migration. Correct it with a new forward-only migration or restore the
+entire verified recovery set.
+
+A settings-only migration may be reverted only as the immediate rollback of
+its own change window when its dedicated reviewed plan contains all of these
+guards: it is still the latest history row and exists once; the entire live
+settings object equals the deployed expected value before and after stopping
+the service; the archived baseline and migration hashes match; explicit
+production `--dir` and `--migrationsDir` values are used; restart-on-error,
+start-to-health, counts, integrity, routes and logs are verified; and the exact
+same down path already passed on an isolated clone. This narrow exception does
+not authorize down-migration during general recovery or lineage repair.
 
 ## Evidence from the 2026-10-30 drill
 

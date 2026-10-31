@@ -1,6 +1,6 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-10-31 12:25 +03:30 (Asia/Tehran)
+Last updated: 2026-10-31 17:31 +03:30 (Asia/Tehran)
 Status: **IN PROGRESS — critical data/admin containment, host/service hardening and scheduled verified local backup automation passed; product/data correctness work remains**
 Change freeze: no feature work; every production mutation must continue through the backup/restore and rollback gates below.
 
@@ -41,11 +41,14 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Local backup automation evidence: `docs/stabilization/BACKUP-AUTOMATION-EVIDENCE-2026-10-30.md`
 - Administrative access plan: `docs/stabilization/ADMIN-ACCESS-CONTAINMENT-PLAN.md`
 - Administrative access evidence: `docs/stabilization/ADMIN-ACCESS-CONTAINMENT-EVIDENCE-2026-10-31.md`
+- Rate-limiting plan: `docs/stabilization/RATE-LIMITING-PLAN.md`
+- Rate-limiting canary evidence: `docs/stabilization/RATE-LIMITING-EVIDENCE-2026-10-31.md`
 - Temporary pre-customer recovery exception: `docs/stabilization/TEMPORARY-RECOVERY-EXCEPTION.md`
 - Recovery verifier: `server/tools/verify_recovery_set.py`
 - Local machine-readable recovery evidence: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\recovery-evidence-20261030\restore-report.json`
 - Sanitized server audit notes: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\server-review-notes.md`
 - Off-server administrative evidence archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\admin-access-20261031T084900Z\zar-admin-access-20261031T084900Z-evidence.tar`
+- Off-server rate-limit canary archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\rate-limit-canary-20261031\zar-rate-limit-evidence-complete-20261031.tar`
 - User-facing handoff mirror: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\outputs\ZAR-STABILIZATION-HANDOFF.md`
 
 ### Production server
@@ -79,10 +82,14 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 
 - Flutter/Dart multi-platform application with Android, iOS, Windows, Linux, macOS and web scaffolding.
 - Source includes local Drift/SQLite, PocketBase and dormant/opt-in Firebase paths.
-- `server/pb_migrations` contains the two original migrations, two byte-identical recovered production email-template migrations and two new undeployed deletion locks for workspaces and cash-journal entries on the current local branch.
+- `server/pb_migrations` contains the reconciled production lineage, the three
+  deployed containment/settings migrations and one undeployed rate-limit
+  candidate on the current local branch.
 - CI file exists at `.github/workflows/phase_a2_ci.yml`; the current local change adds real PocketBase authorization and migration-lineage jobs alongside analyze, tests and a debug web build.
 - README describes exact money handling (integer minor units) and exact gold decimal strings.
 - The full Flutter baseline passed: 327 tests, zero failures. Raw line coverage is 57.16%; non-generated line coverage is 69.24%.
+- The current rate-limit candidate passes 331 tests with zero failures and full
+  analyzer with no findings.
 - Android release guide exists, but actual signing-key possession, installed APK identity, and clean release build are not yet proven.
 - Product documentation currently defines ZAR+ as an operational gold/currency assistant and explicitly excludes a full accounting ledger, profit/loss, tax and financial statements. The owner must confirm whether “accounting application” means this operational scope or a true general ledger before architecture changes.
 
@@ -95,6 +102,10 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - Local backups use atomic verified systemd snapshots with 30-day/minimum-seven retention. The generated format passed isolated restore/reconciliation and the first natural timer run reported `BACKUP_OK`; copies still remain on the same server.
 - Workspace and cash-journal deletion defects are contained. Public user signup remains enabled and requires an explicit policy decision.
 - Public Caddy now denies the PocketBase dashboard, superuser name/ID routes and management APIs. Private Real-IP propagation and the loopback-only superuser whitelist are proven; operators use an SSH local tunnel.
+- A tuned rate-limit policy has passed isolated boundary, natural-expiry,
+  startup-burst, 500/400-operation batch, Caddy Real-IP and superuser canaries.
+  Production rate limiting remains disabled pending exact-commit CI and the
+  final guarded rollback preflight.
 - No external monitoring/alerting channel exists yet. Tested recovery, containment, SSH, service and backup change/rollback evidence now exists.
 - Production was changed only through the documented gated changes recorded below; each passed health/integrity/reconciliation checks and no rollback was required.
 
@@ -147,6 +158,8 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-10-31 12:18 +03:30: Observed the first natural backup timer run from 03:01 UTC with `BACKUP_OK`. A fresh pre-admin-change snapshot also passed checksum and immutable quick/integrity checks.
 - 2026-10-31 12:19 +03:30: Deployed reviewed Caddy admin-route containment plus versioned trusted-proxy/superuser-IP settings. Public dashboard, superuser name/ID, schema, logs, backup, cron, SQL and impersonation routes return `404`; normal mobile routes retain baseline behavior. Outside Real-IP, forged-header rejection, SSH tunnel, external port closure, counts, migration delta, SQLite integrity, journals and `NRestarts=0` all passed. PocketBase restart-to-healthy was 559 ms; rollback was not required.
 - 2026-10-31 12:27 +03:30: GitHub Actions run #252 completed successfully at `859ece7`; both `flutter-checks` and `pocketbase-authorization` passed.
+- 2026-10-31 17:31 +03:30: Rejected the unsafe disabled-default rate rules after proving they would break internal batch subrequests. Added a guarded ZAR-specific policy and Persian 429 handling. Disposable production clones passed exact action boundaries, IP separation, natural 60-second and batch-window reset, two simultaneous startup snapshots, 500-operation and two 400-operation authenticated batches, atomic rollback, Caddy forged-header overwrite, loopback superuser behavior, clean logs/integrity and exact migration down. One Caddy canary attempt was explicitly aborted on an occupied admin port and repeated successfully with `admin off`. Production remains unchanged. Full local result: 331 tests passed; analyzer clean.
+- 2026-10-31 17:31 +03:30: Confirmed a separate P1 recovery defect: cloud snapshot replacement cannot restore existing append-only cash rows, although its single batch rolls back atomically. Recorded fail-closed containment and server-side/new-workspace import as required work.
 
 ### Local commit checkpoint
 
@@ -166,18 +179,24 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 
 ### Running now
 
-- Keep Draft PR #3 unmerged until an explicit review/merge decision; implementation CI is green at `859ece7`.
-- Observe post-change service health and preserve the encrypted recovery/evidence bundles.
-- Design of the broader reversal/tombstone and append-only audit model for remaining historical collections.
-- Prepare a separate PocketBase rate-limit/monitoring plan now that Real-IP is proven.
+- Commit and push the canary-proven rate-limit candidate, then require CI at the
+  exact commit.
+- Prepare and clone-exercise the exact guarded settings-only production rollback
+  script; production is still unchanged.
+- Keep Draft PR #3 unmerged until an explicit review/merge decision.
+- Contain the cash-containing cloud restore path with an explicit fail-closed
+  client error before designing the long-term server-side import.
 
 ### Next safe actions
 
-1. Complete Draft PR #3 CI/review; do not merge without an explicit decision.
-2. Decide whether public signup should remain enabled in the pre-customer environment.
-3. Enable/tune PocketBase rate limits and add external monitoring through a separate reviewed change.
-4. Define server-enforced audit, reversal, concurrency and invariant behavior for the remaining historical collections.
-5. Replace the temporary independent-backup exception before customer data, launch or 2026-11-30.
+1. Complete exact-commit rate-limit CI and guarded rollback preflight; do not
+   deploy or merge before both pass.
+2. Add the explicit fail-closed cloud cash-restore error and regression tests.
+3. Decide whether public signup should remain enabled in the pre-customer environment.
+4. Add external monitoring and define server-enforced audit, reversal,
+   concurrency and invariant behavior.
+5. Replace the temporary independent-backup exception before customer data,
+   launch or 2026-11-30.
 
 ## 6. Known P0/P1 queue
 
@@ -189,6 +208,9 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - Restrict SSH to a non-root administrative path with key authentication, then disable password/root login safely. **Completed and independently retested on 2026-10-30.**
 - Run PocketBase as a dedicated least-privilege service user and restrict `pb_data` permissions. **Completed and independently retested on 2026-10-30.**
 - Bind PocketBase to loopback. **Completed and independently retested on 2026-10-30.** Public admin/management routes and superuser traffic were additionally contained behind Caddy, an SSH tunnel and loopback whitelist on 2026-10-31.
+- Prevent the app from presenting cloud cash restore as supported while the
+  append-only server correctly rejects its deletes. **Open P1; transaction
+  rollback is proven, but availability and error messaging are not fixed.**
 
 ### P1 — establish a reliable source of truth
 

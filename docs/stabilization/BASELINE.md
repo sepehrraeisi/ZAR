@@ -152,3 +152,22 @@ zar-2026-10-28.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f7068
 - Sanitized Caddy, PocketBase service and backup unit templates are versioned;
   secrets and live database content remain excluded.
 
+## Rate-limit candidate checkpoint — 2026-10-31
+
+- The four disabled PocketBase defaults were proven incompatible with ZAR's
+  internal batch subrequests and were not enabled.
+- A guarded 11-rule ZAR policy passed isolated exact-boundary, natural-expiry,
+  independent-IP, Caddy overwrite, loopback-superuser and migration up/down
+  tests.
+- A 500-operation batch completed in 791 ms; two sequential 400-operation
+  same-route authenticated chunks completed in 633/625 ms; exact counts and
+  atomic rollback reconciled.
+- Two simultaneous seven-collection startup bursts returned 14/14 HTTP 200;
+  the clone interval had zero error-level logs and zero 5xx statuses.
+- Client 429 tests bring the current full local result to 331 passed, zero
+  failed; analyzer is clean.
+- Production remains on the exact original disabled rate-limit object with no
+  candidate migration history/file. Exact-commit CI and a clone-exercised
+  production rollback script remain required before deployment.
+- Full evidence: `RATE-LIMITING-EVIDENCE-2026-10-31.md`.
+

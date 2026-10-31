@@ -1,6 +1,6 @@
 # ZAR+ Stabilization Findings Register
 
-Updated: 2026-10-31 12:25 +03:30 (Asia/Tehran)
+Updated: 2026-10-31 17:31 +03:30 (Asia/Tehran)
 Baseline source: `e60d68dda3c1876dc5af99e36c1f455b76fd8a50`  
 Working branch: `codex/stabilization-baseline`
 
@@ -18,6 +18,8 @@ This register is evidence-driven. “Locally fixed” means code and tests exist
 - PocketBase `0.40.4` isolated integration tests: passed, including security migration `up / down 2 / up` and supported migration lineages.
 - Draft PR #3 GitHub Actions run #252 passed both Flutter and real PocketBase
   authorization/migration jobs at `859ece7`.
+- The rate-limit candidate adds three focused client tests; the complete local
+  suite now passes 331 tests with zero failures and analyzer has no findings.
 
 The green baseline is valuable but does not prove production safety. Existing tests are strong around exact numeric domain behavior, local Drift transactions, projections, UI and backup codecs; they are weak around real PocketBase authorization, multi-device concurrency, Android data protection and disaster recovery.
 
@@ -111,8 +113,12 @@ The green baseline is valuable but does not prove production safety. Existing te
   2026-10-31** behind Caddy public `404`; SSH-tunnel access, a private
   always-overwritten Real-IP header and loopback-only superuser whitelist passed
   canary and production tests.
-- Required next: enable/tune PocketBase rate limits now that Real-IP is proven,
-  and add an external monitoring/alert destination.
+- A ZAR-specific rate-limit candidate has now passed exact boundaries, natural
+  expiry, independent-IP, Caddy overwrite, loopback superuser, 500-operation
+  batch, sequential 400-operation chunk and migration-down canaries. Production
+  remains `enabled=false` pending exact-commit CI and guarded rollback preflight.
+- Required next: complete the reviewed rate-limit production gate and add an
+  external monitoring/alert destination.
 
 ### ZAR-REC-001 — backups are not disaster-recovery ready
 
@@ -125,6 +131,30 @@ The green baseline is valuable but does not prove production safety. Existing te
   `BACKUP_OK`; a fresh pre-change run later that morning also passed.
 - Off-site encrypted replication, automated age monitoring, owner-approved RPO/RTO and a second-operator drill still do not exist.
 - Required: full recovery set, 3-2-1 placement, encryption, retention, automated age/integrity monitoring and isolated restore with zero unexplained reconciliation difference.
+
+### ZAR-REC-002 — cloud snapshot restore conflicts with append-only cash history
+
+- Severity: P1/High recovery availability; pre-release blocker.
+- Evidence: cloud `replaceCompleteSnapshot` unconditionally queues delete then
+  create for every visible collection, including `zar_cash_entries`. The
+  deployed cash containment migration intentionally sets cash update/delete
+  rules to `NULL`, and real authorization tests return `403` for member delete.
+- Impact: any existing cash row makes an otherwise valid cloud restore fail.
+  Restoring cash into an empty workspace can succeed once, but repeating the
+  same restore fails, so the path is not idempotent. The backup screen currently
+  mislabels this server authorization failure as a device/file-access problem.
+- Safety property: the requests are one PocketBase batch, and the isolated
+  invalid-batch canary proved complete transaction rollback; no partial restore
+  was observed.
+- Immediate containment required: before any cloud write, fail closed when the
+  current or incoming snapshot contains cash rows, use a typed error and show a
+  precise Persian operator/new-workspace recovery message. Do not implement a
+  client-side append merge because a second device can race the preflight.
+- Long-term remediation: a server-side transactional, idempotent import with
+  expected workspace revision and backup hash, preferably restoring into a new
+  immutable workspace/version and switching ownership atomically.
+- Status: open; DB-level disaster restore remains the tested operational full
+  recovery path.
 
 ### ZAR-CI-001 — release/supply-chain controls are incomplete
 
@@ -155,12 +185,15 @@ Stabilization of security, recovery and current data integrity can continue with
 ## Next implementation order
 
 1. Finish Draft PR #3 CI/review and make an explicit merge/release decision.
-2. Decide and enforce the intended public-signup policy.
-3. Add a separately tested PocketBase rate-limit policy and monitoring, and
-   replace the temporary off-site recovery exception before customer data or
-   2026-11-30. Admin access, PocketBase and backup systemd artifacts are now
-   versioned and deployed.
-4. Define the full reversal/tombstone and append-only audit model for the remaining historical collections.
-5. Service, SSH and storage hardening changes passed their separate reviewed plans; preserve their evidence and rollback artifacts.
-6. Address token storage, Android backup policy, concurrency/idempotency and server-side invariant enforcement in small reviewed changes.
+2. Complete exact-commit CI and the guarded production rollback gate for the
+   already canary-proven rate-limit candidate.
+3. Fail closed with an explicit message for the broken cash-containing cloud
+   restore path, then design the server-side/new-workspace import.
+4. Decide and enforce the intended public-signup policy.
+5. Add external monitoring and replace the temporary off-site recovery
+   exception before customer data or 2026-11-30.
+6. Define the full reversal/tombstone and append-only audit model for the
+   remaining historical collections.
+7. Address token storage, Android backup policy, concurrency/idempotency and
+   server-side invariant enforcement in small reviewed changes.
 
