@@ -1,0 +1,12 @@
+# Loopback-only proxy used by the disposable rate-limit canary. It reproduces
+# the production private client-IP boundary without touching the live Caddy
+# process or exposing the clone on a public interface.
+{
+	admin off
+}
+
+http://127.0.0.1:18092 {
+	reverse_proxy 127.0.0.1:18091 {
+		header_up X-Zar-Client-IP {remote_host}
+	}
+}
