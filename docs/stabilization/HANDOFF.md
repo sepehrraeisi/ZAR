@@ -175,6 +175,9 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - `14cb8d9` — `security(server): contain PocketBase admin access`
 - `6d29988` — `fix(server): block superuser collection id alias`
 - `859ece7` — `docs: tighten admin containment rollback guards`
+- `3a3728a` — `security(server): add tested rate limit policy`
+- `1c3fb7b` — `docs(stabilization): record rate limit canary`
+- `58f7238` — `ops(server): prove guarded rate limit rollback`
 - All implementation and recovery changes through the production containment gate are committed or included in the current evidence update.
 - The branch is published in Draft PR #3 and remains unmerged. Production contains the three reviewed stabilization migrations (two deletion locks plus admin-access settings); `master` will remain behind until review and an explicit merge decision.
 
