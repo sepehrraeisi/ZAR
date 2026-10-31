@@ -1,8 +1,9 @@
 # ZAR+ PocketBase Rate-Limiting Plan
 
-Status: all isolated-clone behavior, natural-expiry, Real-IP, superuser and
-migration round-trip gates passed on 2026-10-31. Production is unchanged until
-the remaining exact-commit CI and guarded production rollback gates pass. See
+Status: all isolated-clone policy, natural-expiry, Real-IP, superuser,
+migration round-trip and exact guarded rollback-path gates passed on
+2026-10-31. Production is unchanged until the remaining exact-commit CI and
+production preflight gates pass. See
 `RATE-LIMITING-EVIDENCE-2026-10-31.md`.
 
 ## Objective
@@ -150,10 +151,11 @@ separate release blocker.
    Any unexplained 429 on normal app traffic requires rollback or a separately
    reviewed correction.
 
-Production success requires all normal routes to retain their pre-change
-status/body class, sensitive probes to hit the exact documented boundaries,
-domain counts to remain unchanged and both database integrity checks to return
-`ok`.
+Production success requires all normal routes and low-rate sensitive smoke
+probes to retain their expected status/body class, the archived clone boundary
+evidence to remain applicable to the exact deployed migration, domain counts to
+remain unchanged and both database integrity checks to return `ok`. Production
+must not intentionally reproduce the full 429 boundaries.
 
 ## Rollback
 
@@ -172,8 +174,11 @@ migration, restart and log gates. If any guard fails, leave Caddy filtering in
 place, restart PocketBase if it was stopped and investigate rather than editing
 the database manually.
 
-The exact production rollback script and evidence-directory hash will be added
-only after a successful production preflight determines those immutable values.
+The guarded rollback path is versioned as
+`server/scripts/guarded_rate_limit_rollback.sh` and has no implicit target
+defaults. Production preflight must pin its exact hash, invocation and root-only
+evidence directory before the change; the identical script must first pass
+against a disposable production clone.
 
 ## Residual risk
 

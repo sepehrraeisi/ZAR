@@ -115,8 +115,10 @@ The green baseline is valuable but does not prove production safety. Existing te
   canary and production tests.
 - A ZAR-specific rate-limit candidate has now passed exact boundaries, natural
   expiry, independent-IP, Caddy overwrite, loopback superuser, 500-operation
-  batch, sequential 400-operation chunk and migration-down canaries. Production
-  remains `enabled=false` pending exact-commit CI and guarded rollback preflight.
+  batch, sequential 400-operation chunk and migration-down canaries. Its exact
+  guarded rollback path also passed against a full two-database production
+  clone. Production remains `enabled=false` pending final exact-head CI and the
+  production preflight.
 - Required next: complete the reviewed rate-limit production gate and add an
   external monitoring/alert destination.
 
@@ -185,8 +187,8 @@ Stabilization of security, recovery and current data integrity can continue with
 ## Next implementation order
 
 1. Finish Draft PR #3 CI/review and make an explicit merge/release decision.
-2. Complete exact-commit CI and the guarded production rollback gate for the
-   already canary-proven rate-limit candidate.
+2. Complete final exact-head CI and the production preflight/deployment gate
+   for the already canary- and rollback-proven rate-limit candidate.
 3. Fail closed with an explicit message for the broken cash-containing cloud
    restore path, then design the server-side/new-workspace import.
 4. Decide and enforce the intended public-signup policy.
