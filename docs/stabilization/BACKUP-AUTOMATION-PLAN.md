@@ -1,6 +1,6 @@
 # ZAR+ Local Backup Automation Change Plan
 
-Status: executed successfully on 2026-10-30 under `TEMPORARY-RECOVERY-EXCEPTION.md`. Manual systemd run and isolated restore passed; first timer-triggered run remains to be observed. See `BACKUP-AUTOMATION-EVIDENCE-2026-10-30.md`.
+Status: executed successfully on 2026-10-30 under `TEMPORARY-RECOVERY-EXCEPTION.md`. Manual systemd run, isolated restore and the first natural timer-triggered run all passed. See `BACKUP-AUTOMATION-EVIDENCE-2026-10-30.md`.
 
 ## Objective
 

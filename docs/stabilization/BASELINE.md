@@ -84,7 +84,7 @@ zar-2026-10-28.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f7068
 3. Repository deployment documentation creates a root-run systemd service; this must be replaced by a least-privilege versioned unit.
 4. Repository backup documentation describes only a local copy of `data.db`; it omits configuration, migrations, keys/certificates where applicable, encryption, off-site retention and restore/reconciliation.
 5. `zar_workspaces.deleteRule` is committed as an empty string and is present in production; a new forward migration is required rather than editing applied migration history.
-6. The two production-only email-template migrations were recovered byte-for-byte into the local branch on 2026-10-30. Their raw SHA-256 values match the already-applied production files; the branch is not yet pushed.
+6. The two production-only email-template migrations were recovered byte-for-byte into the local branch on 2026-10-30. Their raw SHA-256 values match the already-applied production files; the branch is published in Draft PR #3.
 
 ## Production containment checkpoint — 2026-10-30
 
@@ -122,14 +122,33 @@ zar-2026-10-28.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f7068
 - Retention is scoped only to exact daily snapshot directories, 30 days and never fewer than seven; named rollback artifacts are excluded.
 - Candidate success, corrupt-source cleanup, concurrency rejection and retention safety tests passed.
 - The first installed snapshot matched production hash/counts/migrations and passed the full isolated PocketBase recovery verifier.
-- The timer is active; the first naturally scheduled trigger remains to be captured.
+- The timer is active. Its first natural trigger at `2026-10-31 03:01:02 UTC`
+  reported `BACKUP_OK`; a second manual pre-change run at 08:48 UTC also passed.
 - This improves local recovery but does not close the independent/off-site backup gate.
+
+## Administrative access containment checkpoint — 2026-10-31
+
+- Caddy now returns public `404` for the PocketBase dashboard, superuser
+  name/ID routes and all reviewed management/schema/impersonation APIs.
+- Normal mobile health, auth and record routes retained their baseline status.
+- Caddy overwrites `X-Zar-Client-IP`; PocketBase trusts only that header and
+  restricts authenticated superusers to `127.0.0.1`/`::1`.
+- An outside-workstation probe was logged as non-loopback; a forged-header
+  integration test and SSH-tunnel access both passed.
+- Migration `1793394000_trust_caddy_client_ip.js` is applied; counts and SQLite
+  integrity remained unchanged/`ok`; restart-to-healthy was `559 ms`.
+- Installed Caddy SHA-256:
+  `4586188b7917619a54e3c48c8aad14751ed4807118a78f33ae7a0d84b9bced65`.
+- Full evidence: `ADMIN-ACCESS-CONTAINMENT-EVIDENCE-2026-10-31.md`.
 
 ## Baseline limitations
 
 - No hash or signing-certificate fingerprint of the APK installed on the user's phone is captured yet.
 - No signing keystore was accessed or verified.
 - Live database content was not copied into Git and must never be committed.
-- The full restore and application-level reconciliation drill is pending.
-- Caddy/systemd contents are intentionally not reproduced here; only their paths and hashes are recorded until sanitized templates are prepared.
+- The restore/application reconciliation drill passed, but an independent
+  destination and second-operator drill are still pending under the temporary
+  pre-customer exception.
+- Sanitized Caddy, PocketBase service and backup unit templates are versioned;
+  secrets and live database content remain excluded.
 

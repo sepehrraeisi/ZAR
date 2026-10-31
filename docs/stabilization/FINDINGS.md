@@ -1,6 +1,6 @@
 # ZAR+ Stabilization Findings Register
 
-Updated: 2026-10-30 15:18 +03:30 (Asia/Tehran)
+Updated: 2026-10-31 12:25 +03:30 (Asia/Tehran)
 Baseline source: `e60d68dda3c1876dc5af99e36c1f455b76fd8a50`  
 Working branch: `codex/stabilization-baseline`
 
@@ -16,6 +16,8 @@ This register is evidence-driven. “Locally fixed” means code and tests exist
 - Non-generated line coverage (excluding Drift `.g.dart`): `8,617 / 12,445 = 69.24%`.
 - Critical coverage gaps: PocketBase auth service `0%`, cloud shell `0%`, backup screen `0%`, PocketBase repository `22.8%` at baseline.
 - PocketBase `0.40.4` isolated integration tests: passed, including security migration `up / down 2 / up` and supported migration lineages.
+- Draft PR #3 GitHub Actions run #252 passed both Flutter and real PocketBase
+  authorization/migration jobs at `859ece7`.
 
 The green baseline is valuable but does not prove production safety. Existing tests are strong around exact numeric domain behavior, local Drift transactions, projections, UI and backup codecs; they are weak around real PocketBase authorization, multi-device concurrency, Android data protection and disaster recovery.
 
@@ -39,7 +41,7 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Impact: a user who is a member of multiple workspaces could load a mixed snapshot; restoring one workspace could delete records visible from another.
 - Local remediation: every cloud snapshot read and restore-discovery query now uses `workspace='<selected id>'`.
 - Regression evidence: `test/zar_pocketbase_repository_test.dart` proves all 14 load/restore discovery requests are scoped to `w1`.
-- Status: **locally fixed in commit `088d86a`; targeted tests and analyzer pass; not pushed or released**.
+- Status: **fixed in Draft PR #3; targeted tests and analyzer pass; not yet merged or released**.
 
 ### ZAR-DATA-002 — multi-device last-write-wins can silently lose changes
 
@@ -105,8 +107,12 @@ The green baseline is valuable but does not prove production safety. Existing te
 
 - PocketBase previously ran as root, bound `0.0.0.0:8090`, and stored its database as `0644`. **Contained on 2026-10-30:** locked `zarapp` service account, loopback-only listener, `0700` data directory, `0600` database, empty capabilities, write confinement and a `2.8 OK` systemd exposure score.
 - SSH previously permitted password and direct root login under sustained brute-force traffic. **Contained on 2026-10-30:** named `zaradmin`, key-only authentication, root login disabled, password authentication disabled, `MaxAuthTries=3`, `LoginGraceTime=30`.
-- Admin UI is publicly reachable, although authentication is required.
-- Required next: rate limiting and admin UI access restriction.
+- The admin UI, superuser name/ID routes and management APIs were **contained on
+  2026-10-31** behind Caddy public `404`; SSH-tunnel access, a private
+  always-overwritten Real-IP header and loopback-only superuser whitelist passed
+  canary and production tests.
+- Required next: enable/tune PocketBase rate limits now that Real-IP is proven,
+  and add an external monitoring/alert destination.
 
 ### ZAR-REC-001 — backups are not disaster-recovery ready
 
@@ -115,7 +121,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - A production-derived backup was successfully restored and reconciled in isolation on 2026-10-30 with zero domain-table differences; the source hash remained unchanged and PocketBase health passed.
 - The local drill is now reproducible through `server/tools/verify_recovery_set.py` and `docs/stabilization/RESTORE-RUNBOOK.md`.
 - **Contained locally on 2026-10-30:** versioned atomic systemd backup timer, `0600` snapshots, SHA-256, metadata, quick/integrity/schema verification, exact-name 30-day/minimum-seven retention, no-network sandbox and a successful isolated restore of the generated format.
-- The first naturally scheduled timer event is still pending observation; the installed systemd service run passed.
+- The first natural timer event at `2026-10-31 03:01:02 UTC` reported
+  `BACKUP_OK`; a fresh pre-change run later that morning also passed.
 - Off-site encrypted replication, automated age monitoring, owner-approved RPO/RTO and a second-operator drill still do not exist.
 - Required: full recovery set, 3-2-1 placement, encryption, retention, automated age/integrity monitoring and isolated restore with zero unexplained reconciliation difference.
 
@@ -132,7 +139,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Cloud restore rejects datasets requiring more than 500 operations; a versioned large-dataset strategy is needed.
 - UI defaults most non-Toman currencies to scale 2 even though the domain model supports scales 0–6.
 - HTTP operations lack explicit request timeouts/cancellation and a documented retry budget.
-- Two production-only Persian email-template migrations are not yet in Git.
+- The two formerly production-only Persian email-template migrations are now
+  byte-identical in Draft PR #3; merge/release remains pending.
 - No APK hash/signing-certificate fingerprint from the installed phone has been captured; signing-key possession remains unverified.
 
 ## Scope decision required
@@ -146,9 +154,12 @@ Stabilization of security, recovery and current data integrity can continue with
 
 ## Next implementation order
 
-1. Push the complete checkpoint and open a PR so GitHub is no longer behind the deployed containment migrations.
+1. Finish Draft PR #3 CI/review and make an explicit merge/release decision.
 2. Decide and enforce the intended public-signup policy.
-3. Restrict the public admin UI, add rate limiting/monitoring, and replace the temporary off-site recovery exception before customer data or 2026-11-30. Hardened PocketBase and backup systemd artifacts are now versioned and deployed.
+3. Add a separately tested PocketBase rate-limit policy and monitoring, and
+   replace the temporary off-site recovery exception before customer data or
+   2026-11-30. Admin access, PocketBase and backup systemd artifacts are now
+   versioned and deployed.
 4. Define the full reversal/tombstone and append-only audit model for the remaining historical collections.
 5. Service, SSH and storage hardening changes passed their separate reviewed plans; preserve their evidence and rollback artifacts.
 6. Address token storage, Android backup policy, concurrency/idempotency and server-side invariant enforcement in small reviewed changes.

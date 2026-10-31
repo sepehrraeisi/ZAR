@@ -126,9 +126,23 @@ sha256 b1b501580d627f90dbc2599d24ca825735fa6f14e5626fcb08f9207b4ffd95ca
 
 PocketBase stayed active with `NRestarts=0`; no application maintenance window was required.
 
+## Natural timer confirmation — 2026-10-31
+
+The first scheduled run started at `03:01:02 UTC` and completed with
+`BACKUP_OK`:
+
+```text
+/backups/zar-daily/zar-20261031T030102Z/data.db
+sha256 1e69709378b3d9fe816d86639f5517e8b7af10676b00d597c4ee69e43d7e9ee8
+```
+
+A fresh manual recovery gate before the administrative-access change also
+passed at `08:48:03 UTC` as
+`/backups/zar-daily/zar-20261031T084803Z/data.db`, with the same SHA-256 and
+successful checksum/immutable quick/integrity checks.
+
 ## Remaining gates
 
-- Observe and record the first timer-triggered run after 03:00 UTC; the manual systemd run is proven, but the first scheduled event is not yet captured.
 - Add backup-age/failure alerting when an operator notification channel exists.
 - Move encrypted recovery to an independent destination and run a second-operator restore before customer/launch data or 2026-11-30.
 - Approve RPO, RTO, retention, jurisdiction and recovery-key custody.

@@ -1,8 +1,8 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-10-30 23:35 +03:30 (Asia/Tehran)
-Status: **IN PROGRESS — critical containment, host/service hardening and verified local backup automation passed; product/data correctness work remains**
-Change freeze: no feature work and no direct production mutation until the backup/restore and rollback gates below pass.
+Last updated: 2026-10-31 12:25 +03:30 (Asia/Tehran)
+Status: **IN PROGRESS — critical data/admin containment, host/service hardening and scheduled verified local backup automation passed; product/data correctness work remains**
+Change freeze: no feature work; every production mutation must continue through the backup/restore and rollback gates below.
 
 ## 1. Objective
 
@@ -39,17 +39,20 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - PocketBase service hardening evidence: `docs/stabilization/POCKETBASE-SERVICE-HARDENING-EVIDENCE-2026-10-30.md`
 - Local backup automation plan: `docs/stabilization/BACKUP-AUTOMATION-PLAN.md`
 - Local backup automation evidence: `docs/stabilization/BACKUP-AUTOMATION-EVIDENCE-2026-10-30.md`
+- Administrative access plan: `docs/stabilization/ADMIN-ACCESS-CONTAINMENT-PLAN.md`
+- Administrative access evidence: `docs/stabilization/ADMIN-ACCESS-CONTAINMENT-EVIDENCE-2026-10-31.md`
 - Temporary pre-customer recovery exception: `docs/stabilization/TEMPORARY-RECOVERY-EXCEPTION.md`
 - Recovery verifier: `server/tools/verify_recovery_set.py`
 - Local machine-readable recovery evidence: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\recovery-evidence-20261030\restore-report.json`
 - Sanitized server audit notes: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\server-review-notes.md`
+- Off-server administrative evidence archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\admin-access-20261031T084900Z\zar-admin-access-20261031T084900Z-evidence.tar`
 - User-facing handoff mirror: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\outputs\ZAR-STABILIZATION-HANDOFF.md`
 
 ### Production server
 
 - SSH alias: `zar-vps`
 - Host: `185.126.202.104`
-- SSH user currently used for audit: `root`
+- SSH user used for operations: `zaradmin` with non-interactive sudo
 - Application root: `/opt/zar/server`
 - PocketBase binary: `/opt/zar/server/pocketbase`
 - PocketBase data: `/opt/zar/server/pb_data/data.db`
@@ -60,6 +63,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Verified backup script/service/timer: `/usr/local/sbin/zar-backup`, `/etc/systemd/system/zar-backup.{service,timer}`
 - Local daily snapshots: `/backups/zar-daily/zar-YYYYMMDDTHHMMSSZ/`
 - Disabled legacy cron and rollback evidence: `/root/zar-backup-automation-20261030T200203Z`
+- Administrative access rollback/evidence: `/root/zar-admin-access-20261031T084900Z`
 - Public application URL: `https://app.titangold.ir`
 - Alternate URL: `https://zar.185-126-202-104.sslip.io`
 
@@ -88,8 +92,9 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - PocketBase is reverse-proxied by Caddy and now binds only to `127.0.0.1:8090`; direct external TCP 8090 is closed/filtered.
 - PocketBase runs as locked system account `zarapp` with `0700/0600` data modes, write confinement, no effective capabilities and a `2.8 OK` systemd exposure score.
 - SSH uses named `zaradmin`, public-key-only authentication; direct root/password authentication is disabled.
-- Local backups use atomic verified systemd snapshots with 30-day/minimum-seven retention. The generated format passed isolated restore/reconciliation, but the copies remain on the same server and the first naturally scheduled run is pending observation.
-- Production schema has a critical authorization defect: `zar_workspaces.deleteRule` is empty/public. Public user signup is also enabled.
+- Local backups use atomic verified systemd snapshots with 30-day/minimum-seven retention. The generated format passed isolated restore/reconciliation and the first natural timer run reported `BACKUP_OK`; copies still remain on the same server.
+- Workspace and cash-journal deletion defects are contained. Public user signup remains enabled and requires an explicit policy decision.
+- Public Caddy now denies the PocketBase dashboard, superuser name/ID routes and management APIs. Private Real-IP propagation and the loopback-only superuser whitelist are proven; operators use an SSH local tunnel.
 - No external monitoring/alerting channel exists yet. Tested recovery, containment, SSH, service and backup change/rollback evidence now exists.
 - Production was changed only through the documented gated changes recorded below; each passed health/integrity/reconciliation checks and no rollback was required.
 
@@ -109,7 +114,7 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 
 - 2026-10-28: Performed a read-only server inventory and service/schema/security audit.
 - 2026-10-28: Verified the public HTTPS endpoints and TLS health.
-- 2026-10-28: Verified local SQLite backup integrity with read-only checks; full restore drill remains pending.
+- 2026-10-28: Verified local SQLite backup integrity with read-only checks; the full restore drill was subsequently completed on 2026-10-30.
 - 2026-10-28 20:24 +03:30: Inspected GitHub repository metadata using the connected GitHub account.
 - 2026-10-28 20:26 +03:30: Cloned `master` at `e60d68d` to the local working path above.
 - 2026-10-28 20:28 +03:30: Created local branch `codex/stabilization-baseline`.
@@ -138,7 +143,10 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-10-30 15:20 +03:30: Pushed `codex/stabilization-baseline` and opened Draft PR #3 against `master`. GitGuardian and the real PocketBase authorization job passed immediately; Flutter CI was still running at this checkpoint. No merge was performed.
 - 2026-10-30 15:24 +03:30: Created and tested `zaradmin`, captured an off-server SSH/sudo rollback archive, kept a live root rollback session, installed and validated key-only SSH policy, reloaded SSH, proved new admin/sudo access, proved new root and password-only access are rejected, updated the local alias, and then closed the preserved root session. PocketBase remained active.
 - 2026-10-30 15:30 +03:30: Proved the proposed PocketBase sandbox with an isolated canary, captured stopped-state database and full-data rollback artifacts, then moved the live service from root to locked system account `zarapp`, restricted writes to `pb_data`, changed data modes to `0700/0600` and bound port `8090` to loopback. Counts/migrations/integrity/public health/external port/log/restart gates all passed; downtime was approximately one second and the systemd exposure score improved from `9.6 UNSAFE` to `2.8 OK`. The disposable canary data copy was removed after validation.
-- 2026-10-30 23:35 +03:30: Replaced the unsafe inline backup cron only after candidate success/failure/concurrency/retention tests and a successful installed systemd run. The generated atomic snapshot matched production and passed checksum, integrity, schema, counts, migrations and the full isolated PocketBase restore verifier. Timer is enabled for daily 03:00 UTC execution; the first scheduled event remains to be observed. Temporary unencrypted test copies were deleted after the machine-readable report was retained.
+- 2026-10-30 23:35 +03:30: Replaced the unsafe inline backup cron only after candidate success/failure/concurrency/retention tests and a successful installed systemd run. The generated atomic snapshot matched production and passed checksum, integrity, schema, counts, migrations and the full isolated PocketBase restore verifier. Timer is enabled for daily 03:00 UTC execution. Temporary unencrypted test copies were deleted after the machine-readable report was retained.
+- 2026-10-31 12:18 +03:30: Observed the first natural backup timer run from 03:01 UTC with `BACKUP_OK`. A fresh pre-admin-change snapshot also passed checksum and immutable quick/integrity checks.
+- 2026-10-31 12:19 +03:30: Deployed reviewed Caddy admin-route containment plus versioned trusted-proxy/superuser-IP settings. Public dashboard, superuser name/ID, schema, logs, backup, cron, SQL and impersonation routes return `404`; normal mobile routes retain baseline behavior. Outside Real-IP, forged-header rejection, SSH tunnel, external port closure, counts, migration delta, SQLite integrity, journals and `NRestarts=0` all passed. PocketBase restart-to-healthy was 559 ms; rollback was not required.
+- 2026-10-31 12:27 +03:30: GitHub Actions run #252 completed successfully at `859ece7`; both `flutter-checks` and `pocketbase-authorization` passed.
 
 ### Local commit checkpoint
 
@@ -150,24 +158,26 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - `d3f8e92` — `docs(stabilization): record recovery checkpoint`
 - `0699bfd` — `docs(stabilization): add production containment plan`
 - `e71b69a` — `feat(recovery): add encrypted local bundle fallback`
+- `14cb8d9` — `security(server): contain PocketBase admin access`
+- `6d29988` — `fix(server): block superuser collection id alias`
+- `859ece7` — `docs: tighten admin containment rollback guards`
 - All implementation and recovery changes through the production containment gate are committed or included in the current evidence update.
-- The branch is published in Draft PR #3 and remains unmerged. Production contains the two reviewed migrations; `master` will remain behind until CI, review and an explicit merge decision.
+- The branch is published in Draft PR #3 and remains unmerged. Production contains the three reviewed stabilization migrations (two deletion locks plus admin-access settings); `master` will remain behind until review and an explicit merge decision.
 
 ### Running now
 
-- Monitor Draft PR #3 CI and address only evidence-backed failures; do not merge automatically.
-- Observe post-change service health and preserve the pre/post encrypted recovery bundles.
+- Keep Draft PR #3 unmerged until an explicit review/merge decision; implementation CI is green at `859ece7`.
+- Observe post-change service health and preserve the encrypted recovery/evidence bundles.
 - Design of the broader reversal/tombstone and append-only audit model for remaining historical collections.
-- Prepare the next separate hardening plans; do not combine SSH, service-user, filesystem and proxy changes.
+- Prepare a separate PocketBase rate-limit/monitoring plan now that Real-IP is proven.
 
 ### Next safe actions
 
 1. Complete Draft PR #3 CI/review; do not merge without an explicit decision.
-2. Observe and record the first timer-triggered backup after 03:00 UTC.
-3. Decide whether public signup should remain enabled in the pre-customer environment.
-4. Restrict the public admin UI and add SSH/HTTP rate limiting through separate reviewed changes.
-5. Define server-enforced audit, reversal, concurrency and invariant behavior for the remaining historical collections.
-6. Replace the temporary independent-backup exception before customer data, launch or 2026-11-30.
+2. Decide whether public signup should remain enabled in the pre-customer environment.
+3. Enable/tune PocketBase rate limits and add external monitoring through a separate reviewed change.
+4. Define server-enforced audit, reversal, concurrency and invariant behavior for the remaining historical collections.
+5. Replace the temporary independent-backup exception before customer data, launch or 2026-11-30.
 
 ## 6. Known P0/P1 queue
 
@@ -178,11 +188,11 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - Establish an off-site encrypted backup. **Pre/post encrypted bundles now exist on the owner's Windows computer under a temporary pre-customer exception; independent placement and a second-operator drill remain mandatory before launch/customer data.**
 - Restrict SSH to a non-root administrative path with key authentication, then disable password/root login safely. **Completed and independently retested on 2026-10-30.**
 - Run PocketBase as a dedicated least-privilege service user and restrict `pb_data` permissions. **Completed and independently retested on 2026-10-30.**
-- Bind PocketBase to loopback. **Completed and independently retested on 2026-10-30.** Restrict the admin UI through Caddy after choosing the required operator access method.
+- Bind PocketBase to loopback. **Completed and independently retested on 2026-10-30.** Public admin/management routes and superuser traffic were additionally contained behind Caddy, an SSH tunnel and loopback whitelist on 2026-10-31.
 
 ### P1 — establish a reliable source of truth
 
-- Production migration history is reconciled locally: the two missing email-template migrations now match production byte-for-byte. Sanitized, hardened operational configuration still needs to be versioned.
+- Production migration history is reconciled locally: the two missing email-template migrations now match production byte-for-byte. Sanitized Caddy, PocketBase and backup systemd configurations are versioned; alerting and environment-specific secret custody remain open.
 - Prove clean builds/tests, record the Flutter/Android/JDK toolchain and create dependency/SBOM evidence.
 - Capture the currently installed APK version, package, signing-certificate fingerprint and artifact hash from a trusted device/build archive.
 - Protect `master`, require CI review, sign releases/commits as policy permits, and create versioned releases/checksums.
@@ -226,7 +236,7 @@ Scope conflict requiring owner decision: current repository documentation says t
 
 - No direct inspection of the Android APK currently installed on the user's phone has been performed.
 - Production signing key possession and backup have not been verified.
-- The local recovery drill and new 30-day/minimum-seven automation passed, but scheduled production snapshots remain on the same server; first natural timer execution is pending evidence.
+- The local recovery drill, 30-day/minimum-seven automation and first natural timer execution passed, but scheduled production snapshots remain on the same server.
 - Business scope (operational assistant versus full accounting ledger) is not yet confirmed.
 - Legal/tax/retention requirements and authoritative jurisdiction are not yet confirmed.
 - RPO, RTO, maximum tolerable downtime and availability SLO require owner decisions.

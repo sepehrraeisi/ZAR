@@ -1,6 +1,7 @@
 # ZAR+ PocketBase Administrative Access Containment Plan
 
-Status: prepared; execute as one reviewed proxy/settings change after backup and Caddy validation.
+Status: completed in production on 2026-10-31; all gates passed and rollback was
+not required. See `ADMIN-ACCESS-CONTAINMENT-EVIDENCE-2026-10-31.md`.
 
 ## Objective
 
@@ -105,6 +106,95 @@ No password, token, superuser record or customer row is read or recorded by this
    and reload Caddy.
 4. Start PocketBase and verify the reverted settings and public health.
 5. Re-run health, allowed-route, SQLite, count, migration, restart and log checks.
+
+Exact guarded rollback for this production change only (it intentionally
+restores the original public Caddy behavior and therefore is an emergency full
+rollback, not the preferred settings-only rollback):
+
+```bash
+sudo -n bash <<'ROLLBACK'
+set -Eeuo pipefail
+
+readonly evidence=/root/zar-admin-access-20261031T084900Z
+readonly migration=1793394000_trust_caddy_client_ip.js
+readonly migration_path=/opt/zar/server/pb_migrations/$migration
+readonly expected_settings='["X-Zar-Client-IP"]|0|["127.0.0.1","::1"]'
+readonly baseline_settings='[]|0|[]'
+stopped=0
+
+settings_value() {
+  sqlite3 -readonly /opt/zar/server/pb_data/data.db \
+    "SELECT json_extract(value, '$.trustedProxy.headers') || '|' ||
+            json_extract(value, '$.trustedProxy.useLeftmostIP') || '|' ||
+            json_extract(value, '$.superuserIPs')
+       FROM _params WHERE id='settings';"
+}
+
+latest_migration() {
+  sqlite3 -readonly /opt/zar/server/pb_data/data.db \
+    "SELECT file FROM _migrations ORDER BY applied DESC, file DESC LIMIT 1;"
+}
+
+migration_count() {
+  sqlite3 -readonly /opt/zar/server/pb_data/data.db \
+    "SELECT count(*) FROM _migrations WHERE file='$migration';"
+}
+
+restart_on_error() {
+  rc=$?
+  trap - ERR
+  if [ "$stopped" = 1 ]; then
+    systemctl start zar-server || true
+  fi
+  echo "ROLLBACK_STOPPED rc=$rc; filtering Caddy remains loaded; inspect before continuing" >&2
+  exit "$rc"
+}
+trap restart_on_error ERR
+
+# Refuse drift before the maintenance window.
+test "$(sha256sum /etc/caddy/Caddyfile | awk '{print $1}')" = \
+  4586188b7917619a54e3c48c8aad14751ed4807118a78f33ae7a0d84b9bced65
+test "$(sha256sum "$evidence/Caddyfile.before" | awk '{print $1}')" = \
+  694597fc2cd0c259740ffb5df68d92e581dce5637790e2393bc9ad3c210dc4c4
+test "$(migration_count)" = 1
+test "$(latest_migration)" = "$migration"
+test "$(settings_value)" = "$expected_settings"
+
+systemctl stop zar-server
+stopped=1
+
+# Recheck after traffic is stopped; never overwrite an intervening edit.
+test "$(migration_count)" = 1
+test "$(latest_migration)" = "$migration"
+test "$(settings_value)" = "$expected_settings"
+
+printf 'y\n' | runuser -u zarapp -- /opt/zar/server/pocketbase migrate down 1 \
+  --dir=/opt/zar/server/pb_data \
+  --migrationsDir=/opt/zar/server/pb_migrations
+test "$(migration_count)" = 0
+test "$(settings_value)" = "$baseline_settings"
+rm -f -- "$migration_path"
+
+# PocketBase remains stopped until the original Caddyfile is validated/loaded.
+install -o root -g root -m 0644 "$evidence/Caddyfile.before" /etc/caddy/Caddyfile
+/usr/local/bin/caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+systemctl reload caddy
+systemctl start zar-server
+stopped=0
+
+curl -fsS http://127.0.0.1:8090/api/health >/dev/null
+curl -fsS https://app.titangold.ir/api/health >/dev/null
+test "$(settings_value)" = "$baseline_settings"
+test "$(sqlite3 -readonly /opt/zar/server/pb_data/data.db 'PRAGMA integrity_check;')" = ok
+systemctl is-active --quiet caddy
+systemctl is-active --quiet zar-server
+echo ROLLBACK_PASS
+ROLLBACK
+```
+
+The clone migration down/up path was exercised. The production rollback above
+was prepared and armed during deployment but was not executed because every
+post-change gate passed.
 
 If only Caddy validation fails, do not change settings or reload either service.
 

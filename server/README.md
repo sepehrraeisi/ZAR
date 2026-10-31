@@ -55,7 +55,23 @@ docs/stabilization/POCKETBASE-SERVICE-HARDENING-EVIDENCE-2026-10-30.md
 
 ## HTTPS و پنل مدیریت
 
-Caddy باید به `127.0.0.1:8090` proxy کند. API و health از HTTPS عمومی تست می‌شوند، اما پنل `/_/` نباید بدون تصمیم و کنترل جداگانه در اینترنت رها شود. روش پیشنهادی عملیات، بستن `/_/` در Caddy و استفاده از SSH local forwarding برای دسترسی مدیر است؛ این تغییر باید plan/rollback مستقل داشته باشد.
+Caddy باید از template نسخه‌شدهٔ `server/deploy/Caddyfile` استفاده کند و به
+`127.0.0.1:8090` proxy کند. مسیرهای مدیریت بازبینی‌شدهٔ PocketBase 0.40.4،
+از جمله dashboard و superuser login/records، در HTTPS عمومی `404` هستند. migration
+`1793394000_trust_caddy_client_ip.js` نیز header خصوصی‌ای را که Caddy همیشه
+بازنویسی می‌کند به‌عنوان Real-IP می‌پذیرد و superuser را به loopback محدود
+می‌کند. این migration را بدون Caddy template و listener لوکال اعمال نکنید.
+
+دسترسی اپراتور به dashboard فقط از تونل محلی است:
+
+```text
+ssh -N -T -o ExitOnForwardFailure=yes -L 127.0.0.1:18090:127.0.0.1:8090 zar-vps
+http://127.0.0.1:18090/_/
+```
+
+این مسیر در production آزمایش شده است. اگر CDN یا reverse proxy دیگری قبل از
+Caddy اضافه شد، یا PocketBase ارتقا یافت، مرز Real-IP و route matrix مدیریت باید
+پیش از انتشار دوباره بررسی و تست شوند.
 
 هیچ اپ موبایل نباید مستقیماً به IP و پورت 8090 متصل شود. URL زمان build باید HTTPS باشد:
 
@@ -112,8 +128,12 @@ docs/stabilization/BACKUP-AUTOMATION-EVIDENCE-2026-10-30.md
 ## گیت‌های پس از هر تغییر
 
 - `PRAGMA quick_check` و `integrity_check` برابر `ok`.
-- migration history، ruleها و countهای دامنه با baseline برابر.
+- migration history دقیقاً برابر expected delta، ruleها برابر expected state و
+  countهای دامنه بدون تغییر.
 - health داخلی و هر دو URL عمومی برابر HTTP 200.
+- dashboard و مسیرهای مدیریت بازبینی‌شدهٔ نسخهٔ نصب‌شده برابر HTTP 404 و تونل
+  SSH برابر 200.
+- Real-IP بیرونی non-loopback و superuser whitelist فقط loopback.
 - `NRestarts=0` و journal بدون خطای جدید.
 - port 8090 از بیرون بسته و listener فقط loopback.
 - backup جدید checksum/restore/reconciliation را پاس کند.

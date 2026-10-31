@@ -88,8 +88,12 @@ Both stopped-state artifacts are mode `0600` on the server. The SQLite hash is a
 
 ## Remaining operations work
 
-- The legacy root cron backup command must be replaced with a verified script that enforces mode `0600`, reports failures and verifies each backup.
-- The PocketBase admin UI is still reachable through the public reverse proxy; restrict it after the required operations access method is chosen.
+- Resolved on 2026-10-30: the legacy root cron was replaced by the verified
+  systemd backup service/timer; its first natural run passed on 2026-10-31. See
+  `BACKUP-AUTOMATION-EVIDENCE-2026-10-30.md`.
+- Resolved on 2026-10-31: the public reverse proxy now denies the PocketBase
+  admin/management surface and operators use a verified SSH local tunnel. See
+  `ADMIN-ACCESS-CONTAINMENT-EVIDENCE-2026-10-31.md`.
 - Add a separately reviewed SSH/HTTP rate-limit or ban policy.
 - Decide the intended public signup policy before customer or launch data.
 - Test service and backup restoration again after any future PocketBase upgrade.
