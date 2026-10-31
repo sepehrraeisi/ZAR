@@ -1,0 +1,19 @@
+app.titangold.ir, zar.185-126-202-104.sslip.io {
+	@pb_dashboard path /_ /_/*
+	@pb_superuser path /api/collections/_superusers /api/collections/_superusers/* /api/collections/pbc_3142635823 /api/collections/pbc_3142635823/*
+	@pb_management path /api/settings /api/settings/* /api/logs /api/logs/* /api/backups /api/backups/* /api/crons /api/crons/* /api/sql /api/sql/*
+	@pb_privileged_collections path_regexp pb_privileged_collections (?i)^/api/collections(?:/?$|/meta/(?:scaffolds|oauth2-providers|dry-run-view)/?$|/[^/]+(?:/truncate)?/?$|/[^/]+/impersonate(?:/.*)?$)
+
+	route {
+		respond @pb_dashboard 404
+		respond @pb_superuser 404
+		respond @pb_management 404
+		respond @pb_privileged_collections 404
+
+		reverse_proxy 127.0.0.1:8090 {
+			# Always replace any client-supplied value. PocketBase trusts this private
+			# header only because its listener is restricted to loopback behind Caddy.
+			header_up X-Zar-Client-IP {remote_host}
+		}
+	}
+}

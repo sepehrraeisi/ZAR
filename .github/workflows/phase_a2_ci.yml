@@ -11,6 +11,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pocketbase-authorization:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      POCKETBASE_VERSION: 0.40.4
+      POCKETBASE_LINUX_AMD64_SHA256: 9042ec818570e79c3628dadcd0a756c1496d9e1173918ec409d133c02f82e5fa
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download verified PocketBase
+        run: |
+          curl --fail --silent --show-error --location \
+            --output pocketbase.zip \
+            "https://github.com/pocketbase/pocketbase/releases/download/v${POCKETBASE_VERSION}/pocketbase_${POCKETBASE_VERSION}_linux_amd64.zip"
+          echo "${POCKETBASE_LINUX_AMD64_SHA256}  pocketbase.zip" | sha256sum --check --strict
+          unzip -q pocketbase.zip pocketbase
+          chmod +x pocketbase
+          ./pocketbase --version
+
+      - name: Test PocketBase authorization and migration lineages
+        run: |
+          python3 server/tests/pocketbase_authz_test.py --pocketbase "$PWD/pocketbase"
+          python3 server/tests/pocketbase_migration_lineage_test.py --pocketbase "$PWD/pocketbase"
+
   flutter-checks:
     runs-on: ubuntu-latest
     steps:
@@ -27,7 +54,7 @@ jobs:
         run: flutter --version
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Analyze
         run: flutter analyze --no-fatal-infos

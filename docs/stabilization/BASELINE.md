@@ -1,0 +1,154 @@
+# ZAR+ Stabilization Baseline Evidence
+
+Captured: 2026-10-28 (Asia/Tehran)  
+Purpose: immutable identification data for the start of stabilization. This file contains no secrets and no customer data.
+
+## Source repository
+
+- Repository: `https://github.com/sepehrraeisi/ZAR`
+- Default branch: `master`
+- Baseline commit: `e60d68dda3c1876dc5af99e36c1f455b76fd8a50`
+- Commit verification: unsigned
+- GitHub API state at capture:
+  - repository public
+  - `master` reported unprotected
+  - open pull requests: 0
+  - open issues: 0
+  - releases: 0
+- Local stabilization branch: `codex/stabilization-baseline`
+
+## Production service identity
+
+- SSH target alias: `zar-vps`
+- Hostname reported by server: `ubuntu`
+- Server application root: `/opt/zar/server`
+- Service: `zar-server.service`
+- Service state at `2026-10-28T15:52:05Z`: `active/running`
+- PocketBase version: `0.40.4`
+- ExecStart: `/opt/zar/server/pocketbase serve --http=0.0.0.0:8090`
+- systemd `User`/`Group`: unset, therefore root under the system service manager
+
+## Production artifact checksums
+
+SHA-256:
+
+```text
+14ec215bc7aaceda356713cd4b29aa7fcfee854ff2ae1151c5ddba41b43aec8a  /opt/zar/server/pocketbase
+e3d38d487e8c64ded5691ab16b1b92dc6a1e15bed4eff994a69801ecbb4630aa  /opt/zar/server/pb_migrations/1758400000_zar_collections.js
+ed63ff593fa7fc53fe32dd5f8850a6f70736dea8a62a8441b35f7345b162b97f  /opt/zar/server/pb_migrations/1790899200_cash_journal.js
+132388ee2db3fda91b518192d398065dcd469bb88d509ab4a99800062050c613  /opt/zar/server/pb_migrations/1793020980_updated_users.js
+ebe4707098be1a55d4eb68b5ce2837a1931d5197f3fff5fad755c9f13d907a2c  /opt/zar/server/pb_migrations/1793023512_updated_users.js
+e74558d96fb64e1bed9f655aaf05d02f46b84ec4726429575244764f15a99334  /etc/systemd/system/zar-server.service
+694597fc2cd0c259740ffb5df68d92e581dce5637790e2393bc9ad3c210dc4c4  /etc/caddy/Caddyfile
+```
+
+The first tracked migration is byte-identical to Git. The cash-journal migration has different byte hashes because the repository checkout uses CRLF, but its normalized LF text is exactly equal to production (`830` characters each). The two `179302*` migrations exist only on production at baseline; they customize Persian user email templates and must be recovered into version control after review.
+
+## Production paths, modes and ownership
+
+```text
+/opt/zar/server/pocketbase              size=32727200  mode=755  owner=root:root
+/opt/zar/server/pb_data/data.db         size=270336    mode=644  owner=root:root
+/opt/zar/server/pb_data/auxiliary.db    size=1011712   mode=644  owner=root:root
+/opt/zar/server/pb_migrations           size=4096      mode=755  owner=root:root
+/etc/systemd/system/zar-server.service  size=236       mode=644  owner=root:root
+/etc/caddy/Caddyfile                    size=81        mode=644  owner=root:root
+```
+
+The database file permissions are a confirmed security finding. Do not change them until a dedicated service user, backup, restore evidence and rollback sequence are prepared together.
+
+## Database and initial backup evidence
+
+- Live `data.db` SQLite `PRAGMA quick_check`: `ok` at capture.
+- Backups are local on the same server and do not yet satisfy disaster recovery requirements.
+- Latest verified server-created SQLite backup at the 2026-10-30 drill: `/backups/zar-2026-10-30.db`.
+- Backup SHA-256: `a0da2edc42d46ddff0737ccaa4e40be7f5b141b3be92188c7cbae00828948907`.
+- The backup was copied read-only into local quarantine and restored with PocketBase `0.40.4` in a disposable environment.
+- Source/restored `quick_check` and `integrity_check`: `ok`; restored health: pass; all eight domain-table counts and canonical content hashes reconciled exactly.
+- The pending workspace-deletion and cash-journal deletion-lock migrations applied only to the disposable restored copy; production remained unchanged.
+- Backup files were mode `0644` at initial capture. Existing files were normalized to `0600` and the legacy job was replaced on 2026-10-30; see the checkpoint below.
+
+```text
+zar-2026-10-25.db  size=266240  quick_check=ok  sha256=1f491301e7ce5194593ea2ebb63e83cc613b2d171e6612410ace6eb492498c12
+zar-2026-10-26.db  size=266240  quick_check=ok  sha256=1f491301e7ce5194593ea2ebb63e83cc613b2d171e6612410ace6eb492498c12
+zar-2026-10-27.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f70684a0bbf3180f8081337354f56c48eff852651160
+zar-2026-10-28.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f70684a0bbf3180f8081337354f56c48eff852651160
+```
+
+`quick_check=ok` is necessary but not a restore drill. Required next evidence is a restored isolated PocketBase instance, schema verification, authentication/API checks and business-data reconciliation.
+
+## Repository/production drift recorded
+
+1. Production has two untracked user-template migrations.
+2. Repository documentation and production both configure PocketBase on `0.0.0.0:8090`; hardening should move it to loopback behind Caddy.
+3. Repository deployment documentation creates a root-run systemd service; this must be replaced by a least-privilege versioned unit.
+4. Repository backup documentation describes only a local copy of `data.db`; it omits configuration, migrations, keys/certificates where applicable, encryption, off-site retention and restore/reconciliation.
+5. `zar_workspaces.deleteRule` is committed as an empty string and is present in production; a new forward migration is required rather than editing applied migration history.
+6. The two production-only email-template migrations were recovered byte-for-byte into the local branch on 2026-10-30. Their raw SHA-256 values match the already-applied production files; the branch is published in Draft PR #3.
+
+## Production containment checkpoint — 2026-10-30
+
+- `1793260800_lock_workspace_deletion.js` applied successfully.
+- `1793347200_lock_cash_entry_deletion.js` applied successfully.
+- Workspace delete, cash update and cash delete rules are now `NULL` in production.
+- All eight domain-table record counts remained unchanged.
+- Internal and both public health endpoints returned HTTP `200`; `NRestarts=0`.
+- Direct external port `8090` remained unreachable.
+- Post-change backup SHA-256: `1e69709378b3d9fe816d86639f5517e8b7af10676b00d597c4ee69e43d7e9ee8`.
+- Post-change isolated restore and encrypted local bundle verification passed.
+
+## SSH hardening checkpoint — 2026-10-30
+
+- Created and verified non-root administrative account `zaradmin` using the existing ED25519 key.
+- Disabled direct root login, password authentication and keyboard-interactive authentication.
+- Required public-key authentication; reduced `MaxAuthTries` from `6` to `3` and `LoginGraceTime` from `120` to `30` seconds.
+- `sshd -t`, new admin login, non-interactive sudo, root rejection and password-only rejection all passed.
+- SSH and PocketBase services remained active; rollback was not required.
+
+## PocketBase service hardening checkpoint — 2026-10-30
+
+- A separate canary restored from production data passed the proposed service sandbox before the live change.
+- PocketBase now runs as locked, non-login system account `zarapp`, with no effective Linux capabilities and `NoNewPrivileges=1`.
+- PocketBase now listens only on `127.0.0.1:8090`; Caddy remains the only public path.
+- Application code/migrations remain root-owned; only `pb_data` is writable to the service.
+- `pb_data`/database modes are now `0700`/`0600`.
+- Systemd exposure improved from `9.6 UNSAFE` to `2.8 OK`.
+- Counts, migration history, SQLite integrity, public health, external port closure, logs and restart count passed after an approximately one-second maintenance interval.
+
+## Local backup automation checkpoint — 2026-10-30
+
+- Replaced broad inline cron with versioned `zar_backup.sh` and a hardened systemd oneshot/timer.
+- Snapshots are atomically published with SHA-256, metadata, immutable quick/integrity/schema checks, `0700/0600` modes and a concurrency lock.
+- Retention is scoped only to exact daily snapshot directories, 30 days and never fewer than seven; named rollback artifacts are excluded.
+- Candidate success, corrupt-source cleanup, concurrency rejection and retention safety tests passed.
+- The first installed snapshot matched production hash/counts/migrations and passed the full isolated PocketBase recovery verifier.
+- The timer is active. Its first natural trigger at `2026-10-31 03:01:02 UTC`
+  reported `BACKUP_OK`; a second manual pre-change run at 08:48 UTC also passed.
+- This improves local recovery but does not close the independent/off-site backup gate.
+
+## Administrative access containment checkpoint — 2026-10-31
+
+- Caddy now returns public `404` for the PocketBase dashboard, superuser
+  name/ID routes and all reviewed management/schema/impersonation APIs.
+- Normal mobile health, auth and record routes retained their baseline status.
+- Caddy overwrites `X-Zar-Client-IP`; PocketBase trusts only that header and
+  restricts authenticated superusers to `127.0.0.1`/`::1`.
+- An outside-workstation probe was logged as non-loopback; a forged-header
+  integration test and SSH-tunnel access both passed.
+- Migration `1793394000_trust_caddy_client_ip.js` is applied; counts and SQLite
+  integrity remained unchanged/`ok`; restart-to-healthy was `559 ms`.
+- Installed Caddy SHA-256:
+  `4586188b7917619a54e3c48c8aad14751ed4807118a78f33ae7a0d84b9bced65`.
+- Full evidence: `ADMIN-ACCESS-CONTAINMENT-EVIDENCE-2026-10-31.md`.
+
+## Baseline limitations
+
+- No hash or signing-certificate fingerprint of the APK installed on the user's phone is captured yet.
+- No signing keystore was accessed or verified.
+- Live database content was not copied into Git and must never be committed.
+- The restore/application reconciliation drill passed, but an independent
+  destination and second-operator drill are still pending under the temporary
+  pre-customer exception.
+- Sanitized Caddy, PocketBase service and backup unit templates are versioned;
+  secrets and live database content remain excluded.
+

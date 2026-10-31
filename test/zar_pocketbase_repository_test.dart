@@ -60,6 +60,33 @@ void main() {
     expect(snapshot.deals, isEmpty);
   });
 
+  test(
+    'load and restore discovery are scoped to the selected workspace',
+    () async {
+      final listFilters = <String?>[];
+      final client = MockClient((request) async {
+        if (request.method == 'GET' && request.url.path.endsWith('/records')) {
+          listFilters.add(request.url.queryParameters['filter']);
+          return _json({'items': [], 'totalPages': 1});
+        }
+        return _json({});
+      });
+      final repository = ZarPocketBaseRepository(
+        client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+        workspaceId: 'w1',
+        businessId: 'w1',
+      );
+
+      await repository.loadCompleteSnapshot();
+      await repository.replaceCompleteSnapshot(
+        const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+      );
+
+      expect(listFilters, hasLength(14));
+      expect(listFilters, everyElement("workspace='w1'"));
+    },
+  );
+
   test('savePerson upserts: PATCH first, falls back to POST on 404', () async {
     final calls = <String>[];
     final client = MockClient((request) async {
@@ -84,9 +111,7 @@ void main() {
   test('rows carry the workspace relation and JSON payload', () async {
     Map<String, Object?>? sentBody;
     final client = MockClient((request) async {
-      sentBody = Map<String, Object?>.from(
-        jsonDecode(request.body) as Map,
-      );
+      sentBody = Map<String, Object?>.from(jsonDecode(request.body) as Map);
       return _json({'id': 'p1'});
     });
     final repository = ZarPocketBaseRepository(
@@ -101,37 +126,40 @@ void main() {
     expect(data['displayName'], 'مشتری');
   });
 
-  test('replaceCompleteSnapshot validates allocations before touching server', () async {
-    final client = MockClient((request) async => _json({'id': 'x'}));
-    final repository = ZarPocketBaseRepository(
-      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
-      workspaceId: 'w1',
-      businessId: 'w1',
-    );
-    expect(
-      () => repository.replaceCompleteSnapshot(
-        ZarDomainSnapshot(
-          people: [_person('p1', 'مشتری')],
-          deals: const [],
-          settlements: const [],
-          paymentAllocations: [
-            ZarPaymentAllocation(
-              settlementId: 'missing',
-              targetType: ZarPaymentAllocationTarget.deal,
-              targetId: 'missing',
-              amount: ZarTomanAmount(100),
-            ),
-          ],
+  test(
+    'replaceCompleteSnapshot validates allocations before touching server',
+    () async {
+      final client = MockClient((request) async => _json({'id': 'x'}));
+      final repository = ZarPocketBaseRepository(
+        client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+        workspaceId: 'w1',
+        businessId: 'w1',
+      );
+      expect(
+        () => repository.replaceCompleteSnapshot(
+          ZarDomainSnapshot(
+            people: [_person('p1', 'مشتری')],
+            deals: const [],
+            settlements: const [],
+            paymentAllocations: [
+              ZarPaymentAllocation(
+                settlementId: 'missing',
+                targetType: ZarPaymentAllocationTarget.deal,
+                targetId: 'missing',
+                amount: ZarTomanAmount(100),
+              ),
+            ],
+          ),
         ),
-      ),
-      throwsFormatException,
-    );
-  });
+        throwsFormatException,
+      );
+    },
+  );
 
   test('server errors surface as ZarPocketBaseException', () async {
-    final client = MockClient((request) async => _json({
-      'message': 'Validation failed.',
-    }, 400));
+    final client = MockClient(
+      (request) async => _json({'message': 'Validation failed.'}, 400),
+    );
     final repository = ZarPocketBaseRepository(
       client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
       workspaceId: 'w1',

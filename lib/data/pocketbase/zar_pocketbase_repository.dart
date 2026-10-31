@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-
 import '../../domain/zar_domain_models.dart';
 import '../../domain/zar_payment_allocation.dart';
 import '../../domain/zar_cash_entry.dart';
@@ -45,20 +44,30 @@ class ZarPocketBaseRepository
   static const _allocations = 'zar_allocations';
   static const _cash = 'zar_cash_entries';
 
+  String get _workspaceFilter => "workspace='$_workspaceId'";
+
   @override
   Future<void> appendCashEntry(ZarCashEntry entry) async {
     final snapshot = await loadCompleteSnapshot();
     final existing = snapshot.cashEntries.where((e) => e.id == entry.id);
     if (existing.isNotEmpty) {
-      if (jsonEncode(existing.single.toMap()) != jsonEncode(entry.toMap())) throw StateError('Cash entries are immutable.');
+      if (jsonEncode(existing.single.toMap()) != jsonEncode(entry.toMap())) {
+        throw StateError('Cash entries are immutable.');
+      }
       return;
     }
-    validateCashEntries(entries: [...snapshot.cashEntries, entry], deals: snapshot.deals, settlements: snapshot.settlements);
+    validateCashEntries(
+      entries: [...snapshot.cashEntries, entry],
+      deals: snapshot.deals,
+      settlements: snapshot.settlements,
+    );
     await _client.createRecord(_cash, {'id': entry.id, ..._row(entry.toMap())});
   }
 
-  Map<String, Object?> _row(Object payload) =>
-      {'workspace': _workspaceId, 'data': payload};
+  Map<String, Object?> _row(Object payload) => {
+    'workspace': _workspaceId,
+    'data': payload,
+  };
 
   Future<void> _upsert(
     String collection, {
@@ -79,16 +88,18 @@ class ZarPocketBaseRepository
   @override
   Future<ZarDomainSnapshot> loadCompleteSnapshot() async {
     final results = await Future.wait([
-      _client.listRecords(_people),
-      _client.listRecords(_deals),
-      _client.listRecords(_settlements),
-      _client.listRecords(_coinTypes),
-      _client.listRecords(_currencyTypes),
-      _client.listRecords(_allocations),
-      _client.listRecords(_cash),
+      _client.listRecords(_people, filter: _workspaceFilter),
+      _client.listRecords(_deals, filter: _workspaceFilter),
+      _client.listRecords(_settlements, filter: _workspaceFilter),
+      _client.listRecords(_coinTypes, filter: _workspaceFilter),
+      _client.listRecords(_currencyTypes, filter: _workspaceFilter),
+      _client.listRecords(_allocations, filter: _workspaceFilter),
+      _client.listRecords(_cash, filter: _workspaceFilter),
     ]);
     return ZarDomainSnapshot(
-      cashEntries: results[6].map((row) => ZarCashEntry.fromMap(_data(row))).toList(),
+      cashEntries: results[6]
+          .map((row) => ZarCashEntry.fromMap(_data(row)))
+          .toList(),
       people: results[0]
           .map((row) => _codec.personFromRecord(_data(row)))
           .toList(growable: false),
@@ -121,8 +132,13 @@ class ZarPocketBaseRepository
 
   @override
   Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
-    validateCashEntries(entries: snapshot.cashEntries, deals: snapshot.deals, settlements: snapshot.settlements);
-    final operations = <({String method, String url, Map<String, Object?>? body})>[];
+    validateCashEntries(
+      entries: snapshot.cashEntries,
+      deals: snapshot.deals,
+      settlements: snapshot.settlements,
+    );
+    final operations =
+        <({String method, String url, Map<String, Object?>? body})>[];
     validateZarPaymentAllocations(
       deals: snapshot.deals,
       settlements: snapshot.settlements,
@@ -134,7 +150,10 @@ class ZarPocketBaseRepository
       String collection,
       List<ZarDomainRecord> records,
     ) async {
-      final existing = await _client.listRecords(collection);
+      final existing = await _client.listRecords(
+        collection,
+        filter: _workspaceFilter,
+      );
       final deletes = [
         for (final row in existing)
           (
@@ -143,7 +162,7 @@ class ZarPocketBaseRepository
             body: null,
           ),
       ];
-       operations.addAll(deletes);
+      operations.addAll(deletes);
       final creates = [
         for (final record in records)
           (
@@ -155,51 +174,40 @@ class ZarPocketBaseRepository
       operations.addAll(creates);
     }
 
-    await replaceAll(
-      _people,
-      [
-        for (final person in snapshot.people)
-          (id: person.id, payload: _codec.personRecord(person)),
-      ],
-    );
-    await replaceAll(
-      _deals,
-      [
-        for (final deal in snapshot.deals)
-          (id: deal.id, payload: _codec.dealRecord(deal)),
-      ],
-    );
-    await replaceAll(
-      _settlements,
-      [
-        for (final settlement in snapshot.settlements)
-          (id: settlement.id, payload: _codec.settlementRecord(settlement)),
-      ],
-    );
-    await replaceAll(
-      _coinTypes,
-      [
-        for (final type in snapshot.coinTypes)
-          (id: type.id, payload: type.toMap()),
-      ],
-    );
-    await replaceAll(
-      _currencyTypes,
-      [
-        for (final type in snapshot.currencyTypes)
-          (id: type.id, payload: type.toMap()),
-      ],
-    );
-    await replaceAll(
-      _allocations,
-      [
-        for (final allocation in snapshot.paymentAllocations)
-          (id: _allocationId(allocation), payload: allocation.toMap()),
-      ],
-    );
-    await replaceAll(_cash, [for (final entry in snapshot.cashEntries) (id: entry.id, payload: entry.toMap())]);
-    if (operations.length > 500) throw StateError('Atomic restore exceeds the server batch limit.');
-    if (operations.isNotEmpty) await _client.batch(operations);
+    await replaceAll(_people, [
+      for (final person in snapshot.people)
+        (id: person.id, payload: _codec.personRecord(person)),
+    ]);
+    await replaceAll(_deals, [
+      for (final deal in snapshot.deals)
+        (id: deal.id, payload: _codec.dealRecord(deal)),
+    ]);
+    await replaceAll(_settlements, [
+      for (final settlement in snapshot.settlements)
+        (id: settlement.id, payload: _codec.settlementRecord(settlement)),
+    ]);
+    await replaceAll(_coinTypes, [
+      for (final type in snapshot.coinTypes)
+        (id: type.id, payload: type.toMap()),
+    ]);
+    await replaceAll(_currencyTypes, [
+      for (final type in snapshot.currencyTypes)
+        (id: type.id, payload: type.toMap()),
+    ]);
+    await replaceAll(_allocations, [
+      for (final allocation in snapshot.paymentAllocations)
+        (id: _allocationId(allocation), payload: allocation.toMap()),
+    ]);
+    await replaceAll(_cash, [
+      for (final entry in snapshot.cashEntries)
+        (id: entry.id, payload: entry.toMap()),
+    ]);
+    if (operations.length > 500) {
+      throw StateError('Atomic restore exceeds the server batch limit.');
+    }
+    if (operations.isNotEmpty) {
+      await _client.batch(operations);
+    }
   }
 
   static const _batchChunk = 400;
@@ -226,25 +234,21 @@ class ZarPocketBaseRepository
     required DateTime from,
     required DateTime through,
     int limit = 250,
-  }) async =>
-      (await loadCompleteSnapshot())
-          .settlements
-          .where((item) => item.isOpen)
-          .where((item) => !item.scheduledAt.isBefore(from))
-          .where((item) => item.scheduledAt.isBefore(through))
-          .take(limit)
-          .toList(growable: false);
+  }) async => (await loadCompleteSnapshot()).settlements
+      .where((item) => item.isOpen)
+      .where((item) => !item.scheduledAt.isBefore(from))
+      .where((item) => item.scheduledAt.isBefore(through))
+      .take(limit)
+      .toList(growable: false);
 
   @override
   Future<List<ZarSettlement>> loadOverdueSettlements({
     required DateTime now,
     int limit = 100,
-  }) async =>
-      (await loadCompleteSnapshot())
-          .settlements
-          .where((item) => item.isOpen && item.scheduledAt.isBefore(now))
-          .take(limit)
-          .toList(growable: false);
+  }) async => (await loadCompleteSnapshot()).settlements
+      .where((item) => item.isOpen && item.scheduledAt.isBefore(now))
+      .take(limit)
+      .toList(growable: false);
 
   @override
   Future<List<ZarSettlement>> loadRecentSettlements({int limit = 250}) async {
@@ -265,11 +269,11 @@ class ZarPocketBaseRepository
     required String personId,
     int limit = 100,
   }) async {
-    final result = (await loadCompleteSnapshot())
-        .settlements
-        .where((item) => item.personId == personId)
-        .toList()
-      ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
+    final result =
+        (await loadCompleteSnapshot()).settlements
+            .where((item) => item.personId == personId)
+            .toList()
+          ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
     return result.take(limit).toList(growable: false);
   }
 
@@ -278,19 +282,17 @@ class ZarPocketBaseRepository
     required String personId,
     int limit = 100,
   }) async {
-    final result = (await loadCompleteSnapshot())
-        .deals
-        .where((item) => item.personId == personId)
-        .toList()
-      ..sort((a, b) => b.dealAt.compareTo(a.dealAt));
+    final result =
+        (await loadCompleteSnapshot()).deals
+            .where((item) => item.personId == personId)
+            .toList()
+          ..sort((a, b) => b.dealAt.compareTo(a.dealAt));
     return result.take(limit).toList(growable: false);
   }
 
   @override
-  Future<void> savePerson(
-    ZarPerson person, {
-    String auditAction = 'edit',
-  }) => _upsert(_people, id: person.id, body: _row(_codec.personRecord(person)));
+  Future<void> savePerson(ZarPerson person, {String auditAction = 'edit'}) =>
+      _upsert(_people, id: person.id, body: _row(_codec.personRecord(person)));
 
   @override
   Future<void> saveDeal(ZarDeal deal, {String auditAction = 'edit'}) =>
@@ -307,22 +309,17 @@ class ZarPocketBaseRepository
   );
 
   @override
-  Future<void> archivePerson(ZarPerson person) => savePerson(
-    _copyPerson(person, archived: true),
-    auditAction: 'archive',
-  );
+  Future<void> archivePerson(ZarPerson person) =>
+      savePerson(_copyPerson(person, archived: true), auditAction: 'archive');
 
   @override
-  Future<void> restorePerson(ZarPerson person) => savePerson(
-    _copyPerson(person, archived: false),
-    auditAction: 'restore',
-  );
+  Future<void> restorePerson(ZarPerson person) =>
+      savePerson(_copyPerson(person, archived: false), auditAction: 'restore');
 
   @override
   Future<List<ZarCoinType>> loadCoinTypes({
     bool includeArchived = false,
-  }) async => (await loadCompleteSnapshot())
-      .coinTypes
+  }) async => (await loadCompleteSnapshot()).coinTypes
       .where((item) => includeArchived || !item.archived)
       .toList(growable: false);
 
@@ -343,18 +340,16 @@ class ZarPocketBaseRepository
   @override
   Future<List<ZarCurrencyType>> loadCurrencyTypes({
     bool includeArchived = false,
-  }) async => (await loadCompleteSnapshot())
-      .currencyTypes
+  }) async => (await loadCompleteSnapshot()).currencyTypes
       .where((item) => includeArchived || !item.archived)
       .toList(growable: false);
 
   @override
-  Future<void> saveCurrencyType(ZarCurrencyType currencyType) =>
-      _upsert(
-        _currencyTypes,
-        id: currencyType.id,
-        body: _row(currencyType.toMap()),
-      );
+  Future<void> saveCurrencyType(ZarCurrencyType currencyType) => _upsert(
+    _currencyTypes,
+    id: currencyType.id,
+    body: _row(currencyType.toMap()),
+  );
 
   @override
   Future<void> archiveCurrencyType(ZarCurrencyType currencyType) =>
@@ -392,8 +387,7 @@ class ZarPocketBaseRepository
       for (final row in existing)
         (
           method: 'DELETE',
-          url:
-              '/api/collections/$_allocations/records/${row['id']! as String}',
+          url: '/api/collections/$_allocations/records/${row['id']! as String}',
           body: null,
         ),
     ];
@@ -402,16 +396,16 @@ class ZarPocketBaseRepository
         (
           method: 'POST',
           url: '/api/collections/$_allocations/records',
-          body: {
-            'id': _allocationId(allocation),
-            ..._row(allocation.toMap()),
-          },
+          body: {'id': _allocationId(allocation), ..._row(allocation.toMap())},
         ),
     ];
     final ops = [...deletes, ...creates];
     for (var i = 0; i < ops.length; i += _batchChunk) {
       await _client.batch(
-        ops.sublist(i, (i + _batchChunk) < ops.length ? i + _batchChunk : ops.length),
+        ops.sublist(
+          i,
+          (i + _batchChunk) < ops.length ? i + _batchChunk : ops.length,
+        ),
       );
     }
   }
