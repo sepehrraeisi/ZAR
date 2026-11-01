@@ -48,7 +48,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Local machine-readable recovery evidence: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\recovery-evidence-20261030\restore-report.json`
 - Sanitized server audit notes: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\server-review-notes.md`
 - Off-server administrative evidence archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\admin-access-20261031T084900Z\zar-admin-access-20261031T084900Z-evidence.tar`
-- Off-server rate-limit canary/rollback archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\rate-limit-canary-20261031\zar-rate-limit-evidence-complete-v5-20261031.tar` (SHA-256 `90ba7772e4bb02493f70729479e769a426458d21eca7743adc03cadcd528910c`)
+- Off-server rate-limit canary/deploy/rollback archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\rate-limit-canary-20261031\zar-rate-limit-evidence-complete-v6-20261031.tar` (SHA-256 `6a198f258744202c30402c965a7515d787ef38ff1a6a7927016acabf2244bdd0`)
 - User-facing handoff mirror: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\outputs\ZAR-STABILIZATION-HANDOFF.md`
 
 ### Production server
@@ -104,8 +104,8 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - Public Caddy now denies the PocketBase dashboard, superuser name/ID routes and management APIs. Private Real-IP propagation and the loopback-only superuser whitelist are proven; operators use an SSH local tunnel.
 - A tuned rate-limit policy has passed isolated boundary, natural-expiry,
   startup-burst, 500/400-operation batch, Caddy Real-IP, superuser and exact
-  guarded rollback canaries. Production rate limiting remains disabled pending
-  final exact-head CI and production preflight.
+  guarded deploy/recovery/rollback canaries. Production rate limiting remains
+  disabled pending final exact-head CI and production preflight.
 - No external monitoring/alerting channel exists yet. Tested recovery, containment, SSH, service and backup change/rollback evidence now exists.
 - Production was changed only through the documented gated changes recorded below; each passed health/integrity/reconciliation checks and no rollback was required.
 
@@ -161,6 +161,7 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-10-31 17:31 +03:30: Rejected the unsafe disabled-default rate rules after proving they would break internal batch subrequests. Added a guarded ZAR-specific policy and Persian 429 handling. Disposable production clones passed exact action boundaries, IP separation, natural 60-second and batch-window reset, two simultaneous startup snapshots, 500-operation and two 400-operation authenticated batches, atomic rollback, Caddy forged-header overwrite, loopback superuser behavior, clean logs/integrity and exact migration down. One Caddy canary attempt was explicitly aborted on an occupied admin port and repeated successfully with `admin off`. Production remains unchanged. Full local result: 331 tests passed; analyzer clean.
 - 2026-10-31 17:31 +03:30: Confirmed a separate P1 recovery defect: cloud snapshot replacement cannot restore existing append-only cash rows, although its single batch rolls back atomically. Recorded fail-closed containment and server-side/new-workspace import as required work.
 - 2026-10-31 17:41 +03:30: Added a no-defaults, hash/settings/history/count/service-bound rollback script and exercised the exact stop/down/remove/start-to-health path on disposable production clones. Fail-closed attempts exposed and corrected journal-output, service-path and missing-`auxiliary.db` assumptions; the final full two-database run passed settings/history/count/restart/integrity/log reconciliation. Production stayed active with candidate history `0` and no candidate file. GitHub run #254 at `1c3fb7b` also passed both jobs; final exact-head CI remains pending after this evidence commit.
+- 2026-10-31 23:34 +03:30: Added a shared-lock, no-defaults guarded deploy wrapper that keeps the candidate outside live migrations until stopped-state verification, runs explicit migrate-up, and has exact recovery state machines for both not-applied and applied-but-unhealthy failures. The frozen deploy/rollback scripts passed both forced failpoints, successful deploy, exact rollback, two-database integrity, history/count/restart and empty-journal reconciliation on a full production clone. Production remained unchanged.
 
 ### Local commit checkpoint
 
@@ -183,8 +184,8 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 
 ### Running now
 
-- Commit and push the final rollback-proven rate-limit candidate, then require
-  CI at that exact head; production is still unchanged.
+- Commit and push the final deploy/recovery/rollback-proven rate-limit candidate,
+  then require CI at that exact head; production is still unchanged.
 - Keep Draft PR #3 unmerged until an explicit review/merge decision.
 - Contain the cash-containing cloud restore path with an explicit fail-closed
   client error before designing the long-term server-side import.

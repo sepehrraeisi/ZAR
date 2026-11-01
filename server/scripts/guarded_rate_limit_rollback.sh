@@ -78,11 +78,15 @@ done
 [[ $(realpath -m "$migrations_dir") == "$migrations_dir" ]] || usage
 [[ $(realpath -m "$evidence") == "$evidence" ]] || usage
 
+exec 9>/run/lock/zar-rate-limit-change.lock
+flock -n 9 || { echo "another ZAR rate-limit change is running" >&2; exit 75; }
+
 readonly db=$data_dir/data.db
 readonly auxiliary_db=$data_dir/auxiliary.db
 readonly migration_path=$migrations_dir/$migration
 readonly started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 stopped=0
+recovering=0
 
 settings_json() {
   sqlite3 -readonly "$db" \
@@ -135,10 +139,14 @@ start_and_wait() {
 }
 
 restart_on_error() {
-  rc=$?
+  rc=${1:-$?}
+  if [[ $recovering == 1 ]]; then
+    exit "$rc"
+  fi
+  recovering=1
   failed_command=$BASH_COMMAND
   failed_line=${BASH_LINENO[0]:-unknown}
-  trap - ERR
+  trap - ERR HUP INT TERM
   set +e
   printf 'rc=%s\nline=%s\ncommand=%s\n' \
     "$rc" "$failed_line" "$failed_command" > "$evidence/rollback-failure.txt"
@@ -146,7 +154,11 @@ restart_on_error() {
     count=$(migration_count 2>/dev/null || true)
     live_settings_sha=$(settings_sha 2>/dev/null || true)
     if [[ $count == 0 && $live_settings_sha == "$expected_baseline_settings_sha" ]]; then
-      if [[ -f $migration_path ]]; then
+      if [[ -e $migration_path || -L $migration_path ]]; then
+        if [[ ! -f $migration_path || -L $migration_path ]]; then
+          echo "rollback candidate is not a regular file; service remains stopped" >&2
+          exit "$rc"
+        fi
         file_sha=$(sha256sum "$migration_path" | awk '{print $1}')
         if [[ $file_sha == "$expected_migration_sha" ]]; then
           mv -- "$migration_path" "$evidence/migration.removed-after-error.js"
@@ -166,6 +178,7 @@ restart_on_error() {
   exit "$rc"
 }
 trap restart_on_error ERR
+trap 'restart_on_error 130' HUP INT TERM
 
 # Immutable evidence and live-state guards before stopping traffic.
 test -d "$evidence"
@@ -180,6 +193,8 @@ test "$(sha256sum "$evidence/rate-limits.before.json" | awk '{print $1}')" = \
   "$expected_baseline_settings_sha"
 test "$(awk 'NR==1 {print $1}' "$evidence/migration.sha256")" = \
   "$expected_migration_sha"
+test -f "$migration_path"
+test ! -L "$migration_path"
 test "$(sha256sum "$migration_path" | awk '{print $1}')" = \
   "$expected_migration_sha"
 test "$(sha256sum "$pocketbase" | awk '{print $1}')" = \
@@ -207,6 +222,12 @@ if [[ $service == zar-server.service ]]; then
 else
   [[ $service_exec == *"--dir=$data_dir"* ]]
   [[ $service_exec == *"--migrationsDir=$migrations_dir"* ]]
+fi
+if [[ $service_exec =~ --http=127\.0\.0\.1:([0-9]+) ]]; then
+  test "${health_urls[0]}" = \
+    "http://127.0.0.1:${BASH_REMATCH[1]}/api/health"
+else
+  false
 fi
 
 install -o root -g root -m 0600 "$migration_path" \

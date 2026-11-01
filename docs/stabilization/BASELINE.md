@@ -167,8 +167,9 @@ zar-2026-10-28.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f7068
 - Client 429 tests bring the current full local result to 331 passed, zero
   failed; analyzer is clean.
 - Production remains on the exact original disabled rate-limit object with no
-  candidate migration history/file. The exact guarded rollback path passed on
-  a full two-database production clone; final exact-head CI and production
-  preflight remain required before deployment.
+  candidate migration history/file. The exact guarded deploy path, both forced
+  recovery branches and rollback passed on a full two-database production
+  clone; final exact-head CI and production preflight remain required before
+  deployment.
 - Full evidence: `RATE-LIMITING-EVIDENCE-2026-10-31.md`.
 

@@ -1,7 +1,8 @@
 # ZAR+ Rate-Limiting Canary Evidence — 2026-10-31
 
 Status: all documented policy-behavior, migration, batch, Real-IP,
-natural-window and exact guarded rollback-path gates passed on isolated clones.
+natural-window and exact guarded deploy/recovery/rollback-path gates passed on
+isolated clones.
 Production remained unchanged with
 `rateLimits.enabled=false`; this document is pre-deployment evidence, not a
 production completion record.
@@ -125,24 +126,36 @@ Evidence directory: `/root/zar-rate-limit-expiry-test-20261031T092000Z`.
 - Clone quick/integrity checks returned `ok`; migration down passed and the
   clone was deleted.
 
-## Exact guarded rollback rehearsal
+## Exact guarded deploy, recovery and rollback rehearsal
 
-The production-shaped rollback path is versioned in
-`server/scripts/guarded_rate_limit_rollback.sh`; its disposable-clone harness is
-`server/scripts/test_guarded_rate_limit_rollback_clone.sh`. The final script
-has SHA-256
-`7299707a0faaeb39627aeccd1eac49e55b8147803b13ae731e6ea5dee76821e7`
-and passed `bash -n` plus a complete execution in
-`/root/zar-rate-limit-rollback-clone-20261031T153500Z`.
+The production-shaped paths are versioned in
+`server/scripts/guarded_rate_limit_deploy.sh` and
+`server/scripts/guarded_rate_limit_rollback.sh`; their disposable-clone harness
+is `server/scripts/test_guarded_rate_limit_rollback_clone.sh`. Final SHA-256
+values are:
+
+- deploy: `4a8701502d846e875e216193bba5a948d40777819987b4db36a23f7c8a0cfbde`;
+- rollback: `788ec9d23d62fa6a2ef81f0cb83606b888be09fdde916ee4a219ba821a1072dd`;
+- harness: `b4c8d1dbaf51e5f12d781558277a30c2190837eecc997b4ea4f6788e469e267f`.
+
+All passed `bash -n` plus the complete execution at
+`/root/zar-rate-limit-rollback-clone-20261031T164000Z`.
 
 The rehearsal used SQLite online backups of both production `data.db` and
 `auxiliary.db`, bound the disposable PocketBase service to loopback and ran the
-same no-defaults script intended for production. It proved:
+same no-defaults scripts intended for production. A shared lock prevented
+concurrent change/rollback operations. It proved:
 
 - exact PocketBase binary, migration and settings hashes plus
   service-to-database paths were guarded;
-- the candidate was latest and present exactly once before stop;
-- settings, history, file hash and domain counts were rechecked after stop;
+- the candidate source remained outside the live migration directory until the
+  baseline was verified and the clone service was stopped;
+- explicit `migrate up`, start-to-health and all post-start history/hash/count
+  checks passed;
+- a forced failure immediately after candidate installation recovered via the
+  exact `history=0 + baseline settings` branch without running down;
+- a forced failure after migration-up recovered only after proving candidate
+  latest/history-minus-candidate, running exact `down 1` and restoring baseline;
 - explicit `migrate down 1`, removal of only the candidate file and
   start-to-health succeeded;
 - migration filename history, stopped-state/post-rollback domain counts,
@@ -151,13 +164,13 @@ same no-defaults script intended for production. It proved:
   journal was empty and the unencrypted clone was deleted;
 - production retained candidate history count `0` and no candidate file.
 
-Three earlier rehearsals failed closed and are retained as negative evidence.
+Three early rollback-only rehearsals failed closed and are retained as negative
+evidence.
 They exposed missing quiet journal handling, stronger service/path binding and
 an incomplete clone that omitted `auxiliary.db`. PocketBase 0.40.4 legitimately
 reapplied its auxiliary initializer in that incomplete clone; no production
-corruption occurred. After copying both databases and using PocketBase's
-official migration ordering expression, four complete rehearsals passed, with
-the final run above covering the exact versioned script.
+corruption occurred. The final run above covers the frozen deploy, rollback and
+harness bytes plus both intentional recovery branches.
 
 ## Production non-change proof
 
@@ -199,16 +212,16 @@ and also used logical counts plus quick/integrity checks.
 
 The superseding complete archive contains the main canary, the documented
 aborted Caddy attempt, the successful proxy/superuser and natural-expiry runs,
-all fail-closed rollback rehearsals and the final exact-script passing run.
+all fail-closed rehearsals and the final exact deploy/recovery/rollback run.
 
 Local path:
 
 ```text
-C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\rate-limit-canary-20261031\zar-rate-limit-evidence-complete-v5-20261031.tar
+C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\rate-limit-canary-20261031\zar-rate-limit-evidence-complete-v6-20261031.tar
 ```
 
 SHA-256:
-`90ba7772e4bb02493f70729479e769a426458d21eca7743adc03cadcd528910c`.
+`6a198f258744202c30402c965a7515d787ef38ff1a6a7927016acabf2244bdd0`.
 
 The temporary transferable archive on the server was removed after local hash
 verification. Root-only source evidence directories remain on the server for
@@ -222,8 +235,8 @@ Production must not change until all of these are complete:
    that exact commit;
 2. capture a fresh verified backup and exact pre-change settings, migration,
    rules, counts, restart, route and bounded-log evidence;
-3. pin the production evidence-directory, migration and rollback-script hashes
-   and exact no-defaults invocation;
+3. pin the production evidence-directory, migration, deploy/rollback-script
+   hashes and exact no-defaults invocations;
 4. capture before/after public smoke matrices without intentionally exhausting
    a real production IP bucket;
 5. deploy only the versioned migration, then observe minute 0, 5 and 15 health,

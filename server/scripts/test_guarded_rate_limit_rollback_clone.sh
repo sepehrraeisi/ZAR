@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 readonly candidate=1793437200_enable_rate_limits.js
 readonly candidate_sha=6dfe631f6e1e65e68060c753f23b700ddc51488623987b6cfc110ebb40af89f2
+readonly baseline_settings_sha=8ebf08d019320f87f58a9d7f944cf28fe42d7c7fd43b3626e760e506d3266c37
 readonly production_data=/opt/zar/server/pb_data/data.db
 readonly production_migrations=/opt/zar/server/pb_migrations
 readonly pocketbase=/opt/zar/server/pocketbase
@@ -10,16 +11,18 @@ readonly unit=zar-rate-rollback-clone.service
 readonly unit_file=/run/systemd/system/$unit
 readonly port=18101
 
-if [[ ${1:-} != --confirm-disposable-clone || $# != 4 ]]; then
-  echo "usage: $0 --confirm-disposable-clone ROLLBACK_SCRIPT CANDIDATE_MIGRATION EVIDENCE_DIR" >&2
+if [[ ${1:-} != --confirm-disposable-clone || $# != 5 ]]; then
+  echo "usage: $0 --confirm-disposable-clone DEPLOY_SCRIPT ROLLBACK_SCRIPT CANDIDATE_MIGRATION EVIDENCE_DIR" >&2
   exit 64
 fi
 
-readonly rollback_script=$2
-readonly candidate_source=$3
-readonly evidence=$4
+readonly deploy_script=$2
+readonly rollback_script=$3
+readonly candidate_source=$4
+readonly evidence=$5
 
 [[ $EUID -eq 0 ]] || { echo "must run as root" >&2; exit 77; }
+[[ $deploy_script == /* && -f $deploy_script ]] || exit 64
 [[ $rollback_script == /* && -f $rollback_script ]] || exit 64
 [[ $candidate_source == /* && -f $candidate_source ]] || exit 64
 [[ $evidence == /root/zar-rate-limit-rollback-clone-* ]] || exit 64
@@ -39,6 +42,45 @@ readonly work_root
 readonly data_dir=$work_root/pb_data
 readonly migrations_dir=$work_root/pb_migrations
 success=0
+
+prepare_case_evidence() {
+  case_evidence=$1
+  install -d -o root -g root -m 0700 "$case_evidence"
+  install -o root -g root -m 0600 \
+    "$evidence/rate-limits.before.json" \
+    "$evidence/domain-counts.before.txt" \
+    "$evidence/migrations.before.txt" \
+    "$evidence/migration.sha256" \
+    "$case_evidence/"
+  systemctl show "$unit" -p NRestarts --value > \
+    "$case_evidence/nrestarts.before.txt"
+}
+
+assert_clone_baseline() {
+  test ! -e "$migrations_dir/$candidate"
+  test "$(sqlite3 -readonly "$data_dir/data.db" \
+    "SELECT count(*) FROM _migrations WHERE file='$candidate';")" = 0
+  test "$(sqlite3 -readonly "$data_dir/data.db" \
+    "SELECT json_extract(value, '$.rateLimits') FROM _params WHERE id='settings';" \
+    | sha256sum | awk '{print $1}')" = "$baseline_settings_sha"
+  sqlite3 -readonly "$data_dir/data.db" \
+    "SELECT file FROM _migrations ORDER BY file;" | \
+    cmp -s "$evidence/migrations.before.txt" -
+  sqlite3 -readonly "$data_dir/data.db" \
+    "SELECT 'zar_workspaces|'||count(*) FROM zar_workspaces
+     UNION ALL SELECT 'zar_people|'||count(*) FROM zar_people
+     UNION ALL SELECT 'zar_deals|'||count(*) FROM zar_deals
+     UNION ALL SELECT 'zar_settlements|'||count(*) FROM zar_settlements
+     UNION ALL SELECT 'zar_coin_types|'||count(*) FROM zar_coin_types
+     UNION ALL SELECT 'zar_currency_types|'||count(*) FROM zar_currency_types
+     UNION ALL SELECT 'zar_allocations|'||count(*) FROM zar_allocations
+     UNION ALL SELECT 'zar_cash_entries|'||count(*) FROM zar_cash_entries;" | \
+    cmp -s "$evidence/domain-counts.before.txt" -
+  test "$(sqlite3 -readonly "$data_dir/data.db" 'PRAGMA integrity_check;')" = ok
+  test "$(sqlite3 -readonly "$data_dir/auxiliary.db" 'PRAGMA integrity_check;')" = ok
+  systemctl is-active --quiet "$unit"
+  curl -fsS "http://127.0.0.1:$port/api/health" >/dev/null
+}
 
 cleanup() {
   trap - EXIT
@@ -67,8 +109,6 @@ if [[ -f /opt/zar/server/pb_data/auxiliary.db ]]; then
     ".backup '$data_dir/auxiliary.db'"
 fi
 cp -a "$production_migrations/." "$migrations_dir/"
-install -o zarapp -g zarapp -m 0600 "$candidate_source" \
-  "$migrations_dir/$candidate"
 chown -R zarapp:zarapp "$work_root"
 chmod 0700 "$work_root" "$data_dir" "$migrations_dir"
 
@@ -89,17 +129,11 @@ sqlite3 -readonly "$data_dir/data.db" \
 sqlite3 -readonly "$data_dir/data.db" \
   "SELECT file FROM _migrations ORDER BY file;" \
   > "$evidence/migrations.before.txt"
-sha256sum "$migrations_dir/$candidate" > "$evidence/migration.sha256"
+sha256sum "$candidate_source" > "$evidence/migration.sha256"
 sha256sum "$data_dir/data.db" "$data_dir/auxiliary.db" \
   > "$evidence/clone-data.before.sha256"
+sha256sum "$deploy_script" > "$evidence/deploy-script.sha256"
 sha256sum "$rollback_script" > "$evidence/rollback-script.sha256"
-
-(
-  cd /opt/zar/server
-  runuser -u zarapp -- "$pocketbase" migrate up \
-    --dir="$data_dir" \
-    --migrationsDir="$migrations_dir"
-)
 
 printf '%s\n' \
   '[Unit]' \
@@ -128,6 +162,51 @@ done
 curl -fsS "http://127.0.0.1:$port/api/health" >/dev/null
 systemctl show "$unit" -p NRestarts --value > "$evidence/nrestarts.before.txt"
 
+prepare_case_evidence "$evidence/fail-after-install"
+if bash "$deploy_script" \
+  --data-dir "$data_dir" \
+  --migrations-dir "$migrations_dir" \
+  --candidate-source "$candidate_source" \
+  --service "$unit" \
+  --evidence "$evidence/fail-after-install" \
+  --health-url "http://127.0.0.1:$port/api/health" \
+  --failpoint after-install; then
+  echo "after-install failpoint unexpectedly succeeded" >&2
+  exit 1
+fi
+grep -qx 'recovery=baseline-without-down' \
+  "$evidence/fail-after-install/deploy-recovery.txt"
+assert_clone_baseline
+
+prepare_case_evidence "$evidence/fail-after-migrate"
+if bash "$deploy_script" \
+  --data-dir "$data_dir" \
+  --migrations-dir "$migrations_dir" \
+  --candidate-source "$candidate_source" \
+  --service "$unit" \
+  --evidence "$evidence/fail-after-migrate" \
+  --health-url "http://127.0.0.1:$port/api/health" \
+  --failpoint after-migrate; then
+  echo "after-migrate failpoint unexpectedly succeeded" >&2
+  exit 1
+fi
+grep -qx 'recovery=explicit-down' \
+  "$evidence/fail-after-migrate/deploy-recovery.txt"
+assert_clone_baseline
+
+bash "$deploy_script" \
+  --data-dir "$data_dir" \
+  --migrations-dir "$migrations_dir" \
+  --candidate-source "$candidate_source" \
+  --service "$unit" \
+  --evidence "$evidence" \
+  --health-url "http://127.0.0.1:$port/api/health"
+
+test -f "$evidence/deploy-result.txt"
+grep -qx RATE_LIMIT_DEPLOY_PASS "$evidence/deploy-result.txt"
+test "$(sqlite3 -readonly "$data_dir/data.db" \
+  "SELECT count(*) FROM _migrations WHERE file='$candidate';")" = 1
+
 bash "$rollback_script" \
   --data-dir "$data_dir" \
   --migrations-dir "$migrations_dir" \
@@ -141,6 +220,7 @@ test ! -e "$migrations_dir/$candidate"
 test "$(sqlite3 -readonly "$data_dir/data.db" \
   "SELECT count(*) FROM _migrations WHERE file='$candidate';")" = 0
 test "$(sqlite3 -readonly "$data_dir/data.db" 'PRAGMA integrity_check;')" = ok
+test "$(sqlite3 -readonly "$data_dir/auxiliary.db" 'PRAGMA integrity_check;')" = ok
 test ! -e "$production_migrations/$candidate"
 test "$(sqlite3 -readonly "$production_data" \
   "SELECT count(*) FROM _migrations WHERE file='$candidate';")" = 0
@@ -150,4 +230,4 @@ printf 'production_candidate_history=0\nproduction_candidate_file=absent\n' \
   > "$evidence/production-unchanged.txt"
 
 success=1
-echo "CLONE_ROLLBACK_TEST_PASS evidence=$evidence"
+echo "CLONE_DEPLOY_ROLLBACK_TEST_PASS evidence=$evidence"

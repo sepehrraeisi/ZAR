@@ -1,7 +1,7 @@
 # ZAR+ PocketBase Rate-Limiting Plan
 
 Status: all isolated-clone policy, natural-expiry, Real-IP, superuser,
-migration round-trip and exact guarded rollback-path gates passed on
+migration round-trip and exact guarded deploy/recovery/rollback-path gates passed on
 2026-10-31. Production is unchanged until the remaining exact-commit CI and
 production preflight gates pass. See
 `RATE-LIMITING-EVIDENCE-2026-10-31.md`.
@@ -135,10 +135,12 @@ separate release blocker.
 
 1. Archive the exact pre-change settings and migration state in a root-only
    evidence directory.
-2. Install only the reviewed migration with owner `zarapp:zarapp` and mode
-   `0644`.
-3. Restart PocketBase once so the migration applies before serving traffic;
-   require bounded restart-to-health.
+2. Keep the reviewed candidate outside the live migration directory until the
+   guarded deploy script has verified the baseline and stopped PocketBase.
+3. Let the no-defaults deploy script install the candidate with owner
+   `zarapp:zarapp` and mode `0644`, run explicit `migrate up` as `zarapp`, then
+   require bounded start-to-health. It must recover both the not-yet-applied and
+   applied-but-not-healthy failure states or leave an ambiguous state stopped.
 4. Verify exact settings and one expected migration-history addition.
 5. Run only low-rate production smoke probes and never exhaust a bucket from an
    IP/NAT used by the real app. Full 429 boundaries and 11-request batch bursts
@@ -174,11 +176,13 @@ migration, restart and log gates. If any guard fails, leave Caddy filtering in
 place, restart PocketBase if it was stopped and investigate rather than editing
 the database manually.
 
-The guarded rollback path is versioned as
-`server/scripts/guarded_rate_limit_rollback.sh` and has no implicit target
-defaults. Production preflight must pin its exact hash, invocation and root-only
-evidence directory before the change; the identical script must first pass
-against a disposable production clone.
+The guarded change paths are versioned as
+`server/scripts/guarded_rate_limit_deploy.sh` and
+`server/scripts/guarded_rate_limit_rollback.sh`; neither has implicit target
+defaults. Production preflight must pin both exact hashes, invocations and the
+root-only evidence directory. The identical scripts must first pass successful
+deploy/rollback plus both forced deploy-recovery branches against a disposable
+production clone.
 
 ## Residual risk
 
