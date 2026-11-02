@@ -3,9 +3,11 @@
 Status: all documented policy-behavior, migration, batch, Real-IP,
 natural-window and exact guarded deploy/recovery/rollback-path gates passed on
 isolated clones.
-Production remained unchanged with
-`rateLimits.enabled=false`; this document is pre-deployment evidence, not a
-production completion record.
+Production remained unchanged with `rateLimits.enabled=false` at this canary
+checkpoint; this document is the pre-deployment evidence, not the production
+completion record. The same reviewed policy was subsequently deployed through
+the guarded path on 2026-11-01. Its separate server completion record is
+`RATE-LIMITING-PRODUCTION-EVIDENCE-2026-11-01.md`.
 
 ## Scope
 
@@ -227,22 +229,25 @@ The temporary transferable archive on the server was removed after local hash
 verification. Root-only source evidence directories remain on the server for
 the production preflight and rollback record.
 
-## Remaining production gates
+## Production gates recorded after this canary
 
-Production must not change until all of these are complete:
+The following server gates were subsequently completed on 2026-11-01:
 
-1. commit and push the exact final candidate, then obtain green GitHub CI at
-   that exact commit;
-2. capture a fresh verified backup and exact pre-change settings, migration,
-   rules, counts, restart, route and bounded-log evidence;
-3. pin the production evidence-directory, migration, deploy/rollback-script
-   hashes and exact no-defaults invocations;
-4. capture before/after public smoke matrices without intentionally exhausting
-   a real production IP bucket;
-5. deploy only the versioned migration, then observe minute 0, 5 and 15 health,
-   restart, 429 and 5xx evidence;
-6. record separately whether the installed Android APK contains the new Persian
-   429 message; server deployment alone must not claim that client release.
+1. GitHub run #257 (ID `41343818686`) passed both jobs at exact head
+   `8c060542a88b37b26ff1637ea9c56fde1bf4460b`;
+2. a fresh verified backup and exact pre-change settings, migration, rules,
+   counts, restart, route and bounded-log evidence passed;
+3. the production evidence directory and exact migration/deploy/rollback
+   hashes and invocations were pinned;
+4. before/after low-rate public smoke matrices matched without intentionally
+   exhausting a production IP bucket;
+5. the guarded deployment passed, followed by successful minute 0, 5 and 15
+   health, restart, 429 and 5xx observations.
+
+The installed Android APK remains a separate unresolved gate. Server deployment
+does not prove that the installed APK contains the Persian 429 message or that
+real-device sign-in/startup has passed. See
+`RATE-LIMITING-PRODUCTION-EVIDENCE-2026-11-01.md` for the production record.
 
 Public signup intent, per-account failed-attempt controls, distributed attack
 protection and external alert delivery remain separate open decisions.

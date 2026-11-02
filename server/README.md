@@ -73,6 +73,35 @@ http://127.0.0.1:18090/_/
 Caddy اضافه شد، یا PocketBase ارتقا یافت، مرز Real-IP و route matrix مدیریت باید
 پیش از انتشار دوباره بررسی و تست شوند.
 
+## محدودسازی نرخ درخواست
+
+migration نسخه‌شدهٔ زیر در 2026-11-01 با مسیر guarded در production اعمال شد:
+
+```text
+server/pb_migrations/1793437200_enable_rate_limits.js
+```
+
+policy شامل ۱۱ rule مرتب‌شده، `enabled=true` و `excludedIPs=[]` است: auth عمومی،
+ساخت user عمومی، درخواست‌ها/تأییدهای حساس، batch بیرونی برای کاربر احراز هویت‌شده
+و fallback مهمان. عمداً wildcard ساخت و limit عمومی برای ترافیک احراز هویت‌شده
+وجود ندارد، چون ruleهای داخلی PocketBase روی subrequestهای batch نیز ارزیابی
+می‌شوند و policy پیش‌فرض restore اتمیک را می‌شکند.
+
+اعمال/rollback فقط با scriptهای بدون target پیش‌فرض و پس از تطبیق کامل
+settings، history، countها و hashها مجاز است:
+
+```text
+server/scripts/guarded_rate_limit_deploy.sh
+server/scripts/guarded_rate_limit_rollback.sh
+docs/stabilization/RATE-LIMITING-PLAN.md
+docs/stabilization/RATE-LIMITING-PRODUCTION-EVIDENCE-2026-11-01.md
+```
+
+مرز کامل 429 فقط روی clone ایزوله تست می‌شود؛ در production فقط smoke کم‌نرخ
+مجاز است. نصب server به‌تنهایی ثابت نمی‌کند APK نصب‌شده پیام فارسی 429 را دارد؛
+آن رفتار باید روی artifact اندروید بازبینی‌شده جداگانه اثبات شود. با هر ارتقای
+PocketBase یا تغییر proxy، labelها، Real-IP و رفتار batch باید دوباره بررسی شوند.
+
 هیچ اپ موبایل نباید مستقیماً به IP و پورت 8090 متصل شود. URL زمان build باید HTTPS باشد:
 
 ```powershell

@@ -1,16 +1,17 @@
 # ZAR+ PocketBase Rate-Limiting Plan
 
-Status: all isolated-clone policy, natural-expiry, Real-IP, superuser,
-migration round-trip and exact guarded deploy/recovery/rollback-path gates passed on
-2026-10-31. Production is unchanged until the remaining exact-commit CI and
-production preflight gates pass. See
-`RATE-LIMITING-EVIDENCE-2026-10-31.md`.
+Status: **server production gate completed on 2026-11-01**. All isolated-clone
+gates, exact-head CI, production preflight, guarded deployment and minute 0, 5
+and 15 observations passed; rollback was not required. Installed-APK
+sign-in/startup and Persian 429 behavior remain an unproven client release
+gate. See `RATE-LIMITING-EVIDENCE-2026-10-31.md` and
+`RATE-LIMITING-PRODUCTION-EVIDENCE-2026-11-01.md`.
 
 ## Objective
 
 Reduce credential guessing, public-account abuse, mail-trigger abuse and
 accidental request storms without interrupting normal startup, accounting
-writes or the supported atomic backup restore path.
+writes or the supported non-cash atomic backup restore path.
 
 This change is scoped to PocketBase 0.40.4. Any PocketBase upgrade must repeat
 the route-label and batch behavior review before retaining these limits.
@@ -60,7 +61,7 @@ matches the reviewed disabled baseline. Its down migration similarly refuses
 to overwrite an intervening operator edit and restores the complete original
 rules, `excludedIPs=[]` and `enabled=false`.
 
-The candidate Android-facing auth service translates a 429 into an actionable
+The reviewed Android-facing auth service translates a 429 into an actionable
 Persian message and does not automatically replay the request. This behavior is
 not present on an already installed APK; building and installing a release that
 contains the client commit is a separate gate before claiming the Persian UX is
@@ -111,11 +112,12 @@ The versioned probe refuses non-loopback URLs and requires the explicit
     after evidence is archived.
 
 Cloud snapshot replacement has a pre-existing independent constraint: cash
-journal update/delete is intentionally locked, while the current app restore
-algorithm still attempts delete-and-recreate. A clone containing existing cash
-rows must fail that path with authorization rollback, not be misclassified as
-a rate-limit failure. A safe append-only/new-workspace restore design remains a
-separate release blocker.
+journal update/delete is intentionally locked. The client now fails closed
+before a write when incoming or currently observed cloud history contains cash,
+using a typed operator-facing error. That is availability containment, not a
+complete concurrency solution: a second device can create cash between the
+client GET and batch request. A server-side transactional, revision-bound,
+idempotent import/new-workspace design remains a separate release blocker.
 
 ## Production preflight
 
@@ -158,6 +160,25 @@ probes to retain their expected status/body class, the archived clone boundary
 evidence to remain applicable to the exact deployed migration, domain counts to
 remain unchanged and both database integrity checks to return `ok`. Production
 must not intentionally reproduce the full 429 boundaries.
+
+## Production execution result — 2026-11-01
+
+The exact-head CI run #257 (ID `41343818686`) passed at
+`8c060542a88b37b26ff1637ea9c56fde1bf4460b`. The production preflight created
+a fresh verified backup, matched the expected settings/history/rules/counts
+and passed both database integrity checks. The guarded deployment then
+installed the exact migration and reported `RATE_LIMIT_DEPLOY_PASS`.
+
+Minute 0, 5 and 15 observations passed. The exact 11-rule policy remained
+enabled with no excluded IPs; services stayed active with `NRestarts=0`;
+internal and public health stayed HTTP 200; public admin routes stayed HTTP
+404; counts and integrity remained stable; and the bounded interval contained
+no HTTP 429 or status greater than or equal to 500. Rollback was not required.
+
+The server gate is complete. Step 6 above remains open because the APK installed
+on the owner's phone was not available for direct sign-in/startup or Persian
+429 verification. Full evidence is in
+`RATE-LIMITING-PRODUCTION-EVIDENCE-2026-11-01.md`.
 
 ## Rollback
 

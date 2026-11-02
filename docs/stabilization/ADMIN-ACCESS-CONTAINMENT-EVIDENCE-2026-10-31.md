@@ -112,8 +112,10 @@ drift. The exact reproducible guarded commands are now versioned in
 
 ## Remaining risk
 
-- PocketBase rate limiting is still disabled. It can now be tuned safely because
-  Real-IP handling is proven, but it requires a separate canary and rollback.
+- At this 2026-10-31 checkpoint PocketBase rate limiting was still disabled.
+  The separately reviewed policy later passed its canary/rollback gates and was
+  deployed on 2026-11-01; see
+  `RATE-LIMITING-PRODUCTION-EVIDENCE-2026-11-01.md`.
 - Public user signup remains a deliberate unresolved product/security decision.
 - There is no external alert destination for auth anomalies, service health or
   backup age.

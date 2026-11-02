@@ -1,6 +1,6 @@
 # ZAR+ Stabilization Findings Register
 
-Updated: 2026-10-31 17:31 +03:30 (Asia/Tehran)
+Updated: 2026-11-02 (Asia/Tehran)
 Baseline source: `e60d68dda3c1876dc5af99e36c1f455b76fd8a50`  
 Working branch: `codex/stabilization-baseline`
 
@@ -16,10 +16,14 @@ This register is evidence-driven. “Locally fixed” means code and tests exist
 - Non-generated line coverage (excluding Drift `.g.dart`): `8,617 / 12,445 = 69.24%`.
 - Critical coverage gaps: PocketBase auth service `0%`, cloud shell `0%`, backup screen `0%`, PocketBase repository `22.8%` at baseline.
 - PocketBase `0.40.4` isolated integration tests: passed, including security migration `up / down 2 / up` and supported migration lineages.
-- Draft PR #3 GitHub Actions run #252 passed both Flutter and real PocketBase
-  authorization/migration jobs at `859ece7`.
-- The rate-limit candidate adds three focused client tests; the complete local
-  suite now passes 331 tests with zero failures and analyzer has no findings.
+- Draft PR #3 GitHub Actions run #257 (ID `41343818686`) passed both Flutter
+  and real PocketBase authorization/migration jobs at exact rate-limit
+  deployment head `8c060542a88b37b26ff1637ea9c56fde1bf4460b`.
+- The rate-limit checkpoint added three focused client tests; at exact
+  deployment head `8c06054` the complete local suite passed 331 tests with
+  zero failures. After adding cash-restore containment and its UI regression
+  test, the complete suite passed 337 tests with zero failures on 2026-11-02;
+  full analyzer had no findings.
 
 The green baseline is valuable but does not prove production safety. Existing tests are strong around exact numeric domain behavior, local Drift transactions, projections, UI and backup codecs; they are weak around real PocketBase authorization, multi-device concurrency, Android data protection and disaster recovery.
 
@@ -113,14 +117,20 @@ The green baseline is valuable but does not prove production safety. Existing te
   2026-10-31** behind Caddy public `404`; SSH-tunnel access, a private
   always-overwritten Real-IP header and loopback-only superuser whitelist passed
   canary and production tests.
-- A ZAR-specific rate-limit candidate has now passed exact boundaries, natural
+- A ZAR-specific 11-rule rate-limit policy passed exact boundaries, natural
   expiry, independent-IP, Caddy overwrite, loopback superuser, 500-operation
   batch, sequential 400-operation chunk and migration-down canaries. Its exact
   guarded deploy path, both forced recovery branches and rollback also passed
-  against a full two-database production clone. Production remains
-  `enabled=false` pending final exact-head CI and the production preflight.
-- Required next: complete the reviewed rate-limit production gate and add an
-  external monitoring/alert destination.
+  against a full two-database production clone.
+- **Deployed and tested in production on 2026-11-01:** exact-head CI,
+  preflight, fresh backup, guarded deployment and minute 0/5/15 observations
+  passed. The policy remains `enabled=true` with the exact 11 rules and no
+  excluded IPs; health/count/integrity/restart gates stayed stable and the
+  bounded interval contained no HTTP 429 or status greater than or equal to
+  500. Rollback was not required. See
+  `RATE-LIMITING-PRODUCTION-EVIDENCE-2026-11-01.md`.
+- Required next: add an external monitoring/alert destination and prove the
+  installed Android client behavior before release.
 
 ### ZAR-REC-001 — backups are not disaster-recovery ready
 
@@ -136,27 +146,35 @@ The green baseline is valuable but does not prove production safety. Existing te
 
 ### ZAR-REC-002 — cloud snapshot restore conflicts with append-only cash history
 
-- Severity: P1/High recovery availability; pre-release blocker.
-- Evidence: cloud `replaceCompleteSnapshot` unconditionally queues delete then
-  create for every visible collection, including `zar_cash_entries`. The
-  deployed cash containment migration intentionally sets cash update/delete
-  rules to `NULL`, and real authorization tests return `403` for member delete.
-- Impact: any existing cash row makes an otherwise valid cloud restore fail.
-  Restoring cash into an empty workspace can succeed once, but repeating the
-  same restore fails, so the path is not idempotent. The backup screen currently
-  mislabels this server authorization failure as a device/file-access problem.
-- Safety property: the requests are one PocketBase batch, and the isolated
-  invalid-batch canary proved complete transaction rollback; no partial restore
-  was observed.
-- Immediate containment required: before any cloud write, fail closed when the
-  current or incoming snapshot contains cash rows, use a typed error and show a
-  precise Persian operator/new-workspace recovery message. Do not implement a
-  client-side append merge because a second device can race the preflight.
+- Severity: P1/High recovery integrity and availability; pre-release blocker.
+- Original evidence: cloud `replaceCompleteSnapshot` queued delete then create
+  for every visible collection, including `zar_cash_entries`. The deployed cash
+  containment migration intentionally sets cash update/delete rules to `NULL`,
+  and real authorization tests return `403` for member delete.
+- Original impact: any existing cash row made an otherwise valid cloud restore
+  fail. Restoring cash into an empty workspace could succeed once, but repeating
+  the same restore failed, so the path was not idempotent. The backup screen also
+  mislabeled the authorization failure as a device/file-access problem.
+- Original safety property: the pre-containment delete/create requests were one
+  PocketBase batch, and the isolated invalid-batch canary proved complete
+  transaction rollback; no partial restore was observed in that reproduction.
+- Immediate client containment implemented: before any cloud batch/write, the
+  app fails closed when the incoming snapshot or currently observed cloud
+  snapshot contains cash, throws a typed error and shows a precise Persian
+  controlled-recovery message. Regression tests prove the rejected paths send
+  no batch/write and the non-cash path remains available. No client-side append
+  merge or automatic retry was added.
+- Residual P1 race: this remains a client GET-then-batch check. A second device
+  can create a cash entry after the preflight GET and before the batch commits;
+  the client cannot atomically assert workspace revision/emptiness. Therefore
+  this containment improves safety and messaging but is not a complete
+  concurrency guarantee.
 - Long-term remediation: a server-side transactional, idempotent import with
   expected workspace revision and backup hash, preferably restoring into a new
   immutable workspace/version and switching ownership atomically.
-- Status: open; DB-level disaster restore remains the tested operational full
-  recovery path.
+- Status: client fail-closed containment implemented and targeted tests pass;
+  server-side transactional import remains open P1/pre-release work. DB-level
+  disaster restore remains the tested operational full recovery path.
 
 ### ZAR-CI-001 — release/supply-chain controls are incomplete
 
@@ -186,12 +204,14 @@ Stabilization of security, recovery and current data integrity can continue with
 
 ## Next implementation order
 
-1. Finish Draft PR #3 CI/review and make an explicit merge/release decision.
-2. Complete final exact-head CI and the production preflight/deployment gate
-   for the already canary-, deploy-recovery- and rollback-proven rate-limit
-   candidate.
-3. Fail closed with an explicit message for the broken cash-containing cloud
-   restore path, then design the server-side/new-workspace import.
+1. Publish the reviewed cash-restore containment and production evidence, then
+   require green CI at that exact head and keep Draft PR #3 unmerged until an
+   explicit review/merge/release decision.
+2. Design and test the server-side transactional, idempotent,
+   revision-protected new-workspace cash import that closes the remaining
+   client GET-to-batch race.
+3. Inspect the installed Android APK and prove package/version/signature,
+   sign-in/startup behavior and the Persian 429 message before client release.
 4. Decide and enforce the intended public-signup policy.
 5. Add external monitoring and replace the temporary off-site recovery
    exception before customer data or 2026-11-30.

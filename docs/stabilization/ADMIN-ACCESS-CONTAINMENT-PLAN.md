@@ -200,6 +200,10 @@ If only Caddy validation fails, do not change settings or reload either service.
 
 ## Remaining risk after this change
 
-- Built-in rate limiting remains disabled until a separate tested policy change.
+- At the completion of this administrative-containment window, built-in rate
+  limiting remained disabled pending a separate tested policy change. That
+  separately reviewed 11-rule policy was subsequently deployed through its own
+  guarded gate on 2026-11-01; see
+  `RATE-LIMITING-PRODUCTION-EVIDENCE-2026-11-01.md`.
 - SSH and HTTP anomaly/failure alerts still have no external operator destination.
 - A compromised regular user token remains governed by collection rules; this change does not fix open server-side invariant/concurrency/audit findings.

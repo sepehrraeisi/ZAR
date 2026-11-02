@@ -173,3 +173,44 @@ zar-2026-10-28.db  size=270336  quick_check=ok  sha256=e3ba0b5acce74f3333e1f7068
   deployment.
 - Full evidence: `RATE-LIMITING-EVIDENCE-2026-10-31.md`.
 
+The statements above are the immutable 2026-10-31 candidate checkpoint. The
+subsequent production state is recorded below.
+
+## Rate-limit production checkpoint — 2026-11-01
+
+- GitHub Actions run #257 (ID `41343818686`) passed both jobs at exact head
+  `8c060542a88b37b26ff1637ea9c56fde1bf4460b`.
+- Production evidence is rooted at
+  `/root/zar-rate-limit-production-20261101T195200Z`; deployment began at
+  `2026-11-01T19:55:20Z`.
+- Fresh backup
+  `/backups/zar-daily/zar-20261101T195240Z/data.db` has SHA-256
+  `c9c420d10960a63e86173c1be28f73efa3d4e8122bce07c12eda9be12499e2be`;
+  checksum, `quick_check` and `integrity_check` passed.
+- Pinned SHA-256 values: migration
+  `6dfe631f6e1e65e68060c753f23b700ddc51488623987b6cfc110ebb40af89f2`,
+  guarded deploy
+  `4a8701502d846e875e216193bba5a948d40777819987b4db36a23f7c8a0cfbde`,
+  guarded rollback
+  `788ec9d23d62fa6a2ef81f0cb83606b888be09fdde916ee4a219ba821a1072dd`
+  and PocketBase
+  `14ec215bc7aaceda356713cd4b29aa7fcfee854ff2ae1151c5ddba41b43aec8a`.
+- Guarded deployment reported `RATE_LIMIT_DEPLOY_PASS`. Migration history
+  contains exactly
+  `1793437200_enable_rate_limits.js|1793562921723345`, and the live settings
+  contain the exact 11 ordered rules with `enabled=true` and `excludedIPs=[]`.
+- Minute 0, 5 and 15 plus the overall production observation passed: services
+  active, `NRestarts=0`, health endpoints HTTP 200, both public admin surfaces
+  HTTP 404, normal route matrix/counts/integrity stable, and no HTTP 429 or
+  status greater than or equal to 500 in the bounded interval.
+- Production boundaries were deliberately not exhausted. Installed-APK
+  sign-in/startup and Persian 429 behavior remain unproven client release
+  gates. Rollback was not required.
+- The 81-entry off-server evidence archive is
+  `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\rate-limit-production-20261101\zar-rate-limit-production-evidence-20261101.tar`,
+  SHA-256
+  `7877588bbee36233c854fa45b7dfa761eb7252179f4166d1313b7efc697adc95`;
+  its internal hash manifest passed.
+- Full production record:
+  `RATE-LIMITING-PRODUCTION-EVIDENCE-2026-11-01.md`.
+

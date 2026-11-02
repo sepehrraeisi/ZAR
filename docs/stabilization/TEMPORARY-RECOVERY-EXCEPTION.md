@@ -31,7 +31,10 @@ This exception is deliberately narrow. It permits the tested containment migrati
 - The bundle was decrypted immediately after creation and all 10 manifest hashes matched.
 - The legacy inline cron was replaced on 2026-10-30 by a versioned, locked, atomic, checksum/integrity/schema-verified systemd backup timer. A generated snapshot passed an isolated PocketBase restore and full record reconciliation.
 - The fresh database copy passed PocketBase health, SQLite integrity, migration and all eight domain-table reconciliation checks.
-- Production changes are limited to the two reviewed deletion-lock migrations; unrelated hardening is excluded from the same window.
+- This exception itself authorized only the initial two reviewed deletion-lock
+  migrations. Subsequent SSH, service, backup, administrative-access and
+  rate-limit changes were not implicitly authorized by this exception; each
+  used its own reviewed backup/restore/rollback gate and evidence record.
 - After containment, a second full recovery set was restored, encrypted and decrypted successfully. Its bundle SHA-256 is `90aefdfed3ebdbc3fff84cf2be3b81d2516c2b0f54d381f4ba8c5e5334a289ec` with 12 verified files.
 
 Local protected recovery location:
