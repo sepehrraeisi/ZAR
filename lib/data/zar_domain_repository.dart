@@ -24,6 +24,28 @@ class ZarDomainSnapshot {
   final List<ZarCashEntry> cashEntries;
 }
 
+/// A cloud restore was rejected before any write was attempted.
+///
+/// [code] is stable for callers that need to handle a specific restore
+/// safety condition, while [message] is ready to show to the operator.
+class ZarCloudRestoreException implements Exception {
+  const ZarCloudRestoreException({required this.code, required this.message});
+
+  const ZarCloudRestoreException.appendOnlyCashHistory()
+    : code = 'append_only_cash_history',
+      message =
+          'بازیابی جایگزینی انجام نشد: سابقهٔ صندوق فقط‌افزودنی است و نمی‌توان آن را حذف یا جایگزین کرد. '
+          'این نسخهٔ برنامه نمی‌تواند سابقهٔ صندوق را با ایمنی کافی بازیابی کند؛ برای حفظ اطلاعات، هیچ تغییری '
+          'در فضای ابری انجام نشد. فایل پشتیبان را نگه دارید و برای بازیابی کنترل‌شده در یک فضای کاری جدید و خالی '
+          'با پشتیبانی تماس بگیرید.';
+
+  final String code;
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 abstract interface class ZarCashRepository {
   Future<void> appendCashEntry(ZarCashEntry entry);
 }

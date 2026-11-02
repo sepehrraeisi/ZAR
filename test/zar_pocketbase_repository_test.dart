@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_app/data/pocketbase/zar_pocketbase_client.dart';
 import 'package:flutter_app/data/pocketbase/zar_pocketbase_repository.dart';
 import 'package:flutter_app/domain/zar_domain_models.dart';
+import 'package:flutter_app/domain/zar_cash_entry.dart';
 import 'package:flutter_app/domain/zar_payment_allocation.dart';
 import 'package:flutter_app/data/zar_domain_repository.dart';
 import 'package:http/http.dart' as http;
@@ -35,6 +36,31 @@ ZarPerson _person(String id, String name) => ZarPerson(
   updatedAt: DateTime.utc(2026, 9, 1),
   createdBy: 'test',
 );
+
+ZarCashEntry _cashEntry() => ZarCashEntry(
+  id: 'cash-1',
+  businessId: 'w1',
+  kind: ZarCashEntryKind.contribution,
+  direction: ZarSettlementDirection.receive,
+  amount: ZarCurrencyAssetAmount(
+    ZarCurrencyAmount(code: 'TOMAN', minorUnits: 100, minorUnitScale: 0),
+  ),
+  occurredAt: DateTime.utc(2026, 9, 1),
+  note: 'آورده آزمایشی',
+);
+
+Matcher _appendOnlyCashRestoreError() => isA<ZarCloudRestoreException>()
+    .having((error) => error.code, 'code', 'append_only_cash_history')
+    .having((error) => error.message, 'message', contains('فقط‌افزودنی'))
+    .having(
+      (error) => error.message,
+      'recovery action',
+      allOf(
+        contains('فایل پشتیبان را نگه دارید'),
+        contains('فضای کاری جدید و خالی'),
+        contains('پشتیبانی'),
+      ),
+    );
 
 void main() {
   test('loadCompleteSnapshot decodes payload rows', () async {
@@ -82,7 +108,7 @@ void main() {
         const ZarDomainSnapshot(people: [], deals: [], settlements: []),
       );
 
-      expect(listFilters, hasLength(14));
+      expect(listFilters, hasLength(15));
       expect(listFilters, everyElement("workspace='w1'"));
     },
   );
@@ -155,6 +181,211 @@ void main() {
       );
     },
   );
+
+  test(
+    'restore with incoming cash fails closed before any cloud request',
+    () async {
+      final requests = <http.Request>[];
+      final client = MockClient((request) async {
+        requests.add(request);
+        return _json({'items': [], 'totalPages': 1});
+      });
+      final repository = ZarPocketBaseRepository(
+        client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+        workspaceId: 'w1',
+        businessId: 'w1',
+      );
+
+      await expectLater(
+        repository.replaceCompleteSnapshot(
+          ZarDomainSnapshot(
+            people: const [],
+            deals: const [],
+            settlements: const [],
+            cashEntries: [_cashEntry()],
+          ),
+        ),
+        throwsA(_appendOnlyCashRestoreError()),
+      );
+
+      expect(
+        requests,
+        isEmpty,
+        reason: 'incoming cash must fail before writes',
+      );
+    },
+  );
+
+  test(
+    'restore into workspace with cash fails closed without a batch or write',
+    () async {
+      final writeRequests = <http.Request>[];
+      final readPaths = <String>[];
+      final client = MockClient((request) async {
+        if (request.method != 'GET') {
+          writeRequests.add(request);
+          return _json({});
+        }
+        readPaths.add(request.url.path);
+        if (request.url.path.contains('/zar_cash_entries/records')) {
+          return _json({
+            'items': [
+              {'id': 'cash-existing'},
+            ],
+            'totalPages': 1,
+          });
+        }
+        return _json({'items': [], 'totalPages': 1});
+      });
+      final repository = ZarPocketBaseRepository(
+        client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+        workspaceId: 'w1',
+        businessId: 'w1',
+      );
+
+      await expectLater(
+        repository.replaceCompleteSnapshot(
+          const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+        ),
+        throwsA(_appendOnlyCashRestoreError()),
+      );
+
+      expect(readPaths, ['/api/collections/zar_cash_entries/records']);
+      expect(
+        writeRequests,
+        isEmpty,
+        reason: 'existing cash must be detected before /api/batch or CRUD',
+      );
+    },
+  );
+
+  test(
+    'cash appearing during discovery is caught by the final pre-write check',
+    () async {
+      var cashReads = 0;
+      final writeRequests = <http.Request>[];
+      final client = MockClient((request) async {
+        if (request.method != 'GET') {
+          writeRequests.add(request);
+          return _json({});
+        }
+        if (request.url.path.contains('/zar_cash_entries/records')) {
+          cashReads++;
+          return _json({
+            'items': cashReads == 1
+                ? []
+                : [
+                    {'id': 'cash-added-by-another-device'},
+                  ],
+            'totalPages': 1,
+          });
+        }
+        return _json({'items': [], 'totalPages': 1});
+      });
+      final repository = ZarPocketBaseRepository(
+        client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+        workspaceId: 'w1',
+        businessId: 'w1',
+      );
+
+      await expectLater(
+        repository.replaceCompleteSnapshot(
+          ZarDomainSnapshot(
+            people: [_person('p1', 'مشتری')],
+            deals: const [],
+            settlements: const [],
+          ),
+        ),
+        throwsA(_appendOnlyCashRestoreError()),
+      );
+
+      expect(cashReads, 2);
+      expect(
+        writeRequests,
+        isEmpty,
+        reason: 'the second cash check must happen before /api/batch',
+      );
+    },
+  );
+
+  test(
+    'final cash check prevents false success when replacement batch is empty',
+    () async {
+      var cashReads = 0;
+      final writeRequests = <http.Request>[];
+      final client = MockClient((request) async {
+        if (request.method != 'GET') {
+          writeRequests.add(request);
+          return _json({});
+        }
+        if (request.url.path.contains('/zar_cash_entries/records')) {
+          cashReads++;
+          return _json({
+            'items': cashReads == 1
+                ? []
+                : [
+                    {'id': 'cash-added-during-empty-restore'},
+                  ],
+            'totalPages': 1,
+          });
+        }
+        return _json({'items': [], 'totalPages': 1});
+      });
+      final repository = ZarPocketBaseRepository(
+        client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+        workspaceId: 'w1',
+        businessId: 'w1',
+      );
+
+      await expectLater(
+        repository.replaceCompleteSnapshot(
+          const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+        ),
+        throwsA(_appendOnlyCashRestoreError()),
+      );
+
+      expect(cashReads, 2);
+      expect(writeRequests, isEmpty);
+    },
+  );
+
+  test('non-cash restore still sends one transactional batch', () async {
+    final writeRequests = <http.Request>[];
+    final client = MockClient((request) async {
+      if (request.method == 'GET') {
+        return _json({'items': [], 'totalPages': 1});
+      }
+      writeRequests.add(request);
+      return _json({});
+    });
+    final repository = ZarPocketBaseRepository(
+      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+      workspaceId: 'w1',
+      businessId: 'w1',
+    );
+
+    await repository.replaceCompleteSnapshot(
+      ZarDomainSnapshot(
+        people: [_person('p1', 'مشتری')],
+        deals: const [],
+        settlements: const [],
+      ),
+    );
+
+    expect(writeRequests, hasLength(1));
+    expect(writeRequests.single.method, 'POST');
+    expect(writeRequests.single.url.path, '/api/batch');
+    final batch = Map<String, Object?>.from(
+      jsonDecode(writeRequests.single.body) as Map,
+    );
+    final operations = batch['requests']! as List;
+    expect(operations, hasLength(1));
+    expect((operations.single as Map)['method'], 'POST');
+    expect(
+      (operations.single as Map)['url'],
+      '/api/collections/zar_people/records',
+    );
+  });
 
   test('server errors surface as ZarPocketBaseException', () async {
     final client = MockClient(

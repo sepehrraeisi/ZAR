@@ -130,8 +130,24 @@ class ZarPocketBaseRepository
     throw const FormatException('Invalid ZAR+ cloud record payload.');
   }
 
+  Future<void> _ensureCashHistoryIsEmpty() async {
+    final existingCash = await _client.listRecords(
+      _cash,
+      filter: _workspaceFilter,
+    );
+    if (existingCash.isNotEmpty) {
+      throw const ZarCloudRestoreException.appendOnlyCashHistory();
+    }
+  }
+
   @override
   Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
+    // Cash is an append-only journal in the cloud. A replace restore cannot
+    // safely delete, overwrite, or client-merge it. Fail before even reading
+    // the server when the incoming snapshot contains cash history.
+    if (snapshot.cashEntries.isNotEmpty) {
+      throw const ZarCloudRestoreException.appendOnlyCashHistory();
+    }
     validateCashEntries(
       entries: snapshot.cashEntries,
       deals: snapshot.deals,
@@ -144,8 +160,9 @@ class ZarPocketBaseRepository
       settlements: snapshot.settlements,
       allocations: snapshot.paymentAllocations,
     );
-    // One batch per collection keeps every collection internally transactional
-    // (delete-then-create inside the same server-side transaction).
+    await _ensureCashHistoryIsEmpty();
+    // Build one server batch so every non-cash collection is replaced in the
+    // same transaction (all deletes and creates succeed or none do).
     Future<void> replaceAll(
       String collection,
       List<ZarDomainRecord> records,
@@ -198,13 +215,14 @@ class ZarPocketBaseRepository
       for (final allocation in snapshot.paymentAllocations)
         (id: _allocationId(allocation), payload: allocation.toMap()),
     ]);
-    await replaceAll(_cash, [
-      for (final entry in snapshot.cashEntries)
-        (id: entry.id, payload: entry.toMap()),
-    ]);
     if (operations.length > 500) {
       throw StateError('Atomic restore exceeds the server batch limit.');
     }
+    // Re-check before either writing or reporting success to narrow the
+    // multi-device race window. A client-only preflight cannot remove the
+    // remaining interval between this GET and a possible POST; the durable fix
+    // is a server-side guarded, transactional restore revision.
+    await _ensureCashHistoryIsEmpty();
     if (operations.isNotEmpty) {
       await _client.batch(operations);
     }

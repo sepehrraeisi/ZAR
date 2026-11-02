@@ -4,6 +4,7 @@ import 'package:shamsi_date/shamsi_date.dart';
 
 import '../../application/zar_backup_manager.dart';
 import '../../app_core.dart' show formatJalaliDate, toPersianDigits;
+import '../../data/zar_domain_repository.dart';
 import 'backup_file_service.dart';
 
 /// Signed-in cloud account shown as a section on the settings screen.
@@ -109,6 +110,8 @@ class _BackupScreenState extends State<BackupScreen> {
       await action();
     } on FormatException catch (error) {
       _message(_formatError(error));
+    } on ZarCloudRestoreException catch (error) {
+      await _showCloudRestoreBlocked(error);
     } on ZarRestoreReminderException {
       _message(
         'اطلاعات بازیابی شد، اما بازسازی اعلان‌ها کامل نشد. برنامه را دوباره باز کنید.',
@@ -129,6 +132,24 @@ class _BackupScreenState extends State<BackupScreen> {
       return 'این نسخه پشتیبان مربوط به حساب دیگری است.';
     }
     return 'فایل نسخه پشتیبان معتبر نیست یا اطلاعات ضروری آن ناقص است.';
+  }
+
+  Future<void> _showCloudRestoreBlocked(ZarCloudRestoreException error) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('بازیابی صندوق متوقف شد'),
+        content: Text(error.message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('متوجه شدم'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _message(String text) {
