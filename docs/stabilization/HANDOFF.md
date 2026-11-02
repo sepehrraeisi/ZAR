@@ -198,7 +198,9 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - `3f2a54b` — `docs(stabilization): refresh handoff after rollback proof`
 - `8c06054` — `ops(server): guard rate limit deployment`
 - `2531bd3` — `fix(backup): fail closed on cloud cash restore`
-- All implementation and recovery changes through the production containment gate are committed or included in the current evidence update.
+- `f95c49f` — `docs(stabilization): record rate limit production gate`
+- All implementation, recovery and production-evidence changes through this
+  checkpoint are committed locally.
 - The branch is published in Draft PR #3 and remains unmerged. Production
   contains the four reviewed stabilization migrations (two deletion locks,
   admin-access settings and rate limiting); `master` will remain behind until
@@ -206,8 +208,8 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 
 ### Running now
 
-- Commit and publish the reviewed cash-restore containment and production
-  evidence update, then require green CI at that exact head.
+- Publish the reviewed cash-restore containment and production-evidence
+  commits, then require green CI at the resulting exact head.
 - Keep Draft PR #3 unmerged until an explicit review/merge decision.
 - Specify the server-side transactional/revision-bound import needed to close
   the remaining client GET-to-batch cash race.
