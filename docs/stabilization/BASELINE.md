@@ -201,8 +201,9 @@ subsequent production state is recorded below.
   contain the exact 11 ordered rules with `enabled=true` and `excludedIPs=[]`.
 - Minute 0, 5 and 15 plus the overall production observation passed: services
   active, `NRestarts=0`, health endpoints HTTP 200, both public admin surfaces
-  HTTP 404, normal route matrix/counts/integrity stable, and no HTTP 429 or
-  status greater than or equal to 500 in the bounded interval.
+  HTTP 404, counts/integrity stable, and no HTTP 429 or status greater than or
+  equal to 500 in the bounded interval. The full normal-route matrix matched
+  the pre-change capture at minute 0.
 - Production boundaries were deliberately not exhausted. Installed-APK
   sign-in/startup and Persian 429 behavior remain unproven client release
   gates. Rollback was not required.

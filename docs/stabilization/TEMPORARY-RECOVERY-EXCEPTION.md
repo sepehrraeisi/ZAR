@@ -34,7 +34,8 @@ This exception is deliberately narrow. It permits the tested containment migrati
 - This exception itself authorized only the initial two reviewed deletion-lock
   migrations. Subsequent SSH, service, backup, administrative-access and
   rate-limit changes were not implicitly authorized by this exception; each
-  used its own reviewed backup/restore/rollback gate and evidence record.
+  used separately reviewed scoped preflight, recovery and rollback controls
+  with its own evidence record.
 - After containment, a second full recovery set was restored, encrypted and decrypted successfully. Its bundle SHA-256 is `90aefdfed3ebdbc3fff84cf2be3b81d2516c2b0f54d381f4ba8c5e5334a289ec` with 12 verified files.
 
 Local protected recovery location:

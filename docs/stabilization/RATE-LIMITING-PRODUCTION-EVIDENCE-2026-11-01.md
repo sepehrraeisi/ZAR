@@ -78,14 +78,15 @@ There is no wildcard create rule and no generic authenticated API rule.
 
 ## Observation result
 
-The same read-only acceptance set passed at minute 0, 5 and 15, and the final
-aggregate result was `RATE_LIMIT_PRODUCTION_OBSERVATION_PASS`:
+The common service, settings, history, count, integrity and bounded-log
+acceptance set passed at minute 0, 5 and 15, and the final aggregate result was
+`RATE_LIMIT_PRODUCTION_OBSERVATION_PASS`. The full before/after normal-route
+status and body-class matrix was captured and matched at minute 0 only:
 
 - `zar-server.service`, Caddy and the backup timer remained active;
 - PocketBase `NRestarts` remained `0`;
 - internal health and both public health URLs returned HTTP 200;
 - the dashboard/management surface stayed HTTP 404 on both public hosts;
-- the before/after normal-route status and body-class matrix matched;
 - the expected invalid-auth and invalid-batch probes remained HTTP 400;
 - domain counts and migration history remained at their exact expected values;
 - both SQLite databases retained successful integrity results;

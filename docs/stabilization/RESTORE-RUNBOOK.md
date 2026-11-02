@@ -162,7 +162,9 @@ Before changing production:
 
 ## Remaining disaster-recovery gaps
 
-- Backups are still stored only on the production server and retained for seven days.
+- Backups are still stored only on the production server. The current verified
+  automation retains 30 days with a minimum of seven successful snapshots, but
+  same-host retention does not protect against server/provider loss.
 - Encryption, off-site replication, automated age monitoring and restore alerts are not implemented.
 - RPO, RTO, legal retention and data-residency requirements need owner decisions.
 - A second operator has not yet repeated the drill.
