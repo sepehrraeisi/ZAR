@@ -21,11 +21,14 @@ A complete recoverable release must contain or identify all of the following:
 
 1. A consistent SQLite backup created with PocketBase backup support or SQLite `.backup`, not a raw copy of a live WAL database.
 2. Every applied JavaScript migration with its original filename and bytes, plus reviewed pending migrations.
-3. The exact PocketBase version and verified release checksum.
-4. Versioned systemd, reverse-proxy and backup configuration.
-5. Any `pb_data/storage` objects if file fields are introduced later.
-6. Secrets, SMTP credentials and private keys in a separately encrypted secret store; never in Git or the evidence report.
-7. A manifest containing UTC capture time, file size and SHA-256 for every recovery artifact.
+3. Every deployed PocketBase hook with its original path and bytes. After the
+   transactional-restore candidate is deployed this includes both
+   `pb_hooks/zar_restore.js` and `pb_hooks/zar_restore_routes.pb.js`.
+4. The exact PocketBase version and verified release checksum.
+5. Versioned systemd, reverse-proxy and backup configuration.
+6. Any `pb_data/storage` objects if file fields are introduced later.
+7. Secrets, SMTP credentials and private keys in a separately encrypted secret store; never in Git or the evidence report.
+8. A manifest containing UTC capture time, file size and SHA-256 for every recovery artifact.
 
 `auxiliary.db` contains operational logs and is useful for incident investigation, but it is not required to reconstruct the business records in `data.db`. Preserve it separately when incident evidence matters.
 
@@ -34,6 +37,8 @@ A complete recoverable release must contain or identify all of the following:
 - PocketBase `0.40.4` matching the deployed major/minor version.
 - Python 3 with the standard library.
 - The repository migration directory `server/pb_migrations`.
+- The repository hook directory `server/pb_hooks` whenever the recovered
+  migration history contains the transactional-restore migration.
 - `server/tools/verify_recovery_set.py`.
 
 For the official Linux amd64 PocketBase `0.40.4` archive, the verified SHA-256 recorded during this audit is:
@@ -99,11 +104,13 @@ This verifier does not replace the Dart domain validation suite. Exact accountin
 
 ### 4. Exercise supported migration lineages
 
-Run both disposable PocketBase integration tests:
+Run all disposable PocketBase integration tests relevant to the recovered
+lineage:
 
 ```text
 python server/tests/pocketbase_authz_test.py --pocketbase <verified-pocketbase-binary>
 python server/tests/pocketbase_migration_lineage_test.py --pocketbase <verified-pocketbase-binary>
+python server/tests/pocketbase_transactional_restore_test.py --pocketbase <verified-pocketbase-binary>
 ```
 
 The lineage test must pass for:
@@ -125,6 +132,15 @@ production `--dir` and `--migrationsDir` values are used; restart-on-error,
 start-to-health, counts, integrity, routes and logs are verified; and the exact
 same down path already passed on an isolated clone. This narrow exception does
 not authorize down-migration during general recovery or lineage repair.
+
+The transactional-restore migration is both schema- and settings-changing.
+Its down path is allowed only as an immediate, clone-rehearsed rollback while
+the service is stopped and the private receipt collection is empty. Once any
+receipt exists—or a commit result is ambiguous—down is forbidden because it
+would remove idempotency/audit evidence. Disable the route hook, preserve the
+schema/receipts and issue a forward-only repair. The older guarded rate-limit
+rollback script must refuse once this newer migration is latest; never bypass
+that guard. See `TRANSACTIONAL-RESTORE-PLAN.md`.
 
 ## Evidence from the 2026-10-30 drill
 
@@ -152,6 +168,10 @@ Before changing production:
 1. Schedule a maintenance window and name an operator and rollback owner.
 2. Confirm business-approved RPO, RTO and maximum downtime; these are not yet defined.
 3. Create a fresh full recovery set and copy an encrypted copy off the server.
+   While the explicitly accepted pre-customer exception is active and no
+   independent host exists, record that exception and retain the verified
+   same-host set; this does not satisfy disaster recovery and expires before
+   customer data or launch.
 4. Re-run this isolated verifier against that exact set.
 5. Write the intended migration, validation and rollback commands before execution.
 6. Keep a verified SSH session open and do not combine database, SSH, service-user and proxy hardening in one change.
@@ -159,6 +179,18 @@ Before changing production:
 8. Verify service health, authentication, authorization regression tests and business record counts.
 9. Stop immediately on any unexplained difference; restore the entire verified set rather than editing records manually.
 10. Record UTC timestamps, operators, hashes, commands, outcomes and the final decision in the handoff ledger.
+
+For the transactional-restore candidate, production remains blocked until a
+production-snapshot clone proves the exact `11` to `13` rate-rule delta, the
+service-stopped migration-before-hook install order, restart/replay of a private
+receipt, rollback refusal after a receipt, and zero unexplained domain or
+receipt reconciliation differences. `verify_recovery_set.py` now binds and
+hashes the exact hook set, reconciles receipt count and canonical metadata hash
+without payloads, and starts the isolated service with hot reload disabled. It
+passed the current local files against a historical production-derived snapshot
+on 2026-11-03, but that source started at four rate rules. The fresh current
+production `11`→`13` rehearsal is still mandatory; see
+`TRANSACTIONAL-RESTORE-LOCAL-EVIDENCE-2026-11-03.md`.
 
 ## Remaining disaster-recovery gaps
 

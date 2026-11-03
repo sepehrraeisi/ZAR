@@ -1,7 +1,7 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-11-02 (Asia/Tehran)
-Status: **IN PROGRESS — critical data/admin containment, host/service hardening, verified local backups and the server rate-limit production gate passed; product/data correctness and release work remain**
+Last updated: 2026-11-03 (Asia/Tehran)
+Status: **IN PROGRESS — production containment remains stable; local transactional cloud restore and its test/recovery gates are green, but production is blocked on follow-up review, a fresh 11→13 clone rehearsal, guarded tooling and exact-head CI**
 Change freeze: no feature work; every production mutation must continue through the backup/restore and rollback gates below.
 
 ## 1. Objective
@@ -31,6 +31,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Baseline evidence manifest: `docs/stabilization/BASELINE.md`
 - Findings register: `docs/stabilization/FINDINGS.md`
 - Restore/reconciliation runbook: `docs/stabilization/RESTORE-RUNBOOK.md`
+- Transactional cloud-restore plan: `docs/stabilization/TRANSACTIONAL-RESTORE-PLAN.md`
 - Production containment change plan: `docs/stabilization/PRODUCTION-CONTAINMENT-CHANGE-PLAN.md`
 - Production containment evidence: `docs/stabilization/PRODUCTION-CONTAINMENT-EVIDENCE-2026-10-30.md`
 - SSH hardening plan: `docs/stabilization/SSH-HARDENING-PLAN.md`
@@ -89,6 +90,9 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - `server/pb_migrations` contains the reconciled production lineage and the four
   deployed stabilization migrations: two deletion locks, administrative
   trusted-proxy/superuser settings and the rate-limit policy.
+- The local candidate adds a fifth stabilization migration plus
+  two PocketBase hook files for transactional cloud restore. This candidate is
+  not deployed, not production evidence and not yet a release artifact.
 - CI at `.github/workflows/phase_a2_ci.yml` runs real PocketBase authorization
   and migration-lineage jobs alongside analyze, tests and a debug web build.
 - README describes exact money handling (integer minor units) and exact gold decimal strings.
@@ -97,6 +101,9 @@ Never put passwords, tokens, signing-key material, private keys, database conten
   After the cash-restore guard and blocking-dialog regression test were added,
   the complete suite passed 337 tests with zero failures on 2026-11-02; full
   analyzer had no findings.
+- The current 2026-11-03 local candidate passes the complete exact-tree Flutter
+  suite (**345 tests**), the full analyzer, all three real-PocketBase server
+  suites and Python syntax checks. GitHub exact-head CI is still pending.
 - Android release guide exists, but actual signing-key possession, installed APK identity, and clean release build are not yet proven.
 - Product documentation currently defines ZAR+ as an operational gold/currency assistant and explicitly excludes a full accounting ledger, profit/loss, tax and financial statements. The owner must confirm whether “accounting application” means this operational scope or a true general ledger before architecture changes.
 
@@ -119,6 +126,14 @@ Never put passwords, tokens, signing-key material, private keys, database conten
   the server deployment must not be represented as a client release.
 - No external monitoring/alerting channel exists yet. Tested recovery, containment, SSH, service and backup change/rollback evidence now exists.
 - Production was changed only through the documented gated changes recorded below; each passed health/integrity/reconciliation checks and no rollback was required.
+- Production does not contain the transactional-restore migration, hooks or
+  explicit hook-path unit. It remains at exactly 11 rate rules and the earlier
+  server-side cash update/delete lock; the local candidate expects 13. The
+  branch client guard has not been verified in the installed Android APK.
+- A read-only check at `2026-11-03T12:36:42Z` reconfirmed: service active,
+  loopback health `200`, restore route `404`, both hook files and migration
+  absent, no explicit hook arguments in the installed unit, and exactly 11
+  enabled rate-limit rules. No production state was changed.
 
 ## 4. Non-negotiable gates before production changes
 
@@ -178,6 +193,38 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - 2026-11-01: Copied the 81-entry production evidence set off-server and verified its internal hashes and archive SHA-256 `7877588bbee36233c854fa45b7dfa761eb7252179f4166d1313b7efc697adc95`. This operational archive does not close the same-host disaster-recovery exception.
 - 2026-11-01: Added client fail-closed containment for cash-containing cloud restore: incoming or currently observed cash produces a typed Persian controlled-recovery error before any batch/write, and regression tests cover both denied paths plus the non-cash path. The client GET-to-batch multi-device race remains open P1 and requires a server-side transactional revision/import design.
 - 2026-11-02: Re-ran the complete Flutter suite after combining the cash-restore containment and production-evidence update: 337 tests passed with zero failures; full analyzer reported no findings.
+- 2026-11-02: Added a local-only transactional cloud-restore candidate: one
+  compare-and-swap transaction replaces all seven domain collections and
+  creates a private idempotency receipt; password re-authentication,
+  single-member authorization, membership immutability, stale-state rejection,
+  bounded input and ambiguous-result retry are being hardened. Added a
+  service-stopped deployment/rollback plan and explicit hook paths with hot
+  reload disabled. Production was not changed; full tests, clone rehearsal and
+  exact-head CI remained pending at that checkpoint.
+- 2026-11-03: Completed the local server-side accounting validator and
+  destructive PocketBase coverage. Authorization, migration-lineage and
+  transactional-restore suites all pass, including cash replacement,
+  stale/concurrent writes, idempotency, transaction rollback, malformed
+  snapshots, shared-workspace denial, isolated receipt recovery and refusal to
+  migrate down after a receipt exists.
+- 2026-11-03: Extended `verify_recovery_set.py` to bind and hash the exact hook
+  directory, reconcile receipt count/metadata hashes without payloads and
+  restart the restored service with hot reload disabled. The current local
+  files passed against the historical production-derived snapshot; see
+  `TRANSACTIONAL-RESTORE-LOCAL-EVIDENCE-2026-11-03.md`. Because that snapshot
+  predates the production 11-rule deployment, it is supporting evidence rather
+  than the required final `11`→`13` rehearsal.
+- 2026-11-03: Independent security review found one high-severity client
+  ambiguity defect. It was remediated so that after a possibly committed first
+  request, every non-verifiable retry—including all tested 4xx classes—remains
+  `cloud_restore_outcome_unknown`. Targeted regression tests and analyzer pass;
+  a fresh independent follow-up review remains a release gate.
+- 2026-11-03: Re-ran the complete Flutter suite after the security remediation:
+  345 tests passed with zero failures and full analyzer reported no findings.
+- 2026-11-03 12:36 UTC: Read-only production verification confirmed active
+  health, exactly 11 enabled rate rules, no restore route, no candidate
+  migration/hooks and no candidate service arguments. Production was not
+  mutated.
 
 ### Local commit checkpoint
 
@@ -199,8 +246,9 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - `8c06054` — `ops(server): guard rate limit deployment`
 - `2531bd3` — `fix(backup): fail closed on cloud cash restore`
 - `f95c49f` — `docs(stabilization): record rate limit production gate`
-- All implementation, recovery and production-evidence changes through this
-  checkpoint are committed locally.
+- `31eadf7` — `feat(restore): add transactional cloud recovery`
+- All implementation and test changes through this checkpoint are committed
+  locally. The evidence-document commit follows separately.
 - The branch is published in Draft PR #3 and remains unmerged. Production
   contains the four reviewed stabilization migrations (two deletion locks,
   admin-access settings and rate limiting); `master` will remain behind until
@@ -208,18 +256,23 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 
 ### Running now
 
-- Publish the reviewed cash-restore containment and production-evidence
-  commits, then require green CI at the resulting exact head.
-- Keep Draft PR #3 unmerged until an explicit review/merge decision.
-- Specify the server-side transactional/revision-bound import needed to close
-  the remaining client GET-to-batch cash race.
+- Finalize the evidence/handoff commit, publish it to Draft PR #3 and require
+  exact-head CI; do not merge without the owner's explicit decision.
+- Keep production unchanged while the follow-up security review, fresh
+  current-production clone rehearsal and dedicated guarded deploy/rollback
+  tooling are incomplete.
+- The older rate-limit rollback script must refuse once the new migration is
+  latest; post-receipt recovery is forward-only and must preserve receipts.
 
 ### Next safe actions
 
-1. Complete the cash-restore containment review/full CI; do not merge Draft PR
-   #3 without the owner's explicit decision.
-2. Design and test a server-side transactional, idempotent, revision-bound
-   new-workspace cash import.
+1. Publish the reviewed local candidate, run exact-head CI and obtain a fresh
+   independent security review of the ambiguity remediation; do not merge
+   Draft PR #3 without the owner's explicit decision.
+2. Rehearse the exact service-stopped migration-before-hook deployment,
+   `11`→`13` rule delta, receipt replay/recovery and both rollback branches on
+   a fresh current-production snapshot clone. Do not deploy until every gate in
+   `TRANSACTIONAL-RESTORE-PLAN.md` passes.
 3. Inspect the installed Android APK and prove package/version/signature,
    sign-in/startup and Persian 429 behavior before client release.
 4. Decide whether public signup should remain enabled in the pre-customer environment.
@@ -241,8 +294,10 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - Prevent the app from presenting cloud cash restore as supported while the
   append-only server correctly rejects its deletes. **Client fail-closed
   containment and Persian controlled-recovery messaging are implemented and
-  tested; the GET-to-batch multi-device race and server-side transactional
-  import remain open P1/pre-release work.**
+  tested in the published baseline. A local server-side transactional
+  candidate now addresses the GET-to-batch race, but production remains on the
+  containment path until security validation, full tests, clone rehearsal,
+  recovery verification and explicit deployment approval pass.**
 
 ### P1 — establish a reliable source of truth
 

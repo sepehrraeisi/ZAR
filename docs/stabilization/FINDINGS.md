@@ -1,6 +1,6 @@
 # ZAR+ Stabilization Findings Register
 
-Updated: 2026-11-02 (Asia/Tehran)
+Updated: 2026-11-03 (Asia/Tehran)
 Baseline source: `e60d68dda3c1876dc5af99e36c1f455b76fd8a50`  
 Working branch: `codex/stabilization-baseline`
 
@@ -24,6 +24,9 @@ This register is evidence-driven. “Locally fixed” means code and tests exist
   zero failures. After adding cash-restore containment and its UI regression
   test, the complete suite passed 337 tests with zero failures on 2026-11-02;
   full analyzer had no findings.
+- On the current 2026-11-03 local candidate, the exact-tree complete Flutter
+  suite passed **345 tests** with zero failures and `flutter analyze --no-pub`
+  reported no findings. Exact-head GitHub CI remains a separate gate.
 
 The green baseline is valuable but does not prove production safety. Existing tests are strong around exact numeric domain behavior, local Drift transactions, projections, UI and backup codecs; they are weak around real PocketBase authorization, multi-device concurrency, Android data protection and disaster recovery.
 
@@ -158,23 +161,45 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Original safety property: the pre-containment delete/create requests were one
   PocketBase batch, and the isolated invalid-batch canary proved complete
   transaction rollback; no partial restore was observed in that reproduction.
-- Immediate client containment implemented: before any cloud batch/write, the
-  app fails closed when the incoming snapshot or currently observed cloud
-  snapshot contains cash, throws a typed error and shows a precise Persian
-  controlled-recovery message. Regression tests prove the rejected paths send
-  no batch/write and the non-cash path remains available. No client-side append
-  merge or automatic retry was added.
-- Residual P1 race: this remains a client GET-then-batch check. A second device
-  can create a cash entry after the preflight GET and before the batch commits;
-  the client cannot atomically assert workspace revision/emptiness. Therefore
-  this containment improves safety and messaging but is not a complete
-  concurrency guarantee.
-- Long-term remediation: a server-side transactional, idempotent import with
-  expected workspace revision and backup hash, preferably restoring into a new
-  immutable workspace/version and switching ownership atomically.
-- Status: client fail-closed containment implemented and targeted tests pass;
-  server-side transactional import remains open P1/pre-release work. DB-level
-  disaster restore remains the tested operational full recovery path.
+- Current containment has two parts: production denies normal cash
+  update/delete, and the reviewed branch client rejects incoming or currently
+  observed cash before any cloud batch/write with a controlled Persian
+  recovery message. Presence of that guard in the installed Android APK is not
+  proven. This removes the known branch path but does not make cloud cash
+  restore available.
+- Local candidate: migration `1793604800_transactional_restore.js` and the
+  `zar_restore` hooks implement state-hash compare-and-swap, seven-collection
+  replacement and a private idempotency receipt in one server transaction.
+  Commit requires password re-authentication and a single-member workspace;
+  workspace membership is made immutable through Record API. The client
+  retries ambiguous responses once with the same request ID and otherwise
+  reports an unknown outcome rather than false success.
+- Current local integration evidence exercises cash restore, normal cash
+  update/delete denial, stale-state conflict, idempotent replay, transaction
+  rollback, case-insensitive duplicate IDs, malformed accounting references,
+  receipt privacy/recovery and shared-workspace denial. The complete server
+  authorization, migration-lineage and destructive-restore suites pass.
+- An independent security review found that a 4xx response to the retry after
+  an ambiguous first commit could be misreported as definite failure even if
+  the first request had committed. The client now keeps every unverified retry
+  outcome unknown; regression coverage includes 400/401/403/404/409/413/422/
+  428/429 and an invalid replay receipt. This remediation still needs a fresh
+  independent follow-up review before release.
+- The recovery verifier now hashes the exact hook set, reconciles private
+  receipt metadata without payloads and proves restart recovery. It passed a
+  production-derived historical snapshot on the current local hook/migration
+  set. That evidence started at four rate rules, so it does **not** replace the
+  required current-production `11` to `13` clone rehearsal.
+- Remaining pre-deployment gates: follow-up security review, exact-head
+  Flutter/real-PocketBase CI, the service-stopped migration-before-hook
+  rehearsal on a fresh current-production snapshot clone, and dedicated
+  guarded deploy/rollback tooling.
+- Operational status: **local candidate only; production is unchanged with 11
+  rate rules and the cash update/delete lock.** The candidate
+  expects 13 rules. Rollback after any receipt exists must preserve the
+  migration and receipts and use a forward-only repair. See
+  `TRANSACTIONAL-RESTORE-PLAN.md`.
+- DB-level disaster restore remains the tested operational full recovery path.
 
 ### ZAR-CI-001 — release/supply-chain controls are incomplete
 
@@ -186,7 +211,10 @@ The green baseline is valuable but does not prove production safety. Existing te
 ## Medium findings and constraints
 
 - PocketBase client accepts non-HTTPS server URLs; release builds should reject cleartext except explicit local development.
-- Cloud restore rejects datasets requiring more than 500 operations; a versioned large-dataset strategy is needed.
+- The local transactional-restore candidate replaces the former 500-operation
+  client batch ceiling with explicit 8 MiB, 5,000-per-collection and
+  10,000-total limits. Practical maximum size, transaction duration and failure
+  behavior still require clone evidence before release.
 - UI defaults most non-Toman currencies to scale 2 even though the domain model supports scales 0–6.
 - HTTP operations lack explicit request timeouts/cancellation and a documented retry budget.
 - The two formerly production-only Persian email-template migrations are now
@@ -204,12 +232,12 @@ Stabilization of security, recovery and current data integrity can continue with
 
 ## Next implementation order
 
-1. Publish the reviewed cash-restore containment and production evidence, then
-   require green CI at that exact head and keep Draft PR #3 unmerged until an
-   explicit review/merge/release decision.
-2. Design and test the server-side transactional, idempotent,
-   revision-protected new-workspace cash import that closes the remaining
-   client GET-to-batch race.
+1. Finish security/accounting validation and the client/integration test matrix
+   for the local transactional-restore candidate; require green exact-head CI
+   and keep Draft PR #3 unmerged until an explicit review/merge decision.
+2. Rehearse migration, service-stopped install, recovery reconciliation and
+   both rollback branches on fresh and production-snapshot clones. Do not
+   deploy while the gates in `TRANSACTIONAL-RESTORE-PLAN.md` remain open.
 3. Inspect the installed Android APK and prove package/version/signature,
    sign-in/startup behavior and the Persian 429 message before client release.
 4. Decide and enforce the intended public-signup policy.
