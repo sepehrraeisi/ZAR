@@ -198,6 +198,25 @@ def run(pocketbase: Path) -> None:
                 )
                 _expect("member workspace update", status, 200)
 
+                status, _ = _request(
+                    base_url,
+                    "PATCH",
+                    record_path,
+                    body={"members": []},
+                    token=token,
+                )
+                _expect("workspace membership mutation denied", status, 404)
+
+                status, workspace_after_denial = _request(
+                    base_url,
+                    "GET",
+                    record_path,
+                    token=token,
+                )
+                _expect("workspace survives denied membership mutation", status, 200)
+                if workspace_after_denial["members"] != [user_id]:
+                    raise AssertionError("denied membership mutation changed members")
+
                 status, _ = _request(base_url, "DELETE", record_path)
                 _expect("anonymous workspace delete denied", status, 403)
 

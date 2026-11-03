@@ -1,4 +1,5 @@
 server/pb_migrations/*.js text eol=lf
+server/pb_hooks/*.js text eol=lf
 server/tools/*.sh text eol=lf
 server/scripts/*.sh text eol=lf
 server/deploy/*.service text eol=lf

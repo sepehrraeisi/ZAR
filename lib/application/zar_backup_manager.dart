@@ -74,7 +74,10 @@ class ZarBackupManager {
     return ZarBackupPreview(bundle);
   }
 
-  Future<void> restore(ZarBackupPreview preview) async {
+  Future<void> restore(
+    ZarBackupPreview preview, {
+    String? confirmationSecret,
+  }) async {
     final bundle = preview.bundle;
     await _repository.replaceCompleteSnapshot(
       ZarDomainSnapshot(
@@ -86,6 +89,7 @@ class ZarBackupManager {
         paymentAllocations: bundle.paymentAllocations,
         cashEntries: bundle.cashEntries,
       ),
+      confirmationSecret: confirmationSecret,
     );
     await _store.refresh();
     try {

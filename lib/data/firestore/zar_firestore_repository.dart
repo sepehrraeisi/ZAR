@@ -10,8 +10,8 @@ class ZarFirestoreRepository implements ZarDomainRepository {
     required this.businessId,
     required this.userId,
     ZarFirestoreMapper mapper = const ZarFirestoreMapper(),
-  })  : _firestore = firestore,
-        _mapper = mapper;
+  }) : _firestore = firestore,
+       _mapper = mapper;
 
   final FirebaseFirestore _firestore;
   final ZarFirestoreMapper _mapper;
@@ -35,37 +35,56 @@ class ZarFirestoreRepository implements ZarDomainRepository {
 
   @override
   Future<ZarDomainSnapshot> loadCompleteSnapshot() async {
-    final result = await Future.wait([_people.get(), _deals.get(), _settlements.get()]);
+    final result = await Future.wait([
+      _people.get(),
+      _deals.get(),
+      _settlements.get(),
+    ]);
     return ZarDomainSnapshot(
       people: result[0].docs
           .map((doc) => _mapper.personFromMap(doc.id, doc.data()))
           .toList(growable: false),
       deals: result[1].docs
-          .map((doc) => _mapper.dealFromMap(
-                id: doc.id,
-                businessId: businessId,
-                map: doc.data(),
-              ))
+          .map(
+            (doc) => _mapper.dealFromMap(
+              id: doc.id,
+              businessId: businessId,
+              map: doc.data(),
+            ),
+          )
           .toList(growable: false),
       settlements: result[2].docs
-          .map((doc) => _mapper.settlementFromMap(
-                id: doc.id,
-                businessId: businessId,
-                map: doc.data(),
-              ))
+          .map(
+            (doc) => _mapper.settlementFromMap(
+              id: doc.id,
+              businessId: businessId,
+              map: doc.data(),
+            ),
+          )
           .toList(growable: false),
     );
   }
 
   @override
-  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
+  Future<void> replaceCompleteSnapshot(
+    ZarDomainSnapshot snapshot, {
+    String? confirmationSecret,
+  }) async {
     if (snapshot.cashEntries.isNotEmpty) {
-      throw UnsupportedError('Cash journal restore requires a cash-capable repository.');
+      throw UnsupportedError(
+        'Cash journal restore requires a cash-capable repository.',
+      );
     }
     if (snapshot.paymentAllocations.isNotEmpty) {
-      throw UnsupportedError('Explicit payment allocations currently require local storage.');
+      throw UnsupportedError(
+        'Explicit payment allocations currently require local storage.',
+      );
     }
-    final existing = await Future.wait([_people.get(), _deals.get(), _settlements.get()]);
+    final existing = await Future.wait([
+      _people.get(),
+      _deals.get(),
+      _settlements.get(),
+    ]);
     final replacementIds = [
       snapshot.people.map((item) => item.id).toSet(),
       snapshot.deals.map((item) => item.id).toSet(),
@@ -73,13 +92,16 @@ class ZarFirestoreRepository implements ZarDomainRepository {
     ];
     var deleteCount = 0;
     for (var index = 0; index < existing.length; index++) {
-      deleteCount += existing[index]
-          .docs
+      deleteCount += existing[index].docs
           .where((document) => !replacementIds[index].contains(document.id))
           .length;
     }
-    final writeCount = deleteCount + snapshot.people.length +
-        snapshot.deals.length + snapshot.settlements.length + 1;
+    final writeCount =
+        deleteCount +
+        snapshot.people.length +
+        snapshot.deals.length +
+        snapshot.settlements.length +
+        1;
     if (writeCount > 499) {
       throw StateError(
         'Atomic restore exceeds the Firestore 500-write transaction limit.',
@@ -100,7 +122,10 @@ class ZarFirestoreRepository implements ZarDomainRepository {
       batch.set(_deals.doc(deal.id), _mapper.dealToMap(deal));
     }
     for (final settlement in snapshot.settlements) {
-      batch.set(_settlements.doc(settlement.id), _mapper.settlementToMap(settlement));
+      batch.set(
+        _settlements.doc(settlement.id),
+        _mapper.settlementToMap(settlement),
+      );
     }
     _appendAuditToBatch(
       batch,
@@ -149,17 +174,22 @@ class ZarFirestoreRepository implements ZarDomainRepository {
   }) async {
     final snapshot = await _settlements
         .where('status', isEqualTo: ZarSettlementStatus.open.name)
-        .where('scheduledAt', isGreaterThanOrEqualTo: Timestamp.fromDate(from.toUtc()))
+        .where(
+          'scheduledAt',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(from.toUtc()),
+        )
         .where('scheduledAt', isLessThan: Timestamp.fromDate(through.toUtc()))
         .orderBy('scheduledAt')
         .limit(limit)
         .get();
     return snapshot.docs
-        .map((doc) => _mapper.settlementFromMap(
-              id: doc.id,
-              businessId: businessId,
-              map: doc.data(),
-            ))
+        .map(
+          (doc) => _mapper.settlementFromMap(
+            id: doc.id,
+            businessId: businessId,
+            map: doc.data(),
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -175,11 +205,13 @@ class ZarFirestoreRepository implements ZarDomainRepository {
         .limit(limit)
         .get();
     return snapshot.docs
-        .map((doc) => _mapper.settlementFromMap(
-              id: doc.id,
-              businessId: businessId,
-              map: doc.data(),
-            ))
+        .map(
+          (doc) => _mapper.settlementFromMap(
+            id: doc.id,
+            businessId: businessId,
+            map: doc.data(),
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -190,11 +222,13 @@ class ZarFirestoreRepository implements ZarDomainRepository {
         .limit(limit)
         .get();
     return snapshot.docs
-        .map((doc) => _mapper.settlementFromMap(
-              id: doc.id,
-              businessId: businessId,
-              map: doc.data(),
-            ))
+        .map(
+          (doc) => _mapper.settlementFromMap(
+            id: doc.id,
+            businessId: businessId,
+            map: doc.data(),
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -205,11 +239,13 @@ class ZarFirestoreRepository implements ZarDomainRepository {
         .limit(limit)
         .get();
     return snapshot.docs
-        .map((doc) => _mapper.dealFromMap(
-              id: doc.id,
-              businessId: businessId,
-              map: doc.data(),
-            ))
+        .map(
+          (doc) => _mapper.dealFromMap(
+            id: doc.id,
+            businessId: businessId,
+            map: doc.data(),
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -224,11 +260,13 @@ class ZarFirestoreRepository implements ZarDomainRepository {
         .limit(limit)
         .get();
     return snapshot.docs
-        .map((doc) => _mapper.settlementFromMap(
-              id: doc.id,
-              businessId: businessId,
-              map: doc.data(),
-            ))
+        .map(
+          (doc) => _mapper.settlementFromMap(
+            id: doc.id,
+            businessId: businessId,
+            map: doc.data(),
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -243,16 +281,21 @@ class ZarFirestoreRepository implements ZarDomainRepository {
         .limit(limit)
         .get();
     return snapshot.docs
-        .map((doc) => _mapper.dealFromMap(
-              id: doc.id,
-              businessId: businessId,
-              map: doc.data(),
-            ))
+        .map(
+          (doc) => _mapper.dealFromMap(
+            id: doc.id,
+            businessId: businessId,
+            map: doc.data(),
+          ),
+        )
         .toList(growable: false);
   }
 
   @override
-  Future<void> savePerson(ZarPerson person, {String auditAction = 'edit'}) async {
+  Future<void> savePerson(
+    ZarPerson person, {
+    String auditAction = 'edit',
+  }) async {
     final ref = _people.doc(person.id);
     final before = await ref.get();
     final batch = _firestore.batch();

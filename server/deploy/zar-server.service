@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/opt/zar/server
-ExecStart=/opt/zar/server/pocketbase serve --http=127.0.0.1:8090
+ExecStart=/opt/zar/server/pocketbase serve --http=127.0.0.1:8090 --dir=/opt/zar/server/pb_data --migrationsDir=/opt/zar/server/pb_migrations --hooksDir=/opt/zar/server/pb_hooks --hooksWatch=false
 Restart=always
 RestartSec=5
 User=zarapp

@@ -21,11 +21,36 @@ TEMPLATE_MIGRATIONS = (
 )
 LOCK_MIGRATION = "1793260800_lock_workspace_deletion.js"
 CASH_LOCK_MIGRATION = "1793347200_lock_cash_entry_deletion.js"
+INFRASTRUCTURE_MIGRATIONS = (
+    "1793394000_trust_caddy_client_ip.js",
+    "1793437200_enable_rate_limits.js",
+    "1793604800_transactional_restore.js",
+)
+LOCKED_MEMBER_UPDATE_RULE = (
+    '@request.auth.id != "" && members.id ?= @request.auth.id '
+    '&& @request.body.members:changed = false'
+)
+EXPECTED_RATE_RULES = [
+    {"label": "*:auth", "audience": "", "duration": 60, "maxRequests": 5},
+    {"label": "users:create", "audience": "", "duration": 600, "maxRequests": 5},
+    {"label": "*:requestPasswordReset", "audience": "", "duration": 300, "maxRequests": 3},
+    {"label": "*:requestOTP", "audience": "", "duration": 300, "maxRequests": 3},
+    {"label": "*:requestVerification", "audience": "", "duration": 300, "maxRequests": 3},
+    {"label": "*:requestEmailChange", "audience": "", "duration": 300, "maxRequests": 3},
+    {"label": "*:confirmPasswordReset", "audience": "", "duration": 300, "maxRequests": 10},
+    {"label": "*:confirmVerification", "audience": "", "duration": 300, "maxRequests": 10},
+    {"label": "*:confirmEmailChange", "audience": "", "duration": 300, "maxRequests": 10},
+    {"label": "/api/batch", "audience": "@auth", "duration": 1, "maxRequests": 10},
+    {"label": "/api/", "audience": "@guest", "duration": 10, "maxRequests": 60},
+    {"label": "/api/zar/restore/state", "audience": "@auth", "duration": 60, "maxRequests": 30},
+    {"label": "/api/zar/restore/commit", "audience": "@auth", "duration": 600, "maxRequests": 10},
+]
 ALL_MIGRATIONS = (
     *BASE_MIGRATIONS,
     *TEMPLATE_MIGRATIONS,
     LOCK_MIGRATION,
     CASH_LOCK_MIGRATION,
+    *INFRASTRUCTURE_MIGRATIONS,
 )
 
 
@@ -75,11 +100,34 @@ def _assert_final_state(data_dir: Path) -> None:
         if row is None or row[0] is not None:
             raise AssertionError("workspace deletion lock is not active")
         row = connection.execute(
+            "SELECT updateRule FROM _collections WHERE name = 'zar_workspaces'"
+        ).fetchone()
+        if row is None or row[0] != LOCKED_MEMBER_UPDATE_RULE:
+            raise AssertionError("workspace membership lock is not active")
+        row = connection.execute(
             "SELECT updateRule, deleteRule FROM _collections "
             "WHERE name = 'zar_cash_entries'"
         ).fetchone()
         if row is None or row[0] is not None or row[1] is not None:
             raise AssertionError("cash journal immutability rules are not active")
+        receipt_rules = connection.execute(
+            "SELECT listRule, viewRule, createRule, updateRule, deleteRule "
+            "FROM _collections WHERE name = 'zar_restore_receipts'"
+        ).fetchone()
+        if receipt_rules is None or any(rule is not None for rule in receipt_rules):
+            raise AssertionError("restore receipts are not private")
+        settings_row = connection.execute(
+            "SELECT value FROM _params WHERE id = 'settings'"
+        ).fetchone()
+        if settings_row is None:
+            raise AssertionError("PocketBase settings are missing")
+        rate_limits = json.loads(settings_row[0]).get("rateLimits", {})
+        if (
+            rate_limits.get("enabled") is not True
+            or rate_limits.get("excludedIPs") != []
+            or rate_limits.get("rules") != EXPECTED_RATE_RULES
+        ):
+            raise AssertionError("transactional restore rate policy is not exact")
         options_row = connection.execute(
             "SELECT options FROM _collections WHERE name = 'users'"
         ).fetchone()
@@ -130,7 +178,11 @@ def run(pocketbase: Path) -> None:
             (*BASE_MIGRATIONS, LOCK_MIGRATION, CASH_LOCK_MIGRATION),
         )
         _migrate(pocketbase, developer_data, developer_migrations)
-        _copy_migrations(source, developer_migrations, TEMPLATE_MIGRATIONS)
+        _copy_migrations(
+            source,
+            developer_migrations,
+            (*TEMPLATE_MIGRATIONS, *INFRASTRUCTURE_MIGRATIONS),
+        )
         _migrate(pocketbase, developer_data, developer_migrations)
         _assert_final_state(developer_data)
         print("PASS existing-developer lineage")

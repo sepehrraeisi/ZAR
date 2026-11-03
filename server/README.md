@@ -14,6 +14,7 @@ SHA-256: 14ec215bc7aaceda356713cd4b29aa7fcfee854ff2ae1151c5ddba41b43aec8a
 ```text
 /opt/zar/server/pocketbase        root:root 0755
 /opt/zar/server/pb_migrations/    root:root 0755 (files 0644)
+/opt/zar/server/pb_hooks/         root:root 0755 (files 0644)
 /opt/zar/server/pb_data/          zarapp:zarapp 0700 (files 0600)
 ```
 
@@ -35,7 +36,7 @@ sha256sum /opt/zar/server/pb_migrations/*.js
 قبل از اولین start:
 
 1. حساب `zarapp` با password قفل‌شده و shell برابر `/usr/sbin/nologin` ایجاد شود.
-2. فقط `pb_data` به `zarapp` واگذار شود؛ باینری و migrationها root-owned بمانند.
+2. فقط `pb_data` به `zarapp` واگذار شود؛ باینری، migrationها و hookها root-owned و فقط خواندنی بمانند.
 3. `server/deploy/zar-server.service` با `systemd-analyze verify` بررسی شود.
 4. یک restore/canary ایزوله با همان unit و migrationها پاس شود.
 5. سپس unit نصب، `daemon-reload` و start شود.
@@ -101,6 +102,38 @@ docs/stabilization/RATE-LIMITING-PRODUCTION-EVIDENCE-2026-11-01.md
 مجاز است. نصب server به‌تنهایی ثابت نمی‌کند APK نصب‌شده پیام فارسی 429 را دارد؛
 آن رفتار باید روی artifact اندروید بازبینی‌شده جداگانه اثبات شود. با هر ارتقای
 PocketBase یا تغییر proxy، labelها، Real-IP و رفتار batch باید دوباره بررسی شوند.
+
+## بازیابی تراکنشی snapshot ابری (در حال آماده‌سازی)
+
+پیاده‌سازی محلی `1793604800_transactional_restore.js` و hookهای
+`pb_hooks/zar_restore*.js` یک restore مقایسه‌و‌جایگزین اتمیک برای هر هفت
+collection دامنه، از جمله cash append-only، اضافه می‌کند. مسیر state یک hash
+سازگار می‌دهد؛ مسیر commit همان hash را داخل یک transaction دوباره بررسی
+می‌کند، snapshot را جایگزین می‌کند و یک receipt خصوصی و idempotent می‌سازد.
+commit علاوه بر session معتبر، re-authentication با رمز و workspace تک‌عضوی
+می‌خواهد. receipt از Record API قابل‌خواندن نیست.
+
+این قابلیت فعلاً **فقط در working tree محلی و تحت آزمون است**. production هنوز
+قفل server-side حذف/ویرایش cash و policy دقیق ۱۱ rule را دارد؛ migration، hook
+یا unit جدید روی production نصب نشده و نصب guard کلاینتی روی گوشی نیز اثبات
+نشده است. پس از migration جدید، policy
+مورد انتظار clone برابر ۱۳ rule است (دو rule محدود برای state/commit). اسکریپت
+rollback قدیمی rate-limit چون migration جدید latest می‌شود عمداً قابل استفاده
+نیست و نباید برای این تغییر دور زده شود.
+
+ترتیب نصب مجاز پس از پاس‌شدن همهٔ gateهای clone این است: backup و preflight؛
+توقف و اثبات inactive بودن سرویس؛ نصب فقط migration؛ اجرای migrate-up با
+مسیرهای صریح؛ بررسی history/schema/۱۳ rule/integrity؛ نصب دو فایل hook؛ نصب و
+verify کردن unit صریح؛ سپس start و ماتریس آزمون. کپی hook روی سرویس زنده ممنوع
+است. unit نسخه‌شده `--dir`، `--migrationsDir`، `--hooksDir` و
+`--hooksWatch=false` را صریح می‌کند تا hot reload ناخواسته مرز deployment را
+نشکند.
+
+برنامهٔ کامل rehearsal، rollback و evidence در این فایل است:
+
+```text
+docs/stabilization/TRANSACTIONAL-RESTORE-PLAN.md
+```
 
 هیچ اپ موبایل نباید مستقیماً به IP و پورت 8090 متصل شود. URL زمان build باید HTTPS باشد:
 

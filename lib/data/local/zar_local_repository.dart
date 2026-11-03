@@ -21,22 +21,41 @@ class ZarLocalRepository
   final ZarLocalDatabase database;
 
   @override
-  Future<void> appendCashEntry(ZarCashEntry entry) => database.transaction(() async {
-    final snapshot = await loadCompleteSnapshot();
-    for (final existing in snapshot.cashEntries) {
-      if (existing.id == entry.id) {
-        if (jsonEncode(existing.toMap()) != jsonEncode(entry.toMap())) throw StateError('Cash entries are immutable.');
-        return;
-      }
-    }
-    if (entry.dealId != null && snapshot.deals.any((d) => d.id == entry.dealId && d.status == ZarDealStatus.cancelled)) {
-      throw const FormatException('Cannot deliver a cancelled deal.');
-    }
-    validateNewCashEntry(entry, snapshot.cashEntries, snapshot.deals, snapshot.settlements);
-    validateCashCount(entry, snapshot.cashEntries, snapshot.settlements, snapshot.paymentAllocations);
-    await database.customStatement('INSERT INTO zar_cash_entries (id, payload) VALUES (?, ?)',
-      [entry.id, jsonEncode(entry.toMap())]);
-  });
+  Future<void> appendCashEntry(ZarCashEntry entry) =>
+      database.transaction(() async {
+        final snapshot = await loadCompleteSnapshot();
+        for (final existing in snapshot.cashEntries) {
+          if (existing.id == entry.id) {
+            if (jsonEncode(existing.toMap()) != jsonEncode(entry.toMap())) {
+              throw StateError('Cash entries are immutable.');
+            }
+            return;
+          }
+        }
+        if (entry.dealId != null &&
+            snapshot.deals.any(
+              (d) =>
+                  d.id == entry.dealId && d.status == ZarDealStatus.cancelled,
+            )) {
+          throw const FormatException('Cannot deliver a cancelled deal.');
+        }
+        validateNewCashEntry(
+          entry,
+          snapshot.cashEntries,
+          snapshot.deals,
+          snapshot.settlements,
+        );
+        validateCashCount(
+          entry,
+          snapshot.cashEntries,
+          snapshot.settlements,
+          snapshot.paymentAllocations,
+        );
+        await database.customStatement(
+          'INSERT INTO zar_cash_entries (id, payload) VALUES (?, ?)',
+          [entry.id, jsonEncode(entry.toMap())],
+        );
+      });
 
   Future<void> ensureReady() async {
     await database.ensureReady();
@@ -118,8 +137,18 @@ class ZarLocalRepository
           .select(database.zarCurrencyTypes)
           .get();
       return ZarDomainSnapshot(
-        cashEntries: (await database.customSelect('SELECT payload FROM zar_cash_entries').get())
-          .map((row) => ZarCashEntry.fromMap(Map<String, Object?>.from(jsonDecode(row.read<String>('payload')) as Map))).toList(),
+        cashEntries:
+            (await database
+                    .customSelect('SELECT payload FROM zar_cash_entries')
+                    .get())
+                .map(
+                  (row) => ZarCashEntry.fromMap(
+                    Map<String, Object?>.from(
+                      jsonDecode(row.read<String>('payload')) as Map,
+                    ),
+                  ),
+                )
+                .toList(),
         people: people.map(_personFromRow).toList(growable: false),
         deals: deals
             .map((row) => _dealFromRow(row, dealCoinLines[row.id]))
@@ -155,8 +184,15 @@ class ZarLocalRepository
   );
 
   @override
-  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
-    validateCashEntries(entries: snapshot.cashEntries, deals: snapshot.deals, settlements: snapshot.settlements);
+  Future<void> replaceCompleteSnapshot(
+    ZarDomainSnapshot snapshot, {
+    String? confirmationSecret,
+  }) async {
+    validateCashEntries(
+      entries: snapshot.cashEntries,
+      deals: snapshot.deals,
+      settlements: snapshot.settlements,
+    );
     _validateSnapshot(snapshot);
     validateZarPaymentAllocations(
       deals: snapshot.deals,
@@ -166,7 +202,10 @@ class ZarLocalRepository
     await database.transaction(() async {
       await database.customStatement('DELETE FROM zar_cash_entries');
       for (final entry in snapshot.cashEntries) {
-        await database.customStatement('INSERT INTO zar_cash_entries (id, payload) VALUES (?, ?)', [entry.id, jsonEncode(entry.toMap())]);
+        await database.customStatement(
+          'INSERT INTO zar_cash_entries (id, payload) VALUES (?, ?)',
+          [entry.id, jsonEncode(entry.toMap())],
+        );
       }
       await database.delete(database.zarPaymentAllocations).go();
       await database.delete(database.zarReminderRules).go();
@@ -303,8 +342,11 @@ class ZarLocalRepository
   Future<void> saveDeal(ZarDeal deal, {String auditAction = 'edit'}) =>
       database.transaction(() async {
         final snapshot = await loadCompleteSnapshot();
-        validateCashEntries(entries: snapshot.cashEntries,
-          deals: [...snapshot.deals.where((item) => item.id != deal.id), deal], settlements: snapshot.settlements);
+        validateCashEntries(
+          entries: snapshot.cashEntries,
+          deals: [...snapshot.deals.where((item) => item.id != deal.id), deal],
+          settlements: snapshot.settlements,
+        );
         validateZarPaymentAllocations(
           deals: [...snapshot.deals.where((item) => item.id != deal.id), deal],
           settlements: snapshot.settlements,
@@ -319,8 +361,14 @@ class ZarLocalRepository
     String auditAction = 'edit',
   }) => database.transaction(() async {
     final snapshot = await loadCompleteSnapshot();
-    validateCashEntries(entries: snapshot.cashEntries, deals: snapshot.deals,
-      settlements: [...snapshot.settlements.where((item) => item.id != settlement.id), settlement]);
+    validateCashEntries(
+      entries: snapshot.cashEntries,
+      deals: snapshot.deals,
+      settlements: [
+        ...snapshot.settlements.where((item) => item.id != settlement.id),
+        settlement,
+      ],
+    );
     validateZarPaymentAllocations(
       deals: snapshot.deals,
       settlements: [

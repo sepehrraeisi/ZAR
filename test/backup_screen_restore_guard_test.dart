@@ -10,10 +10,67 @@ import 'package:flutter_app/features/backup/backup_file_service.dart';
 import 'package:flutter_app/features/backup/backup_screen.dart';
 
 void main() {
-  testWidgets('cash restore guard is shown as a blocking actionable dialog', (
+  testWidgets(
+    'cloud restore conflict is shown as a blocking actionable dialog',
+    (tester) async {
+      final repository = _CloudRestoreBlockedRepository();
+      final manager = ZarBackupManager(
+        repository: repository,
+        store: ZarPhaseA2Store(
+          repository: repository,
+          bridge: const ZarLegacyPresentationBridge(
+            businessId: 'w1',
+            userId: 'test',
+          ),
+        ),
+        businessId: 'w1',
+        reconcileRemindersAfterRestore: () async {},
+      );
+      final backup = const ZarDomainBackupCodec().encodeJson(
+        ZarDomainBackupBundle(
+          businessId: 'w1',
+          generatedAt: DateTime.utc(2026, 11, 1),
+          people: const [],
+          deals: const [],
+          settlements: const [],
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BackupScreen(
+            manager: manager,
+            files: _PickedBackupFileService(backup),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('انتخاب و بررسی فایل پشتیبان'));
+      await _pumpDialogTransition(tester);
+      expect(find.text('بررسی نسخه پشتیبان'), findsOneWidget);
+
+      await tester.tap(find.text('جایگزینی و بازیابی'));
+      await _pumpDialogTransition(tester);
+
+      expect(find.text('بازیابی ابری متوقف شد'), findsOneWidget);
+      expect(find.textContaining('دستگاه دیگری'), findsOneWidget);
+      expect(find.textContaining('فایل پشتیبان را نگه دارید'), findsOneWidget);
+      expect(find.text('متوجه شدم'), findsOneWidget);
+
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pump();
+      expect(find.text('بازیابی ابری متوقف شد'), findsOneWidget);
+
+      await tester.tap(find.text('متوجه شدم'));
+      await _pumpDialogTransition(tester);
+      expect(find.text('بازیابی ابری متوقف شد'), findsNothing);
+    },
+  );
+
+  testWidgets('cloud restore reauthenticates and forwards the password', (
     tester,
   ) async {
-    final repository = _CashBlockedRepository();
+    final repository = _PasswordCapturingRepository();
     final manager = ZarBackupManager(
       repository: repository,
       store: ZarPhaseA2Store(
@@ -41,30 +98,34 @@ void main() {
         home: BackupScreen(
           manager: manager,
           files: _PickedBackupFileService(backup),
+          account: ZarAccountSection(
+            email: 'owner@example.com',
+            onSignOut: () async {},
+          ),
         ),
       ),
     );
 
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
+    await tester.pump();
     await tester.tap(find.text('انتخاب و بررسی فایل پشتیبان'));
     await _pumpDialogTransition(tester);
-    expect(find.text('بررسی نسخه پشتیبان'), findsOneWidget);
-
     await tester.tap(find.text('جایگزینی و بازیابی'));
     await _pumpDialogTransition(tester);
 
-    expect(find.text('بازیابی صندوق متوقف شد'), findsOneWidget);
-    expect(find.textContaining('فقط‌افزودنی'), findsOneWidget);
-    expect(find.textContaining('فایل پشتیبان را نگه دارید'), findsOneWidget);
-    expect(find.textContaining('فضای کاری جدید و خالی'), findsOneWidget);
-    expect(find.text('متوجه شدم'), findsOneWidget);
-
-    await tester.tapAt(const Offset(4, 4));
+    expect(find.text('تأیید هویت برای بازیابی'), findsOneWidget);
+    expect(find.text('رمز عبور حساب'), findsOneWidget);
+    await tester.tap(find.text('تأیید و بازیابی'));
     await tester.pump();
-    expect(find.text('بازیابی صندوق متوقف شد'), findsOneWidget);
+    expect(find.text('رمز عبور را وارد کنید.'), findsOneWidget);
+    expect(repository.confirmationSecret, isNull);
 
-    await tester.tap(find.text('متوجه شدم'));
+    await tester.enterText(find.byType(TextField), 'fresh-password');
+    await tester.tap(find.text('تأیید و بازیابی'));
     await _pumpDialogTransition(tester);
-    expect(find.text('بازیابی صندوق متوقف شد'), findsNothing);
+
+    expect(repository.confirmationSecret, 'fresh-password');
+    expect(find.textContaining('بازیابی کامل شد'), findsOneWidget);
   });
 }
 
@@ -75,10 +136,29 @@ Future<void> _pumpDialogTransition(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 400));
 }
 
-class _CashBlockedRepository extends InMemoryZarDomainRepository {
+class _CloudRestoreBlockedRepository extends InMemoryZarDomainRepository {
   @override
-  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
-    throw const ZarCloudRestoreException.appendOnlyCashHistory();
+  Future<void> replaceCompleteSnapshot(
+    ZarDomainSnapshot snapshot, {
+    String? confirmationSecret,
+  }) async {
+    throw const ZarCloudRestoreException.concurrentCloudChange();
+  }
+}
+
+class _PasswordCapturingRepository extends InMemoryZarDomainRepository {
+  String? confirmationSecret;
+
+  @override
+  Future<void> replaceCompleteSnapshot(
+    ZarDomainSnapshot snapshot, {
+    String? confirmationSecret,
+  }) async {
+    this.confirmationSecret = confirmationSecret;
+    await super.replaceCompleteSnapshot(
+      snapshot,
+      confirmationSecret: confirmationSecret,
+    );
   }
 }
 

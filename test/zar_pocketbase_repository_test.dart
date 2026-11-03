@@ -49,18 +49,59 @@ ZarCashEntry _cashEntry() => ZarCashEntry(
   note: 'آورده آزمایشی',
 );
 
-Matcher _appendOnlyCashRestoreError() => isA<ZarCloudRestoreException>()
-    .having((error) => error.code, 'code', 'append_only_cash_history')
-    .having((error) => error.message, 'message', contains('فقط‌افزودنی'))
-    .having(
-      (error) => error.message,
-      'recovery action',
-      allOf(
-        contains('فایل پشتیبان را نگه دارید'),
-        contains('فضای کاری جدید و خالی'),
-        contains('پشتیبانی'),
-      ),
-    );
+const _stateHash =
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const _snapshotHash =
+    'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+
+Map<String, Object?> _restoreState() => {
+  'protocolVersion': 1,
+  'workspaceId': 'w1',
+  'stateHash': _stateHash,
+  'counts': {'total': 0},
+};
+
+Map<String, Object?> _restoreReceipt(
+  String requestId, {
+  Map<String, int>? counts,
+  bool replayed = false,
+}) => {
+  'protocolVersion': 1,
+  'requestId': requestId,
+  'workspaceId': 'w1',
+  'snapshotHash': _snapshotHash,
+  'beforeHash': _stateHash,
+  'afterHash': _snapshotHash,
+  'counts': counts ?? _restoreCounts(),
+  'committedAt': '2026-11-03T12:00:00.000Z',
+  'replayed': replayed,
+};
+
+Map<String, int> _restoreCounts({
+  int people = 0,
+  int deals = 0,
+  int settlements = 0,
+  int coinTypes = 0,
+  int currencyTypes = 0,
+  int paymentAllocations = 0,
+  int cashEntries = 0,
+}) => {
+  'people': people,
+  'deals': deals,
+  'settlements': settlements,
+  'coinTypes': coinTypes,
+  'currencyTypes': currencyTypes,
+  'paymentAllocations': paymentAllocations,
+  'cashEntries': cashEntries,
+  'total':
+      people +
+      deals +
+      settlements +
+      coinTypes +
+      currencyTypes +
+      paymentAllocations +
+      cashEntries,
+};
 
 void main() {
   test('loadCompleteSnapshot decodes payload rows', () async {
@@ -90,10 +131,21 @@ void main() {
     'load and restore discovery are scoped to the selected workspace',
     () async {
       final listFilters = <String?>[];
+      final routeCalls = <String>[];
       final client = MockClient((request) async {
         if (request.method == 'GET' && request.url.path.endsWith('/records')) {
           listFilters.add(request.url.queryParameters['filter']);
           return _json({'items': [], 'totalPages': 1});
+        }
+        routeCalls.add('${request.method} ${request.url.path}');
+        if (request.url.path == '/api/zar/restore/state') {
+          return _json(_restoreState());
+        }
+        if (request.url.path == '/api/zar/restore/commit') {
+          final body = Map<String, Object?>.from(
+            jsonDecode(request.body) as Map,
+          );
+          return _json(_restoreReceipt(body['requestId']! as String));
         }
         return _json({});
       });
@@ -106,10 +158,15 @@ void main() {
       await repository.loadCompleteSnapshot();
       await repository.replaceCompleteSnapshot(
         const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+        confirmationSecret: 'correct horse battery staple',
       );
 
-      expect(listFilters, hasLength(15));
+      expect(listFilters, hasLength(7));
       expect(listFilters, everyElement("workspace='w1'"));
+      expect(routeCalls, [
+        'GET /api/zar/restore/state',
+        'POST /api/zar/restore/commit',
+      ]);
     },
   );
 
@@ -183,12 +240,27 @@ void main() {
   );
 
   test(
-    'restore with incoming cash fails closed before any cloud request',
+    'transactional restore sends cash through the dedicated route',
     () async {
       final requests = <http.Request>[];
+      Map<String, Object?>? commitBody;
       final client = MockClient((request) async {
         requests.add(request);
-        return _json({'items': [], 'totalPages': 1});
+        if (request.url.path == '/api/zar/restore/state') {
+          return _json(_restoreState());
+        }
+        if (request.url.path == '/api/zar/restore/commit') {
+          commitBody = Map<String, Object?>.from(
+            jsonDecode(request.body) as Map,
+          );
+          return _json(
+            _restoreReceipt(
+              commitBody!['requestId']! as String,
+              counts: _restoreCounts(people: 1, cashEntries: 1),
+            ),
+          );
+        }
+        return _json({'message': 'unexpected route'}, 500);
       });
       final repository = ZarPocketBaseRepository(
         client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
@@ -196,46 +268,45 @@ void main() {
         businessId: 'w1',
       );
 
-      await expectLater(
-        repository.replaceCompleteSnapshot(
-          ZarDomainSnapshot(
-            people: const [],
-            deals: const [],
-            settlements: const [],
-            cashEntries: [_cashEntry()],
-          ),
+      await repository.replaceCompleteSnapshot(
+        ZarDomainSnapshot(
+          people: [_person('p1', 'مشتری')],
+          deals: const [],
+          settlements: const [],
+          cashEntries: [_cashEntry()],
         ),
-        throwsA(_appendOnlyCashRestoreError()),
+        confirmationSecret: 'correct horse battery staple',
       );
 
       expect(
-        requests,
-        isEmpty,
-        reason: 'incoming cash must fail before writes',
+        requests.map((request) => '${request.method} ${request.url.path}'),
+        ['GET /api/zar/restore/state', 'POST /api/zar/restore/commit'],
       );
+      expect(commitBody!['protocolVersion'], 1);
+      expect(commitBody!['businessId'], 'w1');
+      expect(commitBody!['expectedStateHash'], _stateHash);
+      expect(
+        commitBody!['confirmationPassword'],
+        'correct horse battery staple',
+      );
+      expect(commitBody!['requestId'], matches(RegExp(r'^[a-f0-9]{32}$')));
+      final snapshot = Map<String, Object?>.from(
+        commitBody!['snapshot']! as Map,
+      );
+      expect(snapshot['people'], hasLength(1));
+      final cash = snapshot['cashEntries']! as List;
+      expect(cash, hasLength(1));
+      expect((cash.single as Map)['id'], 'cash-1');
     },
   );
 
   test(
-    'restore into workspace with cash fails closed without a batch or write',
+    'transactional restore requires a fresh password before network I/O',
     () async {
-      final writeRequests = <http.Request>[];
-      final readPaths = <String>[];
+      var requests = 0;
       final client = MockClient((request) async {
-        if (request.method != 'GET') {
-          writeRequests.add(request);
-          return _json({});
-        }
-        readPaths.add(request.url.path);
-        if (request.url.path.contains('/zar_cash_entries/records')) {
-          return _json({
-            'items': [
-              {'id': 'cash-existing'},
-            ],
-            'totalPages': 1,
-          });
-        }
-        return _json({'items': [], 'totalPages': 1});
+        requests++;
+        return _json({});
       });
       final repository = ZarPocketBaseRepository(
         client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
@@ -247,40 +318,313 @@ void main() {
         repository.replaceCompleteSnapshot(
           const ZarDomainSnapshot(people: [], deals: [], settlements: []),
         ),
-        throwsA(_appendOnlyCashRestoreError()),
+        throwsA(
+          isA<ZarCloudRestoreException>().having(
+            (error) => error.code,
+            'code',
+            'cloud_restore_reauthentication_required',
+          ),
+        ),
       );
+      expect(requests, 0);
+    },
+  );
 
-      expect(readPaths, ['/api/collections/zar_cash_entries/records']);
-      expect(
-        writeRequests,
-        isEmpty,
-        reason: 'existing cash must be detected before /api/batch or CRUD',
-      );
+  test('stale cloud state becomes a typed no-write conflict', () async {
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/zar/restore/state') {
+        return _json(_restoreState());
+      }
+      return _json({'message': 'Cloud data changed.'}, 409);
+    });
+    final repository = ZarPocketBaseRepository(
+      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+      workspaceId: 'w1',
+      businessId: 'w1',
+    );
+
+    await expectLater(
+      repository.replaceCompleteSnapshot(
+        const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+        confirmationSecret: 'correct horse battery staple',
+      ),
+      throwsA(
+        isA<ZarCloudRestoreException>().having(
+          (error) => error.code,
+          'code',
+          'concurrent_cloud_change',
+        ),
+      ),
+    );
+  });
+
+  test('missing restore route fails closed with upgrade guidance', () async {
+    final client = MockClient(
+      (request) async => _json({'message': 'Not found.'}, 404),
+    );
+    final repository = ZarPocketBaseRepository(
+      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+      workspaceId: 'w1',
+      businessId: 'w1',
+    );
+
+    await expectLater(
+      repository.replaceCompleteSnapshot(
+        const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+        confirmationSecret: 'correct horse battery staple',
+      ),
+      throwsA(
+        isA<ZarCloudRestoreException>().having(
+          (error) => error.code,
+          'code',
+          'server_restore_unavailable',
+        ),
+      ),
+    );
+  });
+
+  test('lost commit response retries once with the same request id', () async {
+    final commitBodies = <Map<String, Object?>>[];
+    var commits = 0;
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/zar/restore/state') {
+        return _json(_restoreState());
+      }
+      final body = Map<String, Object?>.from(jsonDecode(request.body) as Map);
+      commitBodies.add(body);
+      commits++;
+      if (commits == 1) {
+        throw http.ClientException('response lost');
+      }
+      return _json(_restoreReceipt(body['requestId']! as String));
+    });
+    final repository = ZarPocketBaseRepository(
+      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+      workspaceId: 'w1',
+      businessId: 'w1',
+    );
+
+    await repository.replaceCompleteSnapshot(
+      const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+      confirmationSecret: 'correct horse battery staple',
+    );
+
+    expect(commitBodies, hasLength(2));
+    expect(commitBodies[1]['requestId'], commitBodies[0]['requestId']);
+    expect(commitBodies[1], commitBodies[0]);
+  });
+
+  test('invalid success response retries with the same request id', () async {
+    final requestIds = <String>[];
+    var commits = 0;
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/zar/restore/state') {
+        return _json(_restoreState());
+      }
+      final body = Map<String, Object?>.from(jsonDecode(request.body) as Map);
+      requestIds.add(body['requestId']! as String);
+      commits++;
+      if (commits == 1) return http.Response('{', 200);
+      return _json(_restoreReceipt(body['requestId']! as String));
+    });
+    final repository = ZarPocketBaseRepository(
+      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+      workspaceId: 'w1',
+      businessId: 'w1',
+    );
+
+    await repository.replaceCompleteSnapshot(
+      const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+      confirmationSecret: 'correct horse battery staple',
+    );
+
+    expect(requestIds, hasLength(2));
+    expect(requestIds[1], requestIds[0]);
+  });
+
+  test('server 503 after commit retries with the same request id', () async {
+    final requestIds = <String>[];
+    var commits = 0;
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/zar/restore/state') {
+        return _json(_restoreState());
+      }
+      final body = Map<String, Object?>.from(jsonDecode(request.body) as Map);
+      requestIds.add(body['requestId']! as String);
+      commits++;
+      if (commits == 1) return _json({'message': 'upstream reset'}, 503);
+      return _json(_restoreReceipt(body['requestId']! as String));
+    });
+    final repository = ZarPocketBaseRepository(
+      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+      workspaceId: 'w1',
+      businessId: 'w1',
+    );
+
+    await repository.replaceCompleteSnapshot(
+      const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+      confirmationSecret: 'correct horse battery staple',
+    );
+
+    expect(requestIds, hasLength(2));
+    expect(requestIds[1], requestIds[0]);
+  });
+
+  test('two ambiguous commit results report an unknown outcome', () async {
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/zar/restore/state') {
+        return _json(_restoreState());
+      }
+      throw http.ClientException('response lost');
+    });
+    final repository = ZarPocketBaseRepository(
+      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+      workspaceId: 'w1',
+      businessId: 'w1',
+    );
+
+    await expectLater(
+      repository.replaceCompleteSnapshot(
+        const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+        confirmationSecret: 'correct horse battery staple',
+      ),
+      throwsA(
+        isA<ZarCloudRestoreException>().having(
+          (error) => error.code,
+          'code',
+          'cloud_restore_outcome_unknown',
+        ),
+      ),
+    );
+  });
+
+  test(
+    'a 4xx replay after an ambiguous commit remains outcome unknown',
+    () async {
+      for (final retryStatus in [400, 401, 403, 404, 409, 413, 422, 428, 429]) {
+        var commits = 0;
+        final client = MockClient((request) async {
+          if (request.url.path == '/api/zar/restore/state') {
+            return _json(_restoreState());
+          }
+          commits++;
+          if (commits == 1) {
+            throw http.ClientException('first commit response lost');
+          }
+          return _json({'message': 'retry rejected'}, retryStatus);
+        });
+        final repository = ZarPocketBaseRepository(
+          client: ZarPocketBaseClient(
+            baseUrl: 'http://pb.local',
+            client: client,
+          ),
+          workspaceId: 'w1',
+          businessId: 'w1',
+        );
+
+        await expectLater(
+          repository.replaceCompleteSnapshot(
+            const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+            confirmationSecret: 'correct horse battery staple',
+          ),
+          throwsA(
+            isA<ZarCloudRestoreException>().having(
+              (error) => error.code,
+              'code',
+              'cloud_restore_outcome_unknown',
+            ),
+          ),
+          reason: 'retry HTTP $retryStatus cannot disprove the first commit',
+        );
+        expect(commits, 2);
+      }
     },
   );
 
   test(
-    'cash appearing during discovery is caught by the final pre-write check',
+    'an invalid replay receipt after an ambiguous commit stays unknown',
     () async {
-      var cashReads = 0;
-      final writeRequests = <http.Request>[];
+      var commits = 0;
       final client = MockClient((request) async {
-        if (request.method != 'GET') {
-          writeRequests.add(request);
-          return _json({});
+        if (request.url.path == '/api/zar/restore/state') {
+          return _json(_restoreState());
         }
-        if (request.url.path.contains('/zar_cash_entries/records')) {
-          cashReads++;
-          return _json({
-            'items': cashReads == 1
-                ? []
-                : [
-                    {'id': 'cash-added-by-another-device'},
-                  ],
-            'totalPages': 1,
-          });
+        commits++;
+        if (commits == 1) {
+          throw http.ClientException('first commit response lost');
         }
-        return _json({'items': [], 'totalPages': 1});
+        final body = Map<String, Object?>.from(jsonDecode(request.body) as Map);
+        final receipt = _restoreReceipt(body['requestId']! as String);
+        receipt['afterHash'] = _stateHash;
+        return _json(receipt);
+      });
+      final repository = ZarPocketBaseRepository(
+        client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+        workspaceId: 'w1',
+        businessId: 'w1',
+      );
+
+      await expectLater(
+        repository.replaceCompleteSnapshot(
+          const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+          confirmationSecret: 'correct horse battery staple',
+        ),
+        throwsA(
+          isA<ZarCloudRestoreException>().having(
+            (error) => error.code,
+            'code',
+            'cloud_restore_outcome_unknown',
+          ),
+        ),
+      );
+    },
+  );
+
+  test('unverifiable server receipt never reports success', () async {
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/zar/restore/state') {
+        return _json(_restoreState());
+      }
+      final body = Map<String, Object?>.from(jsonDecode(request.body) as Map);
+      final receipt = _restoreReceipt(body['requestId']! as String);
+      receipt['afterHash'] = _stateHash;
+      return _json(receipt);
+    });
+    final repository = ZarPocketBaseRepository(
+      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+      workspaceId: 'w1',
+      businessId: 'w1',
+    );
+
+    await expectLater(
+      repository.replaceCompleteSnapshot(
+        const ZarDomainSnapshot(people: [], deals: [], settlements: []),
+        confirmationSecret: 'correct horse battery staple',
+      ),
+      throwsA(
+        isA<ZarCloudRestoreException>().having(
+          (error) => error.code,
+          'code',
+          'invalid_cloud_restore_receipt',
+        ),
+      ),
+    );
+  });
+
+  test(
+    'receipt with correct total but wrong collection counts is rejected',
+    () async {
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/zar/restore/state') {
+          return _json(_restoreState());
+        }
+        final body = Map<String, Object?>.from(jsonDecode(request.body) as Map);
+        return _json(
+          _restoreReceipt(
+            body['requestId']! as String,
+            counts: _restoreCounts(deals: 1),
+          ),
+        );
       });
       final repository = ZarPocketBaseRepository(
         client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
@@ -295,97 +639,18 @@ void main() {
             deals: const [],
             settlements: const [],
           ),
+          confirmationSecret: 'correct horse battery staple',
         ),
-        throwsA(_appendOnlyCashRestoreError()),
-      );
-
-      expect(cashReads, 2);
-      expect(
-        writeRequests,
-        isEmpty,
-        reason: 'the second cash check must happen before /api/batch',
+        throwsA(
+          isA<ZarCloudRestoreException>().having(
+            (error) => error.code,
+            'code',
+            'invalid_cloud_restore_receipt',
+          ),
+        ),
       );
     },
   );
-
-  test(
-    'final cash check prevents false success when replacement batch is empty',
-    () async {
-      var cashReads = 0;
-      final writeRequests = <http.Request>[];
-      final client = MockClient((request) async {
-        if (request.method != 'GET') {
-          writeRequests.add(request);
-          return _json({});
-        }
-        if (request.url.path.contains('/zar_cash_entries/records')) {
-          cashReads++;
-          return _json({
-            'items': cashReads == 1
-                ? []
-                : [
-                    {'id': 'cash-added-during-empty-restore'},
-                  ],
-            'totalPages': 1,
-          });
-        }
-        return _json({'items': [], 'totalPages': 1});
-      });
-      final repository = ZarPocketBaseRepository(
-        client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
-        workspaceId: 'w1',
-        businessId: 'w1',
-      );
-
-      await expectLater(
-        repository.replaceCompleteSnapshot(
-          const ZarDomainSnapshot(people: [], deals: [], settlements: []),
-        ),
-        throwsA(_appendOnlyCashRestoreError()),
-      );
-
-      expect(cashReads, 2);
-      expect(writeRequests, isEmpty);
-    },
-  );
-
-  test('non-cash restore still sends one transactional batch', () async {
-    final writeRequests = <http.Request>[];
-    final client = MockClient((request) async {
-      if (request.method == 'GET') {
-        return _json({'items': [], 'totalPages': 1});
-      }
-      writeRequests.add(request);
-      return _json({});
-    });
-    final repository = ZarPocketBaseRepository(
-      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
-      workspaceId: 'w1',
-      businessId: 'w1',
-    );
-
-    await repository.replaceCompleteSnapshot(
-      ZarDomainSnapshot(
-        people: [_person('p1', 'مشتری')],
-        deals: const [],
-        settlements: const [],
-      ),
-    );
-
-    expect(writeRequests, hasLength(1));
-    expect(writeRequests.single.method, 'POST');
-    expect(writeRequests.single.url.path, '/api/batch');
-    final batch = Map<String, Object?>.from(
-      jsonDecode(writeRequests.single.body) as Map,
-    );
-    final operations = batch['requests']! as List;
-    expect(operations, hasLength(1));
-    expect((operations.single as Map)['method'], 'POST');
-    expect(
-      (operations.single as Map)['url'],
-      '/api/collections/zar_people/records',
-    );
-  });
 
   test('server errors surface as ZarPocketBaseException', () async {
     final client = MockClient(

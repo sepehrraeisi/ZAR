@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import '../../domain/zar_domain_models.dart';
 import '../../domain/zar_payment_allocation.dart';
@@ -12,9 +13,10 @@ import 'zar_pocketbase_client.dart';
 /// self-hosted server without any UI or store changes.
 ///
 /// Every collection row is `{workspace, data}` where `data` holds the tested
-/// V7 backup per-entity JSON. Whole-snapshot loads replace the local store in
-/// one go; writes upsert single records; restore uses the PocketBase batch
-/// endpoint per collection (transactional within each batch).
+/// V8 backup per-entity JSON. Whole-snapshot loads replace the local store in
+/// one go; writes upsert single records. Destructive restore uses a dedicated
+/// authenticated compare-and-swap route so all seven collections (including
+/// append-only cash) and the idempotency receipt share one server transaction.
 class ZarPocketBaseRepository
     implements
         ZarDomainRepository,
@@ -130,101 +132,178 @@ class ZarPocketBaseRepository
     throw const FormatException('Invalid ZAR+ cloud record payload.');
   }
 
-  Future<void> _ensureCashHistoryIsEmpty() async {
-    final existingCash = await _client.listRecords(
-      _cash,
-      filter: _workspaceFilter,
-    );
-    if (existingCash.isNotEmpty) {
-      throw const ZarCloudRestoreException.appendOnlyCashHistory();
-    }
-  }
-
   @override
-  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
-    // Cash is an append-only journal in the cloud. A replace restore cannot
-    // safely delete, overwrite, or client-merge it. Fail before even reading
-    // the server when the incoming snapshot contains cash history.
-    if (snapshot.cashEntries.isNotEmpty) {
-      throw const ZarCloudRestoreException.appendOnlyCashHistory();
-    }
+  Future<void> replaceCompleteSnapshot(
+    ZarDomainSnapshot snapshot, {
+    String? confirmationSecret,
+  }) async {
     validateCashEntries(
       entries: snapshot.cashEntries,
       deals: snapshot.deals,
       settlements: snapshot.settlements,
     );
-    final operations =
-        <({String method, String url, Map<String, Object?>? body})>[];
     validateZarPaymentAllocations(
       deals: snapshot.deals,
       settlements: snapshot.settlements,
       allocations: snapshot.paymentAllocations,
     );
-    await _ensureCashHistoryIsEmpty();
-    // Build one server batch so every non-cash collection is replaced in the
-    // same transaction (all deletes and creates succeed or none do).
-    Future<void> replaceAll(
-      String collection,
-      List<ZarDomainRecord> records,
-    ) async {
-      final existing = await _client.listRecords(
-        collection,
-        filter: _workspaceFilter,
-      );
-      final deletes = [
-        for (final row in existing)
-          (
-            method: 'DELETE',
-            url: '/api/collections/$collection/records/${row['id']! as String}',
-            body: null,
-          ),
-      ];
-      operations.addAll(deletes);
-      final creates = [
-        for (final record in records)
-          (
-            method: 'POST',
-            url: '/api/collections/$collection/records',
-            body: {'id': record.id, ..._row(record.payload)},
-          ),
-      ];
-      operations.addAll(creates);
+    if (confirmationSecret == null || confirmationSecret.isEmpty) {
+      throw const ZarCloudRestoreException.reauthenticationRequired();
     }
+    try {
+      final state = await _client.requestJson('GET', '/api/zar/restore/state');
+      final expectedStateHash = state['stateHash'];
+      if (state['protocolVersion'] != _restoreProtocolVersion ||
+          state['workspaceId'] != _workspaceId ||
+          expectedStateHash is! String ||
+          !_restoreHashPattern.hasMatch(expectedStateHash)) {
+        throw const ZarCloudRestoreException.invalidReceipt();
+      }
 
-    await replaceAll(_people, [
-      for (final person in snapshot.people)
-        (id: person.id, payload: _codec.personRecord(person)),
-    ]);
-    await replaceAll(_deals, [
-      for (final deal in snapshot.deals)
-        (id: deal.id, payload: _codec.dealRecord(deal)),
-    ]);
-    await replaceAll(_settlements, [
-      for (final settlement in snapshot.settlements)
-        (id: settlement.id, payload: _codec.settlementRecord(settlement)),
-    ]);
-    await replaceAll(_coinTypes, [
-      for (final type in snapshot.coinTypes)
-        (id: type.id, payload: type.toMap()),
-    ]);
-    await replaceAll(_currencyTypes, [
-      for (final type in snapshot.currencyTypes)
-        (id: type.id, payload: type.toMap()),
-    ]);
-    await replaceAll(_allocations, [
-      for (final allocation in snapshot.paymentAllocations)
-        (id: _allocationId(allocation), payload: allocation.toMap()),
-    ]);
-    if (operations.length > 500) {
-      throw StateError('Atomic restore exceeds the server batch limit.');
+      final requestId = _newRestoreRequestId();
+      final body = <String, Object?>{
+        'protocolVersion': _restoreProtocolVersion,
+        'requestId': requestId,
+        'businessId': _businessId,
+        'confirmationPassword': confirmationSecret,
+        'expectedStateHash': expectedStateHash,
+        'snapshot': _restoreSnapshot(snapshot),
+      };
+
+      Future<Map<String, Object?>> commit() =>
+          _client.requestJson('POST', '/api/zar/restore/commit', body: body);
+
+      late Map<String, Object?> receipt;
+      try {
+        receipt = await commit();
+      } catch (error) {
+        if (!_isAmbiguousCommitResult(error)) rethrow;
+        // A lost response is ambiguous: the first call may already be durable.
+        // Reusing its id makes the retry return the original server receipt.
+        try {
+          receipt = await commit();
+          _verifyRestoreReceipt(
+            receipt,
+            requestId: requestId,
+            expectedStateHash: expectedStateHash,
+            expectedCounts: _restoreCounts(snapshot),
+          );
+          return;
+        } catch (_) {
+          // Once the first result is ambiguous, a later 4xx, transport error,
+          // protocol error, or unverifiable receipt cannot prove that no
+          // commit occurred. Never downgrade that state to a definite failure.
+          throw const ZarCloudRestoreException.outcomeUnknown();
+        }
+      }
+      _verifyRestoreReceipt(
+        receipt,
+        requestId: requestId,
+        expectedStateHash: expectedStateHash,
+        expectedCounts: _restoreCounts(snapshot),
+      );
+    } on ZarPocketBaseException catch (error) {
+      throw switch (error.statusCode) {
+        403 => const ZarCloudRestoreException.sharedWorkspace(),
+        404 => const ZarCloudRestoreException.serverRestoreUnavailable(),
+        409 => const ZarCloudRestoreException.concurrentCloudChange(),
+        413 => const ZarCloudRestoreException.restoreTooLarge(),
+        428 => const ZarCloudRestoreException.reauthenticationRequired(),
+        _ => const ZarCloudRestoreException.serverRejected(),
+      };
     }
-    // Re-check before either writing or reporting success to narrow the
-    // multi-device race window. A client-only preflight cannot remove the
-    // remaining interval between this GET and a possible POST; the durable fix
-    // is a server-side guarded, transactional restore revision.
-    await _ensureCashHistoryIsEmpty();
-    if (operations.isNotEmpty) {
-      await _client.batch(operations);
+  }
+
+  static const _restoreProtocolVersion = 1;
+  static final _restoreHashPattern = RegExp(r'^[a-f0-9]{64}$');
+
+  static bool _isAmbiguousCommitResult(Object error) =>
+      error is ZarPocketBaseTransportException ||
+      error is ZarPocketBaseProtocolException ||
+      (error is ZarPocketBaseException && error.statusCode >= 500);
+
+  static String _newRestoreRequestId() {
+    final random = Random.secure();
+    return List.generate(
+      16,
+      (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+    ).join();
+  }
+
+  Map<String, Object?> _restoreRow(String id, Map<String, Object?> data) => {
+    'id': id,
+    'data': data,
+  };
+
+  Map<String, Object?> _restoreSnapshot(ZarDomainSnapshot snapshot) => {
+    'people': [
+      for (final person in snapshot.people)
+        _restoreRow(person.id, _codec.personRecord(person)),
+    ],
+    'deals': [
+      for (final deal in snapshot.deals)
+        _restoreRow(deal.id, _codec.dealRecord(deal)),
+    ],
+    'settlements': [
+      for (final settlement in snapshot.settlements)
+        _restoreRow(settlement.id, _codec.settlementRecord(settlement)),
+    ],
+    'coinTypes': [
+      for (final type in snapshot.coinTypes) _restoreRow(type.id, type.toMap()),
+    ],
+    'currencyTypes': [
+      for (final type in snapshot.currencyTypes)
+        _restoreRow(type.id, type.toMap()),
+    ],
+    'paymentAllocations': [
+      for (final allocation in snapshot.paymentAllocations)
+        _restoreRow(_allocationId(allocation), allocation.toMap()),
+    ],
+    'cashEntries': [
+      for (final entry in snapshot.cashEntries)
+        _restoreRow(entry.id, entry.toMap()),
+    ],
+  };
+
+  static Map<String, int> _restoreCounts(ZarDomainSnapshot snapshot) {
+    final counts = <String, int>{
+      'people': snapshot.people.length,
+      'deals': snapshot.deals.length,
+      'settlements': snapshot.settlements.length,
+      'coinTypes': snapshot.coinTypes.length,
+      'currencyTypes': snapshot.currencyTypes.length,
+      'paymentAllocations': snapshot.paymentAllocations.length,
+      'cashEntries': snapshot.cashEntries.length,
+    };
+    counts['total'] = counts.values.fold(0, (total, count) => total + count);
+    return counts;
+  }
+
+  void _verifyRestoreReceipt(
+    Map<String, Object?> receipt, {
+    required String requestId,
+    required String expectedStateHash,
+    required Map<String, int> expectedCounts,
+  }) {
+    final snapshotHash = receipt['snapshotHash'];
+    final counts = receipt['counts'];
+    final committedAt = receipt['committedAt'];
+    if (receipt['protocolVersion'] != _restoreProtocolVersion ||
+        receipt['requestId'] != requestId ||
+        receipt['workspaceId'] != _workspaceId ||
+        receipt['beforeHash'] != expectedStateHash ||
+        snapshotHash is! String ||
+        !_restoreHashPattern.hasMatch(snapshotHash) ||
+        receipt['afterHash'] != snapshotHash ||
+        receipt['replayed'] is! bool ||
+        counts is! Map ||
+        counts.length != expectedCounts.length ||
+        committedAt is! String ||
+        DateTime.tryParse(committedAt) == null ||
+        expectedCounts.entries.any(
+          (entry) => counts[entry.key] != entry.value,
+        )) {
+      throw const ZarCloudRestoreException.invalidReceipt();
     }
   }
 

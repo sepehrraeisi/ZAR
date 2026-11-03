@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import socket
 import sqlite3
@@ -48,6 +49,22 @@ JSON_COLUMNS = {
     "zar_allocations": {"data"},
     "zar_cash_entries": {"data"},
 }
+RESTORE_MIGRATION = "1793604800_transactional_restore.js"
+REQUIRED_RESTORE_HOOKS = {
+    "zar_restore.js",
+    "zar_restore_routes.pb.js",
+}
+RECEIPT_COUNT_KEYS = {
+    "people",
+    "deals",
+    "settlements",
+    "coinTypes",
+    "currencyTypes",
+    "paymentAllocations",
+    "cashEntries",
+    "total",
+}
+HASH_PATTERN = re.compile(r"^[a-f0-9]{64}$")
 
 
 def _sha256(path: Path) -> str:
@@ -244,6 +261,108 @@ def _validate_domain(rows: dict[str, list[dict[str, Any]]]) -> list[str]:
     return sorted(set(errors))
 
 
+def _receipt_snapshot(
+    connection: sqlite3.Connection,
+) -> tuple[dict[str, Any], list[str]]:
+    exists = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' "
+        "AND name='zar_restore_receipts'"
+    ).fetchone()
+    if exists is None:
+        return {"present": False, "count": 0, "metadata_sha256": None}, []
+
+    errors: list[str] = []
+    required_columns = {
+        "id",
+        "workspace",
+        "actor",
+        "protocolVersion",
+        "snapshotHash",
+        "beforeHash",
+        "afterHash",
+        "counts",
+        "committedAt",
+    }
+    columns = {
+        str(row["name"])
+        for row in connection.execute('PRAGMA table_info("zar_restore_receipts")')
+    }
+    missing = sorted(required_columns - columns)
+    if missing:
+        errors.append("zar_restore_receipts is missing required metadata columns")
+        return {
+            "present": True,
+            "count": 0,
+            "metadata_sha256": None,
+        }, errors
+
+    metadata: list[dict[str, Any]] = []
+    for source in connection.execute(
+        'SELECT id, workspace, actor, protocolVersion, snapshotHash, '
+        'beforeHash, afterHash, counts, committedAt '
+        'FROM "zar_restore_receipts" ORDER BY id'
+    ):
+        receipt_id = str(source["id"] or "")
+        try:
+            counts = json.loads(source["counts"])
+        except (TypeError, json.JSONDecodeError):
+            counts = None
+        if not re.fullmatch(r"[a-f0-9]{32}", receipt_id):
+            errors.append("restore receipt id is invalid")
+        if not isinstance(counts, dict) or set(counts) != RECEIPT_COUNT_KEYS:
+            errors.append("restore receipt counts are invalid")
+        elif (
+            any(not isinstance(value, int) or value < 0 for value in counts.values())
+            or counts["total"]
+            != sum(counts[key] for key in RECEIPT_COUNT_KEYS if key != "total")
+        ):
+            errors.append("restore receipt counts do not reconcile")
+        for field in ("snapshotHash", "beforeHash", "afterHash"):
+            if not HASH_PATTERN.fullmatch(str(source[field] or "")):
+                errors.append(f"restore receipt {field} is invalid")
+        if source["protocolVersion"] != 1:
+            errors.append("restore receipt protocol version is invalid")
+        metadata.append(
+            {
+                "id": receipt_id,
+                "workspace": str(source["workspace"] or ""),
+                "actor": str(source["actor"] or ""),
+                "protocolVersion": source["protocolVersion"],
+                "snapshotHash": str(source["snapshotHash"] or ""),
+                "beforeHash": str(source["beforeHash"] or ""),
+                "afterHash": str(source["afterHash"] or ""),
+                "counts": counts,
+                "committedAt": str(source["committedAt"] or ""),
+            }
+        )
+    digest = hashlib.sha256(_canonical_json(metadata).encode("utf-8")).hexdigest()
+    return {
+        "present": True,
+        "count": len(metadata),
+        "metadata_sha256": digest,
+    }, sorted(set(errors))
+
+
+def _settings_snapshot(connection: sqlite3.Connection) -> dict[str, Any]:
+    row = connection.execute(
+        "SELECT value FROM _params WHERE id='settings'"
+    ).fetchone()
+    if row is None:
+        raise ValueError("PocketBase settings row is missing")
+    settings = json.loads(row[0])
+    rate_limits = settings.get("rateLimits", {})
+    return {
+        "settings_sha256": hashlib.sha256(
+            _canonical_json(settings).encode("utf-8")
+        ).hexdigest(),
+        "rate_limits_sha256": hashlib.sha256(
+            _canonical_json(rate_limits).encode("utf-8")
+        ).hexdigest(),
+        "rate_limits_enabled": rate_limits.get("enabled"),
+        "rate_rule_count": len(rate_limits.get("rules", [])),
+    }
+
+
 def _inspect_database(database: Path) -> dict[str, Any]:
     with _connect_read_only(database) as connection:
         quick_check = [row[0] for row in connection.execute("PRAGMA quick_check")]
@@ -261,6 +380,14 @@ def _inspect_database(database: Path) -> dict[str, Any]:
             snapshots[table] = {"count": count, "content_sha256": digest}
             domain_rows[table] = rows
         domain_errors = _validate_domain(domain_rows)
+        receipts, receipt_errors = _receipt_snapshot(connection)
+        domain_errors.extend(receipt_errors)
+        restore_applied = RESTORE_MIGRATION in applied_migrations
+        if restore_applied != receipts["present"]:
+            domain_errors.append(
+                "transactional restore migration and receipt schema disagree"
+            )
+        settings = _settings_snapshot(connection)
     return {
         "quick_check": quick_check,
         "integrity_check": integrity_check,
@@ -268,7 +395,9 @@ def _inspect_database(database: Path) -> dict[str, Any]:
         "journal_mode": journal_mode,
         "applied_migrations": applied_migrations,
         "tables": snapshots,
-        "domain_errors": domain_errors,
+        "restore_receipts": receipts,
+        "settings": settings,
+        "domain_errors": sorted(set(domain_errors)),
     }
 
 
@@ -310,19 +439,24 @@ def _prove_health(
     pocketbase: Path,
     data_dir: Path,
     migrations_dir: Path,
+    hooks_dir: Path | None,
     log_path: Path,
 ) -> None:
     port = _free_port()
     url = f"http://127.0.0.1:{port}/api/health"
     with log_path.open("w", encoding="utf-8") as log:
+        command = [
+            str(pocketbase),
+            "serve",
+            f"--http=127.0.0.1:{port}",
+            f"--dir={data_dir}",
+            f"--migrationsDir={migrations_dir}",
+            "--hooksWatch=false",
+        ]
+        if hooks_dir is not None:
+            command.append(f"--hooksDir={hooks_dir}")
         process = subprocess.Popen(
-            [
-                str(pocketbase),
-                "serve",
-                f"--http=127.0.0.1:{port}",
-                f"--dir={data_dir}",
-                f"--migrationsDir={migrations_dir}",
-            ],
+            command,
             cwd=data_dir.parent,
             stdout=log,
             stderr=subprocess.STDOUT,
@@ -362,6 +496,15 @@ def _migration_manifest(migrations_dir: Path) -> dict[str, str]:
     }
 
 
+def _hook_manifest(hooks_dir: Path | None) -> dict[str, str]:
+    if hooks_dir is None:
+        return {}
+    return {
+        path.name: _sha256(path)
+        for path in sorted(hooks_dir.glob("*.js"), key=lambda item: item.name)
+    }
+
+
 def _checks_pass(inspection: dict[str, Any]) -> bool:
     return (
         inspection["quick_check"] == ["ok"]
@@ -375,6 +518,7 @@ def verify(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     database = Path(args.database).resolve()
     migrations = Path(args.migrations).resolve()
     pocketbase = Path(args.pocketbase).resolve()
+    hooks = Path(args.hooks).resolve() if args.hooks else None
     failures: list[str] = []
 
     if not database.is_file():
@@ -383,6 +527,8 @@ def verify(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         raise FileNotFoundError(f"migrations directory not found: {migrations}")
     if not pocketbase.is_file():
         raise FileNotFoundError(f"PocketBase binary not found: {pocketbase}")
+    if hooks is not None and not hooks.is_dir():
+        raise FileNotFoundError(f"hooks directory not found: {hooks}")
     if os.name != "nt" and not os.access(pocketbase, os.X_OK):
         raise PermissionError(f"PocketBase binary is not executable: {pocketbase}")
 
@@ -395,6 +541,21 @@ def verify(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
 
     pre = _inspect_database(database)
     manifest = _migration_manifest(migrations)
+    hook_manifest = _hook_manifest(hooks)
+    restore_lineage = (
+        RESTORE_MIGRATION in manifest
+        or RESTORE_MIGRATION in pre["applied_migrations"]
+    )
+    if restore_lineage:
+        if hooks is None:
+            failures.append("transactional restore lineage requires a hook directory")
+        else:
+            missing_hooks = sorted(REQUIRED_RESTORE_HOOKS - set(hook_manifest))
+            if missing_hooks:
+                failures.append(
+                    "transactional restore hooks are incomplete: "
+                    + ", ".join(missing_hooks)
+                )
     if not _checks_pass(pre):
         failures.append("source database failed integrity or domain checks")
 
@@ -417,15 +578,19 @@ def verify(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         root = Path(temp)
         data_dir = root / "pb_data"
         restored_migrations = root / "pb_migrations"
+        restored_hooks = root / "pb_hooks" if hooks is not None else None
         data_dir.mkdir()
         shutil.copy2(database, data_dir / "data.db")
         shutil.copytree(migrations, restored_migrations)
+        if hooks is not None and restored_hooks is not None:
+            shutil.copytree(hooks, restored_hooks)
         try:
             migration_output = _run_migrations(pocketbase, data_dir, restored_migrations)
             _prove_health(
                 pocketbase,
                 data_dir,
                 restored_migrations,
+                restored_hooks,
                 root / "pocketbase.log",
             )
             health = "pass"
@@ -445,6 +610,13 @@ def verify(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             reconciliation[table] = pre["tables"][table] == post["tables"][table]
         if not all(reconciliation.values()):
             failures.append("restored domain rows differ from the source")
+        pre_receipts = pre["restore_receipts"]
+        post_receipts = post["restore_receipts"]
+        if pre_receipts["present"]:
+            if pre_receipts != post_receipts:
+                failures.append("restored receipt metadata differs from the source")
+        elif post_receipts["count"] != 0:
+            failures.append("pending migrations unexpectedly created restore receipts")
         missing_after = sorted(migration_names - set(post["applied_migrations"]))
         if missing_after:
             failures.append("restored database still has unapplied JavaScript migrations")
@@ -452,7 +624,7 @@ def verify(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         missing_after = sorted(migration_names)
 
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "status": "pass" if not failures else "fail",
         "failures": failures,
@@ -471,6 +643,13 @@ def verify(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             "missing_after_restore": missing_after,
             "runner_output": migration_output,
         },
+        "hooks": {
+            "files": hook_manifest,
+            "required_for_restore_lineage": restore_lineage,
+            "required_files_present": REQUIRED_RESTORE_HOOKS.issubset(
+                set(hook_manifest)
+            ),
+        },
         "service_health": health,
         "pre_restore": pre,
         "post_restore": post,
@@ -484,6 +663,10 @@ def main() -> int:
     parser.add_argument("--pocketbase", required=True, help="PocketBase 0.40.4 binary")
     parser.add_argument("--database", required=True, help="consistent source data.db copy")
     parser.add_argument("--migrations", required=True, help="repository pb_migrations directory")
+    parser.add_argument(
+        "--hooks",
+        help="repository pb_hooks directory (required for transactional restore lineage)",
+    )
     parser.add_argument("--expected-database-sha256")
     parser.add_argument("--report", help="optional JSON evidence output path")
     args = parser.parse_args()
@@ -492,7 +675,7 @@ def main() -> int:
         exit_code, report = verify(args)
     except Exception as error:
         report = {
-            "schema_version": 1,
+            "schema_version": 2,
             "generated_at_utc": datetime.now(UTC).isoformat(),
             "status": "fail",
             "failures": [str(error)],

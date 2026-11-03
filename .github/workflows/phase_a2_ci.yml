@@ -37,6 +37,7 @@ jobs:
         run: |
           python3 server/tests/pocketbase_authz_test.py --pocketbase "$PWD/pocketbase"
           python3 server/tests/pocketbase_migration_lineage_test.py --pocketbase "$PWD/pocketbase"
+          python3 server/tests/pocketbase_transactional_restore_test.py --pocketbase "$PWD/pocketbase"
 
   flutter-checks:
     runs-on: ubuntu-latest
