@@ -1,8 +1,8 @@
 # ZAR+ Transactional Cloud Restore Plan
 
-Status: local implementation, destructive tests and recovery verification are green; follow-up review, fresh current-production clone rehearsal and production deployment have not occurred.
+Status: local implementation, destructive tests, two operational security-review remediation rounds, independent closure audits and the final fresh current-production clone rehearsal are green; exact-head CI and production deployment have not occurred.
 
-Last updated: 2026-11-03 (Asia/Tehran)
+Last updated: 2026-11-05 (Asia/Tehran)
 
 ## Objective and boundary
 
@@ -30,14 +30,22 @@ data, launch or 2026-11-30.
 - `server/pb_migrations/1793604800_transactional_restore.js`
 - `server/pb_hooks/zar_restore.js`
 - `server/pb_hooks/zar_restore_routes.pb.js`
-- `server/deploy/zar-server.service`
+- `server/deploy/zar-server-transactional-restore.conf`
+- `server/scripts/guarded_transactional_restore_{deploy,rollback,contain}.sh`
+- `server/scripts/test_guarded_transactional_restore_clone.sh`
+- `server/scripts/transactional_restore_{state,state_guard,canary}.py`
+- `server/scripts/transactional_restore_expected_state.json`
 - `server/tests/pocketbase_transactional_restore_test.py`
 - the migration-lineage, authorization and Flutter restore tests in this branch
 
 Before a rehearsal, create a manifest containing the reviewed Git commit,
 byte size, owner/mode and SHA-256 of every artifact. PocketBase must remain
 version `0.40.4` with the already verified binary checksum; a version change is
-a different workstream.
+a different workstream. The final `0004` rehearsal pinned expected-state
+manifest SHA-256
+`3102b85888016d479bf579c2e52e2fe6b0bee65910737dad7fc00a06bd9db4c3`
+and canary SHA-256
+`8e17b0973846da01c158f2960e9709594a1b3742fb39cf27b29a458d75c0f697`.
 
 ## Security and correctness contract
 
@@ -174,6 +182,40 @@ Rehearse failpoints after migration installation, after migrate-up, with a
 missing/corrupt helper hook and with unhealthy start. Every recovery branch
 must restore a known state without deleting receipts.
 
+### Completed current-production rehearsal
+
+On 2026-11-05, the final `0004` run used root-owned guarded tools against fresh
+SQLite backup copies of the current production state under
+`zar-restore-clone-20261105-0004.service` on loopback port `18093`. Six ordered
+deployment failpoints, successful deploy, pre-receipt rollback, rollback
+failures before stop/during recovery/after start, containment failures before
+stop and after start, zero-receipt ambiguous containment, real
+commit/restart/replay, receipt-bearing deploy recovery, wrapper/raw-down refusal
+after a receipt and receipt-present containment all passed. Invalid or
+unavailable state proof always left the service/listener stopped; validated
+receipt state restarted only after route quarantine.
+
+The harness also rejected failure-file symlinks and writable evidence parents
+at all three entry points, rejected an untrusted privileged input without
+restarting the clone, bound the canary to one real disposable tree and rejected
+same-name/cross-name production database hardlinks. Two operational
+security-review remediation rounds and independent closure audits reported no
+remaining blocker before this run. The exact rate-policy transition was
+`11`→`13`; production pre/post sanitized state hashes were both
+`de933d1a36a3b18816f6b26a2f019ff3739acc0854b57c293b39cbcdc21b1ed3`,
+and all candidate production paths stayed absent. The retained remote evidence
+is `/root/zar-transactional-restore-clone-20261105-0004`; its sanitized local
+archive contains `365` entries and has SHA-256
+`a23327950bef4b5b997233c6b58e7d02d88569475fad632bf2dd42322a85e927`.
+See `TRANSACTIONAL-RESTORE-CLONE-EVIDENCE-2026-11-05.md`.
+
+The final local verification ran `24` deterministic
+state/guard/manifest/canary tests (`22` passed and two were expected platform
+skips), the real
+PocketBase commit → restart → replay test, shell/Python syntax and whitespace
+checks, and the full PocketBase authorization, migration-lineage and
+transactional-restore suites. All passed on the same candidate content.
+
 ## Recovery and retention
 
 Once deployed, recovery sets must include the exact `pb_hooks` directory and
@@ -181,9 +223,9 @@ its manifest in addition to data, migrations, binary and service/proxy/backup
 configuration. The recovery verifier now reconciles receipt count and a
 canonical metadata hash without exposing snapshot or personal data, hashes the
 hook manifest and restarts with hot reload disabled. A local historical
-production-derived snapshot passed these checks on 2026-11-03. A fresh current
-production clone must still prove that replay resolves to the original receipt
-after service restart and that the exact rate-rule delta is `11`→`13`.
+production-derived snapshot passed these checks on 2026-11-03. The fresh
+current-production clone then proved receipt replay after a real service restart
+and the exact `11`→`13` rate-rule delta on 2026-11-05.
 
 Receipts are audit/idempotency evidence. No deletion or retention job is
 authorized yet. Before launch, define legal/business retention, an append-only
@@ -192,9 +234,11 @@ against a recovery clone.
 
 ## Deployment gate
 
-Local server-side accounting validation, real PocketBase tests, Flutter checks
-and receipt/hook-aware recovery verification are green. Production deployment
-remains blocked until the ambiguity remediation receives follow-up independent
-review, the fresh current-production clone rehearsal passes, dedicated guarded
-deploy/rollback tooling exists and exact-head CI is green. Passing local tests
-does not change production status.
+Local server-side accounting validation, real PocketBase tests, Flutter checks,
+receipt/hook-aware recovery verification, dedicated guarded deployment tooling
+and the fresh current-production clone rehearsal are green. Production
+deployment remains blocked until the exact committed head passes Draft PR CI
+and the owner records a separate explicit change-window decision with a fresh
+recovery set and named operator/rollback owner. The operational security-review
+and clone/tooling gates are closed for the reviewed local bytes; passing these
+non-production gates does not change production status.

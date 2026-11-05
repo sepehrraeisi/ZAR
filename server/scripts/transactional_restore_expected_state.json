@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "pocketBaseSha256": "14ec215bc7aaceda356713cd4b29aa7fcfee854ff2ae1151c5ddba41b43aec8a",
+  "artifacts": {
+    "migration": {
+      "name": "1793604800_transactional_restore.js",
+      "sha256": "9c831f779bba098aab28cc4e1de09d6f84e6abb2a0b22e8f3ba74f2cf741ccd5"
+    },
+    "helperHook": {
+      "name": "zar_restore.js",
+      "sha256": "55a08272eb0866ceb603466fed21014745a26494fd9ee6a782d2d10c2381f8b5"
+    },
+    "routeHook": {
+      "name": "zar_restore_routes.pb.js",
+      "sha256": "01aa50f90cef4212891f970487dde716e6b7d7fc1f3f6510678029ecb9d4f7c1"
+    },
+    "productionUnitOverlay": {
+      "name": "20-transactional-restore.conf",
+      "sha256": "954c3abc2d7623daa156e43abe18223d9fc1ee9afc978736ff12b22410ea019f"
+    },
+    "stateTool": {
+      "name": "transactional_restore_state.py",
+      "sha256": "ebed1154c93c9cdfdf5d192dd1774a7112171e538458385c21b5258c7261a91b"
+    },
+    "stateGuard": {
+      "name": "transactional_restore_state_guard.py",
+      "sha256": "27a35ce7f1b104d6ae7739c75e9bf2cd642b124db05bdb1a0d7a98ccb2794fd5"
+    },
+    "canary": {
+      "name": "transactional_restore_canary.py",
+      "sha256": "8e17b0973846da01c158f2960e9709594a1b3742fb39cf27b29a458d75c0f697"
+    }
+  },
+  "productionBaseline": {
+    "latestMigration": "1793437200_enable_rate_limits.js",
+    "nonRateLimitSettingsSha256": "31e444369553958ce6ab820173f71d10257ea3b69ac430a0d2c6ea79e212fc43",
+    "unitSha256": "e74558d96fb64e1bed9f655aaf05d02f46b84ec4726429575244764f15a99334",
+    "hardeningDropInSha256": "f8401b1675de52909a40010e163f28b39965db9a49bdac72732089d19a36ad3d"
+  },
+  "workspaceUpdateRuleBefore": "@request.auth.id != \"\" && members.id ?= @request.auth.id",
+  "workspaceUpdateRuleLocked": "@request.auth.id != \"\" && members.id ?= @request.auth.id && @request.body.members:changed = false",
+  "rateLimitsBefore": {
+    "enabled": true,
+    "excludedIPs": [],
+    "rules": [
+      {"label": "*:auth", "audience": "", "duration": 60, "maxRequests": 5},
+      {"label": "users:create", "audience": "", "duration": 600, "maxRequests": 5},
+      {"label": "*:requestPasswordReset", "audience": "", "duration": 300, "maxRequests": 3},
+      {"label": "*:requestOTP", "audience": "", "duration": 300, "maxRequests": 3},
+      {"label": "*:requestVerification", "audience": "", "duration": 300, "maxRequests": 3},
+      {"label": "*:requestEmailChange", "audience": "", "duration": 300, "maxRequests": 3},
+      {"label": "*:confirmPasswordReset", "audience": "", "duration": 300, "maxRequests": 10},
+      {"label": "*:confirmVerification", "audience": "", "duration": 300, "maxRequests": 10},
+      {"label": "*:confirmEmailChange", "audience": "", "duration": 300, "maxRequests": 10},
+      {"label": "/api/batch", "audience": "@auth", "duration": 1, "maxRequests": 10},
+      {"label": "/api/", "audience": "@guest", "duration": 10, "maxRequests": 60}
+    ]
+  },
+  "rateLimitsAfter": {
+    "enabled": true,
+    "excludedIPs": [],
+    "rules": [
+      {"label": "*:auth", "audience": "", "duration": 60, "maxRequests": 5},
+      {"label": "users:create", "audience": "", "duration": 600, "maxRequests": 5},
+      {"label": "*:requestPasswordReset", "audience": "", "duration": 300, "maxRequests": 3},
+      {"label": "*:requestOTP", "audience": "", "duration": 300, "maxRequests": 3},
+      {"label": "*:requestVerification", "audience": "", "duration": 300, "maxRequests": 3},
+      {"label": "*:requestEmailChange", "audience": "", "duration": 300, "maxRequests": 3},
+      {"label": "*:confirmPasswordReset", "audience": "", "duration": 300, "maxRequests": 10},
+      {"label": "*:confirmVerification", "audience": "", "duration": 300, "maxRequests": 10},
+      {"label": "*:confirmEmailChange", "audience": "", "duration": 300, "maxRequests": 10},
+      {"label": "/api/batch", "audience": "@auth", "duration": 1, "maxRequests": 10},
+      {"label": "/api/", "audience": "@guest", "duration": 10, "maxRequests": 60},
+      {"label": "/api/zar/restore/state", "audience": "@auth", "duration": 60, "maxRequests": 30},
+      {"label": "/api/zar/restore/commit", "audience": "@auth", "duration": 600, "maxRequests": 10}
+    ]
+  }
+}

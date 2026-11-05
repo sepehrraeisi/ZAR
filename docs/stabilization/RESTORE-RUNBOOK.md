@@ -1,6 +1,6 @@
 # ZAR+ PocketBase Restore and Reconciliation Runbook
 
-Status: exercised locally against a production backup copy on 2026-10-30; production recovery and off-site storage remain pending.
+Status: historical recovery verification passed on 2026-10-30 and the final guarded current-production clone rehearsal passed on 2026-11-05; production transactional-restore deployment, off-site storage and full disaster recovery remain pending.
 
 ## Purpose
 
@@ -180,17 +180,45 @@ Before changing production:
 9. Stop immediately on any unexplained difference; restore the entire verified set rather than editing records manually.
 10. Record UTC timestamps, operators, hashes, commands, outcomes and the final decision in the handoff ledger.
 
-For the transactional-restore candidate, production remains blocked until a
-production-snapshot clone proves the exact `11` to `13` rate-rule delta, the
-service-stopped migration-before-hook install order, restart/replay of a private
-receipt, rollback refusal after a receipt, and zero unexplained domain or
-receipt reconciliation differences. `verify_recovery_set.py` now binds and
+For the transactional-restore candidate, `verify_recovery_set.py` binds and
 hashes the exact hook set, reconciles receipt count and canonical metadata hash
 without payloads, and starts the isolated service with hot reload disabled. It
 passed the current local files against a historical production-derived snapshot
-on 2026-11-03, but that source started at four rate rules. The fresh current
-production `11`→`13` rehearsal is still mandatory; see
-`TRANSACTIONAL-RESTORE-LOCAL-EVIDENCE-2026-11-03.md`.
+on 2026-11-03; that source started at four rate rules. On 2026-11-05 the final
+`0004` guarded harness used fresh backup copies of current production under
+`zar-restore-clone-20261105-0004.service` on loopback port `18093` and proved:
+
+- the exact `11`→`13` rate-rule delta and service-stopped
+  migration-before-hook order;
+- six ordered deployment failpoints, pre-receipt rollback and rollback recovery
+  before stop, after an unhealthy recovery start and after rollback start;
+- fail-closed containment before stop and after start, plus zero-receipt
+  ambiguous and receipt-present forward-only containment;
+- a real receipt commit, restart and replay, receipt-bearing deploy recovery,
+  and wrapper/raw-down refusal after a receipt;
+- refusal of symlinked/pre-populated evidence, writable evidence parents and an
+  untrusted privileged input without a clone restart;
+- strict disposable canary path/executable/listener identity and rejection of
+  same-name or cross-name production database hardlinks.
+
+Two operational security-review remediation rounds and independent closure
+audits preceded this accepted run. The final `24` deterministic tooling tests
+(`22` passed and two were expected platform skips), real PocketBase canary and all three PocketBase
+suites passed. Production pre/post sanitized state hashes were both
+`de933d1a36a3b18816f6b26a2f019ff3739acc0854b57c293b39cbcdc21b1ed3`;
+the live candidate remained absent. The sanitized `365`-entry archive contains
+no symlink, database, private-state or unsafe path and has SHA-256
+`a23327950bef4b5b997233c6b58e7d02d88569475fad632bf2dd42322a85e927`.
+See
+`TRANSACTIONAL-RESTORE-LOCAL-EVIDENCE-2026-11-03.md` and
+`TRANSACTIONAL-RESTORE-CLONE-EVIDENCE-2026-11-05.md`.
+
+This drill closes the clone/tooling gate, not the deployment authorization.
+The reviewed local bytes have passed the operational security closure; still
+require exact-head Draft PR CI and a separate explicit owner-approved
+maintenance decision with a fresh production recovery set and named
+operator/rollback owner before using the production mode of the guarded
+scripts.
 
 ## Remaining disaster-recovery gaps
 

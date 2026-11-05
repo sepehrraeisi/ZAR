@@ -42,8 +42,9 @@ though the first request might already be durable. The client now treats every
 post-ambiguity result as unknown unless a complete receipt is verified.
 Regression coverage includes HTTP `400`, `401`, `403`, `404`, `409`, `413`,
 `422`, `428`, `429`, a second ambiguous result and an invalid replay receipt.
-A fresh independent follow-up review of this remediation remains a release
-gate.
+At this historical checkpoint a fresh independent follow-up review remained a
+release gate. The later exact-tree operational review/remediation and closure
+audit are recorded below; installed-APK proof remains separate.
 
 ## Receipt/hook-aware recovery evidence
 
@@ -99,3 +100,35 @@ Therefore production remained on the previously reviewed containment state.
    before any client release.
 6. Replacement of the accepted same-host backup exception before customer data
    or launch.
+
+## Later gate update
+
+Items 3 and 4 above were closed by the fresh current-production clone rehearsal
+and dedicated guarded deploy/rollback/containment tooling on 2026-11-05. See
+`TRANSACTIONAL-RESTORE-CLONE-EVIDENCE-2026-11-05.md`.
+
+The accepted final run is `0004`, not the earlier superseded rehearsals. Two
+operational security-review rounds closed privileged input/evidence trust,
+failure-file symlink writes, containment arming/recovery, unvalidated-state
+restart, non-rate-settings drift and disposable-canary path/production-alias
+boundaries. Independent closure audits additionally closed cross-name database
+hardlinks, receipt-safe recovery gating, rollback restart/artifact fail-open
+paths and asynchronous harness cleanup/readiness races; no blocking finding
+remained.
+
+Run `0004` retained `311` sanitized evidence files (`2.3 MiB`) under
+`/root/zar-transactional-restore-clone-20261105-0004`. Its local `365`-entry
+archive has SHA-256
+`a23327950bef4b5b997233c6b58e7d02d88569475fad632bf2dd42322a85e927`
+and no symlink, database, private-state or unsafe path. Production pre/post
+sanitized hashes were both
+`de933d1a36a3b18816f6b26a2f019ff3739acc0854b57c293b39cbcdc21b1ed3`;
+the candidate remained absent from production. The final local tooling suite
+ran `24` tests (`22` passed and two were expected skips), the real commit → restart → replay
+test and all three PocketBase suites.
+
+Items 1, 3 and 4 are therefore closed for the reviewed local bytes. Item 2
+(exact committed-head CI), item 5 (installed Android identity/behavior) and
+item 6 (replacement of the temporary same-host backup exception) remain
+separate gates. Production is still unchanged and this evidence does not
+authorize deployment.

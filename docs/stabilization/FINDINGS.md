@@ -1,6 +1,6 @@
 # ZAR+ Stabilization Findings Register
 
-Updated: 2026-11-03 (Asia/Tehran)
+Updated: 2026-11-05 (Asia/Tehran)
 Baseline source: `e60d68dda3c1876dc5af99e36c1f455b76fd8a50`  
 Working branch: `codex/stabilization-baseline`
 
@@ -27,6 +27,12 @@ This register is evidence-driven. “Locally fixed” means code and tests exist
 - On the current 2026-11-03 local candidate, the exact-tree complete Flutter
   suite passed **345 tests** with zero failures and `flutter analyze --no-pub`
   reported no findings. Exact-head GitHub CI remains a separate gate.
+- On the final 2026-11-05 guarded-tooling tree, **24 deterministic
+  state/manifest/canary tests ran: 22 passed and two were expected platform
+  skips**; the
+  real PocketBase commit → restart → replay test and all three authorization,
+  migration-lineage and transactional-restore suites also passed. The same
+  bytes then passed the isolated current-production clone harness.
 
 The green baseline is valuable but does not prove production safety. Existing tests are strong around exact numeric domain behavior, local Drift transactions, projections, UI and backup codecs; they are weak around real PocketBase authorization, multi-device concurrency, Android data protection and disaster recovery.
 
@@ -183,17 +189,48 @@ The green baseline is valuable but does not prove production safety. Existing te
   an ambiguous first commit could be misreported as definite failure even if
   the first request had committed. The client now keeps every unverified retry
   outcome unknown; regression coverage includes 400/401/403/404/409/413/422/
-  428/429 and an invalid replay receipt. This remediation still needs a fresh
-  independent follow-up review before release.
+  428/429 and an invalid replay receipt. The later exact-tree review retained
+  this fail-closed behavior; installed-APK proof remains a separate release
+  gate.
 - The recovery verifier now hashes the exact hook set, reconciles private
   receipt metadata without payloads and proves restart recovery. It passed a
   production-derived historical snapshot on the current local hook/migration
   set. That evidence started at four rate rules, so it does **not** replace the
-  required current-production `11` to `13` clone rehearsal.
-- Remaining pre-deployment gates: follow-up security review, exact-head
-  Flutter/real-PocketBase CI, the service-stopped migration-before-hook
-  rehearsal on a fresh current-production snapshot clone, and dedicated
-  guarded deploy/rollback tooling.
+  current-production evidence by itself.
+- Dedicated no-default guarded deploy, rollback and forward-only containment
+  tools now pin the expected manifest, PocketBase binary, candidate artifacts,
+  production unit/hardening boundary and exact rate policies. They require a
+  verified stopped listener before any down migration, refuse rollback when a
+  receipt exists and preserve route-only containment for receipt/ambiguous
+  outcomes.
+- The accepted current-production clone rehearsal is the fresh `0004` run on
+  2026-11-05. It proved the exact `11`→`13` policy; six ordered deployment
+  failpoints; pre-receipt rollback; zero-receipt ambiguous containment; real
+  commit/restart/replay; receipt-bearing deploy recovery; wrapper and raw-down
+  refusal after a receipt; receipt-present containment; and fail-closed
+  rollback/containment recovery before and after service start. It also proved
+  refusal of pre-populated/symlinked evidence, writable-parent evidence and a
+  privileged input below an untrusted parent without restarting the clone.
+- Two operational security-review rounds were remediated before `0004`. The
+  first closed privileged-input trust/TOCTOU, containment recovery, disposable
+  canary identity/production-port rejection and non-rate-settings drift. The
+  follow-up closed failure-file symlink writes, containment arming before stop,
+  restart from unvalidated state and clone-path traversal/production aliasing.
+  Independent closure audits then found and closed cross-name database
+  hardlinks, receipt-safe recovery gating, rollback restart/artifact fail-open
+  paths and asynchronous harness cleanup/readiness races. The final closure
+  audits reported no blocking finding.
+- Production pre/post sanitized state SHA-256 values were both
+  `de933d1a36a3b18816f6b26a2f019ff3739acc0854b57c293b39cbcdc21b1ed3`;
+  no candidate production path changed. The sanitized archive has `365`
+  entries, no symlink/database/private-state/unsafe path, and SHA-256
+  `a23327950bef4b5b997233c6b58e7d02d88569475fad632bf2dd42322a85e927`.
+  See `TRANSACTIONAL-RESTORE-CLONE-EVIDENCE-2026-11-05.md`.
+- Remaining pre-deployment gates: publish the exact committed head, require
+  green exact-head Flutter/real-PocketBase CI, and make a separate explicit
+  owner-approved production change decision with a fresh recovery set and
+  named operators. The installed Android APK remains a separate client-release
+  gate.
 - Operational status: **local candidate only; production is unchanged with 11
   rate rules and the cash update/delete lock.** The candidate
   expects 13 rules. Rollback after any receipt exists must preserve the
@@ -232,12 +269,12 @@ Stabilization of security, recovery and current data integrity can continue with
 
 ## Next implementation order
 
-1. Finish security/accounting validation and the client/integration test matrix
-   for the local transactional-restore candidate; require green exact-head CI
-   and keep Draft PR #3 unmerged until an explicit review/merge decision.
-2. Rehearse migration, service-stopped install, recovery reconciliation and
-   both rollback branches on fresh and production-snapshot clones. Do not
-   deploy while the gates in `TRANSACTIONAL-RESTORE-PLAN.md` remain open.
+1. Publish the reviewed guarded-tooling/evidence checkpoint, require green
+   exact-head CI and keep Draft PR #3 unmerged until an explicit review/merge
+   decision.
+2. If the owner later authorizes production deployment, create a fresh recovery
+   set and run the prewritten guarded change window; do not treat the passing
+   clone as deployment authorization.
 3. Inspect the installed Android APK and prove package/version/signature,
    sign-in/startup behavior and the Persian 429 message before client release.
 4. Decide and enforce the intended public-signup policy.

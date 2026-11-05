@@ -34,7 +34,19 @@ jobs:
           ./pocketbase --version
 
       - name: Test PocketBase authorization and migration lineages
+        env:
+          ZAR_POCKETBASE: ${{ github.workspace }}/pocketbase
         run: |
+          bash -n \
+            server/scripts/guarded_transactional_restore_deploy.sh \
+            server/scripts/guarded_transactional_restore_rollback.sh \
+            server/scripts/guarded_transactional_restore_contain.sh \
+            server/scripts/test_guarded_transactional_restore_clone.sh
+          python3 -m unittest -v \
+            server.tests.transactional_restore_state_test \
+            server.tests.transactional_restore_state_guard_test \
+            server.tests.transactional_restore_expected_state_test \
+            server.tests.transactional_restore_canary_test
           python3 server/tests/pocketbase_authz_test.py --pocketbase "$PWD/pocketbase"
           python3 server/tests/pocketbase_migration_lineage_test.py --pocketbase "$PWD/pocketbase"
           python3 server/tests/pocketbase_transactional_restore_test.py --pocketbase "$PWD/pocketbase"

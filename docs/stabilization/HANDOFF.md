@@ -1,7 +1,7 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-11-03 (Asia/Tehran)
-Status: **IN PROGRESS — production containment remains stable; local transactional cloud restore and its test/recovery gates are green, but production is blocked on follow-up review, a fresh 11→13 clone rehearsal, guarded tooling and exact-head CI**
+Last updated: 2026-11-05 (Asia/Tehran)
+Status: **IN PROGRESS — production containment remains stable; transactional cloud restore, guarded tooling and the final fresh 11→13 production-clone rehearsal are green after two security-review remediation rounds and independent closure audits, but production is blocked on a green exact-head CI result and a separate explicit deployment decision**
 Change freeze: no feature work; every production mutation must continue through the backup/restore and rollback gates below.
 
 ## 1. Objective
@@ -32,6 +32,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Findings register: `docs/stabilization/FINDINGS.md`
 - Restore/reconciliation runbook: `docs/stabilization/RESTORE-RUNBOOK.md`
 - Transactional cloud-restore plan: `docs/stabilization/TRANSACTIONAL-RESTORE-PLAN.md`
+- Transactional current-production clone evidence: `docs/stabilization/TRANSACTIONAL-RESTORE-CLONE-EVIDENCE-2026-11-05.md`
 - Production containment change plan: `docs/stabilization/PRODUCTION-CONTAINMENT-CHANGE-PLAN.md`
 - Production containment evidence: `docs/stabilization/PRODUCTION-CONTAINMENT-EVIDENCE-2026-10-30.md`
 - SSH hardening plan: `docs/stabilization/SSH-HARDENING-PLAN.md`
@@ -52,6 +53,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Off-server administrative evidence archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\admin-access-20261031T084900Z\zar-admin-access-20261031T084900Z-evidence.tar`
 - Off-server rate-limit canary/deploy/rollback archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\rate-limit-canary-20261031\zar-rate-limit-evidence-complete-v6-20261031.tar` (SHA-256 `6a198f258744202c30402c965a7515d787ef38ff1a6a7927016acabf2244bdd0`)
 - Off-server rate-limit production archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\rate-limit-production-20261101\zar-rate-limit-production-evidence-20261101.tar` (81 entries; internal hashes passed; SHA-256 `7877588bbee36233c854fa45b7dfa761eb7252179f4166d1313b7efc697adc95`)
+- Sanitized transactional-restore clone archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\transactional-restore-clone-20261105-0004\zar-transactional-restore-clone-20261105-0004.tar.gz` (365 archive entries; no symlink, unsafe path, database or private state; SHA-256 `a23327950bef4b5b997233c6b58e7d02d88569475fad632bf2dd42322a85e927`)
 - User-facing handoff mirror: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\outputs\ZAR-STABILIZATION-HANDOFF.md`
 
 ### Production server
@@ -72,6 +74,9 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Administrative access rollback/evidence: `/root/zar-admin-access-20261031T084900Z`
 - Rate-limit production evidence: `/root/zar-rate-limit-production-20261101T195200Z`
 - Rate-limit pre-change backup: `/backups/zar-daily/zar-20261101T195240Z/`
+- Transactional-restore candidate staging (not installed): `/root/zar-restore-candidate-20261105-0004`
+- Transactional-restore clone evidence: `/root/zar-transactional-restore-clone-20261105-0004` (311 files, approximately 2.3 MiB)
+- Transactional-restore expected-state manifest SHA-256: `3102b85888016d479bf579c2e52e2fe6b0bee65910737dad7fc00a06bd9db4c3`
 - Public application URL: `https://app.titangold.ir`
 - Alternate URL: `https://zar.185-126-202-104.sslip.io`
 
@@ -101,9 +106,13 @@ Never put passwords, tokens, signing-key material, private keys, database conten
   After the cash-restore guard and blocking-dialog regression test were added,
   the complete suite passed 337 tests with zero failures on 2026-11-02; full
   analyzer had no findings.
-- The current 2026-11-03 local candidate passes the complete exact-tree Flutter
+- The current candidate passes the complete exact-tree Flutter
   suite (**345 tests**), the full analyzer, all three real-PocketBase server
-  suites and Python syntax checks. GitHub exact-head CI is still pending.
+  suites, the 24-test state/guard/canary suite (22 passed plus two expected
+  platform skips), a separate real PocketBase commit → restart → replay test,
+  Python syntax and shell syntax checks. GitHub run #260 passed the prior
+  implementation/evidence head; the exact current branch head must be verified
+  by a new green CI run before any later release decision.
 - Android release guide exists, but actual signing-key possession, installed APK identity, and clean release build are not yet proven.
 - Product documentation currently defines ZAR+ as an operational gold/currency assistant and explicitly excludes a full accounting ledger, profit/loss, tax and financial statements. The owner must confirm whether “accounting application” means this operational scope or a true general ledger before architecture changes.
 
@@ -130,10 +139,12 @@ Never put passwords, tokens, signing-key material, private keys, database conten
   explicit hook-path unit. It remains at exactly 11 rate rules and the earlier
   server-side cash update/delete lock; the local candidate expects 13. The
   branch client guard has not been verified in the installed Android APK.
-- A read-only check at `2026-11-03T12:36:42Z` reconfirmed: service active,
+- A read-only postflight at `2026-11-05T13:58:03Z` reconfirmed: service active,
   loopback health `200`, restore route `404`, both hook files and migration
   absent, no explicit hook arguments in the installed unit, and exactly 11
-  enabled rate-limit rules. No production state was changed.
+  enabled rate-limit rules. The production sanitized state SHA-256 was
+  `de933d1a36a3b18816f6b26a2f019ff3739acc0854b57c293b39cbcdc21b1ed3`
+  both before and after the final clone drill. No production state was changed.
 
 ## 4. Non-negotiable gates before production changes
 
@@ -225,6 +236,52 @@ Never put passwords, tokens, signing-key material, private keys, database conten
   health, exactly 11 enabled rate rules, no restore route, no candidate
   migration/hooks and no candidate service arguments. Production was not
   mutated.
+- 2026-11-05 01:48–01:50 +03:30: Ran the preliminary root-owned, no-default
+  transactional-restore harness against fresh SQLite backup copies of current
+  production under a unique transient systemd unit and loopback port. The
+  functional matrix passed, but this run was deliberately superseded rather
+  than accepted as final when security review began.
+- 2026-11-05: The first dedicated guarded-tooling security review found four
+  blockers: privileged-input/root-trust gaps, fail-open containment recovery,
+  insufficient protection against targeting production port `8090`, and missing
+  proof that non-rate-limit PocketBase settings stayed unchanged. The tools were
+  changed to validate every privileged input and parent, fail closed on
+  containment error, bind the canary to a disposable systemd identity/tree and
+  pin the canonical non-rate settings hash. A fresh rehearsal passed, but it was
+  also superseded pending the follow-up review.
+- 2026-11-05: The follow-up security review found four further blockers:
+  evidence-file symlink writes before evidence validation, a pre-stop
+  containment recovery gap, restart of an unvalidated database state and a
+  disposable-path alias that could reach production data. Evidence directories
+  are now root-chain validated before traps, device/inode pinned and written
+  with no-follow/exclusive semantics; containment and rollback are armed before
+  stop; invalid state remains stopped; receipt-bearing recovery requires a
+  valid contained profile and exact artifacts; canary paths, executable and
+  both database inodes are bound to one real disposable tree.
+- 2026-11-05: Independent closure audits additionally caught and closed
+  cross-named production-database hardlinks, fail-open rollback restart paths,
+  a receipt/baseline mismatch in deploy recovery and two asynchronous harness
+  cleanup/readiness races. Final read-only audits reported no remaining blocker.
+  The 24-test state/guard/canary suite passed with two expected platform skips,
+  the real PocketBase commit → restart → replay test passed separately, and all
+  three real-PocketBase authorization, lineage and transactional-restore suites
+  passed.
+- 2026-11-05 17:24–17:28 +03:30: Ran final rehearsal `0004` from fresh current-
+  production SQLite backups using transient unit
+  `zar-restore-clone-20261105-0004.service` on `127.0.0.1:18093`. The matrix
+  covered six ordered deploy failpoints; symlink, writable-parent and untrusted-
+  input refusal without restart; invalid-state stop; receipt-bearing deploy
+  recovery; pre-receipt rollback; three rollback failure recoveries; pre-stop
+  and post-start containment failures; ambiguous containment; real commit,
+  restart and replay; and wrapper/raw-down refusal after a receipt. Every case
+  passed. Production pre/post sanitized SHA-256 remained exactly
+  `de933d1a36a3b18816f6b26a2f019ff3739acc0854b57c293b39cbcdc21b1ed3`;
+  candidate production files/history remained absent and the private canary
+  state was deleted.
+- 2026-11-05: Preserved final sanitized evidence in the 365-entry local archive
+  recorded above. Archive inspection found zero symlinks, unsafe paths, database
+  files or private-state files; archive SHA-256 is
+  `a23327950bef4b5b997233c6b58e7d02d88569475fad632bf2dd42322a85e927`.
 
 ### Local commit checkpoint
 
@@ -247,8 +304,11 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - `2531bd3` — `fix(backup): fail closed on cloud cash restore`
 - `f95c49f` — `docs(stabilization): record rate limit production gate`
 - `31eadf7` — `feat(restore): add transactional cloud recovery`
-- All implementation and test changes through this checkpoint are committed
-  locally. The evidence-document commit follows separately.
+- `40ffe3b` — `docs(stabilization): record restore candidate evidence`
+- Commits through `40ffe3b` are published. The guarded tooling and 2026-11-05
+  final `0004` evidence form the current independently reviewed checkpoint;
+  resolve its exact commit from `git log` and verify that same head in Draft PR
+  #3 and CI before relying on it.
 - The branch is published in Draft PR #3 and remains unmerged. Production
   contains the four reviewed stabilization migrations (two deletion locks,
   admin-access settings and rate limiting); `master` will remain behind until
@@ -256,23 +316,22 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 
 ### Running now
 
-- Finalize the evidence/handoff commit, publish it to Draft PR #3 and require
-  exact-head CI; do not merge without the owner's explicit decision.
-- Keep production unchanged while the follow-up security review, fresh
-  current-production clone rehearsal and dedicated guarded deploy/rollback
-  tooling are incomplete.
-- The older rate-limit rollback script must refuse once the new migration is
-  latest; post-receipt recovery is forward-only and must preserve receipts.
+- Verify that the guarded-tooling/evidence checkpoint is committed and visible
+  in Draft PR #3, then require exact-head CI; do not merge or deploy without the owner's explicit
+  decision. The two dedicated security-review remediation rounds and subsequent
+  independent closure audits are complete with no remaining blocker reported.
+- Keep production unchanged. The fresh current-production clone/tooling gate is
+  complete; post-receipt recovery remains forward-only and must preserve
+  receipts.
 
 ### Next safe actions
 
-1. Publish the reviewed local candidate, run exact-head CI and obtain a fresh
-   independent security review of the ambiguity remediation; do not merge
-   Draft PR #3 without the owner's explicit decision.
-2. Rehearse the exact service-stopped migration-before-hook deployment,
-   `11`→`13` rule delta, receipt replay/recovery and both rollback branches on
-   a fresh current-production snapshot clone. Do not deploy until every gate in
-   `TRANSACTIONAL-RESTORE-PLAN.md` passes.
+1. Verify the reviewed checkpoint is committed and published, then require
+   green exact-head CI; do not merge Draft PR #3 without the owner's explicit
+   decision.
+2. If the owner later authorizes production deployment, create a fresh verified
+   recovery set and execute the prewritten guarded maintenance window. The
+   passing clone is evidence, not deployment authorization.
 3. Inspect the installed Android APK and prove package/version/signature,
    sign-in/startup and Persian 429 behavior before client release.
 4. Decide whether public signup should remain enabled in the pre-customer environment.
@@ -296,8 +355,10 @@ Never put passwords, tokens, signing-key material, private keys, database conten
   containment and Persian controlled-recovery messaging are implemented and
   tested in the published baseline. A local server-side transactional
   candidate now addresses the GET-to-batch race, but production remains on the
-  containment path until security validation, full tests, clone rehearsal,
-  recovery verification and explicit deployment approval pass.**
+  containment path until this checkpoint is committed/published, exact-head CI
+  and an explicit production-deployment approval pass. Two security-review
+  remediation rounds, independent closure audits and the fresh current-
+  production clone/recovery-tooling gates passed on 2026-11-05.**
 
 ### P1 — establish a reliable source of truth
 
