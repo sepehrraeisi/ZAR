@@ -1,6 +1,6 @@
 # ZAR+ Transactional Cloud Restore Plan
 
-Status: local implementation, destructive tests, two operational security-review remediation rounds, independent closure audits and the final fresh current-production clone rehearsal are green; exact-head CI and production deployment have not occurred.
+Status: local implementation, destructive tests, two operational security-review remediation rounds, independent closure audits, the final fresh current-production clone rehearsal and exact code/evidence checkpoint CI are green. Draft PR #3 remains unmerged and production deployment has not occurred.
 
 Last updated: 2026-11-05 (Asia/Tehran)
 
@@ -236,9 +236,10 @@ against a recovery clone.
 
 Local server-side accounting validation, real PocketBase tests, Flutter checks,
 receipt/hook-aware recovery verification, dedicated guarded deployment tooling
-and the fresh current-production clone rehearsal are green. Production
-deployment remains blocked until the exact committed head passes Draft PR CI
-and the owner records a separate explicit change-window decision with a fresh
-recovery set and named operator/rollback owner. The operational security-review
+and the fresh current-production clone rehearsal are green. GitHub Actions run
+#261 passed both jobs at exact code/evidence checkpoint `e9ee6e0`. Production
+deployment remains blocked until the owner records a separate explicit
+change-window decision with a fresh recovery set and named operator/rollback
+owner, and any later deployment head retains green CI. The operational security-review
 and clone/tooling gates are closed for the reviewed local bytes; passing these
 non-production gates does not change production status.

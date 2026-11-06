@@ -26,7 +26,9 @@ This register is evidence-driven. “Locally fixed” means code and tests exist
   full analyzer had no findings.
 - On the current 2026-11-03 local candidate, the exact-tree complete Flutter
   suite passed **345 tests** with zero failures and `flutter analyze --no-pub`
-  reported no findings. Exact-head GitHub CI remains a separate gate.
+  reported no findings. GitHub Actions run #261 (ID `42042024671`) subsequently
+  passed both jobs at exact code/evidence checkpoint
+  `e9ee6e08372d6769b95b78dccff60c4aeb2246f5`.
 - On the final 2026-11-05 guarded-tooling tree, **24 deterministic
   state/manifest/canary tests ran: 22 passed and two were expected platform
   skips**; the
@@ -226,11 +228,10 @@ The green baseline is valuable but does not prove production safety. Existing te
   entries, no symlink/database/private-state/unsafe path, and SHA-256
   `a23327950bef4b5b997233c6b58e7d02d88569475fad632bf2dd42322a85e927`.
   See `TRANSACTIONAL-RESTORE-CLONE-EVIDENCE-2026-11-05.md`.
-- Remaining pre-deployment gates: publish the exact committed head, require
-  green exact-head Flutter/real-PocketBase CI, and make a separate explicit
-  owner-approved production change decision with a fresh recovery set and
-  named operators. The installed Android APK remains a separate client-release
-  gate.
+- Remaining pre-deployment gates: make a separate explicit owner-approved
+  production change decision with a fresh recovery set and named operators,
+  and require any later deployment commit to retain green exact-head CI. The
+  installed Android APK remains a separate client-release gate.
 - Operational status: **local candidate only; production is unchanged with 11
   rate rules and the cash update/delete lock.** The candidate
   expects 13 rules. Rollback after any receipt exists must preserve the
@@ -269,9 +270,9 @@ Stabilization of security, recovery and current data integrity can continue with
 
 ## Next implementation order
 
-1. Publish the reviewed guarded-tooling/evidence checkpoint, require green
-   exact-head CI and keep Draft PR #3 unmerged until an explicit review/merge
-   decision.
+1. Deliver `PROGRAMMER-HANDOFF.md`, verify the current Draft PR head and keep
+   Draft PR #3 unmerged until an explicit review/merge decision. Exact-head CI
+   for implementation/evidence checkpoint `e9ee6e0` is green.
 2. If the owner later authorizes production deployment, create a fresh recovery
    set and run the prewritten guarded change window; do not treat the passing
    clone as deployment authorization.

@@ -214,11 +214,11 @@ See
 `TRANSACTIONAL-RESTORE-CLONE-EVIDENCE-2026-11-05.md`.
 
 This drill closes the clone/tooling gate, not the deployment authorization.
-The reviewed local bytes have passed the operational security closure; still
-require exact-head Draft PR CI and a separate explicit owner-approved
-maintenance decision with a fresh production recovery set and named
-operator/rollback owner before using the production mode of the guarded
-scripts.
+The reviewed code/evidence checkpoint `e9ee6e0` passed exact-head Draft PR CI
+in run #261. Still require a separate explicit owner-approved maintenance
+decision, green CI for any later deployment head, a fresh production recovery
+set and named operator/rollback owner before using the production mode of the
+guarded scripts.
 
 ## Remaining disaster-recovery gaps
 

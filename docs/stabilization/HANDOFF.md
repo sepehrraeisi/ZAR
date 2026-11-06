@@ -1,7 +1,7 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-11-05 (Asia/Tehran)
-Status: **IN PROGRESS — production containment remains stable; transactional cloud restore, guarded tooling and the final fresh 11→13 production-clone rehearsal are green after two security-review remediation rounds and independent closure audits, but production is blocked on a green exact-head CI result and a separate explicit deployment decision**
+Last updated: 2026-11-06 (Asia/Tehran)
+Status: **IN PROGRESS — production containment remains stable; transactional cloud restore, guarded tooling, the final fresh 11→13 production-clone rehearsal and exact-head GitHub CI are green after two security-review remediation rounds and independent closure audits. Draft PR #3 remains unmerged and production deployment requires a separate explicit owner decision.**
 Change freeze: no feature work; every production mutation must continue through the backup/restore and rollback gates below.
 
 ## 1. Objective
@@ -27,6 +27,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 
 - Clone: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\ZAR`
 - Current local branch: `codex/stabilization-baseline`
+- Programmer handoff (single entry point): `docs/stabilization/PROGRAMMER-HANDOFF.md`
 - Handoff (canonical): `docs/stabilization/HANDOFF.md`
 - Baseline evidence manifest: `docs/stabilization/BASELINE.md`
 - Findings register: `docs/stabilization/FINDINGS.md`
@@ -55,6 +56,7 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 - Off-server rate-limit production archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\rate-limit-production-20261101\zar-rate-limit-production-evidence-20261101.tar` (81 entries; internal hashes passed; SHA-256 `7877588bbee36233c854fa45b7dfa761eb7252179f4166d1313b7efc697adc95`)
 - Sanitized transactional-restore clone archive: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\work\transactional-restore-clone-20261105-0004\zar-transactional-restore-clone-20261105-0004.tar.gz` (365 archive entries; no symlink, unsafe path, database or private state; SHA-256 `a23327950bef4b5b997233c6b58e7d02d88569475fad632bf2dd42322a85e927`)
 - User-facing handoff mirror: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\outputs\ZAR-STABILIZATION-HANDOFF.md`
+- Programmer-handoff mirror: `C:\Users\simin\Documents\Codex\2026-10-28\fh-x20\outputs\ZAR-PROGRAMMER-HANDOFF.md`
 
 ### Production server
 
@@ -110,9 +112,9 @@ Never put passwords, tokens, signing-key material, private keys, database conten
   suite (**345 tests**), the full analyzer, all three real-PocketBase server
   suites, the 24-test state/guard/canary suite (22 passed plus two expected
   platform skips), a separate real PocketBase commit → restart → replay test,
-  Python syntax and shell syntax checks. GitHub run #260 passed the prior
-  implementation/evidence head; the exact current branch head must be verified
-  by a new green CI run before any later release decision.
+  Python syntax and shell syntax checks. GitHub run #261 (ID
+  `42042024671`) passed both `pocketbase-authorization` and `flutter-checks` at
+  exact code/evidence head `e9ee6e08372d6769b95b78dccff60c4aeb2246f5`.
 - Android release guide exists, but actual signing-key possession, installed APK identity, and clean release build are not yet proven.
 - Product documentation currently defines ZAR+ as an operational gold/currency assistant and explicitly excludes a full accounting ledger, profit/loss, tax and financial statements. The owner must confirm whether “accounting application” means this operational scope or a true general ledger before architecture changes.
 
@@ -282,6 +284,15 @@ Never put passwords, tokens, signing-key material, private keys, database conten
   recorded above. Archive inspection found zero symlinks, unsafe paths, database
   files or private-state files; archive SHA-256 is
   `a23327950bef4b5b997233c6b58e7d02d88569475fad632bf2dd42322a85e927`.
+- 2026-11-06 11:17–11:18 +03:30: Performed a fresh read-only production
+  postflight while finalizing the programmer handoff. `zar-server`, Caddy and
+  `zar-backup.timer` were active, the timer was enabled, `NRestarts=0`, loopback
+  health returned `200`, and PocketBase listened only on `127.0.0.1:8090`.
+  Transactional-restore migration/hooks remained absent. The natural
+  2026-11-06 backup `zar-20261106T030011Z` reported a successful unit result;
+  strict SHA-256 verification returned `data.db: OK`, SQLite quick-check was
+  `ok`, and the snapshot directory/file modes were `0700/0600`. No production
+  state was changed.
 
 ### Local commit checkpoint
 
@@ -305,10 +316,11 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 - `f95c49f` — `docs(stabilization): record rate limit production gate`
 - `31eadf7` — `feat(restore): add transactional cloud recovery`
 - `40ffe3b` — `docs(stabilization): record restore candidate evidence`
-- Commits through `40ffe3b` are published. The guarded tooling and 2026-11-05
-  final `0004` evidence form the current independently reviewed checkpoint;
-  resolve its exact commit from `git log` and verify that same head in Draft PR
-  #3 and CI before relying on it.
+- `e9ee6e0` — `ops(restore): prove guarded transactional recovery`
+- The guarded tooling and 2026-11-05 final `0004` evidence are published at
+  exact checkpoint `e9ee6e08372d6769b95b78dccff60c4aeb2246f5`; GitHub Actions
+  run #261 passed both jobs for that exact checkpoint. Later documentation-only
+  commits must still be resolved from the Draft PR head before relying on them.
 - The branch is published in Draft PR #3 and remains unmerged. Production
   contains the four reviewed stabilization migrations (two deletion locks,
   admin-access settings and rate limiting); `master` will remain behind until
@@ -316,19 +328,20 @@ Never put passwords, tokens, signing-key material, private keys, database conten
 
 ### Running now
 
-- Verify that the guarded-tooling/evidence checkpoint is committed and visible
-  in Draft PR #3, then require exact-head CI; do not merge or deploy without the owner's explicit
-  decision. The two dedicated security-review remediation rounds and subsequent
-  independent closure audits are complete with no remaining blocker reported.
+- Publish the consolidated programmer handoff and keep Draft PR #3 unmerged;
+  exact-head CI for the code/evidence checkpoint is green. Do not merge or
+  deploy without the owner's explicit, separate decision. The two dedicated
+  security-review remediation rounds and subsequent independent closure audits
+  are complete with no remaining blocker reported in their reviewed boundaries.
 - Keep production unchanged. The fresh current-production clone/tooling gate is
   complete; post-receipt recovery remains forward-only and must preserve
   receipts.
 
 ### Next safe actions
 
-1. Verify the reviewed checkpoint is committed and published, then require
-   green exact-head CI; do not merge Draft PR #3 without the owner's explicit
-   decision.
+1. Give the next programmer `PROGRAMMER-HANDOFF.md`, independently verify the
+   Draft PR head and CI, and do not merge Draft PR #3 without the owner's
+   explicit decision.
 2. If the owner later authorizes production deployment, create a fresh verified
    recovery set and execute the prewritten guarded maintenance window. The
    passing clone is evidence, not deployment authorization.

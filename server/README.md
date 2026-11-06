@@ -113,7 +113,9 @@ collection دامنه، از جمله cash append-only، اضافه می‌کن�
 commit علاوه بر session معتبر، re-authentication با رمز و workspace تک‌عضوی
 می‌خواهد. receipt از Record API قابل‌خواندن نیست.
 
-این قابلیت فعلاً **فقط در working tree محلی و تحت آزمون است**. production هنوز
+این قابلیت در شاخهٔ `codex/stabilization-baseline` و Draft PR شمارهٔ ۳ منتشر شده،
+rehearsal نهایی clone و CI دقیق checkpoint `e9ee6e0` را پاس کرده، اما هنوز
+**candidate و نصب‌نشده روی production** است. production همچنان
 قفل server-side حذف/ویرایش cash و policy دقیق ۱۱ rule را دارد؛ migration، hook
 یا unit جدید روی production نصب نشده و نصب guard کلاینتی روی گوشی نیز اثبات
 نشده است. پس از migration جدید، policy
