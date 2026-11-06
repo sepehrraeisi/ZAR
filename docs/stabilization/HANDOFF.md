@@ -1,8 +1,12 @@
 # ZAR+ Stabilization Handoff
 
 Last updated: 2026-11-06 (Asia/Tehran)
-Status: **IN PROGRESS — production containment remains stable; transactional cloud restore, guarded tooling, the final fresh 11→13 production-clone rehearsal and exact-head GitHub CI are green after two security-review remediation rounds and independent closure audits. Draft PR #3 remains unmerged and production deployment requires a separate explicit owner decision.**
+Status: **IN PROGRESS — production containment remains stable; transactional cloud restore, guarded tooling, the final fresh 11→13 production-clone rehearsal and exact-head GitHub CI are green after two security-review remediation rounds and independent closure audits. PR #3 was merged into `master` (merge commit `725c8fa`) on 2026-11-06 with explicit owner approval; the transactional restore candidate remains NOT deployed to production and still requires a separate explicit owner decision (planned after roadmap Phase 1).**
 Change freeze: no feature work; every production mutation must continue through the backup/restore and rollback gates below.
+
+## 0. Post-handoff action log
+
+- 2026-11-06 — Owner approved merging PR #3. Independently verified branch tip == PR head (`2ebd9d88`) and all check-runs `success` before merging. Merged `--no-ff` as `725c8fa`, pushed to `master`; tag `stabilization-baseline` pushed (on `2ebd9d8`). Local CI reproduced on merged `master`: `flutter analyze --no-fatal-infos` clean, `flutter test` 345/345 pass. Branch protection enabled on `master`: required checks `flutter-checks` + `pocketbase-authorization` (strict), enforce_admins on, force-push/deletion off, PRs required with 0 approvals. Owner decisions recorded: transactional restore deploys after roadmap Phase 1 in a dedicated maintenance window; public signup stays closed until launch. Execution roadmap: `docs/stabilization/ROADMAP-2026-11.md`.
 
 ## 1. Objective
 
@@ -15,11 +19,11 @@ The defensible completion statement is not “there are no bugs.” It is: all k
 ### GitHub
 
 - Repository: `https://github.com/sepehrraeisi/ZAR`
-- Draft stabilization PR: `https://github.com/sepehrraeisi/ZAR/pull/3`
+- Draft stabilization PR: `https://github.com/sepehrraeisi/ZAR/pull/3` — **merged into `master` on 2026-11-06 (merge commit `725c8fa`)**
 - Default branch: `master`
 - Baseline commit: `e60d68dda3c1876dc5af99e36c1f455b76fd8a50`
 - Baseline commit is unsigned.
-- `master` is currently reported as unprotected.
+- `master` branch protection (enabled 2026-11-06): required checks `flutter-checks`, `pocketbase-authorization` (strict), enforce_admins, no force-push/deletion, PRs required (0 approvals).
 - Open pull requests/issues/releases at baseline: none.
 - Existing remote branch: `codex/phase-a2-ux` at `b45e1ff810ade8e2ca28308b7bbe9592ce6e3ad0`.
 
