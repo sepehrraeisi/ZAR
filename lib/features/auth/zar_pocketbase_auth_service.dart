@@ -4,15 +4,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/pocketbase/zar_pocketbase_client.dart';
 import 'zar_auth_service.dart';
+import 'zar_token_store.dart';
 
 /// PocketBase-backed [ZarAuthService] — email/password sign-in on the default
 /// `users` auth collection, with the token persisted so the session survives
 /// app restarts.
 class ZarPocketBaseAuthService implements ZarAuthService {
-  ZarPocketBaseAuthService({required ZarPocketBaseClient client})
-    : _client = client;
+  ZarPocketBaseAuthService({required ZarPocketBaseClient client, ZarTokenStore? tokenStore})
+    : _client = client,
+      _tokenStore = tokenStore ?? ZarSecureTokenStore();
 
   final ZarPocketBaseClient _client;
+  final ZarTokenStore _tokenStore;
   ZarAuthUser? _currentUser;
 
   static const _tokenKey = 'zar_pb_token';
@@ -34,9 +37,9 @@ class ZarPocketBaseAuthService implements ZarAuthService {
   /// failures (offline, 5xx) keep it — the next launch retries instead of
   /// signing the user out over a network blip.
   Future<void> restoreSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey);
-    final userId = prefs.getString(_userIdKey);
+    await _migrateLegacyPreferencesIntoSecureStore();
+    final token = await _tokenStore.read(_tokenKey);
+    final userId = await _tokenStore.read(_userIdKey);
     if (token == null || userId == null) return;
     try {
       _client.authToken = token;
@@ -44,14 +47,39 @@ class ZarPocketBaseAuthService implements ZarAuthService {
       _emit(
         ZarAuthUser(
           uid: userId,
-          email: (record['email'] as String?) ?? prefs.getString(_userEmailKey),
+          email:
+              (record['email'] as String?) ??
+              await _tokenStore.read(_userEmailKey),
         ),
       );
     } on ZarPocketBaseException catch (error) {
       if (error.statusCode == 401 || error.statusCode == 403) {
-        await _clear(prefs);
+        await _clear();
       }
     }
+  }
+
+  /// Sessions before the Keystore migration lived in plain-text shared
+  /// preferences. Move them once, then scrub the legacy keys.
+  Future<void> _migrateLegacyPreferencesIntoSecureStore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final legacyToken = prefs.getString(_tokenKey);
+    if (legacyToken == null) return;
+    final existing = await _tokenStore.read(_tokenKey);
+    if (existing == null) {
+      await _tokenStore.write(_tokenKey, legacyToken);
+      final legacyUserId = prefs.getString(_userIdKey);
+      if (legacyUserId != null) {
+        await _tokenStore.write(_userIdKey, legacyUserId);
+      }
+      final legacyEmail = prefs.getString(_userEmailKey);
+      if (legacyEmail != null) {
+        await _tokenStore.write(_userEmailKey, legacyEmail);
+      }
+    }
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_userIdKey);
+    await prefs.remove(_userEmailKey);
   }
 
   @override
@@ -113,8 +141,7 @@ class ZarPocketBaseAuthService implements ZarAuthService {
 
   @override
   Future<void> signOut() async {
-    final prefs = await SharedPreferences.getInstance();
-    await _clear(prefs);
+    await _clear();
     _emit(null);
   }
 
@@ -124,17 +151,16 @@ class ZarPocketBaseAuthService implements ZarAuthService {
   }
 
   Future<void> _persist(String token, Map<String, Object?> record) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
-    await prefs.setString(_userIdKey, record['id']! as String);
-    await prefs.setString(_userEmailKey, (record['email'] as String?) ?? '');
+    await _tokenStore.write(_tokenKey, token);
+    await _tokenStore.write(_userIdKey, record['id']! as String);
+    await _tokenStore.write(_userEmailKey, (record['email'] as String?) ?? '');
     _client.authToken = token;
   }
 
-  Future<void> _clear(SharedPreferences prefs) async {
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_userIdKey);
-    await prefs.remove(_userEmailKey);
+  Future<void> _clear() async {
+    await _tokenStore.delete(_tokenKey);
+    await _tokenStore.delete(_userIdKey);
+    await _tokenStore.delete(_userEmailKey);
     _client.authToken = null;
   }
 

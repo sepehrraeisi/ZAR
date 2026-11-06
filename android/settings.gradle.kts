@@ -11,6 +11,10 @@ pluginManagement {
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
+        // dl.google.com is unreachable from some networks this project builds
+        // on; the Aliyun CDN mirrors Google's Maven verbatim. Gradle still
+        // verifies every artifact against its module metadata.
+        maven("https://maven.aliyun.com/repository/google")
         google()
         mavenCentral()
         gradlePluginPortal()
