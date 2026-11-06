@@ -38,19 +38,47 @@ class ZarPocketBaseClient {
     final request = http.Request(method, uri)
       ..headers.addAll(_headers())
       ..bodyBytes = utf8.encode(body == null ? '' : jsonEncode(body));
-    final response = await _client.send(request);
-    final rawBody = await response.stream.bytesToString();
-    final decoded = rawBody.isEmpty
-        ? <String, Object?>{}
-        : jsonDecode(rawBody) as Object?;
+    late http.StreamedResponse response;
+    late String rawBody;
+    try {
+      response = await _client.send(request);
+      rawBody = await response.stream.bytesToString();
+    } catch (error) {
+      throw ZarPocketBaseTransportException(error);
+    }
+    Object? decoded;
+    try {
+      decoded = rawBody.isEmpty ? <String, Object?>{} : jsonDecode(rawBody);
+    } on FormatException catch (error) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        throw ZarPocketBaseProtocolException(error);
+      }
+      throw ZarPocketBaseException(
+        'PocketBase request failed (${response.statusCode}).',
+        statusCode: response.statusCode,
+      );
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final message = decoded is Map && decoded['message'] is String
           ? decoded['message'] as String
           : 'PocketBase request failed (${response.statusCode}).';
       throw ZarPocketBaseException(message, statusCode: response.statusCode);
     }
-    return decoded == null ? {} : Map<String, Object?>.from(decoded as Map);
+    if (decoded == null) return {};
+    if (decoded is! Map) {
+      throw const ZarPocketBaseProtocolException(
+        'PocketBase returned a non-object JSON response.',
+      );
+    }
+    return Map<String, Object?>.from(decoded);
   }
+
+  /// Sends a request to a versioned application route.
+  Future<Map<String, Object?>> requestJson(
+    String method,
+    String path, {
+    Object? body,
+  }) => _send(method, _uri(path), body: body);
 
   /// Authenticates against an auth collection, returning `(token, record)`.
   Future<({String token, Map<String, Object?> record})> authWithPassword(
@@ -112,10 +140,11 @@ class ZarPocketBaseClient {
     while (true) {
       final result = await _send(
         'GET',
-        _uri(
-          '/api/collections/$collection/records',
-          {'page': '$page', 'perPage': '500', if (filter != null) 'filter': filter},
-        ),
+        _uri('/api/collections/$collection/records', {
+          'page': '$page',
+          'perPage': '500',
+          if (filter != null) 'filter': filter,
+        }),
       );
       final rawItems = result['items']! as List;
       items.addAll(
@@ -129,20 +158,21 @@ class ZarPocketBaseClient {
 
   /// Runs one PocketBase batch (a transaction of sub-requests). The batch
   /// endpoint must be enabled server-side (the ZAR+ migration enables it).
-  Future<void> batch(List<({String method, String url, Object? body})> ops) => _send(
-    'POST',
-    _uri('/api/batch'),
-    body: {
-      'requests': [
-        for (final op in ops)
-          {
-            'method': op.method,
-            'url': op.url,
-            if (op.body != null) 'body': op.body,
-          },
-      ],
-    },
-  );
+  Future<void> batch(List<({String method, String url, Object? body})> ops) =>
+      _send(
+        'POST',
+        _uri('/api/batch'),
+        body: {
+          'requests': [
+            for (final op in ops)
+              {
+                'method': op.method,
+                'url': op.url,
+                if (op.body != null) 'body': op.body,
+              },
+          ],
+        },
+      );
 }
 
 class ZarPocketBaseException implements Exception {
@@ -153,4 +183,22 @@ class ZarPocketBaseException implements Exception {
 
   @override
   String toString() => message;
+}
+
+class ZarPocketBaseTransportException implements Exception {
+  const ZarPocketBaseTransportException(this.cause);
+
+  final Object cause;
+
+  @override
+  String toString() => 'PocketBase transport failed: $cause';
+}
+
+class ZarPocketBaseProtocolException implements Exception {
+  const ZarPocketBaseProtocolException(this.cause);
+
+  final Object cause;
+
+  @override
+  String toString() => 'PocketBase response protocol failed: $cause';
 }

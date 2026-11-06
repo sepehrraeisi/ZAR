@@ -104,7 +104,11 @@ class ZarPocketBaseAuthService implements ZarAuthService {
 
   @override
   Future<void> sendPasswordReset(String email) async {
-    await _client.requestPasswordReset('users', email: email);
+    try {
+      await _client.requestPasswordReset('users', email: email);
+    } on ZarPocketBaseException catch (error) {
+      throw ZarAuthException(_friendlyMessage(error));
+    }
   }
 
   @override
@@ -119,10 +123,7 @@ class ZarPocketBaseAuthService implements ZarAuthService {
     _state.add(user);
   }
 
-  Future<void> _persist(
-    String token,
-    Map<String, Object?> record,
-  ) async {
+  Future<void> _persist(String token, Map<String, Object?> record) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
     await prefs.setString(_userIdKey, record['id']! as String);
@@ -138,6 +139,9 @@ class ZarPocketBaseAuthService implements ZarAuthService {
   }
 
   String _friendlyMessage(ZarPocketBaseException error) {
+    if (error.statusCode == 429) {
+      return 'تعداد درخواست‌ها بیش از حد مجاز است. کمی صبر کنید و دوباره تلاش کنید.';
+    }
     if (error.statusCode == 0 ||
         (error.statusCode >= 500 && error.statusCode < 600)) {
       return 'اتصال به سرور برقرار نشد. دوباره تلاش کنید.';

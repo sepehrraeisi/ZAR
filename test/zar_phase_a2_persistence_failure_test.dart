@@ -6,10 +6,7 @@ import 'package:flutter_app/data/zar_domain_repository.dart';
 import 'package:flutter_app/domain/zar_domain_models.dart';
 
 void main() {
-  const bridge = ZarLegacyPresentationBridge(
-    businessId: 'b1',
-    userId: 'u1',
-  );
+  const bridge = ZarLegacyPresentationBridge(businessId: 'b1', userId: 'u1');
 
   test('failed settlement save does not mutate presentation state', () async {
     final now = DateTime.utc(2026, 8, 27, 12);
@@ -65,7 +62,10 @@ void main() {
 
     await store.refresh();
     final uiPerson = store.personById('p1')!;
-    await expectLater(store.archivePerson(uiPerson), throwsA(isA<StateError>()));
+    await expectLater(
+      store.archivePerson(uiPerson),
+      throwsA(isA<StateError>()),
+    );
 
     expect(store.personById('p1')!.archived, isFalse);
     expect(store.activePeople.map((p) => p.id), contains('p1'));
@@ -84,7 +84,10 @@ class _FailingWriteRepository implements ZarDomainRepository {
       delegate.loadCompleteSnapshot();
 
   @override
-  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
+  Future<void> replaceCompleteSnapshot(
+    ZarDomainSnapshot snapshot, {
+    String? confirmationSecret,
+  }) async {
     throw failure;
   }
 
@@ -108,8 +111,7 @@ class _FailingWriteRepository implements ZarDomainRepository {
   Future<List<ZarSettlement>> loadOverdueSettlements({
     required DateTime now,
     int limit = 100,
-  }) =>
-      delegate.loadOverdueSettlements(now: now, limit: limit);
+  }) => delegate.loadOverdueSettlements(now: now, limit: limit);
 
   @override
   Future<List<ZarSettlement>> loadRecentSettlements({int limit = 500}) =>
@@ -123,18 +125,19 @@ class _FailingWriteRepository implements ZarDomainRepository {
   Future<List<ZarSettlement>> loadPersonSettlements({
     required String personId,
     int limit = 100,
-  }) =>
-      delegate.loadPersonSettlements(personId: personId, limit: limit);
+  }) => delegate.loadPersonSettlements(personId: personId, limit: limit);
 
   @override
   Future<List<ZarDeal>> loadPersonDeals({
     required String personId,
     int limit = 100,
-  }) =>
-      delegate.loadPersonDeals(personId: personId, limit: limit);
+  }) => delegate.loadPersonDeals(personId: personId, limit: limit);
 
   @override
-  Future<void> savePerson(ZarPerson person, {String auditAction = 'edit'}) async {
+  Future<void> savePerson(
+    ZarPerson person, {
+    String auditAction = 'edit',
+  }) async {
     throw failure;
   }
 

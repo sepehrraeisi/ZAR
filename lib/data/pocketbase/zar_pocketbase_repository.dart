@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'dart:math';
 
 import '../../domain/zar_domain_models.dart';
 import '../../domain/zar_payment_allocation.dart';
@@ -13,9 +13,10 @@ import 'zar_pocketbase_client.dart';
 /// self-hosted server without any UI or store changes.
 ///
 /// Every collection row is `{workspace, data}` where `data` holds the tested
-/// V7 backup per-entity JSON. Whole-snapshot loads replace the local store in
-/// one go; writes upsert single records; restore uses the PocketBase batch
-/// endpoint per collection (transactional within each batch).
+/// V8 backup per-entity JSON. Whole-snapshot loads replace the local store in
+/// one go; writes upsert single records. Destructive restore uses a dedicated
+/// authenticated compare-and-swap route so all seven collections (including
+/// append-only cash) and the idempotency receipt share one server transaction.
 class ZarPocketBaseRepository
     implements
         ZarDomainRepository,
@@ -45,20 +46,30 @@ class ZarPocketBaseRepository
   static const _allocations = 'zar_allocations';
   static const _cash = 'zar_cash_entries';
 
+  String get _workspaceFilter => "workspace='$_workspaceId'";
+
   @override
   Future<void> appendCashEntry(ZarCashEntry entry) async {
     final snapshot = await loadCompleteSnapshot();
     final existing = snapshot.cashEntries.where((e) => e.id == entry.id);
     if (existing.isNotEmpty) {
-      if (jsonEncode(existing.single.toMap()) != jsonEncode(entry.toMap())) throw StateError('Cash entries are immutable.');
+      if (jsonEncode(existing.single.toMap()) != jsonEncode(entry.toMap())) {
+        throw StateError('Cash entries are immutable.');
+      }
       return;
     }
-    validateCashEntries(entries: [...snapshot.cashEntries, entry], deals: snapshot.deals, settlements: snapshot.settlements);
+    validateCashEntries(
+      entries: [...snapshot.cashEntries, entry],
+      deals: snapshot.deals,
+      settlements: snapshot.settlements,
+    );
     await _client.createRecord(_cash, {'id': entry.id, ..._row(entry.toMap())});
   }
 
-  Map<String, Object?> _row(Object payload) =>
-      {'workspace': _workspaceId, 'data': payload};
+  Map<String, Object?> _row(Object payload) => {
+    'workspace': _workspaceId,
+    'data': payload,
+  };
 
   Future<void> _upsert(
     String collection, {
@@ -79,16 +90,18 @@ class ZarPocketBaseRepository
   @override
   Future<ZarDomainSnapshot> loadCompleteSnapshot() async {
     final results = await Future.wait([
-      _client.listRecords(_people),
-      _client.listRecords(_deals),
-      _client.listRecords(_settlements),
-      _client.listRecords(_coinTypes),
-      _client.listRecords(_currencyTypes),
-      _client.listRecords(_allocations),
-      _client.listRecords(_cash),
+      _client.listRecords(_people, filter: _workspaceFilter),
+      _client.listRecords(_deals, filter: _workspaceFilter),
+      _client.listRecords(_settlements, filter: _workspaceFilter),
+      _client.listRecords(_coinTypes, filter: _workspaceFilter),
+      _client.listRecords(_currencyTypes, filter: _workspaceFilter),
+      _client.listRecords(_allocations, filter: _workspaceFilter),
+      _client.listRecords(_cash, filter: _workspaceFilter),
     ]);
     return ZarDomainSnapshot(
-      cashEntries: results[6].map((row) => ZarCashEntry.fromMap(_data(row))).toList(),
+      cashEntries: results[6]
+          .map((row) => ZarCashEntry.fromMap(_data(row)))
+          .toList(),
       people: results[0]
           .map((row) => _codec.personFromRecord(_data(row)))
           .toList(growable: false),
@@ -120,86 +133,178 @@ class ZarPocketBaseRepository
   }
 
   @override
-  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
-    validateCashEntries(entries: snapshot.cashEntries, deals: snapshot.deals, settlements: snapshot.settlements);
-    final operations = <({String method, String url, Map<String, Object?>? body})>[];
+  Future<void> replaceCompleteSnapshot(
+    ZarDomainSnapshot snapshot, {
+    String? confirmationSecret,
+  }) async {
+    validateCashEntries(
+      entries: snapshot.cashEntries,
+      deals: snapshot.deals,
+      settlements: snapshot.settlements,
+    );
     validateZarPaymentAllocations(
       deals: snapshot.deals,
       settlements: snapshot.settlements,
       allocations: snapshot.paymentAllocations,
     );
-    // One batch per collection keeps every collection internally transactional
-    // (delete-then-create inside the same server-side transaction).
-    Future<void> replaceAll(
-      String collection,
-      List<ZarDomainRecord> records,
-    ) async {
-      final existing = await _client.listRecords(collection);
-      final deletes = [
-        for (final row in existing)
-          (
-            method: 'DELETE',
-            url: '/api/collections/$collection/records/${row['id']! as String}',
-            body: null,
-          ),
-      ];
-       operations.addAll(deletes);
-      final creates = [
-        for (final record in records)
-          (
-            method: 'POST',
-            url: '/api/collections/$collection/records',
-            body: {'id': record.id, ..._row(record.payload)},
-          ),
-      ];
-      operations.addAll(creates);
+    if (confirmationSecret == null || confirmationSecret.isEmpty) {
+      throw const ZarCloudRestoreException.reauthenticationRequired();
     }
+    try {
+      final state = await _client.requestJson('GET', '/api/zar/restore/state');
+      final expectedStateHash = state['stateHash'];
+      if (state['protocolVersion'] != _restoreProtocolVersion ||
+          state['workspaceId'] != _workspaceId ||
+          expectedStateHash is! String ||
+          !_restoreHashPattern.hasMatch(expectedStateHash)) {
+        throw const ZarCloudRestoreException.invalidReceipt();
+      }
 
-    await replaceAll(
-      _people,
-      [
-        for (final person in snapshot.people)
-          (id: person.id, payload: _codec.personRecord(person)),
-      ],
-    );
-    await replaceAll(
-      _deals,
-      [
-        for (final deal in snapshot.deals)
-          (id: deal.id, payload: _codec.dealRecord(deal)),
-      ],
-    );
-    await replaceAll(
-      _settlements,
-      [
-        for (final settlement in snapshot.settlements)
-          (id: settlement.id, payload: _codec.settlementRecord(settlement)),
-      ],
-    );
-    await replaceAll(
-      _coinTypes,
-      [
-        for (final type in snapshot.coinTypes)
-          (id: type.id, payload: type.toMap()),
-      ],
-    );
-    await replaceAll(
-      _currencyTypes,
-      [
-        for (final type in snapshot.currencyTypes)
-          (id: type.id, payload: type.toMap()),
-      ],
-    );
-    await replaceAll(
-      _allocations,
-      [
-        for (final allocation in snapshot.paymentAllocations)
-          (id: _allocationId(allocation), payload: allocation.toMap()),
-      ],
-    );
-    await replaceAll(_cash, [for (final entry in snapshot.cashEntries) (id: entry.id, payload: entry.toMap())]);
-    if (operations.length > 500) throw StateError('Atomic restore exceeds the server batch limit.');
-    if (operations.isNotEmpty) await _client.batch(operations);
+      final requestId = _newRestoreRequestId();
+      final body = <String, Object?>{
+        'protocolVersion': _restoreProtocolVersion,
+        'requestId': requestId,
+        'businessId': _businessId,
+        'confirmationPassword': confirmationSecret,
+        'expectedStateHash': expectedStateHash,
+        'snapshot': _restoreSnapshot(snapshot),
+      };
+
+      Future<Map<String, Object?>> commit() =>
+          _client.requestJson('POST', '/api/zar/restore/commit', body: body);
+
+      late Map<String, Object?> receipt;
+      try {
+        receipt = await commit();
+      } catch (error) {
+        if (!_isAmbiguousCommitResult(error)) rethrow;
+        // A lost response is ambiguous: the first call may already be durable.
+        // Reusing its id makes the retry return the original server receipt.
+        try {
+          receipt = await commit();
+          _verifyRestoreReceipt(
+            receipt,
+            requestId: requestId,
+            expectedStateHash: expectedStateHash,
+            expectedCounts: _restoreCounts(snapshot),
+          );
+          return;
+        } catch (_) {
+          // Once the first result is ambiguous, a later 4xx, transport error,
+          // protocol error, or unverifiable receipt cannot prove that no
+          // commit occurred. Never downgrade that state to a definite failure.
+          throw const ZarCloudRestoreException.outcomeUnknown();
+        }
+      }
+      _verifyRestoreReceipt(
+        receipt,
+        requestId: requestId,
+        expectedStateHash: expectedStateHash,
+        expectedCounts: _restoreCounts(snapshot),
+      );
+    } on ZarPocketBaseException catch (error) {
+      throw switch (error.statusCode) {
+        403 => const ZarCloudRestoreException.sharedWorkspace(),
+        404 => const ZarCloudRestoreException.serverRestoreUnavailable(),
+        409 => const ZarCloudRestoreException.concurrentCloudChange(),
+        413 => const ZarCloudRestoreException.restoreTooLarge(),
+        428 => const ZarCloudRestoreException.reauthenticationRequired(),
+        _ => const ZarCloudRestoreException.serverRejected(),
+      };
+    }
+  }
+
+  static const _restoreProtocolVersion = 1;
+  static final _restoreHashPattern = RegExp(r'^[a-f0-9]{64}$');
+
+  static bool _isAmbiguousCommitResult(Object error) =>
+      error is ZarPocketBaseTransportException ||
+      error is ZarPocketBaseProtocolException ||
+      (error is ZarPocketBaseException && error.statusCode >= 500);
+
+  static String _newRestoreRequestId() {
+    final random = Random.secure();
+    return List.generate(
+      16,
+      (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+    ).join();
+  }
+
+  Map<String, Object?> _restoreRow(String id, Map<String, Object?> data) => {
+    'id': id,
+    'data': data,
+  };
+
+  Map<String, Object?> _restoreSnapshot(ZarDomainSnapshot snapshot) => {
+    'people': [
+      for (final person in snapshot.people)
+        _restoreRow(person.id, _codec.personRecord(person)),
+    ],
+    'deals': [
+      for (final deal in snapshot.deals)
+        _restoreRow(deal.id, _codec.dealRecord(deal)),
+    ],
+    'settlements': [
+      for (final settlement in snapshot.settlements)
+        _restoreRow(settlement.id, _codec.settlementRecord(settlement)),
+    ],
+    'coinTypes': [
+      for (final type in snapshot.coinTypes) _restoreRow(type.id, type.toMap()),
+    ],
+    'currencyTypes': [
+      for (final type in snapshot.currencyTypes)
+        _restoreRow(type.id, type.toMap()),
+    ],
+    'paymentAllocations': [
+      for (final allocation in snapshot.paymentAllocations)
+        _restoreRow(_allocationId(allocation), allocation.toMap()),
+    ],
+    'cashEntries': [
+      for (final entry in snapshot.cashEntries)
+        _restoreRow(entry.id, entry.toMap()),
+    ],
+  };
+
+  static Map<String, int> _restoreCounts(ZarDomainSnapshot snapshot) {
+    final counts = <String, int>{
+      'people': snapshot.people.length,
+      'deals': snapshot.deals.length,
+      'settlements': snapshot.settlements.length,
+      'coinTypes': snapshot.coinTypes.length,
+      'currencyTypes': snapshot.currencyTypes.length,
+      'paymentAllocations': snapshot.paymentAllocations.length,
+      'cashEntries': snapshot.cashEntries.length,
+    };
+    counts['total'] = counts.values.fold(0, (total, count) => total + count);
+    return counts;
+  }
+
+  void _verifyRestoreReceipt(
+    Map<String, Object?> receipt, {
+    required String requestId,
+    required String expectedStateHash,
+    required Map<String, int> expectedCounts,
+  }) {
+    final snapshotHash = receipt['snapshotHash'];
+    final counts = receipt['counts'];
+    final committedAt = receipt['committedAt'];
+    if (receipt['protocolVersion'] != _restoreProtocolVersion ||
+        receipt['requestId'] != requestId ||
+        receipt['workspaceId'] != _workspaceId ||
+        receipt['beforeHash'] != expectedStateHash ||
+        snapshotHash is! String ||
+        !_restoreHashPattern.hasMatch(snapshotHash) ||
+        receipt['afterHash'] != snapshotHash ||
+        receipt['replayed'] is! bool ||
+        counts is! Map ||
+        counts.length != expectedCounts.length ||
+        committedAt is! String ||
+        DateTime.tryParse(committedAt) == null ||
+        expectedCounts.entries.any(
+          (entry) => counts[entry.key] != entry.value,
+        )) {
+      throw const ZarCloudRestoreException.invalidReceipt();
+    }
   }
 
   static const _batchChunk = 400;
@@ -226,25 +331,21 @@ class ZarPocketBaseRepository
     required DateTime from,
     required DateTime through,
     int limit = 250,
-  }) async =>
-      (await loadCompleteSnapshot())
-          .settlements
-          .where((item) => item.isOpen)
-          .where((item) => !item.scheduledAt.isBefore(from))
-          .where((item) => item.scheduledAt.isBefore(through))
-          .take(limit)
-          .toList(growable: false);
+  }) async => (await loadCompleteSnapshot()).settlements
+      .where((item) => item.isOpen)
+      .where((item) => !item.scheduledAt.isBefore(from))
+      .where((item) => item.scheduledAt.isBefore(through))
+      .take(limit)
+      .toList(growable: false);
 
   @override
   Future<List<ZarSettlement>> loadOverdueSettlements({
     required DateTime now,
     int limit = 100,
-  }) async =>
-      (await loadCompleteSnapshot())
-          .settlements
-          .where((item) => item.isOpen && item.scheduledAt.isBefore(now))
-          .take(limit)
-          .toList(growable: false);
+  }) async => (await loadCompleteSnapshot()).settlements
+      .where((item) => item.isOpen && item.scheduledAt.isBefore(now))
+      .take(limit)
+      .toList(growable: false);
 
   @override
   Future<List<ZarSettlement>> loadRecentSettlements({int limit = 250}) async {
@@ -265,11 +366,11 @@ class ZarPocketBaseRepository
     required String personId,
     int limit = 100,
   }) async {
-    final result = (await loadCompleteSnapshot())
-        .settlements
-        .where((item) => item.personId == personId)
-        .toList()
-      ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
+    final result =
+        (await loadCompleteSnapshot()).settlements
+            .where((item) => item.personId == personId)
+            .toList()
+          ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
     return result.take(limit).toList(growable: false);
   }
 
@@ -278,19 +379,17 @@ class ZarPocketBaseRepository
     required String personId,
     int limit = 100,
   }) async {
-    final result = (await loadCompleteSnapshot())
-        .deals
-        .where((item) => item.personId == personId)
-        .toList()
-      ..sort((a, b) => b.dealAt.compareTo(a.dealAt));
+    final result =
+        (await loadCompleteSnapshot()).deals
+            .where((item) => item.personId == personId)
+            .toList()
+          ..sort((a, b) => b.dealAt.compareTo(a.dealAt));
     return result.take(limit).toList(growable: false);
   }
 
   @override
-  Future<void> savePerson(
-    ZarPerson person, {
-    String auditAction = 'edit',
-  }) => _upsert(_people, id: person.id, body: _row(_codec.personRecord(person)));
+  Future<void> savePerson(ZarPerson person, {String auditAction = 'edit'}) =>
+      _upsert(_people, id: person.id, body: _row(_codec.personRecord(person)));
 
   @override
   Future<void> saveDeal(ZarDeal deal, {String auditAction = 'edit'}) =>
@@ -307,22 +406,17 @@ class ZarPocketBaseRepository
   );
 
   @override
-  Future<void> archivePerson(ZarPerson person) => savePerson(
-    _copyPerson(person, archived: true),
-    auditAction: 'archive',
-  );
+  Future<void> archivePerson(ZarPerson person) =>
+      savePerson(_copyPerson(person, archived: true), auditAction: 'archive');
 
   @override
-  Future<void> restorePerson(ZarPerson person) => savePerson(
-    _copyPerson(person, archived: false),
-    auditAction: 'restore',
-  );
+  Future<void> restorePerson(ZarPerson person) =>
+      savePerson(_copyPerson(person, archived: false), auditAction: 'restore');
 
   @override
   Future<List<ZarCoinType>> loadCoinTypes({
     bool includeArchived = false,
-  }) async => (await loadCompleteSnapshot())
-      .coinTypes
+  }) async => (await loadCompleteSnapshot()).coinTypes
       .where((item) => includeArchived || !item.archived)
       .toList(growable: false);
 
@@ -343,18 +437,16 @@ class ZarPocketBaseRepository
   @override
   Future<List<ZarCurrencyType>> loadCurrencyTypes({
     bool includeArchived = false,
-  }) async => (await loadCompleteSnapshot())
-      .currencyTypes
+  }) async => (await loadCompleteSnapshot()).currencyTypes
       .where((item) => includeArchived || !item.archived)
       .toList(growable: false);
 
   @override
-  Future<void> saveCurrencyType(ZarCurrencyType currencyType) =>
-      _upsert(
-        _currencyTypes,
-        id: currencyType.id,
-        body: _row(currencyType.toMap()),
-      );
+  Future<void> saveCurrencyType(ZarCurrencyType currencyType) => _upsert(
+    _currencyTypes,
+    id: currencyType.id,
+    body: _row(currencyType.toMap()),
+  );
 
   @override
   Future<void> archiveCurrencyType(ZarCurrencyType currencyType) =>
@@ -392,8 +484,7 @@ class ZarPocketBaseRepository
       for (final row in existing)
         (
           method: 'DELETE',
-          url:
-              '/api/collections/$_allocations/records/${row['id']! as String}',
+          url: '/api/collections/$_allocations/records/${row['id']! as String}',
           body: null,
         ),
     ];
@@ -402,16 +493,16 @@ class ZarPocketBaseRepository
         (
           method: 'POST',
           url: '/api/collections/$_allocations/records',
-          body: {
-            'id': _allocationId(allocation),
-            ..._row(allocation.toMap()),
-          },
+          body: {'id': _allocationId(allocation), ..._row(allocation.toMap())},
         ),
     ];
     final ops = [...deletes, ...creates];
     for (var i = 0; i < ops.length; i += _batchChunk) {
       await _client.batch(
-        ops.sublist(i, (i + _batchChunk) < ops.length ? i + _batchChunk : ops.length),
+        ops.sublist(
+          i,
+          (i + _batchChunk) < ops.length ? i + _batchChunk : ops.length,
+        ),
       );
     }
   }

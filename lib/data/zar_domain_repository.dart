@@ -24,6 +24,70 @@ class ZarDomainSnapshot {
   final List<ZarCashEntry> cashEntries;
 }
 
+/// A cloud restore was rejected before any write was attempted.
+///
+/// [code] is stable for callers that need to handle a specific restore
+/// safety condition, while [message] is ready to show to the operator.
+class ZarCloudRestoreException implements Exception {
+  const ZarCloudRestoreException({required this.code, required this.message});
+
+  const ZarCloudRestoreException.appendOnlyCashHistory()
+    : code = 'append_only_cash_history',
+      message =
+          'بازیابی جایگزینی انجام نشد: سابقهٔ صندوق فقط‌افزودنی است و نمی‌توان آن را حذف یا جایگزین کرد. '
+          'این نسخهٔ برنامه نمی‌تواند سابقهٔ صندوق را با ایمنی کافی بازیابی کند؛ برای حفظ اطلاعات، هیچ تغییری '
+          'در فضای ابری انجام نشد. فایل پشتیبان را نگه دارید و برای بازیابی کنترل‌شده با پشتیبانی تماس بگیرید.';
+
+  const ZarCloudRestoreException.concurrentCloudChange()
+    : code = 'concurrent_cloud_change',
+      message =
+          'بازیابی انجام نشد و هیچ داده‌ای تغییر نکرد، چون اطلاعات ابری پس از پیش‌نمایش روی دستگاه دیگری تغییر کرده است. '
+          'فایل پشتیبان را نگه دارید، اطلاعات را دوباره بررسی کنید و سپس بازیابی را از ابتدا انجام دهید.';
+
+  const ZarCloudRestoreException.serverRestoreUnavailable()
+    : code = 'server_restore_unavailable',
+      message =
+          'بازیابی انجام نشد و فایل شما سالم مانده است. بخش امن بازیابی روی سرور هنوز آماده یا هم‌نسخهٔ برنامه نیست. '
+          'فایل پشتیبان را نگه دارید و پیش از تلاش دوباره با پشتیبانی تماس بگیرید.';
+
+  const ZarCloudRestoreException.sharedWorkspace()
+    : code = 'shared_workspace_restore_denied',
+      message =
+          'برای جلوگیری از حذف اطلاعات اعضای دیگر، بازیابی جایگزینی در فضای کاری چندعضوی متوقف شد و هیچ داده‌ای تغییر نکرد. '
+          'فایل پشتیبان را نگه دارید و برای بازیابی کنترل‌شده با پشتیبانی تماس بگیرید.';
+
+  const ZarCloudRestoreException.restoreTooLarge()
+    : code = 'cloud_restore_too_large',
+      message =
+          'حجم این بازیابی از سقف امن فعلی سرور بیشتر است؛ هیچ داده‌ای تغییر نکرد. فایل پشتیبان را نگه دارید و برای بازیابی کنترل‌شده با پشتیبانی تماس بگیرید.';
+
+  const ZarCloudRestoreException.serverRejected()
+    : code = 'cloud_restore_rejected',
+      message =
+          'سرور بازیابی را رد کرد و هیچ نتیجهٔ موفقی ثبت نشد. فایل پشتیبان را نگه دارید و پیش از تلاش دوباره با پشتیبانی تماس بگیرید.';
+
+  const ZarCloudRestoreException.outcomeUnknown()
+    : code = 'cloud_restore_outcome_unknown',
+      message =
+          'ارتباط هنگام دریافت نتیجهٔ بازیابی قطع شد. فایل پشتیبان را نگه دارید، برنامه را دوباره به اینترنت متصل کنید و قبل از تلاش دوباره اطلاعات ابری را بررسی کنید.';
+
+  const ZarCloudRestoreException.invalidReceipt()
+    : code = 'invalid_cloud_restore_receipt',
+      message =
+          'پاسخ نهایی سرور قابل تأیید نبود. فایل پشتیبان را نگه دارید و برای بررسی نتیجه با پشتیبانی تماس بگیرید.';
+
+  const ZarCloudRestoreException.reauthenticationRequired()
+    : code = 'cloud_restore_reauthentication_required',
+      message =
+          'برای این عملیات حساس، تأیید دوبارهٔ رمز عبور لازم است. هیچ داده‌ای تغییر نکرد؛ رمز را دوباره وارد کنید.';
+
+  final String code;
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 abstract interface class ZarCashRepository {
   Future<void> appendCashEntry(ZarCashEntry entry);
 }
@@ -45,7 +109,10 @@ abstract interface class ZarDomainRepository {
   Future<ZarDomainSnapshot> loadCompleteSnapshot();
 
   /// Atomically replaces the business dataset or fails without changing it.
-  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot);
+  Future<void> replaceCompleteSnapshot(
+    ZarDomainSnapshot snapshot, {
+    String? confirmationSecret,
+  });
 
   Future<List<ZarPerson>> loadActivePeople({int limit = 100});
 
@@ -147,11 +214,23 @@ class InMemoryZarDomainRepository
   Future<void> appendCashEntry(ZarCashEntry entry) async {
     final previous = _cashEntries[entry.id];
     if (previous != null) {
-      if (jsonEncode(previous.toMap()) != jsonEncode(entry.toMap())) throw StateError('Cash entries are immutable.');
+      if (jsonEncode(previous.toMap()) != jsonEncode(entry.toMap())) {
+        throw StateError('Cash entries are immutable.');
+      }
       return;
     }
-    validateNewCashEntry(entry, _cashEntries.values, _deals.values, _settlements.values);
-    validateCashCount(entry, _cashEntries.values, _settlements.values, _paymentAllocations);
+    validateNewCashEntry(
+      entry,
+      _cashEntries.values,
+      _deals.values,
+      _settlements.values,
+    );
+    validateCashCount(
+      entry,
+      _cashEntries.values,
+      _settlements.values,
+      _paymentAllocations,
+    );
     _cashEntries[entry.id] = entry;
   }
 
@@ -188,8 +267,15 @@ class InMemoryZarDomainRepository
   );
 
   @override
-  Future<void> replaceCompleteSnapshot(ZarDomainSnapshot snapshot) async {
-    validateCashEntries(entries: snapshot.cashEntries, deals: snapshot.deals, settlements: snapshot.settlements);
+  Future<void> replaceCompleteSnapshot(
+    ZarDomainSnapshot snapshot, {
+    String? confirmationSecret,
+  }) async {
+    validateCashEntries(
+      entries: snapshot.cashEntries,
+      deals: snapshot.deals,
+      settlements: snapshot.settlements,
+    );
     validateZarPaymentAllocations(
       deals: snapshot.deals,
       settlements: snapshot.settlements,
@@ -237,7 +323,9 @@ class InMemoryZarDomainRepository
       );
     _audit('complete-backup', 'business', 'restore_replace');
     _paymentAllocations = List.unmodifiable(snapshot.paymentAllocations);
-    _cashEntries..clear()..addEntries(snapshot.cashEntries.map((e) => MapEntry(e.id, e)));
+    _cashEntries
+      ..clear()
+      ..addEntries(snapshot.cashEntries.map((e) => MapEntry(e.id, e)));
   }
 
   @override
@@ -347,8 +435,11 @@ class InMemoryZarDomainRepository
 
   @override
   Future<void> saveDeal(ZarDeal deal, {String auditAction = 'edit'}) async {
-    validateCashEntries(entries: _cashEntries.values,
-      deals: [..._deals.values.where((d) => d.id != deal.id), deal], settlements: _settlements.values);
+    validateCashEntries(
+      entries: _cashEntries.values,
+      deals: [..._deals.values.where((d) => d.id != deal.id), deal],
+      settlements: _settlements.values,
+    );
     validateZarPaymentAllocations(
       deals: [..._deals.values.where((item) => item.id != deal.id), deal],
       settlements: _settlements.values,
@@ -365,8 +456,14 @@ class InMemoryZarDomainRepository
     String auditAction = 'edit',
   }) async {
     final existed = _settlements.containsKey(settlement.id);
-    validateCashEntries(entries: _cashEntries.values, deals: _deals.values,
-      settlements: [..._settlements.values.where((s) => s.id != settlement.id), settlement]);
+    validateCashEntries(
+      entries: _cashEntries.values,
+      deals: _deals.values,
+      settlements: [
+        ..._settlements.values.where((s) => s.id != settlement.id),
+        settlement,
+      ],
+    );
     validateZarPaymentAllocations(
       deals: _deals.values,
       settlements: [

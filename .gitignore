@@ -1,6 +1,7 @@
 # Flutter/Dart
 # Build outputs (exclude to save space)
 /build/
+/coverage/
 /.dart_tool/
 .packages
 .pub-cache/
@@ -27,6 +28,8 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+__pycache__/
+*.pyc
 
 # Keep lib/ directory for source code!
 

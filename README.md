@@ -2,6 +2,17 @@
 
 Private Persian-first Flutter application for operational gold and currency work.
 
+## Programmer and operations handoff
+
+The current stabilization work is published in Draft PR #3 on branch
+`codex/stabilization-baseline`; it is intentionally not merged into `master` and
+the transactional-restore candidate is not deployed to production. Start with
+[`docs/stabilization/PROGRAMMER-HANDOFF.md`](docs/stabilization/PROGRAMMER-HANDOFF.md)
+for the exact GitHub/CI state, safe server-access procedure, deployed-versus-
+candidate boundary, evidence index, resume checklist and future roadmap. Never
+put passwords, private/signing keys, tokens, databases or personal data in this
+public repository.
+
 ## Current Phase A.2 architecture
 
 - Persian RTL + Jalali operational UI

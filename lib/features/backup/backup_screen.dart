@@ -4,6 +4,7 @@ import 'package:shamsi_date/shamsi_date.dart';
 
 import '../../application/zar_backup_manager.dart';
 import '../../app_core.dart' show formatJalaliDate, toPersianDigits;
+import '../../data/zar_domain_repository.dart';
 import 'backup_file_service.dart';
 
 /// Signed-in cloud account shown as a section on the settings screen.
@@ -96,10 +97,26 @@ class _BackupScreenState extends State<BackupScreen> {
         ),
       );
       if (confirmed != true) return;
-      await widget.manager.restore(preview);
+      String? confirmationSecret;
+      if (widget.account != null) {
+        confirmationSecret = await _requestRestorePassword();
+        if (confirmationSecret == null) return;
+      }
+      await widget.manager.restore(
+        preview,
+        confirmationSecret: confirmationSecret,
+      );
       if (!mounted) return;
       _message('بازیابی کامل شد و یادآوری‌ها بازسازی شدند.');
     });
+  }
+
+  Future<String?> _requestRestorePassword() async {
+    if (!mounted) return null;
+    return showDialog<String>(
+      context: context,
+      builder: (context) => const _RestorePasswordDialog(),
+    );
   }
 
   Future<void> _run(Future<void> Function() action) async {
@@ -109,6 +126,8 @@ class _BackupScreenState extends State<BackupScreen> {
       await action();
     } on FormatException catch (error) {
       _message(_formatError(error));
+    } on ZarCloudRestoreException catch (error) {
+      await _showCloudRestoreBlocked(error);
     } on ZarRestoreReminderException {
       _message(
         'اطلاعات بازیابی شد، اما بازسازی اعلان‌ها کامل نشد. برنامه را دوباره باز کنید.',
@@ -129,6 +148,24 @@ class _BackupScreenState extends State<BackupScreen> {
       return 'این نسخه پشتیبان مربوط به حساب دیگری است.';
     }
     return 'فایل نسخه پشتیبان معتبر نیست یا اطلاعات ضروری آن ناقص است.';
+  }
+
+  Future<void> _showCloudRestoreBlocked(ZarCloudRestoreException error) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('بازیابی ابری متوقف شد'),
+        content: Text(error.message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('متوجه شدم'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _message(String text) {
@@ -153,7 +190,7 @@ class _BackupScreenState extends State<BackupScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'افراد، معاملات طلا، سکه و ارز، دریافت و پرداخت، وضعیت بایگانی و برنامه‌های یادآوری در فایل JSON نسخه ۷ نگهداری می‌شوند. فایل‌های نسخه ۲، ۳، ۴، ۵ و ۶ همچنان قابل بازیابی هستند.',
+            'افراد، معاملات طلا، سکه و ارز، دریافت و پرداخت، صندوق، وضعیت بایگانی و برنامه‌های یادآوری در فایل JSON نسخه ۸ نگهداری می‌شوند. فایل‌های نسخه ۲ تا ۷ همچنان قابل بازیابی هستند.',
           ),
           const SizedBox(height: 20),
           if (widget.onOpenCoinCatalog != null ||
@@ -232,6 +269,56 @@ class _BackupScreenState extends State<BackupScreen> {
       ),
     );
   }
+}
+
+class _RestorePasswordDialog extends StatefulWidget {
+  const _RestorePasswordDialog();
+
+  @override
+  State<_RestorePasswordDialog> createState() => _RestorePasswordDialogState();
+}
+
+class _RestorePasswordDialogState extends State<_RestorePasswordDialog> {
+  final _controller = TextEditingController();
+  bool _showError = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _confirm() {
+    if (_controller.text.isEmpty) {
+      setState(() => _showError = true);
+      return;
+    }
+    Navigator.pop(context, _controller.text);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('تأیید هویت برای بازیابی'),
+    content: TextField(
+      controller: _controller,
+      autofocus: true,
+      obscureText: true,
+      autocorrect: false,
+      enableSuggestions: false,
+      decoration: InputDecoration(
+        labelText: 'رمز عبور حساب',
+        errorText: _showError ? 'رمز عبور را وارد کنید.' : null,
+      ),
+      onSubmitted: (_) => _confirm(),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('انصراف'),
+      ),
+      FilledButton(onPressed: _confirm, child: const Text('تأیید و بازیابی')),
+    ],
+  );
 }
 
 class _AccountCard extends StatelessWidget {
