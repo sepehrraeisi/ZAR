@@ -1,0 +1,13 @@
+[Unit]
+Description=ZAR+ internal health check (alerts via local Postfix)
+After=network-online.target zar-server.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/zar-health-check
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadOnlyPaths=/opt/zar /backups/zar-daily
+ReadWritePaths=/var/lib/zar-health

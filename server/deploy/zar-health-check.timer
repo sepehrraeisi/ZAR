@@ -1,0 +1,10 @@
+[Unit]
+Description=Run ZAR+ internal health check every 10 minutes
+
+[Timer]
+OnCalendar=*:0/10
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target
