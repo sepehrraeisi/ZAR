@@ -27,6 +27,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Scan added lines for hidden bidi/zero-width control characters
+        if: github.event_name == 'pull_request'
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff "$base" --unified=0 | grep '^+' | grep -v '^+++' | grep -nPIC '[\x{200B}\x{2060}\x{FEFF}\x{202A}-\x{202E}]'; then
+            echo "FAIL: hidden control character(s) found in added lines (trojan-source / prompt-injection vector)"
+            exit 1
+          fi
+          echo "PASS: no hidden bidi/zero-width control characters in added lines"
+
   dependency-sbom:
     runs-on: ubuntu-latest
     timeout-minutes: 10
