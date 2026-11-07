@@ -31,20 +31,8 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           base="${{ github.event.pull_request.base.sha }}"
-          hits=0
-          while IFS= read -r line; do
-            if python3 -c "
-import sys
-s = sys.argv[1]
-bad = [ch for ch in s if 0x202A <= ord(ch) <= 0x202E or ord(ch) in (0x200B, 0x2060, 0xFEFF)]
-sys.exit(0 if bad else 1)
-" "$line"; then
-              echo "HIDDEN CONTROL CHARACTER: $line"
-              hits=$((hits+1))
-            fi
-          done < <(git diff "$base" --unified=0 | grep '^+' | grep -v '^+++')
-          if [ "$hits" -gt 0 ]; then
-            echo "FAIL: $hits hidden control character(s) found in added lines (trojan-source / prompt-injection vector)"
+          if git diff "$base" --unified=0 | grep '^+' | grep -v '^+++' | grep -nPIC '[\x{200B}\x{2060}\x{FEFF}\x{202A}-\x{202E}]'; then
+            echo "FAIL: hidden control character(s) found in added lines (trojan-source / prompt-injection vector)"
             exit 1
           fi
           echo "PASS: no hidden bidi/zero-width control characters in added lines"
