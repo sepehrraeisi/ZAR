@@ -27,3 +27,16 @@
 ## ثبت در CI
 
 - `phase_a2_ci.yml` → job `pocketbase-authorization` حالا `pocketbase_domain_hard_delete_test.py` را هم اجرا می‌کند
+
+## استقرار روی production (2026-11-07)
+
+- fresh atomic backup `zar-20261107T083703Z` (SHA `ef914b9e…c5eac`، quick_check ok) + کپی off-site تأییدشده
+- migration فایل با root:root 0644 در `/opt/zar/server/pb_migrations` نصب؛ سرویس stop → `migrate up` صریح (`Applied 1793604700_lock_domain_hard_delete.js`) → start
+- postflight: active، health 200، `NRestarts=0`؛ schema `_collections`: پنج کالکشن `deleteRule=null`، `zar_allocations` memberRule (دست‌نخورده)
+- ردیف مهاجرت در `_migrations` ثبت شد (restore migration همچنان بالای lineage باقی ماند — migration جدید با پیش‌شماره `1793604700` زیر آن قرار گرفت تا فرض‌های تست refuse-down restore حفظ شود)
+
+## مانده‌ی §10.5 (open، مستند)
+
+- CAS/idempotency برای writeهای معمولی (restore path کامل دارد؛ writeهای upsert تکی فعلاً بدون CAS — طراحی سمت سرور جداگانه می‌خواهد)
+- جایگزینی flow حذف+ساخت `zar_allocations` با عملیات سروری دارای audit-linkage
+- workspace bootstrap اتمیک/idempotent در سطح سرور
