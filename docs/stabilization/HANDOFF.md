@@ -1,11 +1,12 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-11-06 (Asia/Tehran)
-Status: **IN PROGRESS — production containment remains stable; transactional cloud restore, guarded tooling, the final fresh 11→13 production-clone rehearsal and exact-head GitHub CI are green after two security-review remediation rounds and independent closure audits. PR #3 was merged into `master` (merge commit `725c8fa`) on 2026-11-06 with explicit owner approval; the transactional restore candidate remains NOT deployed to production and still requires a separate explicit owner decision (planned after roadmap Phase 1).**
-Change freeze: no feature work; every production mutation must continue through the backup/restore and rollback gates below.
+Last updated: 2026-11-22 (Asia/Tehran)
+Status: **RC1 soak complete (device audit 2026-11-22). Promoting to v1.0.0 per RELEASE-RUNBOOK. Production containment + transactional restore remain deployed; public signup stays closed.**
+Change freeze for feature work remains; release/update loop follows `RELEASE-RUNBOOK.md`.
 
 ## 0. Post-handoff action log
 
+- 2026-11-22 — RC1 soak exit audit on owner Samsung (`com.zarplus.app` versionCode 18081, APK SHA-256 `d571dc94…7d1f`, release cert `d19ad112…2667`). Login, cloud person load, cashbox receive (250,000 toman) succeeded. No attributable P0/P1 for ZAR+. Owner directed promotion to v1.0.0. Note: production `zar_cash_entries` remains empty (cash stays device-local until a deliberate cloud-cash workstream). Soak log: `SOAK-RC1.md`.
 - 2026-11-06 — Owner approved merging PR #3. Independently verified branch tip == PR head (`2ebd9d88`) and all check-runs `success` before merging. Merged `--no-ff` as `725c8fa`, pushed to `master`; tag `stabilization-baseline` pushed (on `2ebd9d8`). Local CI reproduced on merged `master`: `flutter analyze --no-fatal-infos` clean, `flutter test` 345/345 pass. Branch protection enabled on `master`: required checks `flutter-checks` + `pocketbase-authorization` (strict), enforce_admins on, force-push/deletion off, PRs required with 0 approvals. Owner decisions recorded: transactional restore deploys after roadmap Phase 1 in a dedicated maintenance window; public signup stays closed until launch. Execution roadmap: `docs/stabilization/ROADMAP-2026-11.md`.
 
 ## 1. Objective
