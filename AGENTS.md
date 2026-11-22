@@ -128,18 +128,18 @@ workspace bootstrap.
   the original `test@zarplus.cloud`. A stray Persian-email user
   (`سپهر@zarplus.cloud`) is pending cleanup.
 
-## 5. Current project state (as of 2026-11-07)
+## 5. Current project state (as of 2026-11-22)
 
-- **v1.0.0-rc1** tagged + published as a GitHub pre-release; **soak running
-  until 2026-11-14/21** (log: `docs/stabilization/SOAK-RC1.md`). Exit = 7–14
-  days daily use with no P0/P1.
+- **v1.0.0** tagged + published as a GitHub release (post RC1 soak). Client
+  versionCode **18082** (build-number 16082). Soak log: `SOAK-RC1.md`.
 - Phase 0/1/2 of `docs/stabilization/ROADMAP-2026-11.md` are complete
   (integrity locks, rate limiting 13 rules, monitoring, off-site backup,
   transactional restore, Keystore token storage, supply-chain CI).
 - Remaining known work: cloud CAS/idempotency for normal upserts, allocation
-  replace audit-linkage, atomic workspace bootstrap (§10.5 leftovers); RC →
-  v1.0.0 promotion after soak; signup stays closed until launch.
-- Android phone for device QA: Samsung, build-number ≥ 16081
+  replace audit-linkage, atomic workspace bootstrap (§10.5 leftovers);
+  signup stays closed until launch. Cash journal is still device-local
+  (production `zar_cash_entries` empty).
+- Android phone for device QA: Samsung, build-number ≥ 16082
   (installed versionCode = build-number + 2000), release-signed with the
   owner's keystore (cert pinned in `RELEASE-SIGNING-EVIDENCE`). adb notes:
   `input text` cannot type Persian; screencap+Read for verification;
