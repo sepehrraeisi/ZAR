@@ -1,15 +1,16 @@
 # ZAR+ Stabilization Handoff
 
-Last updated: 2026-11-22 (Asia/Tehran)
-Status: **RC1 soak complete (device audit 2026-11-22). Promoting to v1.0.0 per RELEASE-RUNBOOK. Production containment + transactional restore remain deployed; public signup stays closed.**
+Last updated: 2026-11-23 (Asia/Tehran)
+Status: **v1.0.0 shipped. Production containment + transactional restore + §10.5 write CAS deployed; public signup closed (§10.4). Next gate: multi-device soak before advertising cloud reliability.**
 Change freeze for feature work remains; release/update loop follows `RELEASE-RUNBOOK.md`.
 
 ## 0. Post-handoff action log
 
+- 2026-11-23 — Public signup closed (§10.4): migration `1793604702` merged (PR #32 → `19e1a57`) and deployed after backup `zar-20261123T143904Z`; anonymous create → 403. Evidence: `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`. Concurrent two-device CAS soak suite added (`pocketbase_multi_device_cas_soak_test.py`) as the engineering gate before advertising multi-device.
 - 2026-11-23 — Cloud write CAS slice 2 (coin/currency) merged (PR #24 → `48a44bc`) and deployed after backup `zar-20261123T130106Z`. Evidence: `CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`. Remaining §10.5: allocations/cash CAS, allocation audit-linkage, atomic workspace bootstrap.
 - 2026-11-23 — Allocation replace CAS merged (PR #26 → `26a82f0`) and deployed after backup `zar-20261123T133036Z`. Evidence: `ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md`. Remaining §10.5: cash CAS / cloud cash sync, atomic workspace bootstrap.
 - 2026-11-23 — Atomic workspace bootstrap merged (PR #28 → `35bba68`) and deployed after backup `zar-20261123T134845Z`. Evidence: `WORKSPACE-BOOTSTRAP-EVIDENCE-2026-11-23.md`. Remaining §10.5: cash CAS / cloud cash sync.
-- 2026-11-23 — Cash append CAS merged (PR #30 → `ad90263`) and deployed after backup `zar-20261123T140143Z`. Evidence: `CASH-APPEND-CAS-EVIDENCE-2026-11-23.md`. §10.5 cloud write CAS stack complete; next: signup policy / multi-device soak.
+- 2026-11-23 — Cash append CAS merged (PR #30 → `ad90263`) and deployed after backup `zar-20261123T140143Z`. Evidence: `CASH-APPEND-CAS-EVIDENCE-2026-11-23.md`. §10.5 cloud write CAS stack complete.
 - 2026-11-23 — Cloud write CAS/idempotency slice 1 merged (PR #23 → `11f0d4c`) and deployed to production after backup `zar-20261123T124303Z` + off-site verify. Route `/api/zar/write/upsert` live (401 unauth). Evidence: `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`.
 - 2026-11-23 — Cloud write CAS/idempotency slice 1 implemented on branch `feature/cloud-write-cas` for `zar_people` / `zar_deals` / `zar_settlements` (`1793604690_cloud_write_cas.js`, `/api/zar/write/upsert`, client revision side-map + 409 conflict UX). Local PocketBase suite green. Evidence: `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`.
 - 2026-11-22 — RC1 soak exit audit on owner Samsung (`com.zarplus.app` versionCode 18081, APK SHA-256 `d571dc94…7d1f`, release cert `d19ad112…2667`). Login, cloud person load, cashbox receive (250,000 toman) succeeded. No attributable P0/P1 for ZAR+. Owner directed promotion to v1.0.0. Note: production `zar_cash_entries` remains empty (cash stays device-local until a deliberate cloud-cash workstream). Soak log: `SOAK-RC1.md`.

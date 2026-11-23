@@ -609,9 +609,12 @@ C:\Users\simin\AppData\Local\Android\Sdk\platform-tools\adb.exe
 
 #### 10.4 تعیین سیاست public signup
 
-مالک باید مشخص کند signup بسته است یا عمداً عمومی. policy باید versioned،
-server-enforced و دارای real PocketBase allow/deny tests باشد. اگر عمومی ماند،
-abuse/rate limit، atomic workspace bootstrap و duplicate/orphan tests الزامی است.
+- **انجام شد (2026-11-23):** سیاست `zar.signup.public=closed` تا لانچ؛
+  migration `1793604702_close_public_signup.js` (`users.createRule = null`)،
+  UI بدون toggle ساخت حساب، suite
+  `pocketbase_signup_policy_test.py` (deny/abuse/admin seed)، evidence
+  `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md` (**prod deploy**).
+- باز کردن signup = migration رو به جلو + abuse/rate-limit evidence جدا.
 
 #### 10.5 بستن مرزهای یکپارچگی cloud
 
@@ -676,15 +679,16 @@ abuse/rate limit، atomic workspace bootstrap و duplicate/orphan tests الزا
   2026-11-30؛ پذیرش: encrypted off-host copy + second-operator restore + RPO/RTO.
 - APK و signing — owner: Android/release owner؛ deadline: قبل از هر release؛
   پذیرش: package/version/cert/APK hash، source mapping و signed reproducible build.
-- Public signup — owner: product + security؛ deadline: قبل از customer؛ پذیرش:
-  تصمیم versioned و real allow/deny/abuse/bootstrap tests.
+- Public signup — **closed until launch** (2026-11-23؛ evidence
+  `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`)؛ reopen نیاز به migration +
+  abuse/rate-limit evidence.
 - Monitoring — owner: operations؛ deadline: قبل از production claim/launch؛
   پذیرش: external probes، alert delivery، escalation و simulated-failure evidence.
 - Transactional restore deployment — owner: product + operations + security؛
   deadline: فقط پس از تصمیم قابلیت؛ پذیرش: fresh recovery set و کامل‌شدن gate 10.1.
-- Cloud invariants/concurrency/audit — owner: backend/domain؛ deadline: پیش از
-  تبلیغ multi-device/cloud reliability؛ پذیرش: server-enforced CAS/invariants،
-  reversal/audit و concurrent-client tests.
+- Cloud invariants/concurrency/audit — CAS stack + concurrent two-device soak
+  suite در CI (`MULTI-DEVICE-CAS-SOAK-EVIDENCE-2026-11-23.md`)؛ تبلیغ
+  multi-device هنوز تا device soak/UI realtime بسته است.
 - Supply chain — owner: repository/release؛ deadline: پیش از release candidate؛
   پذیرش: protected `master`، required reviews/checks، SHA-pinned Actions، scans،
   SBOM، provenance و signed artifacts.

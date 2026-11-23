@@ -143,11 +143,11 @@ signup launch policy + abuse tests; multi-device soak before advertising.
 - Phase 0/1/2 of `docs/stabilization/ROADMAP-2026-11.md` are complete
   (integrity locks, rate limiting 13 rules, monitoring, off-site backup,
   transactional restore, Keystore token storage, supply-chain CI).
-- Remaining known work: signup launch policy + abuse tests; multi-device
-  soak before advertising. §10.5 cloud write CAS stack deployed
-  (2026-11-23): people/deals/settlements, coin/currency, allocation
-  replace, workspace bootstrap, cash append. Signup stays closed until
-  launch.
+- Remaining known work: multi-device soak before advertising cloud
+ reliability; signup reopen only at launch with abuse/rate-limit evidence.
+ §10.5 cloud write CAS stack deployed (2026-11-23). §10.4 public signup
+ closed and versioned (`1793604702`, prod 2026-11-23). Concurrent
+ two-device CAS soak suite: `pocketbase_multi_device_cas_soak_test.py`.
 - Android phone for device QA: Samsung, build-number ≥ 16082
   (installed versionCode = build-number + 2000), release-signed with the
   owner's keystore (cert pinned in `RELEASE-SIGNING-EVIDENCE`). adb notes:
