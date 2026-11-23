@@ -111,8 +111,9 @@ idempotency receipts, ordinary people/deals/settlements upserts via
 deployed (`1793604698`, evidence
 `ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md`). Atomic workspace bootstrap
 deployed (`1793604699`, evidence
-`WORKSPACE-BOOTSTRAP-EVIDENCE-2026-11-23.md`). Open: cash CAS / cloud cash
-sync; signup stays closed until launch policy + abuse tests.
+`WORKSPACE-BOOTSTRAP-EVIDENCE-2026-11-23.md`). Cash append CAS deployed
+(`1793604701`, evidence `CASH-APPEND-CAS-EVIDENCE-2026-11-23.md`). Open:
+signup launch policy + abuse tests; multi-device soak before advertising.
 
 ## 4. Production server (owner's VPS)
 
@@ -142,11 +143,11 @@ sync; signup stays closed until launch policy + abuse tests.
 - Phase 0/1/2 of `docs/stabilization/ROADMAP-2026-11.md` are complete
   (integrity locks, rate limiting 13 rules, monitoring, off-site backup,
   transactional restore, Keystore token storage, supply-chain CI).
-- Remaining known work: cash CAS / cloud cash sync (§10.5 leftover);
-  people/deals/settlements + coin/currency + allocation-replace CAS +
-  atomic workspace bootstrap deployed (2026-11-23); signup stays closed
-  until launch. Cash journal still needs append CAS (cloud Record API
-  create remains open; prod `zar_cash_entries` empty).
+- Remaining known work: signup launch policy + abuse tests; multi-device
+  soak before advertising. §10.5 cloud write CAS stack deployed
+  (2026-11-23): people/deals/settlements, coin/currency, allocation
+  replace, workspace bootstrap, cash append. Signup stays closed until
+  launch.
 - Android phone for device QA: Samsung, build-number ≥ 16082
   (installed versionCode = build-number + 2000), release-signed with the
   owner's keystore (cert pinned in `RELEASE-SIGNING-EVIDENCE`). adb notes:
