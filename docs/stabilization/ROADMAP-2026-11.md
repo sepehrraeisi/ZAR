@@ -28,7 +28,7 @@
 - [ ] مانیتورینگ external مستقل از VPS: health، 5xx، TLS expiry، backup age/integrity + alert واقعی و runbook
 - [ ] انتقال توکن اندروید از SharedPreferences به Keystore-backed storage
 - [ ] supply chain: secret/dependency scanning، SBOM، pinned Actions، signed releases
-- [x] cloud invariants: CAS/idempotency برای writeهای حساس people/deals/settlements (اسلایس ۱؛ evidence `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`؛ deploy production جداگانه) — gate تبلیغ multi-device هنوز تا اسلایس‌های بعدی + soak
+- [x] cloud invariants: CAS/idempotency برای writeهای حساس people/deals/settlements (اسلایس ۱؛ evidence `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`؛ **production deploy 2026-11-23**) — gate تبلیغ multi-device هنوز تا اسلایس‌های بعدی + soak
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
 

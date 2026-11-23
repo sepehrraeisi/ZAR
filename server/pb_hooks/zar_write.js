@@ -5,6 +5,8 @@ const ZAR_WRITE_COLLECTIONS = {
   zar_people: true,
   zar_deals: true,
   zar_settlements: true,
+  zar_coin_types: true,
+  zar_currency_types: true,
 };
 
 const ZAR_WRITE_ID_PATTERN = /^[A-Za-z0-9_-]{2,255}$/;
