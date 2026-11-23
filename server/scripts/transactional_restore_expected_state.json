@@ -28,7 +28,7 @@
     },
     "canary": {
       "name": "transactional_restore_canary.py",
-      "sha256": "e97b2b63a2d47335302bc53eed7b2d93f84b4a37b636f965ed3fc160d1d11f6d"
+      "sha256": "b11ff9378f5c328cd353233bcd78f53d19e073ae43c2cbc4e75b0c0f9f1526e7"
     }
   },
   "productionBaseline": {

@@ -49,8 +49,8 @@ class ZarAuthGate extends StatelessWidget {
           home: LoginScreen(
             onSignIn: (email, password) =>
                 service.signIn(email: email, password: password),
-            onSignUp: (email, password) =>
-                service.signUp(email: email, password: password),
+            // Public signup stays closed until launch (§10.4); omit onSignUp
+            // so the login screen hides the create-account toggle.
             onResetPassword: service.sendPasswordReset,
           ),
         );
