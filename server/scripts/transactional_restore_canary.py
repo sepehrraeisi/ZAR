@@ -741,24 +741,19 @@ def run_commit(
     status, workspace_response = _request(
         normalized_url,
         "POST",
-        "/api/collections/zar_workspaces/records",
-        body={"displayName": "ZAR restore clone canary", "members": [user_id]},
+        "/api/zar/bootstrap/workspace",
+        body={"displayName": "ZAR restore clone canary"},
         token=token,
     )
     _expect_status("clone workspace creation", status, 200)
     workspace = _object(workspace_response, "workspace creation")
-    workspace_id = workspace.get("id")
+    workspace_id = workspace.get("workspaceId")
     if not isinstance(workspace_id, str) or not workspace_id:
         raise CanaryError("workspace creation response is malformed")
-
-    status, _ = _request(
-        normalized_url,
-        "PATCH",
-        f"/api/collections/users/records/{urllib.parse.quote(user_id, safe='')}",
-        body={"workspace": workspace_id},
-        token=token,
-    )
-    _expect_status("clone workspace selection", status, 200)
+    if workspace_id != f"ws{user_id}":
+        raise CanaryError(
+            f"expected deterministic workspace id ws{user_id}, got {workspace_id}"
+        )
 
     status, state_response = _request(
         normalized_url,

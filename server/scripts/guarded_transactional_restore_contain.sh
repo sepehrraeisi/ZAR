@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
-readonly pinned_expected_manifest_sha=5e9bc7c28bfd7bf819bc5fc9362f5d38e3d3811db9f07154e8020570b431ea10
+readonly pinned_expected_manifest_sha=debc69ef7d4aedbb4fb2b6745d56738c9878897830261909232982ea93134e39
 
 # Forward-only containment: disable only the HTTP route while preserving the
 # migration, helper, rate policy, membership lock and every receipt.

@@ -123,8 +123,10 @@ def run(pocketbase: Path) -> None:
         temp_root = Path(temp)
         data_dir = temp_root / "pb_data"
         migrations_dir = temp_root / "pb_migrations"
+        hooks_dir = temp_root / "pb_hooks"
         log_path = temp_root / "pocketbase.log"
         shutil.copytree(source_migrations, migrations_dir)
+        shutil.copytree(repository_root / "server" / "pb_hooks", hooks_dir)
 
         _migrate(pocketbase, data_dir, migrations_dir, "up")
         _migrate(pocketbase, data_dir, migrations_dir, "down", "2")
@@ -138,6 +140,8 @@ def run(pocketbase: Path) -> None:
                     f"--http=127.0.0.1:{port}",
                     f"--dir={data_dir}",
                     f"--migrationsDir={migrations_dir}",
+                    f"--hooksDir={hooks_dir}",
+                    "--hooksWatch=false",
                 ],
                 cwd=repository_root,
                 stdout=log,
@@ -173,15 +177,24 @@ def run(pocketbase: Path) -> None:
                 _expect("normal user authentication", status, 200)
                 token = str(authentication["token"])
 
-                status, workspace = _request(
+                status, _ = _request(
                     base_url,
                     "POST",
                     "/api/collections/zar_workspaces/records",
                     body={"displayName": "Authorization test", "members": [user_id]},
                     token=token,
                 )
-                _expect("member workspace create", status, 200)
-                workspace_id = str(workspace["id"])
+                _expect("member workspace Record API create denied", status, 403)
+
+                status, workspace = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/bootstrap/workspace",
+                    body={"displayName": "Authorization test"},
+                    token=token,
+                )
+                _expect("member workspace bootstrap", status, 200)
+                workspace_id = str(workspace["workspaceId"])
                 record_path = (
                     f"/api/collections/zar_workspaces/records/{workspace_id}"
                 )

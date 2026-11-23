@@ -174,12 +174,12 @@ def run(pocketbase: Path) -> None:
                 status, workspace = _request(
                     base_url,
                     "POST",
-                    "/api/collections/zar_workspaces/records",
-                    body={"displayName": "Hard delete test", "members": [user_id]},
+                    "/api/zar/bootstrap/workspace",
+                    body={"displayName": "Hard delete test"},
                     token=token,
                 )
                 _expect("workspace create", status, 200)
-                workspace_id = str(workspace["id"])
+                workspace_id = str(workspace["workspaceId"])
 
                 person_id = f"person{suffix[:8]}1"
                 status, _ = _request(

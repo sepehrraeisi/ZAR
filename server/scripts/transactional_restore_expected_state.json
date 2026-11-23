@@ -28,7 +28,7 @@
     },
     "canary": {
       "name": "transactional_restore_canary.py",
-      "sha256": "8e17b0973846da01c158f2960e9709594a1b3742fb39cf27b29a458d75c0f697"
+      "sha256": "e97b2b63a2d47335302bc53eed7b2d93f84b4a37b636f965ed3fc160d1d11f6d"
     }
   },
   "productionBaseline": {
@@ -43,36 +43,156 @@
     "enabled": true,
     "excludedIPs": [],
     "rules": [
-      {"label": "*:auth", "audience": "", "duration": 60, "maxRequests": 5},
-      {"label": "users:create", "audience": "", "duration": 600, "maxRequests": 5},
-      {"label": "*:requestPasswordReset", "audience": "", "duration": 300, "maxRequests": 3},
-      {"label": "*:requestOTP", "audience": "", "duration": 300, "maxRequests": 3},
-      {"label": "*:requestVerification", "audience": "", "duration": 300, "maxRequests": 3},
-      {"label": "*:requestEmailChange", "audience": "", "duration": 300, "maxRequests": 3},
-      {"label": "*:confirmPasswordReset", "audience": "", "duration": 300, "maxRequests": 10},
-      {"label": "*:confirmVerification", "audience": "", "duration": 300, "maxRequests": 10},
-      {"label": "*:confirmEmailChange", "audience": "", "duration": 300, "maxRequests": 10},
-      {"label": "/api/batch", "audience": "@auth", "duration": 1, "maxRequests": 10},
-      {"label": "/api/", "audience": "@guest", "duration": 10, "maxRequests": 60}
+      {
+        "label": "*:auth",
+        "audience": "",
+        "duration": 60,
+        "maxRequests": 5
+      },
+      {
+        "label": "users:create",
+        "audience": "",
+        "duration": 600,
+        "maxRequests": 5
+      },
+      {
+        "label": "*:requestPasswordReset",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 3
+      },
+      {
+        "label": "*:requestOTP",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 3
+      },
+      {
+        "label": "*:requestVerification",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 3
+      },
+      {
+        "label": "*:requestEmailChange",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 3
+      },
+      {
+        "label": "*:confirmPasswordReset",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 10
+      },
+      {
+        "label": "*:confirmVerification",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 10
+      },
+      {
+        "label": "*:confirmEmailChange",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 10
+      },
+      {
+        "label": "/api/batch",
+        "audience": "@auth",
+        "duration": 1,
+        "maxRequests": 10
+      },
+      {
+        "label": "/api/",
+        "audience": "@guest",
+        "duration": 10,
+        "maxRequests": 60
+      }
     ]
   },
   "rateLimitsAfter": {
     "enabled": true,
     "excludedIPs": [],
     "rules": [
-      {"label": "*:auth", "audience": "", "duration": 60, "maxRequests": 5},
-      {"label": "users:create", "audience": "", "duration": 600, "maxRequests": 5},
-      {"label": "*:requestPasswordReset", "audience": "", "duration": 300, "maxRequests": 3},
-      {"label": "*:requestOTP", "audience": "", "duration": 300, "maxRequests": 3},
-      {"label": "*:requestVerification", "audience": "", "duration": 300, "maxRequests": 3},
-      {"label": "*:requestEmailChange", "audience": "", "duration": 300, "maxRequests": 3},
-      {"label": "*:confirmPasswordReset", "audience": "", "duration": 300, "maxRequests": 10},
-      {"label": "*:confirmVerification", "audience": "", "duration": 300, "maxRequests": 10},
-      {"label": "*:confirmEmailChange", "audience": "", "duration": 300, "maxRequests": 10},
-      {"label": "/api/batch", "audience": "@auth", "duration": 1, "maxRequests": 10},
-      {"label": "/api/", "audience": "@guest", "duration": 10, "maxRequests": 60},
-      {"label": "/api/zar/restore/state", "audience": "@auth", "duration": 60, "maxRequests": 30},
-      {"label": "/api/zar/restore/commit", "audience": "@auth", "duration": 600, "maxRequests": 10}
+      {
+        "label": "*:auth",
+        "audience": "",
+        "duration": 60,
+        "maxRequests": 5
+      },
+      {
+        "label": "users:create",
+        "audience": "",
+        "duration": 600,
+        "maxRequests": 5
+      },
+      {
+        "label": "*:requestPasswordReset",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 3
+      },
+      {
+        "label": "*:requestOTP",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 3
+      },
+      {
+        "label": "*:requestVerification",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 3
+      },
+      {
+        "label": "*:requestEmailChange",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 3
+      },
+      {
+        "label": "*:confirmPasswordReset",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 10
+      },
+      {
+        "label": "*:confirmVerification",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 10
+      },
+      {
+        "label": "*:confirmEmailChange",
+        "audience": "",
+        "duration": 300,
+        "maxRequests": 10
+      },
+      {
+        "label": "/api/batch",
+        "audience": "@auth",
+        "duration": 1,
+        "maxRequests": 10
+      },
+      {
+        "label": "/api/",
+        "audience": "@guest",
+        "duration": 10,
+        "maxRequests": 60
+      },
+      {
+        "label": "/api/zar/restore/state",
+        "audience": "@auth",
+        "duration": 60,
+        "maxRequests": 30
+      },
+      {
+        "label": "/api/zar/restore/commit",
+        "audience": "@auth",
+        "duration": 600,
+        "maxRequests": 10
+      }
     ]
   }
 }
