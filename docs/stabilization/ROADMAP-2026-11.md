@@ -33,6 +33,7 @@
 - [x] cloud invariants: allocation replace CAS + audit (اسلایس ۳؛ `ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23)
 - [x] atomic workspace bootstrap (ZAR-DATA-005؛ `WORKSPACE-BOOTSTRAP-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23)
 - [x] cash append CAS (اسلایس ۴؛ `CASH-APPEND-CAS-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23) — §10.5 write CAS کامل؛ gate تبلیغ multi-device تا soak
+- [x] consistent snapshot read (ZAR-DATA-006؛ `SNAPSHOT-CONSISTENCY-EVIDENCE-2026-11-23.md`)
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
 

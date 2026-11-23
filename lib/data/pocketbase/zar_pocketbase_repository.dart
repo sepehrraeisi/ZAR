@@ -57,8 +57,6 @@ class ZarPocketBaseRepository
     _currencyTypes,
   };
 
-  String get _workspaceFilter => "workspace='$_workspaceId'";
-
   @override
   Future<void> appendCashEntry(ZarCashEntry entry) async {
     final snapshot = await loadCompleteSnapshot();
@@ -216,40 +214,58 @@ class ZarPocketBaseRepository
 
   @override
   Future<ZarDomainSnapshot> loadCompleteSnapshot() async {
-    final results = await Future.wait([
-      _client.listRecords(_people, filter: _workspaceFilter),
-      _client.listRecords(_deals, filter: _workspaceFilter),
-      _client.listRecords(_settlements, filter: _workspaceFilter),
-      _client.listRecords(_coinTypes, filter: _workspaceFilter),
-      _client.listRecords(_currencyTypes, filter: _workspaceFilter),
-      _client.listRecords(_allocations, filter: _workspaceFilter),
-      _client.listRecords(_cash, filter: _workspaceFilter),
-    ]);
-    _ingestRevisions(_people, results[0]);
-    _ingestRevisions(_deals, results[1]);
-    _ingestRevisions(_settlements, results[2]);
-    _ingestRevisions(_coinTypes, results[3]);
-    _ingestRevisions(_currencyTypes, results[4]);
+    // Single epoch-fenced route so concurrent writes cannot mix collections
+    // across seven independent list GETs (ZAR-DATA-006).
+    final payload = await _client.requestJson('GET', '/api/zar/read/snapshot');
+    if (payload['workspaceId'] != _workspaceId) {
+      throw const ZarPocketBaseProtocolException(
+        'Snapshot workspace does not match the selected workspace.',
+      );
+    }
+    List<Map<String, Object?>> rows(String key) {
+      final raw = payload[key];
+      if (raw is! List) {
+        throw ZarPocketBaseProtocolException(
+          'Snapshot is missing collection "$key".',
+        );
+      }
+      return [
+        for (final item in raw) Map<String, Object?>.from(item! as Map),
+      ];
+    }
+
+    final people = rows('people');
+    final deals = rows('deals');
+    final settlements = rows('settlements');
+    final coinTypes = rows('coinTypes');
+    final currencyTypes = rows('currencyTypes');
+    final allocations = rows('allocations');
+    final cashEntries = rows('cashEntries');
+    _ingestRevisions(_people, people);
+    _ingestRevisions(_deals, deals);
+    _ingestRevisions(_settlements, settlements);
+    _ingestRevisions(_coinTypes, coinTypes);
+    _ingestRevisions(_currencyTypes, currencyTypes);
     return ZarDomainSnapshot(
-      cashEntries: results[6]
+      cashEntries: cashEntries
           .map((row) => ZarCashEntry.fromMap(_data(row)))
           .toList(),
-      people: results[0]
+      people: people
           .map((row) => _codec.personFromRecord(_data(row)))
           .toList(growable: false),
-      deals: results[1]
+      deals: deals
           .map((row) => _codec.dealFromRecord(_data(row), _businessId))
           .toList(growable: false),
-      settlements: results[2]
+      settlements: settlements
           .map((row) => _codec.settlementFromRecord(_data(row), _businessId))
           .toList(growable: false),
-      coinTypes: results[3]
+      coinTypes: coinTypes
           .map((row) => ZarCoinType.fromMap(_data(row)))
           .toList(growable: false),
-      currencyTypes: results[4]
+      currencyTypes: currencyTypes
           .map((row) => ZarCurrencyType.fromMap(_data(row)))
           .toList(growable: false),
-      paymentAllocations: results[5]
+      paymentAllocations: allocations
           .map((row) => ZarPaymentAllocation.fromMap(_data(row)))
           .toList(growable: false),
     );

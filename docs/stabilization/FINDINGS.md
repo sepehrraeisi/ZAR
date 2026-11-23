@@ -67,8 +67,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Impact: two phones can overwrite completion, cancellation, reminder or record changes without warning.
 - Required remediation: server-issued revision, optimistic concurrency, explicit conflict handling and idempotency keys for business writes.
 - Required regression: two clients read revision N; the first update succeeds and the stale second update is rejected with a recoverable conflict.
-- Progress (2026-11-23): people/deals/settlements use `/api/zar/write/upsert` with revision CAS + write receipts + typed 409 conflict UX (`CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`). Remaining collections and multi-device realtime UI still open; production deploy of this slice pending owner OK.
-- Status: open; architectural decision required.
+- Progress (2026-11-23): people/deals/settlements/coin/currency use `/api/zar/write/upsert` with revision CAS + receipts; allocation replace + cash append CAS; concurrent soak suite; typed 409 UX. Evidence docs under `CLOUD-WRITE-CAS*`, `ALLOCATION-REPLACE-CAS*`, `CASH-APPEND-CAS*`, `MULTI-DEVICE-CAS-SOAK*`.
+- Status: **write-path contained in production**. Remaining: realtime conflict UI / device soak before advertising multi-device.
 
 ### ZAR-DATA-003 — server does not enforce critical domain invariants
 
@@ -94,19 +94,21 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Evidence: `lib/features/auth/zar_cloud_shell.dart:89-100` creates a workspace, then patches the user in a separate request.
 - Impact: network loss or simultaneous first launch can create orphan or duplicate workspaces.
 - Required remediation: one server-side transactional/idempotent bootstrap command with a deterministic ownership constraint.
-- Status: **contained** — `POST /api/zar/bootstrap/workspace` + migration `1793604699` (evidence `WORKSPACE-BOOTSTRAP-EVIDENCE-2026-11-23.md`; production deploy tracked there).
+- Status: **contained in production** — `POST /api/zar/bootstrap/workspace` + migration `1793604699` (evidence `WORKSPACE-BOOTSTRAP-EVIDENCE-2026-11-23.md`).
 
 ## High findings
 
 ### ZAR-DATA-006 — cloud snapshots can mix revisions
 
-- Seven collections are read independently and concurrently; concurrent writes can produce a snapshot whose deals, settlements, allocations and cash entries are from different revisions.
+- Seven collections were read independently and concurrently; concurrent writes could mix revisions across collections.
 - Required: consistent snapshot/revision protocol and reconciliation checks.
+- Status: **contained (2026-11-23)** — workspace `epoch` + `GET /api/zar/read/snapshot` with before/after epoch fence; client load path uses the route. Evidence: `SNAPSHOT-CONSISTENCY-EVIDENCE-2026-11-23.md`.
 
 ### ZAR-DATA-007 — allocation replacement can become partially applied
 
-- More than 400 delete/create operations are split into independent transactions. Failure after the first batch leaves partial state.
+- More than 400 delete/create operations were split into independent transactions. Failure after the first batch left partial state.
 - Required: server-side atomic command or versioned replacement object; inject failure in regression tests.
+- Status: **contained (2026-11-23)** — `POST /api/zar/write/allocations/replace` + set CAS (`ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md`).
 
 ### ZAR-DATA-008 — completed/posting state is mutable
 

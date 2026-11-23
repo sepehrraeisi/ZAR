@@ -83,6 +83,7 @@ function zarBootstrapLoadOrCreate(app, userId, displayName) {
   workspace.set('id', workspaceId);
   workspace.set('displayName', displayName);
   workspace.set('members', [userId]);
+  workspace.set('epoch', 0);
   try {
     app.save(workspace);
   } catch (error) {

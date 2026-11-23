@@ -105,16 +105,26 @@ Map<String, int> _restoreCounts({
 };
 
 void main() {
+  Map<String, Object?> _emptySnapshot({String workspaceId = 'w1'}) => {
+    'workspaceId': workspaceId,
+    'epoch': 1,
+    'people': <Object?>[],
+    'deals': <Object?>[],
+    'settlements': <Object?>[],
+    'coinTypes': <Object?>[],
+    'currencyTypes': <Object?>[],
+    'allocations': <Object?>[],
+    'cashEntries': <Object?>[],
+  };
+
   test('loadCompleteSnapshot decodes payload rows', () async {
     final client = MockClient((request) async {
-      final path = request.url.path;
-      if (path.contains('/api/collections/zar_people/records')) {
-        return _json({
-          'items': [_personRow('p1', 'مشتری یک')],
-          'totalPages': 1,
-        });
-      }
-      return _json({'items': [], 'totalPages': 1});
+      expect(request.method, 'GET');
+      expect(request.url.path, '/api/zar/read/snapshot');
+      return _json({
+        ..._emptySnapshot(),
+        'people': [_personRow('p1', 'مشتری یک')],
+      });
     });
     final repository = ZarPocketBaseRepository(
       client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
@@ -131,14 +141,12 @@ void main() {
   test(
     'load and restore discovery are scoped to the selected workspace',
     () async {
-      final listFilters = <String?>[];
       final routeCalls = <String>[];
       final client = MockClient((request) async {
-        if (request.method == 'GET' && request.url.path.endsWith('/records')) {
-          listFilters.add(request.url.queryParameters['filter']);
-          return _json({'items': [], 'totalPages': 1});
-        }
         routeCalls.add('${request.method} ${request.url.path}');
+        if (request.url.path == '/api/zar/read/snapshot') {
+          return _json(_emptySnapshot());
+        }
         if (request.url.path == '/api/zar/restore/state') {
           return _json(_restoreState());
         }
@@ -162,9 +170,8 @@ void main() {
         confirmationSecret: 'correct horse battery staple',
       );
 
-      expect(listFilters, hasLength(7));
-      expect(listFilters, everyElement("workspace='w1'"));
       expect(routeCalls, [
+        'GET /api/zar/read/snapshot',
         'GET /api/zar/restore/state',
         'POST /api/zar/restore/commit',
       ]);
@@ -210,14 +217,11 @@ void main() {
   test('savePerson sends loaded revision and surfaces stale 409', () async {
     Map<String, Object?>? sentBody;
     final client = MockClient((request) async {
-      if (request.url.path.contains('/api/collections/zar_people/records')) {
+      if (request.url.path == '/api/zar/read/snapshot') {
         return _json({
-          'items': [_personRow('p1', 'مشتری', revision: 3)],
-          'totalPages': 1,
+          ..._emptySnapshot(),
+          'people': [_personRow('p1', 'مشتری', revision: 3)],
         });
-      }
-      if (request.url.path.endsWith('/records')) {
-        return _json({'items': [], 'totalPages': 1});
       }
       if (request.url.path == '/api/zar/write/upsert') {
         sentBody = Map<String, Object?>.from(jsonDecode(request.body) as Map);

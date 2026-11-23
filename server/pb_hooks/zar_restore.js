@@ -1298,6 +1298,10 @@ function zarRestoreCommitRoute(e) {
       throw new InternalServerError('Restore verification failed.');
     }
 
+    // Domain rewrite is a mutation fence for snapshot readers (ZAR-DATA-006).
+    const write = require(`${__hooks}/zar_write.js`);
+    write.bumpWorkspaceEpoch(txApp, auth.workspaceId);
+
     const receipts = txApp.findCollectionByNameOrId('zar_restore_receipts');
     const receipt = new Record(receipts);
     receipt.set('id', body.requestId);
