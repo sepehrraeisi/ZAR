@@ -14,6 +14,8 @@ routerAdd(
 function zarWriteOnCreate(e) {
   // Legacy Record API creates (tests / older clients) get revision 1.
   // Prefer `/api/zar/write/upsert` for idempotent CAS writes.
+  // PocketBase 0.23+ request hooks must call e.next() or the finalizer
+  // (validation + INSERT) never runs — clients would see an empty 200.
   const current = e.record.get('revision');
   if (
     current === null ||
@@ -23,6 +25,7 @@ function zarWriteOnCreate(e) {
   ) {
     e.record.set('revision', 1);
   }
+  e.next();
 }
 
 function zarWriteOnUpdate(e) {
@@ -54,6 +57,7 @@ function zarWriteOnUpdate(e) {
     );
   }
   e.record.set('revision', current + 1);
+  e.next();
 }
 
 onRecordCreateRequest(zarWriteOnCreate, 'zar_people');
