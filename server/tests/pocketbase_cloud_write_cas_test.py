@@ -19,6 +19,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from pocketbase_test_users import auth_superuser, ensure_superuser, provision_member
+
 
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
@@ -122,6 +124,7 @@ def run(pocketbase: Path) -> None:
         shutil.copytree(repository_root / "server" / "pb_hooks", hooks_dir)
 
         _migrate(pocketbase, data_dir, migrations_dir)
+        super_password = ensure_superuser(pocketbase, data_dir)
 
         with log_path.open("w", encoding="utf-8") as log:
             process = subprocess.Popen(
@@ -146,7 +149,7 @@ def run(pocketbase: Path) -> None:
                 email = f"write-cas-{suffix}@example.test"
                 password = f"Staging-{suffix}-Aa1!"
 
-                status, user = _request(
+                status, _ = _request(
                     base_url,
                     "POST",
                     "/api/collections/users/records",
@@ -156,17 +159,16 @@ def run(pocketbase: Path) -> None:
                         "passwordConfirm": password,
                     },
                 )
-                _expect("public signup baseline", status, 200)
-                user_id = str(user["id"])
+                _expect("public signup denied", status, 403)
 
-                status, authentication = _request(
+                admin_token = auth_superuser(base_url, super_password)
+                user_id, token = provision_member(
                     base_url,
-                    "POST",
-                    "/api/collections/users/auth-with-password",
-                    body={"identity": email, "password": password},
+                    admin_token=admin_token,
+                    email=email,
+                    password=password,
                 )
-                _expect("member authentication", status, 200)
-                token = str(authentication["token"])
+                print("PASS member authentication: HTTP 200")
 
                 status, workspace = _request(
                     base_url,

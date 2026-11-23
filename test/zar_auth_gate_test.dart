@@ -93,24 +93,17 @@ void main() {
     expect(find.text('shell-reached'), findsOneWidget);
   });
 
-  testWidgets('sign-up toggle creates an account and enters the shell', (
+  testWidgets('public signup toggle stays hidden while signup is closed', (
     tester,
   ) async {
     final auth = _FakeAuthService();
     await tester.pumpWidget(_app(auth));
     await tester.pump();
 
-    await tester.tap(find.text('حساب ندارید؟ ساخت حساب'));
-    await tester.pumpAndSettle();
-    expect(find.text('ساخت حساب'), findsWidgets);
-
-    await tester.enterText(find.byType(TextField).at(0), 'owner@gmail.com');
-    await tester.enterText(find.byType(TextField).at(1), 'secret123');
-    await tester.tap(find.text('ساخت حساب').first);
-    await tester.pumpAndSettle();
-
-    expect(auth.signUpCalls, 1);
-    expect(find.text('shell-reached'), findsOneWidget);
+    // §10.4: onSignUp omitted → LoginScreen hides create-account UI.
+    expect(find.text('حساب ندارید؟ ساخت حساب'), findsNothing);
+    expect(find.text('ساخت حساب'), findsNothing);
+    expect(auth.signUpCalls, 0);
   });
 
   testWidgets('auth failures show the Persian message and stay on login', (

@@ -9,6 +9,7 @@ import shutil
 import socket
 import stat
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -81,6 +82,7 @@ class _Backend:
         self.password = ""
         self.user_id = "cloneuser000001"
         self.workspace_id = "wscloneuser000001"
+        self.admin_token = "clone-admin-token"
         self.tokens: set[str] = set()
         self.auth_count = 0
         self.committed = False
@@ -162,6 +164,9 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             body = self._body()
             if self.path == "/api/collections/users/records":
+                if self.headers.get("Authorization", "") != self.backend.admin_token:
+                    self._send(403, {"message": "public signup closed"})
+                    return
                 self.backend.identity = str(body.get("email", ""))
                 self.backend.password = str(body.get("password", ""))
                 if (
@@ -421,6 +426,7 @@ class TransactionalRestoreCanaryTest(unittest.TestCase):
                 state_path,
                 commit_path,
                 confirm_disposable_clone=True,
+                admin_token=service.backend.admin_token,
             )
             self.assertEqual(commit["action"], "commit")
             self.assertEqual(commit["receipt"]["replayed"], False)
@@ -482,6 +488,7 @@ class TransactionalRestoreCanaryTest(unittest.TestCase):
                 state_path,
                 root / "commit.json",
                 confirm_disposable_clone=True,
+                admin_token=service.backend.admin_token,
             )
             service.backend.mismatch_replay = True
             service.restart()
@@ -548,6 +555,7 @@ class TransactionalRestoreCanaryTest(unittest.TestCase):
                     existing,
                     root / "new-output.json",
                     confirm_disposable_clone=True,
+                    admin_token="unused",
                 )
             with self.assertRaisesRegex(canary.CanaryError, "already exists"):
                 canary.run_commit(
@@ -555,6 +563,7 @@ class TransactionalRestoreCanaryTest(unittest.TestCase):
                     root / "new-state.json",
                     existing,
                     confirm_disposable_clone=True,
+                    admin_token="unused",
                 )
             with self.assertRaisesRegex(canary.CanaryError, "must be absolute"):
                 canary.run_commit(
@@ -562,6 +571,7 @@ class TransactionalRestoreCanaryTest(unittest.TestCase):
                     Path("relative-state.json"),
                     root / "new-output.json",
                     confirm_disposable_clone=True,
+                    admin_token="unused",
                 )
             same = root / "same.json"
             with self.assertRaisesRegex(canary.CanaryError, "must be different"):
@@ -570,6 +580,7 @@ class TransactionalRestoreCanaryTest(unittest.TestCase):
                     same,
                     same,
                     confirm_disposable_clone=True,
+                    admin_token="unused",
                 )
 
     @unittest.skipUnless(os.name == "posix", "POSIX mode guard")
@@ -638,6 +649,12 @@ class TransactionalRestoreCanaryTest(unittest.TestCase):
                 0,
                 migration.stdout + migration.stderr,
             )
+            tests_dir = Path(__file__).resolve().parent
+            if str(tests_dir) not in sys.path:
+                sys.path.insert(0, str(tests_dir))
+            from pocketbase_test_users import auth_superuser, ensure_superuser
+
+            super_password = ensure_superuser(pocketbase, data)
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
                 listener.bind(("127.0.0.1", 0))
                 port = int(listener.getsockname()[1])
@@ -678,6 +695,7 @@ class TransactionalRestoreCanaryTest(unittest.TestCase):
 
             process = start()
             try:
+                admin_token = auth_superuser(base_url, super_password)
                 state_path = root / "private-state.json"
                 commit_path = root / "commit.json"
                 replay_path = root / "replay.json"
@@ -686,6 +704,7 @@ class TransactionalRestoreCanaryTest(unittest.TestCase):
                     state_path,
                     commit_path,
                     confirm_disposable_clone=True,
+                    admin_token=admin_token,
                 )
                 process.terminate()
                 process.wait(timeout=10)

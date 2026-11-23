@@ -709,6 +709,7 @@ def run_commit(
     output_path: Path,
     *,
     confirm_disposable_clone: bool,
+    admin_token: str,
 ) -> dict[str, Any]:
     normalized_url = _normalize_base_url(
         base_url,
@@ -718,15 +719,25 @@ def run_commit(
     output_path = _absolute_path(output_path, "output")
     if state_path.resolve() == output_path.resolve():
         raise CanaryError("state and output paths must be different")
+    if not isinstance(admin_token, str) or not admin_token:
+        raise CanaryError("admin_token is required while public signup is closed")
 
     suffix = secrets.token_hex(4)
     identity = f"restore-clone-{suffix}@example.test"
     password = f"ZarClone-{secrets.token_hex(12)}-Aa1!"
+    status, _ = _request(
+        normalized_url,
+        "POST",
+        "/api/collections/users/records",
+        body={"email": identity, "password": password, "passwordConfirm": password},
+    )
+    _expect_status("public signup denied", status, 403)
     status, signup_response = _request(
         normalized_url,
         "POST",
         "/api/collections/users/records",
         body={"email": identity, "password": password, "passwordConfirm": password},
+        token=admin_token,
     )
     _expect_status("clone user creation", status, 200)
     signup = _object(signup_response, "user creation")
@@ -950,6 +961,12 @@ def _parser() -> argparse.ArgumentParser:
         )
         subparser.add_argument("--state", required=True, type=Path)
         subparser.add_argument("--output", required=True, type=Path)
+        if command == "commit":
+            subparser.add_argument(
+                "--admin-token",
+                required=True,
+                help="Superuser token used to seed the clone user while signup is closed",
+            )
     return parser
 
 
@@ -967,6 +984,7 @@ def main(argv: list[str] | None = None) -> int:
                 arguments.state,
                 arguments.output,
                 confirm_disposable_clone=True,
+                admin_token=arguments.admin_token,
             )
         else:
             run_replay(
