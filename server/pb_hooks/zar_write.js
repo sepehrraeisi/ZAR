@@ -66,6 +66,24 @@ function zarWriteAuthorize(app, actorId, workspaceId) {
   return workspace;
 }
 
+/// Advances workspace epoch inside the same write transaction so snapshot
+/// readers can detect concurrent mutation (ZAR-DATA-006).
+function zarWriteBumpWorkspaceEpoch(txApp, workspaceId) {
+  const workspace = txApp.findRecordById('zar_workspaces', workspaceId);
+  const raw = workspace.get('epoch');
+  let current = 0;
+  if (raw !== null && raw !== undefined && raw !== '') {
+    const parsed = Number(raw);
+    if (Number.isSafeInteger(parsed) && parsed >= 0) {
+      current = parsed;
+    }
+  }
+  const next = current + 1;
+  workspace.set('epoch', next);
+  txApp.save(workspace);
+  return next;
+}
+
 function zarWriteFindReceipt(app, workspaceId, idempotencyKey) {
   const matches = app.findRecordsByFilter(
     'zar_write_receipts',
@@ -223,6 +241,7 @@ function zarWriteUpsert(e) {
     receipt.set('responseRevision', nextRevision);
     receipt.set('responseRecord', publicRecord);
     txApp.save(receipt);
+    zarWriteBumpWorkspaceEpoch(txApp, workspaceId);
 
     response = {
       replayed: false,
@@ -512,6 +531,7 @@ function zarWriteReplaceAllocations(e) {
     receipt.set('responseRevision', 1);
     receipt.set('responseRecord', audit);
     txApp.save(receipt);
+    zarWriteBumpWorkspaceEpoch(txApp, workspaceId);
 
     response = {
       replayed: false,
@@ -723,6 +743,7 @@ function zarWriteAppendCash(e) {
     receipt.set('responseRevision', 1);
     receipt.set('responseRecord', publicRecord);
     txApp.save(receipt);
+    zarWriteBumpWorkspaceEpoch(txApp, workspaceId);
 
     response = {
       replayed: false,
@@ -740,4 +761,5 @@ module.exports = {
   replaceAllocations: zarWriteReplaceAllocations,
   appendCash: zarWriteAppendCash,
   allocationSetHash: zarWriteAllocationSetHash,
+  bumpWorkspaceEpoch: zarWriteBumpWorkspaceEpoch,
 };
