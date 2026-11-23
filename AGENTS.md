@@ -107,8 +107,10 @@ idempotency receipts, ordinary people/deals/settlements upserts via
 `/api/zar/write/upsert` (revision CAS + write receipts; evidence
 `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md` — deployed to production
 2026-11-23). Coin/currency CAS deployed (`1793604695`, evidence
-`CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`). Open: allocations/cash
-CAS, allocation replace audit-linkage, atomic workspace bootstrap.
+`CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`). Allocation replace CAS
+deployed (`1793604698`, evidence
+`ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md`). Open: cash CAS / cloud
+cash sync, atomic workspace bootstrap.
 
 ## 4. Production server (owner's VPS)
 
@@ -138,11 +140,11 @@ CAS, allocation replace audit-linkage, atomic workspace bootstrap.
 - Phase 0/1/2 of `docs/stabilization/ROADMAP-2026-11.md` are complete
   (integrity locks, rate limiting 13 rules, monitoring, off-site backup,
   transactional restore, Keystore token storage, supply-chain CI).
-- Remaining known work: allocations/cash CAS, allocation replace
-  audit-linkage, atomic workspace bootstrap (§10.5 leftovers);
-  people/deals/settlements + coin/currency CAS deployed (2026-11-23);
-  signup stays closed until launch. Cash journal is still device-local
-  (production `zar_cash_entries` empty).
+- Remaining known work: cash CAS / cloud cash sync, atomic workspace
+  bootstrap (§10.5 leftovers); people/deals/settlements + coin/currency +
+  allocation-replace CAS deployed (2026-11-23); signup stays closed until
+  launch. Cash journal is still device-local (production `zar_cash_entries`
+  empty).
 - Android phone for device QA: Samsung, build-number ≥ 16082
   (installed versionCode = build-number + 2000), release-signed with the
   owner's keystore (cert pinned in `RELEASE-SIGNING-EVIDENCE`). adb notes:

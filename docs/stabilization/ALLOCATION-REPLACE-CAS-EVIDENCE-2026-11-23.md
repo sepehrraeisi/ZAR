@@ -28,6 +28,11 @@
 - lineage شامل migration جدید
 - `flutter analyze` / repository tests
 
-## Production
+## Production deploy (2026-11-23)
 
-- Deploy فقط بعد از CI سبز + backup تازه (این PR).
+- PR #26 merged (`26a82f0`); CI required checks green.
+- Fresh atomic backup `zar-20261123T133036Z` (`data.db` SHA-256 `3fcf2ecc…52ea`, quick/integrity ok) + off-site byte-identical under `Documents\ZAR-OffsiteBackups\zar-20261123T133036Z`.
+- Rollback copies: `/var/tmp/zar-alloc-replace-cas-rollback-20261123T1331Z` (pre-deploy `zar_write.js` / `zar_write_routes.pb.js`).
+- stop → Applied `1793604698_allocation_replace_cas.js` as `zarapp` → start.
+- Postflight: `active`, health `200`, `NRestarts=0`, listener `127.0.0.1:8090` only; `/api/zar/write/allocations/replace` anonymous → **401**; `zar_allocations` create/update/delete rules null; migration row present.
+- Artifact SHA-256 on host matched local: migration `8192458e…f8c6`, `zar_write.js` `7577e548…842c`, routes `a8565084…beae`.

@@ -618,15 +618,21 @@ abuse/rate limit، atomic workspace bootstrap و duplicate/orphan tests الزا
 - optimistic concurrency/CAS و server revision برای همه‌ی writeهای حساس
   - **اسلایس ۱ (2026-11-23):** people/deals/settlements از `/api/zar/write/upsert`
     + `revision` + `zar_write_receipts`؛ evidence
-    `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md` (**prod deploy جداگانه**)
-  - مانده: coin/currency/allocations/cash
+    `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md` (**prod deploy**)
+  - **اسلایس ۲ (2026-11-23):** coin/currency؛ evidence
+    `CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md` (**prod deploy**)
+  - **اسلایس ۳ (2026-11-23):** atomic allocation replace
+    (`/api/zar/write/allocations/replace` + set CAS + audit before/after)؛
+    evidence `ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md` (**prod deploy**)
+  - مانده: cash CAS / cloud cash sync
 - idempotency key و conflict قابل‌بازیابی برای stale device
-  - اسلایس ۱: key + 409 قابل‌بازیابی روی کلاینت برای سه کالکشن بالا
+  - اسلایس ۱–۳: key + 409 قابل‌بازیابی روی کلاینت برای upsert و allocation replace
 - server-side invariant boundary و parity tests بین local/cloud
 - حذف hard-delete از باقی history/financial collections و طراحی reversal/
   tombstone/audit با actor، server time، reason، request ID و before/after linkage
   - hard-delete lock برای people/deals/settlements/coin/currency انجام شد
-    (`DOMAIN-HARD-DELETE-EVIDENCE-2026-11-06.md`)؛ allocation audit-linkage مانده
+    (`DOMAIN-HARD-DELETE-EVIDENCE-2026-11-06.md`)؛ allocation Record API قفل و
+    replace با audit before/after در receipts (`1793604698`)
 - atomic/idempotent workspace bootstrap بدون orphan/duplicate در retry یا شروع هم‌زمان
 
 اگر هرکدام آماده نیست، قابلیت cloud/multi-device مرتبط باید صریحاً feature-gated
