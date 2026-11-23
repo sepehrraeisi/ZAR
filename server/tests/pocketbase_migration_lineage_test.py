@@ -24,11 +24,13 @@ CASH_LOCK_MIGRATION = "1793347200_lock_cash_entry_deletion.js"
 HARD_DELETE_MIGRATION = "1793604700_lock_domain_hard_delete.js"
 CLOUD_WRITE_CAS_MIGRATION = "1793604690_cloud_write_cas.js"
 CLOUD_WRITE_CAS_CATALOG_MIGRATION = "1793604695_cloud_write_cas_catalog.js"
+ALLOCATION_REPLACE_CAS_MIGRATION = "1793604698_allocation_replace_cas.js"
 INFRASTRUCTURE_MIGRATIONS = (
     "1793394000_trust_caddy_client_ip.js",
     "1793437200_enable_rate_limits.js",
     CLOUD_WRITE_CAS_MIGRATION,
     CLOUD_WRITE_CAS_CATALOG_MIGRATION,
+    ALLOCATION_REPLACE_CAS_MIGRATION,
     HARD_DELETE_MIGRATION,
     "1793604800_transactional_restore.js",
 )

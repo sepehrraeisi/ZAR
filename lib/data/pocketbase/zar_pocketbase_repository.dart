@@ -430,8 +430,6 @@ class ZarPocketBaseRepository
     }
   }
 
-  static const _batchChunk = 400;
-
   String _allocationId(ZarPaymentAllocation allocation) =>
       'alloc-${allocation.settlementId}-${allocation.targetType.name}-${allocation.targetId}';
 
@@ -601,36 +599,53 @@ class ZarPocketBaseRepository
     if (allocations.any((row) => row.settlementId != settlementId)) {
       throw const FormatException('Allocation source mismatch.');
     }
-    // Replace this movement's rows: delete existing + create the new set.
     final existing = await _client.listRecords(
       _allocations,
       filter:
           "(data.settlementId='$settlementId' && workspace='$_workspaceId')",
     );
-    final deletes = [
+    final expectedBefore = [
       for (final row in existing)
-        (
-          method: 'DELETE',
-          url: '/api/collections/$_allocations/records/${row['id']! as String}',
-          body: null,
-        ),
-    ];
-    final creates = [
-      for (final allocation in allocations)
-        (
-          method: 'POST',
-          url: '/api/collections/$_allocations/records',
-          body: {'id': _allocationId(allocation), ..._row(allocation.toMap())},
-        ),
-    ];
-    final ops = [...deletes, ...creates];
-    for (var i = 0; i < ops.length; i += _batchChunk) {
-      await _client.batch(
-        ops.sublist(
-          i,
-          (i + _batchChunk) < ops.length ? i + _batchChunk : ops.length,
-        ),
+        {
+          'id': row['id'],
+          'data': _data(row),
+        },
+    ]..sort((a, b) => (a['id']! as String).compareTo(b['id']! as String));
+
+    try {
+      await _client.requestJson(
+        'POST',
+        '/api/zar/write/allocations/replace',
+        body: {
+          'workspaceId': _workspaceId,
+          'settlementId': settlementId,
+          'idempotencyKey': _newIdempotencyKey(),
+          'expectedBefore': expectedBefore,
+          'allocations': [
+            for (final allocation in allocations) allocation.toMap(),
+          ],
+        },
       );
+    } on ZarPocketBaseException catch (error) {
+      if (error.statusCode == 409) {
+        final details = _parseWriteConflictMessage(error.message);
+        final code = details?['code'];
+        if (code == 'idempotency_payload_mismatch') {
+          throw ZarCloudWriteConflictException.idempotencyMismatch(
+            collection: _allocations,
+            recordId: settlementId,
+          );
+        }
+        throw ZarCloudWriteConflictException(
+          code: code is String ? code : 'stale_allocation_set',
+          collection: _allocations,
+          recordId: settlementId,
+          message:
+              'تخصیص‌های این تعهد روی سرور تغییر کرده است. '
+              'هیچ تغییری ذخیره نشد. صفحه را تازه کنید و دوباره ثبت کنید.',
+        );
+      }
+      rethrow;
     }
   }
 

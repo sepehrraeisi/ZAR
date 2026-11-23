@@ -235,6 +235,299 @@ function zarWriteUpsert(e) {
   return e.json(200, response);
 }
 
+function zarWriteAllocationId(settlementId, targetType, targetId) {
+  return 'alloc-' + settlementId + '-' + targetType + '-' + targetId;
+}
+
+function zarWriteAllocationData(record) {
+  return zarWriteRecordJson(record, 'data');
+}
+
+function zarWritePlainData(value) {
+  // PocketBase JSON fields can arrive as plain objects, JSON strings, or
+  // raw byte arrays (types.JSONRaw). Match zar_restore.js decoding so
+  // settlementId filtering does not silently drop live rows.
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (zarWriteIsObject(value)) {
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (_) {
+      return value;
+    }
+  }
+  if (typeof value === 'string') {
+    return JSON.parse(value);
+  }
+  if (Array.isArray(value)) {
+    return JSON.parse(toString(value));
+  }
+  return JSON.parse(toString(value));
+}
+
+function zarWriteAllocationSnapshot(app, workspaceId, settlementId) {
+  const matches = app.findRecordsByFilter(
+    'zar_allocations',
+    'workspace = {:workspace}',
+    'id',
+    5000,
+    0,
+    { workspace: workspaceId },
+  );
+  const rows = [];
+  for (let i = 0; i < matches.length; i++) {
+    const record = matches[i];
+    const data = zarWritePlainData(record.get('data'));
+    if (!data || String(data.settlementId) !== String(settlementId)) {
+      continue;
+    }
+    rows.push({
+      id: record.getString('id'),
+      data: data,
+    });
+  }
+  rows.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return rows;
+}
+
+function zarWriteAllocationSetHash(rows) {
+  return $security.sha256(zarWriteCanonicalJson(rows));
+}
+
+function zarWriteNormalizeAllocationRows(settlementId, rawRows) {
+  if (!Array.isArray(rawRows)) {
+    throw new BadRequestError('allocations must be an array.');
+  }
+  if (rawRows.length > 500) {
+    throw new BadRequestError('Too many allocations in one replace.');
+  }
+  const seen = {};
+  const rows = [];
+  for (let i = 0; i < rawRows.length; i++) {
+    const item = rawRows[i];
+    if (!zarWriteIsObject(item)) {
+      throw new BadRequestError('Each allocation must be an object.');
+    }
+    if (item.settlementId !== settlementId) {
+      throw new BadRequestError('Allocation source mismatch.');
+    }
+    const targetType = item.targetType;
+    if (targetType !== 'deal' && targetType !== 'settlement') {
+      throw new BadRequestError('Allocation targetType is invalid.');
+    }
+    const targetId = item.targetId;
+    if (typeof targetId !== 'string' || !ZAR_WRITE_ID_PATTERN.test(targetId)) {
+      throw new BadRequestError('Allocation targetId is invalid.');
+    }
+    if (targetType === 'settlement' && targetId === settlementId) {
+      throw new BadRequestError('A payment cannot allocate to itself.');
+    }
+    const amountToman = item.amountToman;
+    if (!Number.isSafeInteger(amountToman) || amountToman <= 0) {
+      throw new BadRequestError('Allocation amountToman must be a positive integer.');
+    }
+    const key = targetType + ':' + targetId;
+    if (seen[key]) {
+      throw new BadRequestError('Duplicate allocation.');
+    }
+    seen[key] = true;
+    const data = {
+      settlementId: settlementId,
+      targetType: targetType,
+      targetId: targetId,
+      amountToman: amountToman,
+    };
+    rows.push({
+      id: zarWriteAllocationId(settlementId, targetType, targetId),
+      data: data,
+    });
+  }
+  rows.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return rows;
+}
+
+function zarWriteNormalizeExpectedBefore(settlementId, rawRows) {
+  if (rawRows === undefined || rawRows === null) {
+    return [];
+  }
+  if (!Array.isArray(rawRows)) {
+    throw new BadRequestError('expectedBefore must be an array.');
+  }
+  if (rawRows.length > 500) {
+    throw new BadRequestError('expectedBefore is too large.');
+  }
+  const rows = [];
+  for (let i = 0; i < rawRows.length; i++) {
+    const item = rawRows[i];
+    if (!zarWriteIsObject(item) || typeof item.id !== 'string') {
+      throw new BadRequestError('expectedBefore rows are invalid.');
+    }
+    if (!zarWriteIsObject(item.data) || item.data.settlementId !== settlementId) {
+      throw new BadRequestError('expectedBefore settlement mismatch.');
+    }
+    rows.push({ id: item.id, data: item.data });
+  }
+  rows.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return rows;
+}
+
+function zarWriteAllocationRequestHash(
+  workspaceId,
+  settlementId,
+  expectedBefore,
+  rows,
+) {
+  return $security.sha256(
+    zarWriteCanonicalJson({
+      workspaceId: workspaceId,
+      settlementId: settlementId,
+      expectedBefore: expectedBefore,
+      allocations: rows,
+    }),
+  );
+}
+
+function zarWriteReplaceAllocations(e) {
+  const actorId = e.auth.id;
+  const body = e.requestInfo().body;
+  if (!zarWriteIsObject(body)) {
+    throw new BadRequestError('Write body is required.');
+  }
+
+  const workspaceId = body.workspaceId;
+  const settlementId = body.settlementId;
+  if (typeof settlementId !== 'string' || !ZAR_WRITE_ID_PATTERN.test(settlementId)) {
+    throw new BadRequestError('Settlement id is invalid.');
+  }
+  const idempotencyKey = body.idempotencyKey;
+  if (
+    typeof idempotencyKey !== 'string' ||
+    !ZAR_WRITE_KEY_PATTERN.test(idempotencyKey)
+  ) {
+    throw new BadRequestError('Idempotency key is invalid.');
+  }
+
+  const expectedBefore = zarWriteNormalizeExpectedBefore(
+    settlementId,
+    body.expectedBefore,
+  );
+  const nextRows = zarWriteNormalizeAllocationRows(settlementId, body.allocations);
+  const requestHash = zarWriteAllocationRequestHash(
+    workspaceId,
+    settlementId,
+    expectedBefore,
+    nextRows,
+  );
+  if (!ZAR_WRITE_HASH_PATTERN.test(requestHash)) {
+    throw new BadRequestError('Request hash is invalid.');
+  }
+
+  let response = null;
+  e.app.runInTransaction((txApp) => {
+    zarWriteAuthorize(txApp, actorId, workspaceId);
+
+    const existingReceipt = zarWriteFindReceipt(
+      txApp,
+      workspaceId,
+      idempotencyKey,
+    );
+    if (existingReceipt) {
+      if (existingReceipt.getString('requestHash') !== requestHash) {
+        throw new ApiError(
+          409,
+          JSON.stringify({
+            code: 'idempotency_payload_mismatch',
+            collection: 'zar_allocations',
+            recordId: settlementId,
+          }),
+        );
+      }
+      response = zarWriteReceiptResponse(existingReceipt, true);
+      return;
+    }
+
+    let settlement = null;
+    try {
+      settlement = txApp.findRecordById('zar_settlements', settlementId);
+    } catch (_) {
+      settlement = null;
+    }
+    if (!settlement || settlement.getString('workspace') !== workspaceId) {
+      throw new BadRequestError('Allocation source settlement was not found.');
+    }
+
+    const beforeRows = zarWriteAllocationSnapshot(
+      txApp,
+      workspaceId,
+      settlementId,
+    );
+    const beforeHash = zarWriteAllocationSetHash(beforeRows);
+    const expectedHash = zarWriteAllocationSetHash(expectedBefore);
+    if (beforeHash !== expectedHash) {
+      throw new ApiError(
+        409,
+        JSON.stringify({
+          code: 'stale_allocation_set',
+          collection: 'zar_allocations',
+          recordId: settlementId,
+          expectedBeforeHash: expectedHash,
+          currentBeforeHash: beforeHash,
+        }),
+      );
+    }
+
+    for (let i = 0; i < beforeRows.length; i++) {
+      txApp.delete(txApp.findRecordById('zar_allocations', beforeRows[i].id));
+    }
+
+    const collectionModel = txApp.findCollectionByNameOrId('zar_allocations');
+    const afterRows = [];
+    for (let i = 0; i < nextRows.length; i++) {
+      const row = nextRows[i];
+      const record = new Record(collectionModel);
+      record.set('id', row.id);
+      record.set('workspace', workspaceId);
+      record.set('data', row.data);
+      txApp.save(record);
+      afterRows.push({ id: row.id, data: row.data });
+    }
+    const afterHash = zarWriteAllocationSetHash(afterRows);
+
+    const audit = {
+      settlementId: settlementId,
+      beforeHash: beforeHash,
+      afterHash: afterHash,
+      before: beforeRows,
+      after: afterRows,
+    };
+    const receipts = txApp.findCollectionByNameOrId('zar_write_receipts');
+    const receipt = new Record(receipts);
+    receipt.set('workspace', workspaceId);
+    receipt.set('actor', actorId);
+    receipt.set('idempotencyKey', idempotencyKey);
+    receipt.set('collection', 'zar_allocations');
+    receipt.set('recordId', settlementId);
+    receipt.set('requestHash', requestHash);
+    receipt.set('responseRevision', 1);
+    receipt.set('responseRecord', audit);
+    txApp.save(receipt);
+
+    response = {
+      replayed: false,
+      collection: 'zar_allocations',
+      record: audit,
+      revision: 1,
+      beforeHash: beforeHash,
+      afterHash: afterHash,
+    };
+  });
+
+  return e.json(200, response);
+}
+
 module.exports = {
   upsert: zarWriteUpsert,
+  replaceAllocations: zarWriteReplaceAllocations,
+  allocationSetHash: zarWriteAllocationSetHash,
 };

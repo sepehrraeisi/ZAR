@@ -11,6 +11,17 @@ routerAdd(
   $apis.bodyLimit(2 * 1024 * 1024),
 );
 
+routerAdd(
+  'POST',
+  '/api/zar/write/allocations/replace',
+  (e) => {
+    const write = require(`${__hooks}/zar_write.js`);
+    return write.replaceAllocations(e);
+  },
+  $apis.requireAuth('users'),
+  $apis.bodyLimit(2 * 1024 * 1024),
+);
+
 function zarWriteOnCreate(e) {
   // Legacy Record API creates (tests / older clients) get revision 1.
   // Prefer `/api/zar/write/upsert` for idempotent CAS writes.
