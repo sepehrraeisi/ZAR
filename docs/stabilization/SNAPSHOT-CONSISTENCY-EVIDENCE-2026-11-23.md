@@ -17,6 +17,10 @@
 - Flutter repository tests با fake snapshot route
 - lineage شامل `1793604703`؛ restore helper hash به‌روز
 
-## Production
+## Production deploy (2026-11-23)
 
-- Deploy فقط بعد از CI سبز + backup تازه (migration + hooks).
+- PR #35 merged (`2ce0611`); required CI checks green.
+- Fresh atomic backup `zar-20261123T154347Z` (`data.db` SHA-256 `b5e9e991…1932`, quick/integrity ok) + off-site under `Documents\ZAR-OffsiteBackups\zar-20261123T154347Z`.
+- Rollback copies: `/var/tmp/zar-snapshot-consistency-rollback-20261123T1544Z`.
+- stop → Applied `1793604703_workspace_epoch.js` as `zarapp` → start; hooks `zar_write.js` / `zar_bootstrap.js` / `zar_restore.js` / `zar_read.js` / `zar_read_routes.pb.js` installed.
+- Postflight: `zar-server` active; health `200`; `NRestarts=0`; listener `127.0.0.1:8090` only; `_migrations` row present; `zar_workspaces.epoch` column present; anonymous `GET /api/zar/read/snapshot` → **401**.

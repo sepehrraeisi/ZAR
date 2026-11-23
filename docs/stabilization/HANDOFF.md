@@ -6,7 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
-- 2026-11-23 — Consistent snapshot read (ZAR-DATA-006): workspace `epoch` + `GET /api/zar/read/snapshot` with epoch fence; client `loadCompleteSnapshot` switched off seven parallel lists. Evidence: `SNAPSHOT-CONSISTENCY-EVIDENCE-2026-11-23.md`.
+- 2026-11-23 — Consistent snapshot read (ZAR-DATA-006) merged (PR #35 → `2ce0611`) and deployed after backup `zar-20261123T154347Z`: workspace `epoch` + `GET /api/zar/read/snapshot`; client `loadCompleteSnapshot` uses the route. Evidence: `SNAPSHOT-CONSISTENCY-EVIDENCE-2026-11-23.md`.
 - 2026-11-23 — Public signup closed (§10.4): migration `1793604702` merged (PR #32 → `19e1a57`) and deployed after backup `zar-20261123T143904Z`; anonymous create → 403. Evidence: `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`. Concurrent two-device CAS soak suite added (`pocketbase_multi_device_cas_soak_test.py`) as the engineering gate before advertising multi-device.
 - 2026-11-23 — Cloud write CAS slice 2 (coin/currency) merged (PR #24 → `48a44bc`) and deployed after backup `zar-20261123T130106Z`. Evidence: `CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`. Remaining §10.5: allocations/cash CAS, allocation audit-linkage, atomic workspace bootstrap.
 - 2026-11-23 — Allocation replace CAS merged (PR #26 → `26a82f0`) and deployed after backup `zar-20261123T133036Z`. Evidence: `ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md`. Remaining §10.5: cash CAS / cloud cash sync, atomic workspace bootstrap.
