@@ -63,7 +63,11 @@ function zarWriteOnUpdate(e) {
 onRecordCreateRequest(zarWriteOnCreate, 'zar_people');
 onRecordCreateRequest(zarWriteOnCreate, 'zar_deals');
 onRecordCreateRequest(zarWriteOnCreate, 'zar_settlements');
+onRecordCreateRequest(zarWriteOnCreate, 'zar_coin_types');
+onRecordCreateRequest(zarWriteOnCreate, 'zar_currency_types');
 
 onRecordUpdateRequest(zarWriteOnUpdate, 'zar_people');
 onRecordUpdateRequest(zarWriteOnUpdate, 'zar_deals');
 onRecordUpdateRequest(zarWriteOnUpdate, 'zar_settlements');
+onRecordUpdateRequest(zarWriteOnUpdate, 'zar_coin_types');
+onRecordUpdateRequest(zarWriteOnUpdate, 'zar_currency_types');

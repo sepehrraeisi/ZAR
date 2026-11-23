@@ -105,10 +105,10 @@ Record API, hard-delete denied on people/deals/settlements/coin/currency
 types (reversal semantics instead), transactional restore with CAS +
 idempotency receipts, ordinary people/deals/settlements upserts via
 `/api/zar/write/upsert` (revision CAS + write receipts; evidence
-`CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md` — deploy to production only with
-owner OK). Open (documented in DOMAIN-HARD-DELETE-EVIDENCE): CAS for
-coin/currency/allocations/cash, allocation replace audit-linkage, atomic
-workspace bootstrap.
+`CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md` — deployed to production
+2026-11-23). Coin/currency CAS is in flight (`1793604695`, evidence
+`CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`). Open: allocations/cash
+CAS, allocation replace audit-linkage, atomic workspace bootstrap.
 
 ## 4. Production server (owner's VPS)
 
@@ -138,9 +138,9 @@ workspace bootstrap.
 - Phase 0/1/2 of `docs/stabilization/ROADMAP-2026-11.md` are complete
   (integrity locks, rate limiting 13 rules, monitoring, off-site backup,
   transactional restore, Keystore token storage, supply-chain CI).
-- Remaining known work: CAS for coin/currency/allocations/cash, allocation
-  replace audit-linkage, atomic workspace bootstrap (§10.5 leftovers);
-  people/deals/settlements CAS is in code (prod deploy pending owner OK);
+- Remaining known work: allocations/cash CAS, allocation replace
+  audit-linkage, atomic workspace bootstrap (§10.5 leftovers);
+  people/deals/settlements CAS deployed (2026-11-23); coin/currency CAS in PR;
   signup stays closed until launch. Cash journal is still device-local
   (production `zar_cash_entries` empty).
 - Android phone for device QA: Samsung, build-number ≥ 16082

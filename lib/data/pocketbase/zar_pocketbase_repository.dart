@@ -49,7 +49,13 @@ class ZarPocketBaseRepository
   static const _currencyTypes = 'zar_currency_types';
   static const _allocations = 'zar_allocations';
   static const _cash = 'zar_cash_entries';
-  static const _casCollections = {_people, _deals, _settlements};
+  static const _casCollections = {
+    _people,
+    _deals,
+    _settlements,
+    _coinTypes,
+    _currencyTypes,
+  };
 
   String get _workspaceFilter => "workspace='$_workspaceId'";
 
@@ -128,24 +134,7 @@ class ZarPocketBaseRepository
     return null;
   }
 
-  /// Legacy Record API upsert for collections not yet on the CAS route.
-  Future<void> _upsert(
-    String collection, {
-    required String id,
-    required Map<String, Object?> body,
-  }) async {
-    try {
-      await _client.updateRecord(collection, id: id, body: body);
-    } on ZarPocketBaseException catch (error) {
-      if (error.statusCode == 404) {
-        await _client.createRecord(collection, {...body, 'id': id});
-        return;
-      }
-      rethrow;
-    }
-  }
-
-  /// CAS + idempotent upsert for people/deals/settlements.
+  /// CAS + idempotent upsert for people/deals/settlements/coin/currency.
   Future<void> _casUpsert(
     String collection, {
     required String id,
@@ -213,6 +202,8 @@ class ZarPocketBaseRepository
     _ingestRevisions(_people, results[0]);
     _ingestRevisions(_deals, results[1]);
     _ingestRevisions(_settlements, results[2]);
+    _ingestRevisions(_coinTypes, results[3]);
+    _ingestRevisions(_currencyTypes, results[4]);
     return ZarDomainSnapshot(
       cashEntries: results[6]
           .map((row) => ZarCashEntry.fromMap(_data(row)))
@@ -327,6 +318,12 @@ class ZarPocketBaseRepository
       }
       for (final settlement in snapshot.settlements) {
         _rememberRevision(_settlements, settlement.id, 1);
+      }
+      for (final coinType in snapshot.coinTypes) {
+        _rememberRevision(_coinTypes, coinType.id, 1);
+      }
+      for (final currencyType in snapshot.currencyTypes) {
+        _rememberRevision(_currencyTypes, currencyType.id, 1);
       }
     } on ZarPocketBaseException catch (error) {
       throw switch (error.statusCode) {
@@ -552,7 +549,7 @@ class ZarPocketBaseRepository
 
   @override
   Future<void> saveCoinType(ZarCoinType coinType) =>
-      _upsert(_coinTypes, id: coinType.id, body: _row(coinType.toMap()));
+      _casUpsert(_coinTypes, id: coinType.id, data: coinType.toMap());
 
   @override
   Future<void> archiveCoinType(ZarCoinType coinType) => saveCoinType(
@@ -572,10 +569,10 @@ class ZarPocketBaseRepository
       .toList(growable: false);
 
   @override
-  Future<void> saveCurrencyType(ZarCurrencyType currencyType) => _upsert(
+  Future<void> saveCurrencyType(ZarCurrencyType currencyType) => _casUpsert(
     _currencyTypes,
     id: currencyType.id,
-    body: _row(currencyType.toMap()),
+    data: currencyType.toMap(),
   );
 
   @override

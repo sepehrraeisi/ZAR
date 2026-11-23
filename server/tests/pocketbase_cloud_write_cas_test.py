@@ -306,6 +306,56 @@ def run(pocketbase: Path) -> None:
                 _expect("record api update without revision denied", status, 400)
                 print("PASS record API requires revision")
 
+                # Slice 2: coin catalog uses the same CAS route.
+                coin_id = "c" + secrets.token_hex(6)
+                coin_data = {
+                    "id": coin_id,
+                    "name": "CAS coin",
+                    "archived": False,
+                    "category": "official",
+                    "defaultFineness": "900",
+                    "defaultPricingMethod": "perPiece",
+                    "defaultWeightGrams": "8.133",
+                    "createdAt": "2026-11-01T00:00:00.000Z",
+                    "updatedAt": "2026-11-01T00:00:00.000Z",
+                }
+                coin_key = secrets.token_hex(16)
+                status, coin_created = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_coin_types",
+                        "id": coin_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": 0,
+                        "idempotencyKey": coin_key,
+                        "data": coin_data,
+                    },
+                    token=token,
+                )
+                _expect("cas coin create", status, 200)
+                if coin_created.get("revision") != 1:
+                    raise AssertionError(f"unexpected coin revision: {coin_created}")
+                print("PASS cas coin create revision=1")
+
+                status, coin_stale = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_coin_types",
+                        "id": coin_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": 0,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": {**coin_data, "name": "stale coin"},
+                    },
+                    token=token,
+                )
+                _expect("stale coin revision rejected", status, 409)
+                print("PASS stale coin revision rejected")
+
             finally:
                 process.terminate()
                 try:
