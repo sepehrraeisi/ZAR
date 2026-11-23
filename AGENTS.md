@@ -106,7 +106,7 @@ types (reversal semantics instead), transactional restore with CAS +
 idempotency receipts, ordinary people/deals/settlements upserts via
 `/api/zar/write/upsert` (revision CAS + write receipts; evidence
 `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md` — deployed to production
-2026-11-23). Coin/currency CAS is in flight (`1793604695`, evidence
+2026-11-23). Coin/currency CAS deployed (`1793604695`, evidence
 `CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`). Open: allocations/cash
 CAS, allocation replace audit-linkage, atomic workspace bootstrap.
 
@@ -140,7 +140,7 @@ CAS, allocation replace audit-linkage, atomic workspace bootstrap.
   transactional restore, Keystore token storage, supply-chain CI).
 - Remaining known work: allocations/cash CAS, allocation replace
   audit-linkage, atomic workspace bootstrap (§10.5 leftovers);
-  people/deals/settlements CAS deployed (2026-11-23); coin/currency CAS in PR;
+  people/deals/settlements + coin/currency CAS deployed (2026-11-23);
   signup stays closed until launch. Cash journal is still device-local
   (production `zar_cash_entries` empty).
 - Android phone for device QA: Samsung, build-number ≥ 16082
