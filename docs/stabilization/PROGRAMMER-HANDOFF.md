@@ -634,6 +634,9 @@ abuse/rate limit، atomic workspace bootstrap و duplicate/orphan tests الزا
     (`DOMAIN-HARD-DELETE-EVIDENCE-2026-11-06.md`)؛ allocation Record API قفل و
     replace با audit before/after در receipts (`1793604698`)
 - atomic/idempotent workspace bootstrap بدون orphan/duplicate در retry یا شروع هم‌زمان
+  - **انجام شد (2026-11-23):** `POST /api/zar/bootstrap/workspace` + id قطعی
+    `ws{userId}` + قفل Record API create؛ evidence
+    `WORKSPACE-BOOTSTRAP-EVIDENCE-2026-11-23.md` (**prod deploy**)
 
 اگر هرکدام آماده نیست، قابلیت cloud/multi-device مرتبط باید صریحاً feature-gated
 شود.

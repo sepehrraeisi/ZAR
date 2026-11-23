@@ -30,13 +30,14 @@
 - [ ] supply chain: secret/dependency scanning، SBOM، pinned Actions، signed releases
 - [x] cloud invariants: CAS/idempotency برای writeهای حساس people/deals/settlements (اسلایس ۱؛ evidence `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`؛ **production deploy 2026-11-23**)
 - [x] cloud invariants: coin/currency CAS (اسلایس ۲؛ `CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23)
-- [x] cloud invariants: allocation replace CAS + audit (اسلایس ۳؛ `ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23) — مانده: cash CAS / cloud cash sync؛ gate تبلیغ multi-device تا cash + bootstrap + soak
+- [x] cloud invariants: allocation replace CAS + audit (اسلایس ۳؛ `ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23)
+- [x] atomic workspace bootstrap (ZAR-DATA-005؛ `WORKSPACE-BOOTSTRAP-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23) — مانده: cash CAS / cloud cash sync؛ gate تبلیغ multi-device تا cash + soak
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
 
 - [ ] تکمیل runbooks (release, incident, backup) و اجرای دوباره توسط اپراتور دوم
 - [ ] Release Candidate + soak ۷-۱۴ روزه بدون P0/P1
-- [ ] تصمیم باز کردن ثبت‌نام + bootstrap اتمیک workspace و ضد-abuse
+- [ ] تصمیم باز کردن ثبت‌نام + ضد-abuse (bootstrap اتمیک آماده است)
 - [ ] sign-off: مالک محصول، امنیت، عملیات
 
 ## فاز ۴ — حالت «فقط آپدیت» (دائمی)
