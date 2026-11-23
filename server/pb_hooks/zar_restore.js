@@ -1190,11 +1190,17 @@ function zarRestoreReplaceState(app, workspaceId, snapshot) {
   }
   for (const definition of ZAR_RESTORE_COLLECTIONS) {
     const collection = app.findCollectionByNameOrId(definition.name);
+    const hasRevision = !!collection.fields.getByName('revision');
     for (const row of snapshot[definition.key]) {
       const record = new Record(collection);
       record.set('id', row.id);
       record.set('workspace', workspaceId);
       record.set('data', row.data);
+      // Ordinary upsert CAS (1793604690) requires revision on people/deals/
+      // settlements. Snapshot restore installs a fresh lineage at revision 1.
+      if (hasRevision) {
+        record.set('revision', 1);
+      }
       app.save(record);
     }
   }

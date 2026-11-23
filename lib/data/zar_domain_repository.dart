@@ -88,6 +88,54 @@ class ZarCloudRestoreException implements Exception {
   String toString() => message;
 }
 
+/// A cloud upsert was rejected because the local revision is stale or the
+/// idempotency key was reused with a different payload.
+///
+/// Callers must reload before retrying — never overwrite silently.
+class ZarCloudWriteConflictException implements Exception {
+  const ZarCloudWriteConflictException({
+    required this.code,
+    this.collection,
+    this.recordId,
+    this.currentRevision,
+    this.message =
+        'اطلاعات روی سرور از آخرین نسخهٔ این دستگاه جلوتر است. '
+        'هیچ تغییری ذخیره نشد. صفحه را تازه کنید و دوباره ثبت کنید.',
+  });
+
+  const ZarCloudWriteConflictException.staleRevision({
+    String? collection,
+    String? recordId,
+    int? currentRevision,
+  }) : this(
+         code: 'stale_revision',
+         collection: collection,
+         recordId: recordId,
+         currentRevision: currentRevision,
+       );
+
+  const ZarCloudWriteConflictException.idempotencyMismatch({
+    String? collection,
+    String? recordId,
+  }) : this(
+         code: 'idempotency_payload_mismatch',
+         collection: collection,
+         recordId: recordId,
+         message:
+             'درخواست تکراری با محتوای متفاوت رد شد و هیچ تغییری ذخیره نشد. '
+             'صفحه را تازه کنید و دوباره ثبت کنید.',
+       );
+
+  final String code;
+  final String? collection;
+  final String? recordId;
+  final int? currentRevision;
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 abstract interface class ZarCashRepository {
   Future<void> appendCashEntry(ZarCashEntry entry);
 }

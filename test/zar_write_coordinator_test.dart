@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_app/application/zar_write_coordinator.dart';
+import 'package:flutter_app/data/zar_domain_repository.dart';
 
 void main() {
   test('reports success only after persistence future completes', () async {
@@ -64,5 +65,23 @@ void main() {
     expect(result.succeeded, isFalse);
     expect(result.error, isA<ZarNoFailedWrite>());
     expect(result.canRetry, isFalse);
+  });
+
+  test('cloud write conflicts are not blindly retryable', () async {
+    final coordinator = ZarWriteCoordinator();
+    const conflict = ZarCloudWriteConflictException.staleRevision(
+      collection: 'zar_people',
+      recordId: 'p1',
+      currentRevision: 2,
+    );
+
+    final result = await coordinator.run(() async {
+      throw conflict;
+    });
+
+    expect(result.succeeded, isFalse);
+    expect(result.error, same(conflict));
+    expect(result.canRetry, isFalse);
+    expect(coordinator.hasRetryableFailure, isFalse);
   });
 }

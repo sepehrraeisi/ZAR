@@ -21,9 +21,13 @@ TEMPLATE_MIGRATIONS = (
 )
 LOCK_MIGRATION = "1793260800_lock_workspace_deletion.js"
 CASH_LOCK_MIGRATION = "1793347200_lock_cash_entry_deletion.js"
+HARD_DELETE_MIGRATION = "1793604700_lock_domain_hard_delete.js"
+CLOUD_WRITE_CAS_MIGRATION = "1793604690_cloud_write_cas.js"
 INFRASTRUCTURE_MIGRATIONS = (
     "1793394000_trust_caddy_client_ip.js",
     "1793437200_enable_rate_limits.js",
+    CLOUD_WRITE_CAS_MIGRATION,
+    HARD_DELETE_MIGRATION,
     "1793604800_transactional_restore.js",
 )
 LOCKED_MEMBER_UPDATE_RULE = (
@@ -116,6 +120,25 @@ def _assert_final_state(data_dir: Path) -> None:
         ).fetchone()
         if receipt_rules is None or any(rule is not None for rule in receipt_rules):
             raise AssertionError("restore receipts are not private")
+        write_receipt_rules = connection.execute(
+            "SELECT listRule, viewRule, createRule, updateRule, deleteRule "
+            "FROM _collections WHERE name = 'zar_write_receipts'"
+        ).fetchone()
+        if write_receipt_rules is None or any(
+            rule is not None for rule in write_receipt_rules
+        ):
+            raise AssertionError("write receipts are not private")
+        for collection_name in ("zar_people", "zar_deals", "zar_settlements"):
+            fields_json = connection.execute(
+                "SELECT fields FROM _collections WHERE name = ?",
+                (collection_name,),
+            ).fetchone()
+            if fields_json is None:
+                raise AssertionError(f"{collection_name} is missing")
+            parsed_fields = json.loads(fields_json[0])
+            names = {field.get("name") for field in parsed_fields}
+            if "revision" not in names:
+                raise AssertionError(f"{collection_name} is missing revision")
         settings_row = connection.execute(
             "SELECT value FROM _params WHERE id = 'settings'"
         ).fetchone()

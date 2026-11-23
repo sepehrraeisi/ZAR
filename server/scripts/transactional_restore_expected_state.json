@@ -8,7 +8,7 @@
     },
     "helperHook": {
       "name": "zar_restore.js",
-      "sha256": "55a08272eb0866ceb603466fed21014745a26494fd9ee6a782d2d10c2381f8b5"
+      "sha256": "426f969375db72e545d2c836613fee7f6d37746517bf5257650832a29582fb37"
     },
     "routeHook": {
       "name": "zar_restore_routes.pb.js",

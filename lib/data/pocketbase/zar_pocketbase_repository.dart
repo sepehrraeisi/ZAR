@@ -38,6 +38,10 @@ class ZarPocketBaseRepository
   final String _businessId;
   final ZarDomainBackupCodec _codec;
 
+  /// Server-issued revisions for people/deals/settlements CAS upserts.
+  /// Keyed as `collection:id`. Missing means create (`expectedRevision=0`).
+  final Map<String, int> _revisions = <String, int>{};
+
   static const _people = 'zar_people';
   static const _deals = 'zar_deals';
   static const _settlements = 'zar_settlements';
@@ -45,6 +49,7 @@ class ZarPocketBaseRepository
   static const _currencyTypes = 'zar_currency_types';
   static const _allocations = 'zar_allocations';
   static const _cash = 'zar_cash_entries';
+  static const _casCollections = {_people, _deals, _settlements};
 
   String get _workspaceFilter => "workspace='$_workspaceId'";
 
@@ -71,6 +76,59 @@ class ZarPocketBaseRepository
     'data': payload,
   };
 
+  String _revisionKey(String collection, String id) => '$collection:$id';
+
+  int _expectedRevision(String collection, String id) =>
+      _revisions[_revisionKey(collection, id)] ?? 0;
+
+  void _rememberRevision(String collection, String id, int revision) {
+    _revisions[_revisionKey(collection, id)] = revision;
+  }
+
+  void _ingestRevisions(String collection, List<Map<String, Object?>> rows) {
+    for (final row in rows) {
+      final id = row['id'];
+      if (id is! String || id.isEmpty) continue;
+      final raw = row['revision'];
+      final revision = switch (raw) {
+        int value => value,
+        num value => value.toInt(),
+        _ => 1,
+      };
+      _rememberRevision(collection, id, revision < 1 ? 1 : revision);
+    }
+  }
+
+  static String _newIdempotencyKey() {
+    final random = Random.secure();
+    return List.generate(
+      16,
+      (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+    ).join();
+  }
+
+  static Map<String, Object?>? _parseWriteConflictMessage(String message) {
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) return null;
+    // PocketBase appends a trailing period to ApiError messages.
+    final candidates = <String>{
+      trimmed,
+      if (trimmed.endsWith('.')) trimmed.substring(0, trimmed.length - 1),
+    };
+    for (final candidate in candidates) {
+      try {
+        final decoded = jsonDecode(candidate);
+        if (decoded is Map) {
+          return Map<String, Object?>.from(decoded);
+        }
+      } on FormatException {
+        continue;
+      }
+    }
+    return null;
+  }
+
+  /// Legacy Record API upsert for collections not yet on the CAS route.
   Future<void> _upsert(
     String collection, {
     required String id,
@@ -87,6 +145,60 @@ class ZarPocketBaseRepository
     }
   }
 
+  /// CAS + idempotent upsert for people/deals/settlements.
+  Future<void> _casUpsert(
+    String collection, {
+    required String id,
+    required Map<String, Object?> data,
+  }) async {
+    assert(_casCollections.contains(collection));
+    final expectedRevision = _expectedRevision(collection, id);
+    final idempotencyKey = _newIdempotencyKey();
+    try {
+      final result = await _client.requestJson(
+        'POST',
+        '/api/zar/write/upsert',
+        body: {
+          'collection': collection,
+          'id': id,
+          'workspaceId': _workspaceId,
+          'expectedRevision': expectedRevision,
+          'idempotencyKey': idempotencyKey,
+          'data': data,
+        },
+      );
+      final revision = result['revision'];
+      if (revision is int) {
+        _rememberRevision(collection, id, revision);
+      } else if (revision is num) {
+        _rememberRevision(collection, id, revision.toInt());
+      }
+    } on ZarPocketBaseException catch (error) {
+      if (error.statusCode == 409) {
+        final details = _parseWriteConflictMessage(error.message);
+        final code = details?['code'];
+        final current = details?['currentRevision'];
+        final currentRevision = switch (current) {
+          int value => value,
+          num value => value.toInt(),
+          _ => null,
+        };
+        if (code == 'idempotency_payload_mismatch') {
+          throw ZarCloudWriteConflictException.idempotencyMismatch(
+            collection: collection,
+            recordId: id,
+          );
+        }
+        throw ZarCloudWriteConflictException.staleRevision(
+          collection: collection,
+          recordId: id,
+          currentRevision: currentRevision,
+        );
+      }
+      rethrow;
+    }
+  }
+
   @override
   Future<ZarDomainSnapshot> loadCompleteSnapshot() async {
     final results = await Future.wait([
@@ -98,6 +210,9 @@ class ZarPocketBaseRepository
       _client.listRecords(_allocations, filter: _workspaceFilter),
       _client.listRecords(_cash, filter: _workspaceFilter),
     ]);
+    _ingestRevisions(_people, results[0]);
+    _ingestRevisions(_deals, results[1]);
+    _ingestRevisions(_settlements, results[2]);
     return ZarDomainSnapshot(
       cashEntries: results[6]
           .map((row) => ZarCashEntry.fromMap(_data(row)))
@@ -202,6 +317,17 @@ class ZarPocketBaseRepository
         expectedStateHash: expectedStateHash,
         expectedCounts: _restoreCounts(snapshot),
       );
+      // Transactional restore rewrites rows at revision 1; drop stale cache.
+      _revisions.clear();
+      for (final person in snapshot.people) {
+        _rememberRevision(_people, person.id, 1);
+      }
+      for (final deal in snapshot.deals) {
+        _rememberRevision(_deals, deal.id, 1);
+      }
+      for (final settlement in snapshot.settlements) {
+        _rememberRevision(_settlements, settlement.id, 1);
+      }
     } on ZarPocketBaseException catch (error) {
       throw switch (error.statusCode) {
         403 => const ZarCloudRestoreException.sharedWorkspace(),
@@ -389,20 +515,24 @@ class ZarPocketBaseRepository
 
   @override
   Future<void> savePerson(ZarPerson person, {String auditAction = 'edit'}) =>
-      _upsert(_people, id: person.id, body: _row(_codec.personRecord(person)));
+      _casUpsert(
+        _people,
+        id: person.id,
+        data: _codec.personRecord(person),
+      );
 
   @override
   Future<void> saveDeal(ZarDeal deal, {String auditAction = 'edit'}) =>
-      _upsert(_deals, id: deal.id, body: _row(_codec.dealRecord(deal)));
+      _casUpsert(_deals, id: deal.id, data: _codec.dealRecord(deal));
 
   @override
   Future<void> saveSettlement(
     ZarSettlement settlement, {
     String auditAction = 'edit',
-  }) => _upsert(
+  }) => _casUpsert(
     _settlements,
     id: settlement.id,
-    body: _row(_codec.settlementRecord(settlement)),
+    data: _codec.settlementRecord(settlement),
   );
 
   @override

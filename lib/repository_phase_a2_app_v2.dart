@@ -246,9 +246,13 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       return true;
     }
 
+    final conflict = result.error;
+    final message = conflict is ZarCloudWriteConflictException
+        ? conflict.message
+        : 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('اطلاعات ثبت نشد. دوباره تلاش کنید.'),
+        content: Text(message),
         duration: const Duration(seconds: 6),
         action: result.canRetry
             ? SnackBarAction(
