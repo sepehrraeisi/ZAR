@@ -2,8 +2,8 @@
 
 Starts a disposable PocketBase instance against the repository's real
 migrations and proves that workspace members and anonymous clients can no
-longer hard-delete financial/history rows, while the client's atomic
-allocation-replace flow keeps working.
+longer hard-delete financial/history rows. Allocation rows are route-only:
+Record API create/delete are denied; `/api/zar/write/allocations/replace` works.
 """
 
 from __future__ import annotations
@@ -117,8 +117,10 @@ def run(pocketbase: Path) -> None:
         temp_root = Path(temp)
         data_dir = temp_root / "pb_data"
         migrations_dir = temp_root / "pb_migrations"
+        hooks_dir = temp_root / "pb_hooks"
         log_path = temp_root / "pocketbase.log"
         shutil.copytree(source_migrations, migrations_dir)
+        shutil.copytree(repository_root / "server" / "pb_hooks", hooks_dir)
 
         _migrate(pocketbase, data_dir, migrations_dir, "up")
         _migrate(pocketbase, data_dir, migrations_dir, "down", "1")
@@ -132,6 +134,8 @@ def run(pocketbase: Path) -> None:
                     f"--http=127.0.0.1:{port}",
                     f"--dir={data_dir}",
                     f"--migrationsDir={migrations_dir}",
+                    f"--hooksDir={hooks_dir}",
+                    "--hooksWatch=false",
                 ],
                 cwd=repository_root,
                 stdout=log,
@@ -251,7 +255,7 @@ def run(pocketbase: Path) -> None:
                 _expect("settlement create", status, 200)
                 settlement_id = str(settlement["id"])
 
-                allocation_id = f"alloc{suffix[:8]}1"
+                allocation_id = f"alloc-{settlement_id}-deal-dealx{suffix[:4]}"
                 status, _ = _request(
                     base_url,
                     "POST",
@@ -259,11 +263,40 @@ def run(pocketbase: Path) -> None:
                     body={
                         "id": allocation_id,
                         "workspace": workspace_id,
-                        "data": {"settlementId": settlement_id},
+                        "data": {
+                            "settlementId": settlement_id,
+                            "targetType": "deal",
+                            "targetId": f"dealx{suffix[:4]}",
+                            "amountToman": 1,
+                        },
                     },
                     token=token,
                 )
-                _expect("allocation create (client replace flow)", status, 200)
+                _expect("allocation Record API create denied", status, 403)
+
+                status, replaced = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/allocations/replace",
+                    body={
+                        "workspaceId": workspace_id,
+                        "settlementId": settlement_id,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "expectedBefore": [],
+                        "allocations": [
+                            {
+                                "settlementId": settlement_id,
+                                "targetType": "deal",
+                                "targetId": f"dealx{suffix[:4]}",
+                                "amountToman": 1,
+                            }
+                        ],
+                    },
+                    token=token,
+                )
+                _expect("allocation replace route", status, 200)
+                if replaced.get("replayed") is not False:
+                    raise AssertionError(f"unexpected replace receipt: {replaced}")
 
                 status, _ = _request(
                     base_url,
@@ -271,11 +304,7 @@ def run(pocketbase: Path) -> None:
                     f"/api/collections/zar_allocations/records/{allocation_id}",
                     token=token,
                 )
-                _expect(
-                    "allocation delete still allowed (client replace flow)",
-                    status,
-                    204,
-                )
+                _expect("allocation Record API delete denied", status, 403)
             finally:
                 process.terminate()
                 process.wait(timeout=15)
