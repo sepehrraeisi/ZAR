@@ -128,20 +128,16 @@ def _workspace(
     status, workspace = _request(
         base_url,
         "POST",
-        "/api/collections/zar_workspaces/records",
-        body={"displayName": label, "members": [user_id]},
+        "/api/zar/bootstrap/workspace",
+        body={"displayName": label},
         token=token,
     )
     _expect(f"{label} workspace create", status, 200)
-    workspace_id = str(workspace["id"])
-    status, _ = _request(
-        base_url,
-        "PATCH",
-        f"/api/collections/users/records/{user_id}",
-        body={"workspace": workspace_id},
-        token=token,
-    )
-    _expect(f"{label} workspace pin", status, 200)
+    workspace_id = str(workspace["workspaceId"])
+    if workspace_id != f"ws{user_id}":
+        raise AssertionError(
+            f"{label} expected deterministic workspace id ws{user_id}, got {workspace_id}"
+        )
     return workspace_id
 
 
@@ -765,22 +761,17 @@ def run(pocketbase: Path) -> None:
                 )
                 _expect("malformed reminder plan rejected", status, 400)
 
-                status, shared = _request(
-                    base_url,
-                    "POST",
-                    "/api/collections/zar_workspaces/records",
-                    body={"displayName": "shared", "members": [user2, user1]},
-                    token=token2,
-                )
-                _expect("shared workspace test setup", status, 200)
-                status, _ = _request(
-                    base_url,
-                    "PATCH",
-                    f"/api/collections/users/records/{user2}",
-                    body={"workspace": str(shared["id"])},
-                    token=token2,
-                )
-                _expect("shared workspace pin", status, 200)
+                # Multi-member setup bypasses locked Record API create/membership
+                # mutation via sqlite so we can still prove restore refuses it.
+                shared_id = f"ws{user2}"
+                members_json = json.dumps([user2, user1])
+                with sqlite3.connect(data_dir / "data.db") as connection:
+                    connection.execute(
+                        "UPDATE zar_workspaces SET members = ? WHERE id = ?",
+                        (members_json, shared_id),
+                    )
+                    connection.commit()
+                print("PASS shared workspace test setup")
                 status, _ = _request(
                     base_url, "GET", "/api/zar/restore/state", token=token2
                 )

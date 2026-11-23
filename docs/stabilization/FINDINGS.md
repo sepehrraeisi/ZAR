@@ -94,7 +94,7 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Evidence: `lib/features/auth/zar_cloud_shell.dart:89-100` creates a workspace, then patches the user in a separate request.
 - Impact: network loss or simultaneous first launch can create orphan or duplicate workspaces.
 - Required remediation: one server-side transactional/idempotent bootstrap command with a deterministic ownership constraint.
-- Status: open.
+- Status: **contained** — `POST /api/zar/bootstrap/workspace` + migration `1793604699` (evidence `WORKSPACE-BOOTSTRAP-EVIDENCE-2026-11-23.md`; production deploy tracked there).
 
 ## High findings
 

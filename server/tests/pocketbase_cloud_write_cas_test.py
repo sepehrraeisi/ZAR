@@ -171,12 +171,12 @@ def run(pocketbase: Path) -> None:
                 status, workspace = _request(
                     base_url,
                     "POST",
-                    "/api/collections/zar_workspaces/records",
-                    body={"displayName": "Write CAS test", "members": [user_id]},
+                    "/api/zar/bootstrap/workspace",
+                    body={"displayName": "Write CAS test"},
                     token=token,
                 )
                 _expect("workspace create", status, 200)
-                workspace_id = str(workspace["id"])
+                workspace_id = str(workspace["workspaceId"])
 
                 person_id = f"p{suffix[:12]}"
                 idem_key = secrets.token_hex(16)

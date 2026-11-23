@@ -89,15 +89,16 @@ class ZarPocketBaseWorkspaceBootstrapper {
     final record = await client.getRecord('users', id: user.uid);
     final existing = record['workspace'];
     if (existing is String && existing.isNotEmpty) return existing;
-    // First run for this account: create the workspace and claim it.
-    final workspace = await client.createRecord('zar_workspaces', {
-      'displayName': 'ZAR+',
-      'members': [user.uid],
-    });
-    final workspaceId = workspace['id']! as String;
-    await client.updateRecord('users', id: user.uid, body: {
-      'workspace': workspaceId,
-    });
+    // Server-side transactional create+pin (deterministic id; idempotent).
+    final response = await client.requestJson(
+      'POST',
+      '/api/zar/bootstrap/workspace',
+      body: const {'displayName': 'ZAR+'},
+    );
+    final workspaceId = response['workspaceId'];
+    if (workspaceId is! String || workspaceId.isEmpty) {
+      throw const FormatException('Bootstrap response missing workspaceId.');
+    }
     return workspaceId;
   }
 }

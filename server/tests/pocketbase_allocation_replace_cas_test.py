@@ -151,25 +151,12 @@ def run(pocketbase: Path) -> None:
                 status, workspace = _request(
                     base_url,
                     "POST",
-                    "/api/collections/zar_workspaces/records",
-                    body={
-                        "name": "alloc-cas",
-                        "displayName": "Alloc CAS",
-                        "members": [user_id],
-                        "createdAt": "2026-11-01T00:00:00.000Z",
-                    },
+                    "/api/zar/bootstrap/workspace",
+                    body={"displayName": "Alloc CAS"},
                     token=token,
                 )
                 _expect("workspace", status, 200)
-                workspace_id = str(workspace["id"])
-                status, _ = _request(
-                    base_url,
-                    "PATCH",
-                    f"/api/collections/users/records/{user_id}",
-                    body={"workspace": workspace_id},
-                    token=token,
-                )
-                _expect("pin workspace", status, 200)
+                workspace_id = str(workspace["workspaceId"])
 
                 settlement_id = "stlm" + secrets.token_hex(4)
                 status, _ = _request(
