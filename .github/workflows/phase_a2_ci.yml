@@ -54,6 +54,7 @@ jobs:
           python3 server/tests/pocketbase_workspace_bootstrap_test.py --pocketbase "$PWD/pocketbase"
           python3 server/tests/pocketbase_cash_append_cas_test.py --pocketbase "$PWD/pocketbase"
           python3 server/tests/pocketbase_signup_policy_test.py --pocketbase "$PWD/pocketbase"
+          python3 server/tests/pocketbase_multi_device_cas_soak_test.py --pocketbase "$PWD/pocketbase"
           python3 server/tests/pocketbase_migration_lineage_test.py --pocketbase "$PWD/pocketbase"
           python3 server/tests/pocketbase_transactional_restore_test.py --pocketbase "$PWD/pocketbase"
 
