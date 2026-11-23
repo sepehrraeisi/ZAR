@@ -160,6 +160,32 @@ def run(pocketbase: Path) -> None:
                 _expect("workspace", status, 200)
                 workspace_id = str(workspace["workspaceId"])
 
+                person_id = "p" + secrets.token_hex(6)
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_people",
+                        "id": person_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": 0,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": {
+                            "id": person_id,
+                            "displayName": "Alloc Person",
+                            "phone": None,
+                            "note": None,
+                            "archived": False,
+                            "createdAt": "2026-11-01T00:00:00.000Z",
+                            "updatedAt": "2026-11-01T00:00:00.000Z",
+                            "createdBy": "test",
+                        },
+                    },
+                    token=token,
+                )
+                _expect("person upsert", status, 200)
+
                 settlement_id = "stlm" + secrets.token_hex(4)
                 status, _ = _request(
                     base_url,
@@ -173,7 +199,7 @@ def run(pocketbase: Path) -> None:
                         "idempotencyKey": secrets.token_hex(16),
                         "data": {
                             "id": settlement_id,
-                            "personId": "p1",
+                            "personId": person_id,
                             "direction": "receive",
                             "status": "open",
                             "amount": {

@@ -77,7 +77,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Parity gap: local Drift validates cash, allocations and related writes transactionally; cloud save paths do not enforce the same rules.
 - Impact: invalid references, forged actor fields, outer/inner ID mismatch, impossible state transitions and unbalanced business state can be stored.
 - Required remediation: versioned server command/API boundary with schema validation, invariant checks and atomic transactions; shared parity suite across local and cloud repositories.
-- Status: open.
+- Progress (2026-11-23): upsert path validates id match, enums, required scalars, person references; cash append already validates kind/direction; evidence `DOMAIN-WRITE-INVARIANTS-EVIDENCE-2026-11-23.md`. Remaining: deep amount/pricing parity shared with restore, forged actor hardening.
+- Status: **partially contained** on write CAS routes; deep parity still open.
 
 ### ZAR-DATA-004 — historical records are deletable and audit evidence is absent
 
@@ -114,6 +115,7 @@ The green baseline is valuable but does not prove production safety. Existing te
 
 - Client mappings and server update rules permit previously completed records to be reopened/cancelled or rewritten.
 - Required: approved lifecycle transition matrix, period lock and reversal-only correction for posted history.
+- Progress (2026-11-23): terminal deal/settlement statuses cannot leave `completed`/`cancelled` via upsert (409 `lifecycle_locked`). Evidence shared with `DOMAIN-WRITE-INVARIANTS-EVIDENCE-2026-11-23.md`. Remaining: period lock, reversal-only posted correction, field-level rewrite policy on terminal rows.
 
 ### ZAR-MOB-001 — session token and local financial data protection are insufficient
 
