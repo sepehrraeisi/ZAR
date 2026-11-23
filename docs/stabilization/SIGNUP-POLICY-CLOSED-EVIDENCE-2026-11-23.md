@@ -26,7 +26,13 @@ Owner/roadmap: ثبت‌نام عمومی تا انتشار بسته می‌ما
 - lineage + canary hashes به‌روز
 - `flutter analyze`
 
-## Production
+## Production deploy (2026-11-23)
 
-- Deploy فقط بعد از CI سبز + backup تازه.
-- باز کردن signup = migration جدید رو به جلو + abuse/rate-limit evidence جدا.
+- PR #32 merged (`19e1a57`); required CI checks green.
+- Fresh atomic backup `zar-20261123T143904Z` (`data.db` SHA-256 `3d497442…6c2c`, quick/integrity ok) + off-site byte-identical under `Documents\ZAR-OffsiteBackups\zar-20261123T143904Z`.
+- stop → Applied `1793604702_close_public_signup.js` as `zarapp` → start.
+- Postflight: `zar-server`/`caddy`/`zar-backup.timer` active; health `200`; `NRestarts=0`; listener `127.0.0.1:8090` only.
+- Schema: `users.createRule` is SQL `NULL`; anonymous `POST /api/collections/users/records` → **403** (`Only superusers can perform this action.`).
+- Host artifact SHA-256: migration `d68d39ce…5973` (installed copy).
+
+باز کردن signup = migration جدید رو به جلو + abuse/rate-limit evidence جدا.
