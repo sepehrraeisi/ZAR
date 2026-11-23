@@ -80,7 +80,7 @@ class _Backend:
         self.identity = ""
         self.password = ""
         self.user_id = "cloneuser000001"
-        self.workspace_id = "cloneworkspace1"
+        self.workspace_id = "wscloneuser000001"
         self.tokens: set[str] = set()
         self.auth_count = 0
         self.committed = False
@@ -190,11 +190,18 @@ class _Handler(BaseHTTPRequestHandler):
                 )
                 return
 
-            if self.path == "/api/collections/zar_workspaces/records":
-                if not self._authorized() or body.get("members") != [self.backend.user_id]:
+            if self.path == "/api/zar/bootstrap/workspace":
+                if not self._authorized():
                     self._send(403, {"message": "denied"})
                     return
-                self._send(200, {"id": self.backend.workspace_id})
+                self._send(
+                    200,
+                    {
+                        "workspaceId": self.backend.workspace_id,
+                        "created": True,
+                        "pinned": True,
+                    },
+                )
                 return
 
             if self.path == "/api/zar/restore/commit":
