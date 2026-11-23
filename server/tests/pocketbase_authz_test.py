@@ -254,6 +254,19 @@ def run(pocketbase: Path) -> None:
                         "minorUnitScale": 0,
                     },
                 }
+                cash_data = {
+                    "id": cash_id,
+                    "businessId": workspace_id,
+                    "kind": "contribution",
+                    "direction": "receive",
+                    "amount": cash_amount,
+                    "occurredAt": "2026-01-01T00:00:00.000Z",
+                    "note": "Authorization test contribution",
+                    "dealId": None,
+                    "reversesId": None,
+                    "countedQuantity": None,
+                    "expectedQuantity": None,
+                }
                 status, _ = _request(
                     base_url,
                     "POST",
@@ -261,19 +274,21 @@ def run(pocketbase: Path) -> None:
                     body={
                         "id": cash_id,
                         "workspace": workspace_id,
-                        "data": {
-                            "id": cash_id,
-                            "businessId": workspace_id,
-                            "kind": "contribution",
-                            "direction": "receive",
-                            "amount": cash_amount,
-                            "occurredAt": "2026-01-01T00:00:00.000Z",
-                            "note": "Authorization test contribution",
-                            "dealId": None,
-                            "reversesId": None,
-                            "countedQuantity": None,
-                            "expectedQuantity": None,
-                        },
+                        "data": cash_data,
+                    },
+                    token=token,
+                )
+                _expect("member cash entry Record API create denied", status, 403)
+
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/cash/append",
+                    body={
+                        "workspaceId": workspace_id,
+                        "id": cash_id,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": cash_data,
                     },
                     token=token,
                 )
@@ -306,10 +321,11 @@ def run(pocketbase: Path) -> None:
                 status, _ = _request(
                     base_url,
                     "POST",
-                    "/api/collections/zar_cash_entries/records",
+                    "/api/zar/write/cash/append",
                     body={
+                        "workspaceId": workspace_id,
                         "id": reversal_id,
-                        "workspace": workspace_id,
+                        "idempotencyKey": secrets.token_hex(16),
                         "data": {
                             "id": reversal_id,
                             "businessId": workspace_id,

@@ -526,8 +526,218 @@ function zarWriteReplaceAllocations(e) {
   return e.json(200, response);
 }
 
+const ZAR_CASH_KINDS = {
+  opening: true,
+  adjustment: true,
+  contribution: true,
+  withdrawal: true,
+  expense: true,
+  delivery: true,
+  reversal: true,
+};
+
+function zarWriteNormalizeCashData(workspaceId, id, raw) {
+  if (!zarWriteIsObject(raw)) {
+    throw new BadRequestError('Cash entry data is required.');
+  }
+  if (raw.id !== id) {
+    throw new BadRequestError('Cash entry id mismatch.');
+  }
+  if (raw.businessId !== workspaceId) {
+    throw new BadRequestError('Cash entry businessId mismatch.');
+  }
+  const kind = raw.kind;
+  if (typeof kind !== 'string' || !ZAR_CASH_KINDS[kind]) {
+    throw new BadRequestError('Cash entry kind is invalid.');
+  }
+  const direction = raw.direction;
+  if (direction !== 'receive' && direction !== 'deliver') {
+    throw new BadRequestError('Cash entry direction is invalid.');
+  }
+  if (
+    (kind === 'opening' || kind === 'contribution') &&
+    direction !== 'receive'
+  ) {
+    throw new BadRequestError('Opening and contribution must be incoming.');
+  }
+  if (
+    (kind === 'withdrawal' || kind === 'expense') &&
+    direction !== 'deliver'
+  ) {
+    throw new BadRequestError('Withdrawal and expense must be outgoing.');
+  }
+  if ((kind === 'delivery') !== (typeof raw.dealId === 'string' && raw.dealId.length > 0)) {
+    throw new BadRequestError('Delivery entries require dealId.');
+  }
+  if (
+    (kind === 'reversal') !==
+    (typeof raw.reversesId === 'string' && raw.reversesId.length > 0)
+  ) {
+    throw new BadRequestError('Reversal entries require reversesId.');
+  }
+  if (typeof raw.note !== 'string' || raw.note.trim().length === 0) {
+    throw new BadRequestError('Cash entry note is required.');
+  }
+  if (typeof raw.occurredAt !== 'string' || raw.occurredAt.length < 10) {
+    throw new BadRequestError('Cash entry occurredAt is invalid.');
+  }
+  if (!zarWriteIsObject(raw.amount)) {
+    throw new BadRequestError('Cash entry amount is required.');
+  }
+  return raw;
+}
+
+function zarWriteCashRequestHash(workspaceId, id, data) {
+  return $security.sha256(
+    zarWriteCanonicalJson({
+      workspaceId: workspaceId,
+      id: id,
+      data: data,
+    }),
+  );
+}
+
+function zarWriteAppendCash(e) {
+  const actorId = e.auth.id;
+  const body = e.requestInfo().body;
+  if (!zarWriteIsObject(body)) {
+    throw new BadRequestError('Write body is required.');
+  }
+
+  const id = body.id;
+  if (typeof id !== 'string' || !ZAR_WRITE_ID_PATTERN.test(id)) {
+    throw new BadRequestError('Cash entry id is invalid.');
+  }
+  const workspaceId = body.workspaceId;
+  const idempotencyKey = body.idempotencyKey;
+  if (
+    typeof idempotencyKey !== 'string' ||
+    !ZAR_WRITE_KEY_PATTERN.test(idempotencyKey)
+  ) {
+    throw new BadRequestError('Idempotency key is invalid.');
+  }
+
+  const data = zarWriteNormalizeCashData(workspaceId, id, body.data);
+  const requestHash = zarWriteCashRequestHash(workspaceId, id, data);
+  if (!ZAR_WRITE_HASH_PATTERN.test(requestHash)) {
+    throw new BadRequestError('Request hash is invalid.');
+  }
+
+  let response = null;
+  e.app.runInTransaction((txApp) => {
+    zarWriteAuthorize(txApp, actorId, workspaceId);
+
+    const existingReceipt = zarWriteFindReceipt(
+      txApp,
+      workspaceId,
+      idempotencyKey,
+    );
+    if (existingReceipt) {
+      if (existingReceipt.getString('requestHash') !== requestHash) {
+        throw new ApiError(
+          409,
+          JSON.stringify({
+            code: 'idempotency_payload_mismatch',
+            collection: 'zar_cash_entries',
+            recordId: id,
+          }),
+        );
+      }
+      response = zarWriteReceiptResponse(existingReceipt, true);
+      return;
+    }
+
+    let existing = null;
+    try {
+      existing = txApp.findRecordById('zar_cash_entries', id);
+    } catch (_) {
+      existing = null;
+    }
+
+    if (existing) {
+      if (existing.getString('workspace') !== workspaceId) {
+        throw new ForbiddenError('Record belongs to another workspace.');
+      }
+      const existingData = zarWritePlainData(existing.get('data'));
+      const existingHash = zarWriteCashRequestHash(
+        workspaceId,
+        id,
+        existingData,
+      );
+      if (existingHash !== requestHash) {
+        throw new ApiError(
+          409,
+          JSON.stringify({
+            code: 'cash_entry_immutable',
+            collection: 'zar_cash_entries',
+            recordId: id,
+          }),
+        );
+      }
+      // Same payload already present: issue a receipt so later replays are cheap.
+      const publicRecord = {
+        id: id,
+        workspace: workspaceId,
+        data: existingData,
+      };
+      const receipts = txApp.findCollectionByNameOrId('zar_write_receipts');
+      const receipt = new Record(receipts);
+      receipt.set('workspace', workspaceId);
+      receipt.set('actor', actorId);
+      receipt.set('idempotencyKey', idempotencyKey);
+      receipt.set('collection', 'zar_cash_entries');
+      receipt.set('recordId', id);
+      receipt.set('requestHash', requestHash);
+      receipt.set('responseRevision', 1);
+      receipt.set('responseRecord', publicRecord);
+      txApp.save(receipt);
+      response = {
+        replayed: true,
+        collection: 'zar_cash_entries',
+        record: publicRecord,
+        revision: 1,
+      };
+      return;
+    }
+
+    const collectionModel = txApp.findCollectionByNameOrId('zar_cash_entries');
+    const record = new Record(collectionModel);
+    record.set('id', id);
+    record.set('workspace', workspaceId);
+    record.set('data', data);
+    txApp.save(record);
+
+    const publicRecord = {
+      id: id,
+      workspace: workspaceId,
+      data: data,
+    };
+    const receipts = txApp.findCollectionByNameOrId('zar_write_receipts');
+    const receipt = new Record(receipts);
+    receipt.set('workspace', workspaceId);
+    receipt.set('actor', actorId);
+    receipt.set('idempotencyKey', idempotencyKey);
+    receipt.set('collection', 'zar_cash_entries');
+    receipt.set('recordId', id);
+    receipt.set('requestHash', requestHash);
+    receipt.set('responseRevision', 1);
+    receipt.set('responseRecord', publicRecord);
+    txApp.save(receipt);
+
+    response = {
+      replayed: false,
+      collection: 'zar_cash_entries',
+      record: publicRecord,
+      revision: 1,
+    };
+  });
+
+  return e.json(200, response);
+}
+
 module.exports = {
   upsert: zarWriteUpsert,
   replaceAllocations: zarWriteReplaceAllocations,
+  appendCash: zarWriteAppendCash,
   allocationSetHash: zarWriteAllocationSetHash,
 };
