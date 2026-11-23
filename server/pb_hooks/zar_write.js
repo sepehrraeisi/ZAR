@@ -84,6 +84,190 @@ function zarWriteBumpWorkspaceEpoch(txApp, workspaceId) {
   return next;
 }
 
+function zarWriteEnum(value, allowed, field) {
+  if (typeof value !== 'string' || allowed.indexOf(value) === -1) {
+    throw new BadRequestError(field + ' is invalid.');
+  }
+  return value;
+}
+
+function zarWriteRequiredString(value, field) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new BadRequestError(field + ' is invalid.');
+  }
+  return value;
+}
+
+function zarWriteNullableString(value, field) {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'string') {
+    throw new BadRequestError(field + ' is invalid.');
+  }
+  return value;
+}
+
+function zarWriteRequireBoolean(value, field) {
+  if (typeof value !== 'boolean') {
+    throw new BadRequestError(field + ' is invalid.');
+  }
+  return value;
+}
+
+function zarWriteRequireIsoDate(value, field) {
+  if (typeof value !== 'string' || value.length < 10) {
+    throw new BadRequestError(field + ' is invalid.');
+  }
+  const millis = Date.parse(value);
+  if (!Number.isFinite(millis)) {
+    throw new BadRequestError(field + ' is invalid.');
+  }
+  return value;
+}
+
+function zarWriteExistingStatus(existing) {
+  if (!existing) return null;
+  const data = zarWritePlainData(existing.get('data'));
+  if (!zarWriteIsObject(data)) return null;
+  return typeof data.status === 'string' ? data.status : null;
+}
+
+/// Terminal deal/settlement statuses cannot be reopened (ZAR-DATA-008 slice).
+function zarWriteEnforceTerminalLifecycle(collection, existing, data) {
+  const previous = zarWriteExistingStatus(existing);
+  if (previous === null) return;
+  const next = typeof data.status === 'string' ? data.status : null;
+  if (collection === 'zar_deals') {
+    if (
+      (previous === 'completed' || previous === 'cancelled') &&
+      next !== previous
+    ) {
+      throw new ApiError(
+        409,
+        JSON.stringify({
+          code: 'lifecycle_locked',
+          collection: collection,
+          recordId: existing.getString('id'),
+          currentStatus: previous,
+          attemptedStatus: next,
+        }),
+      );
+    }
+  }
+  if (collection === 'zar_settlements') {
+    if (
+      (previous === 'completed' || previous === 'cancelled') &&
+      next !== previous
+    ) {
+      throw new ApiError(
+        409,
+        JSON.stringify({
+          code: 'lifecycle_locked',
+          collection: collection,
+          recordId: existing.getString('id'),
+          currentStatus: previous,
+          attemptedStatus: next,
+        }),
+      );
+    }
+  }
+}
+
+function zarWriteRequirePerson(txApp, workspaceId, personId, field) {
+  zarWriteRequiredString(personId, field);
+  if (!ZAR_WRITE_ID_PATTERN.test(personId)) {
+    throw new BadRequestError(field + ' is invalid.');
+  }
+  let person = null;
+  try {
+    person = txApp.findRecordById('zar_people', personId);
+  } catch (_) {
+    person = null;
+  }
+  if (!person || person.getString('workspace') !== workspaceId) {
+    throw new BadRequestError(field + ' references a missing person.');
+  }
+}
+
+/// Structural domain checks for ordinary upserts (ZAR-DATA-003 slice).
+/// Full amount/pricing parity stays with restore validation; this blocks
+/// forged enums, id mismatch, and missing required scalars via the API.
+function zarWriteValidateUpsertData(txApp, collection, workspaceId, id, data, existing) {
+  if (!zarWriteIsObject(data)) {
+    throw new BadRequestError('Record data is required.');
+  }
+  if (data.id !== id) {
+    throw new BadRequestError('Record id mismatch.');
+  }
+  zarWriteEnforceTerminalLifecycle(collection, existing, data);
+
+  if (collection === 'zar_people') {
+    zarWriteRequiredString(data.displayName, 'person displayName');
+    zarWriteRequiredString(data.createdBy, 'person createdBy');
+    zarWriteNullableString(data.phone, 'person phone');
+    zarWriteNullableString(data.note, 'person note');
+    zarWriteRequireBoolean(data.archived, 'person archived');
+    zarWriteRequireIsoDate(data.createdAt, 'person createdAt');
+    zarWriteRequireIsoDate(data.updatedAt, 'person updatedAt');
+    return;
+  }
+
+  if (collection === 'zar_deals') {
+    zarWriteEnum(data.type, ['buy', 'sell'], 'deal type');
+    zarWriteEnum(data.status, ['active', 'completed', 'cancelled'], 'deal status');
+    zarWriteRequirePerson(txApp, workspaceId, data.personId, 'deal personId');
+    if (!zarWriteIsObject(data.amount)) {
+      throw new BadRequestError('deal amount is invalid.');
+    }
+    zarWriteRequireIsoDate(data.dealAt, 'deal dealAt');
+    zarWriteRequiredString(data.createdBy, 'deal createdBy');
+    zarWriteNullableString(data.note, 'deal note');
+    zarWriteRequireIsoDate(data.createdAt, 'deal createdAt');
+    zarWriteRequireIsoDate(data.updatedAt, 'deal updatedAt');
+    return;
+  }
+
+  if (collection === 'zar_settlements') {
+    zarWriteEnum(data.direction, ['receive', 'deliver'], 'settlement direction');
+    zarWriteEnum(
+      data.status,
+      ['open', 'completed', 'cancelled'],
+      'settlement status',
+    );
+    zarWriteRequirePerson(txApp, workspaceId, data.personId, 'settlement personId');
+    if (data.dealId !== null && data.dealId !== undefined) {
+      zarWriteRequiredString(data.dealId, 'settlement dealId');
+      if (!ZAR_WRITE_ID_PATTERN.test(data.dealId)) {
+        throw new BadRequestError('settlement dealId is invalid.');
+      }
+    }
+    zarWriteRequireBoolean(data.hasTime, 'settlement hasTime');
+    const completedAt =
+      data.completedAt === null || data.completedAt === undefined
+        ? null
+        : zarWriteRequireIsoDate(data.completedAt, 'settlement completedAt');
+    if ((data.status === 'completed') !== (completedAt !== null)) {
+      throw new BadRequestError('settlement completion is inconsistent.');
+    }
+    if (!zarWriteIsObject(data.amount)) {
+      throw new BadRequestError('settlement amount is invalid.');
+    }
+    zarWriteRequireIsoDate(data.scheduledAt, 'settlement scheduledAt');
+    zarWriteRequiredString(data.createdBy, 'settlement createdBy');
+    zarWriteNullableString(data.note, 'settlement note');
+    zarWriteRequireIsoDate(data.createdAt, 'settlement createdAt');
+    zarWriteRequireIsoDate(data.updatedAt, 'settlement updatedAt');
+    return;
+  }
+
+  if (collection === 'zar_coin_types' || collection === 'zar_currency_types') {
+    const label = collection === 'zar_coin_types' ? 'coin type' : 'currency type';
+    zarWriteRequiredString(data.name, label + ' name');
+    zarWriteRequireBoolean(data.archived, label + ' archived');
+    zarWriteRequireIsoDate(data.createdAt, label + ' createdAt');
+    zarWriteRequireIsoDate(data.updatedAt, label + ' updatedAt');
+  }
+}
+
 function zarWriteFindReceipt(app, workspaceId, idempotencyKey) {
   const matches = app.findRecordsByFilter(
     'zar_write_receipts',
@@ -217,6 +401,15 @@ function zarWriteUpsert(e) {
         }),
       );
     }
+
+    zarWriteValidateUpsertData(
+      txApp,
+      collection,
+      workspaceId,
+      id,
+      body.data,
+      existing,
+    );
 
     const nextRevision = currentRevision + 1;
     const collectionModel = txApp.findCollectionByNameOrId(collection);
