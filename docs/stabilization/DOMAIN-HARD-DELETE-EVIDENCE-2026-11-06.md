@@ -37,6 +37,6 @@
 
 ## مانده‌ی §10.5 (open، مستند)
 
-- ~~CAS/idempotency برای writeهای معمولی~~ — اسلایس ۱ (people/deals/settlements) merge + production deploy شد؛ evidence: `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`. اسلایس بعدی: coin/currency/allocations/cash.
+- ~~CAS/idempotency برای writeهای معمولی~~ — اسلایس ۱ people/deals/settlements + اسلایس ۲ coin/currency روی production؛ evidence: `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md` و `CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`. مانده: allocations/cash.
 - جایگزینی flow حذف+ساخت `zar_allocations` با عملیات سروری دارای audit-linkage
 - workspace bootstrap اتمیک/idempotent در سطح سرور

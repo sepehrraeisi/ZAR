@@ -6,7 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
-- 2026-11-23 — Cloud write CAS slice 2 (coin/currency catalog) on `feature/cloud-write-cas-catalog` (`1793604695`); evidence draft `CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`. Remaining §10.5 after this: allocations/cash CAS, allocation audit-linkage, atomic workspace bootstrap.
+- 2026-11-23 — Cloud write CAS slice 2 (coin/currency) merged (PR #24 → `48a44bc`) and deployed after backup `zar-20261123T130106Z`. Evidence: `CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`. Remaining §10.5: allocations/cash CAS, allocation audit-linkage, atomic workspace bootstrap.
 - 2026-11-23 — Cloud write CAS/idempotency slice 1 merged (PR #23 → `11f0d4c`) and deployed to production after backup `zar-20261123T124303Z` + off-site verify. Route `/api/zar/write/upsert` live (401 unauth). Evidence: `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`.
 - 2026-11-23 — Cloud write CAS/idempotency slice 1 implemented on branch `feature/cloud-write-cas` for `zar_people` / `zar_deals` / `zar_settlements` (`1793604690_cloud_write_cas.js`, `/api/zar/write/upsert`, client revision side-map + 409 conflict UX). Local PocketBase suite green. Evidence: `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`.
 - 2026-11-22 — RC1 soak exit audit on owner Samsung (`com.zarplus.app` versionCode 18081, APK SHA-256 `d571dc94…7d1f`, release cert `d19ad112…2667`). Login, cloud person load, cashbox receive (250,000 toman) succeeded. No attributable P0/P1 for ZAR+. Owner directed promotion to v1.0.0. Note: production `zar_cash_entries` remains empty (cash stays device-local until a deliberate cloud-cash workstream). Soak log: `SOAK-RC1.md`.
