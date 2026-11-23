@@ -67,6 +67,7 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Impact: two phones can overwrite completion, cancellation, reminder or record changes without warning.
 - Required remediation: server-issued revision, optimistic concurrency, explicit conflict handling and idempotency keys for business writes.
 - Required regression: two clients read revision N; the first update succeeds and the stale second update is rejected with a recoverable conflict.
+- Progress (2026-11-23): people/deals/settlements use `/api/zar/write/upsert` with revision CAS + write receipts + typed 409 conflict UX (`CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`). Remaining collections and multi-device realtime UI still open; production deploy of this slice pending owner OK.
 - Status: open; architectural decision required.
 
 ### ZAR-DATA-003 — server does not enforce critical domain invariants

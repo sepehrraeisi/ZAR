@@ -49,6 +49,7 @@ jobs:
             server.tests.transactional_restore_canary_test
           python3 server/tests/pocketbase_authz_test.py --pocketbase "$PWD/pocketbase"
           python3 server/tests/pocketbase_domain_hard_delete_test.py --pocketbase "$PWD/pocketbase"
+          python3 server/tests/pocketbase_cloud_write_cas_test.py --pocketbase "$PWD/pocketbase"
           python3 server/tests/pocketbase_migration_lineage_test.py --pocketbase "$PWD/pocketbase"
           python3 server/tests/pocketbase_transactional_restore_test.py --pocketbase "$PWD/pocketbase"
 

@@ -16,9 +16,10 @@ http.Response _json(Object? body, [int status = 200]) => http.Response(
   headers: {'content-type': 'application/json'},
 );
 
-Map<String, Object?> _personRow(String id, String name) => {
+Map<String, Object?> _personRow(String id, String name, {int revision = 1}) => {
   'id': id,
   'workspace': 'w1',
+  'revision': revision,
   'data': {
     'id': id,
     'displayName': name,
@@ -170,14 +171,23 @@ void main() {
     },
   );
 
-  test('savePerson upserts: PATCH first, falls back to POST on 404', () async {
+  test('savePerson uses CAS upsert route for creates', () async {
     final calls = <String>[];
+    Map<String, Object?>? sentBody;
     final client = MockClient((request) async {
       calls.add('${request.method} ${request.url.path}');
-      if (request.method == 'PATCH') {
-        return _json({'message': 'not found'}, 404);
-      }
-      return _json({'id': 'p9'});
+      sentBody = Map<String, Object?>.from(jsonDecode(request.body) as Map);
+      return _json({
+        'replayed': false,
+        'collection': 'zar_people',
+        'revision': 1,
+        'record': {
+          'id': 'p9',
+          'workspace': 'w1',
+          'revision': 1,
+          'data': sentBody!['data'],
+        },
+      });
     });
     final repository = ZarPocketBaseRepository(
       client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
@@ -185,28 +195,61 @@ void main() {
       businessId: 'w1',
     );
     await repository.savePerson(_person('p9', 'جدید'));
-    expect(calls, [
-      'PATCH /api/collections/zar_people/records/p9',
-      'POST /api/collections/zar_people/records',
-    ]);
+    expect(calls, ['POST /api/zar/write/upsert']);
+    expect(sentBody!['collection'], 'zar_people');
+    expect(sentBody!['id'], 'p9');
+    expect(sentBody!['workspaceId'], 'w1');
+    expect(sentBody!['expectedRevision'], 0);
+    expect(sentBody!['idempotencyKey'], isA<String>());
+    expect((sentBody!['idempotencyKey']! as String).length, 32);
+    final data = sentBody!['data']! as Map<String, Object?>;
+    expect(data['id'], 'p9');
+    expect(data['displayName'], 'جدید');
   });
 
-  test('rows carry the workspace relation and JSON payload', () async {
+  test('savePerson sends loaded revision and surfaces stale 409', () async {
     Map<String, Object?>? sentBody;
     final client = MockClient((request) async {
-      sentBody = Map<String, Object?>.from(jsonDecode(request.body) as Map);
-      return _json({'id': 'p1'});
+      if (request.url.path.contains('/api/collections/zar_people/records')) {
+        return _json({
+          'items': [_personRow('p1', 'مشتری', revision: 3)],
+          'totalPages': 1,
+        });
+      }
+      if (request.url.path.endsWith('/records')) {
+        return _json({'items': [], 'totalPages': 1});
+      }
+      if (request.url.path == '/api/zar/write/upsert') {
+        sentBody = Map<String, Object?>.from(jsonDecode(request.body) as Map);
+        return _json({
+          'message': jsonEncode({
+            'code': 'stale_revision',
+            'collection': 'zar_people',
+            'recordId': 'p1',
+            'expectedRevision': 3,
+            'currentRevision': 4,
+          }),
+        }, 409);
+      }
+      return _json({'message': 'unexpected'}, 500);
     });
     final repository = ZarPocketBaseRepository(
       client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
       workspaceId: 'w1',
       businessId: 'w1',
     );
-    await repository.savePerson(_person('p1', 'مشتری'));
-    expect(sentBody!['workspace'], 'w1');
-    final data = sentBody!['data']! as Map<String, Object?>;
-    expect(data['id'], 'p1');
-    expect(data['displayName'], 'مشتری');
+    await repository.loadCompleteSnapshot();
+    await expectLater(
+      repository.savePerson(_person('p1', 'مشتری')),
+      throwsA(
+        isA<ZarCloudWriteConflictException>().having(
+          (error) => error.currentRevision,
+          'currentRevision',
+          4,
+        ),
+      ),
+    );
+    expect(sentBody!['expectedRevision'], 3);
   });
 
   test(
@@ -671,5 +714,34 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('successful CAS upsert remembers revision for the next write', () async {
+    var expected = 0;
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/zar/write/upsert');
+      final body = Map<String, Object?>.from(jsonDecode(request.body) as Map);
+      expect(body['expectedRevision'], expected);
+      expected += 1;
+      return _json({
+        'replayed': false,
+        'collection': 'zar_people',
+        'revision': expected,
+        'record': {
+          'id': 'p1',
+          'workspace': 'w1',
+          'revision': expected,
+          'data': body['data'],
+        },
+      });
+    });
+    final repository = ZarPocketBaseRepository(
+      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+      workspaceId: 'w1',
+      businessId: 'w1',
+    );
+    await repository.savePerson(_person('p1', 'اول'));
+    await repository.savePerson(_person('p1', 'دوم'));
+    expect(expected, 2);
   });
 }

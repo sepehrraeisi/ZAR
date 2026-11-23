@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../app_core.dart';
+import '../../data/zar_domain_repository.dart';
 import '../../domain/zar_amount_formatter.dart';
 import '../../domain/zar_amount_parser.dart';
 import '../../domain/zar_domain_models.dart';
@@ -67,11 +68,13 @@ class _ConfirmedPersonEditorSheetState
     try {
       await widget.onSave(person);
       if (mounted) Navigator.of(context).pop(person);
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
+        _error = error is ZarCloudWriteConflictException
+            ? error.message
+            : 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
       });
     }
   }
@@ -198,11 +201,13 @@ class _ConfirmedRecordEditorSheetState
         _saving = false;
         _error = 'مقدار واردشده معتبر نیست.';
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
+        _error = error is ZarCloudWriteConflictException
+            ? error.message
+            : 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
       });
     }
   }

@@ -1,3 +1,5 @@
+import '../data/zar_domain_repository.dart';
+
 typedef ZarWriteOperation = Future<void> Function();
 
 /// Coordinates user-initiated persistence so UI code can distinguish a
@@ -45,6 +47,12 @@ class ZarWriteCoordinator {
       _lastFailedOperation = null;
       return const ZarWriteResult.success();
     } catch (error) {
+      // Stale-revision conflicts need an explicit reload, not a blind replay
+      // of the same expectedRevision.
+      if (error is ZarCloudWriteConflictException) {
+        _lastFailedOperation = null;
+        return ZarWriteResult.failure(error);
+      }
       _lastFailedOperation = operation;
       return ZarWriteResult.failure(
         error,

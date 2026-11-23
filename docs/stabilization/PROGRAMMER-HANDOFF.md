@@ -616,10 +616,17 @@ abuse/rate limit، atomic workspace bootstrap و duplicate/orphan tests الزا
 #### 10.5 بستن مرزهای یکپارچگی cloud
 
 - optimistic concurrency/CAS و server revision برای همه‌ی writeهای حساس
+  - **اسلایس ۱ (2026-11-23):** people/deals/settlements از `/api/zar/write/upsert`
+    + `revision` + `zar_write_receipts`؛ evidence
+    `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md` (**prod deploy جداگانه**)
+  - مانده: coin/currency/allocations/cash
 - idempotency key و conflict قابل‌بازیابی برای stale device
+  - اسلایس ۱: key + 409 قابل‌بازیابی روی کلاینت برای سه کالکشن بالا
 - server-side invariant boundary و parity tests بین local/cloud
 - حذف hard-delete از باقی history/financial collections و طراحی reversal/
   tombstone/audit با actor، server time، reason، request ID و before/after linkage
+  - hard-delete lock برای people/deals/settlements/coin/currency انجام شد
+    (`DOMAIN-HARD-DELETE-EVIDENCE-2026-11-06.md`)؛ allocation audit-linkage مانده
 - atomic/idempotent workspace bootstrap بدون orphan/duplicate در retry یا شروع هم‌زمان
 
 اگر هرکدام آماده نیست، قابلیت cloud/multi-device مرتبط باید صریحاً feature-gated

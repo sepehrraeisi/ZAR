@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 import '../../app_core.dart';
+import '../../data/zar_domain_repository.dart';
 import 'persian_numeric_input_formatter.dart';
 import '../../domain/zar_domain_models.dart';
 import '../../domain/zar_id_generator.dart';
@@ -542,9 +543,13 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
       }
     } on FormatException {
       if (mounted) setState(() => _error = 'مقادیر واردشده معتبر نیستند.');
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        setState(() => _error = 'اطلاعات ثبت نشد. دوباره تلاش کنید.');
+        setState(() {
+          _error = error is ZarCloudWriteConflictException
+              ? error.message
+              : 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
+        });
       }
     } finally {
       if (mounted) setState(() => _saving = false);
