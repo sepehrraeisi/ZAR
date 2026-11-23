@@ -624,7 +624,10 @@ abuse/rate limit، atomic workspace bootstrap و duplicate/orphan tests الزا
   - **اسلایس ۳ (2026-11-23):** atomic allocation replace
     (`/api/zar/write/allocations/replace` + set CAS + audit before/after)؛
     evidence `ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md` (**prod deploy**)
-  - مانده: cash CAS / cloud cash sync
+  - **اسلایس ۴ (2026-11-23):** cash append
+    (`/api/zar/write/cash/append` + idempotency + immutability)؛ evidence
+    `CASH-APPEND-CAS-EVIDENCE-2026-11-23.md` (**prod deploy**)
+  - ماندهٔ §10.5 write CAS: ندارد (signup/soak جدا)
 - idempotency key و conflict قابل‌بازیابی برای stale device
   - اسلایس ۱–۳: key + 409 قابل‌بازیابی روی کلاینت برای upsert و allocation replace
 - server-side invariant boundary و parity tests بین local/cloud
