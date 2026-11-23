@@ -74,13 +74,39 @@ class ZarPocketBaseRepository
       deals: snapshot.deals,
       settlements: snapshot.settlements,
     );
-    await _client.createRecord(_cash, {'id': entry.id, ..._row(entry.toMap())});
+    try {
+      await _client.requestJson(
+        'POST',
+        '/api/zar/write/cash/append',
+        body: {
+          'workspaceId': _workspaceId,
+          'id': entry.id,
+          'idempotencyKey': _newIdempotencyKey(),
+          'data': entry.toMap(),
+        },
+      );
+    } on ZarPocketBaseException catch (error) {
+      if (error.statusCode == 409) {
+        final details = _parseWriteConflictMessage(error.message);
+        final code = details?['code'];
+        if (code == 'idempotency_payload_mismatch') {
+          throw ZarCloudWriteConflictException.idempotencyMismatch(
+            collection: _cash,
+            recordId: entry.id,
+          );
+        }
+        throw ZarCloudWriteConflictException(
+          code: code is String ? code : 'cash_entry_immutable',
+          collection: _cash,
+          recordId: entry.id,
+          message:
+              'این ردیف صندوق روی سرور قابل تغییر نیست یا قبلاً با '
+              'محتوای دیگری ثبت شده است.',
+        );
+      }
+      rethrow;
+    }
   }
-
-  Map<String, Object?> _row(Object payload) => {
-    'workspace': _workspaceId,
-    'data': payload,
-  };
 
   String _revisionKey(String collection, String id) => '$collection:$id';
 
