@@ -35,7 +35,8 @@
 - [x] cash append CAS (اسلایس ۴؛ `CASH-APPEND-CAS-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23) — §10.5 write CAS کامل؛ gate تبلیغ multi-device تا soak
 - [x] consistent snapshot read (ZAR-DATA-006؛ `SNAPSHOT-CONSISTENCY-EVIDENCE-2026-11-23.md`)
 - [x] domain upsert invariants + terminal lifecycle lock (ZAR-DATA-003/008 slice؛ `DOMAIN-WRITE-INVARIANTS-EVIDENCE-2026-11-23.md`)
-- [x] deep upsert amount/pricing parity (ZAR-DATA-003؛ `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`) — remaining: restore share + create-time actor stamp
+- [x] deep upsert amount/pricing parity (ZAR-DATA-003؛ `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`) — remaining: restore share
+- [x] create-time actor stamp (ZAR-DATA-003؛ `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`)
 - [x] terminal field freeze on posted deals/settlements (ZAR-DATA-008؛ `TERMINAL-FIELD-FREEZE-EVIDENCE-2026-11-24.md`) — remaining: period lock + reversal-only correction
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
