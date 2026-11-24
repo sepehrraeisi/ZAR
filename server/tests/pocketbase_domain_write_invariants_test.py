@@ -305,6 +305,26 @@ def run(pocketbase: Path) -> None:
                 )
                 _expect("person createdBy rewrite denied", status, 400)
 
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_people",
+                        "id": person_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": int(created_person["revision"]),
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": {
+                            **_person(person_id, user_id),
+                            "createdAt": "1999-01-01T00:00:00.000Z",
+                            "note": "backdated",
+                        },
+                    },
+                    token=token,
+                )
+                _expect("person createdAt rewrite denied", status, 400)
+
                 deal_id = "d" + secrets.token_hex(6)
                 status, _ = _request(
                     base_url,
