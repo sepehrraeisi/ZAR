@@ -267,7 +267,7 @@ def run(pocketbase: Path) -> None:
                     },
                     token=token,
                 )
-                _expect("person legacy local-user create allowed", status, 200)
+                _expect("person legacy local-user create denied", status, 400)
 
                 status, created_person = _request(
                     base_url,

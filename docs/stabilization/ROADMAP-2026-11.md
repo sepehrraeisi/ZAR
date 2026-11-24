@@ -39,6 +39,7 @@
 - [x] restore amount structural share (ZAR-DATA-003؛ `RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`)
 - [x] restore deal-pricing structural share + purity-unknown parity (ZAR-DATA-003؛ `RESTORE-DOMAIN-PRICING-SHARE-EVIDENCE-2026-11-24.md`)
 - [x] create-time actor stamp (ZAR-DATA-003؛ `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`)
+- [x] drop transitional `local-user` create allow after APK 20083 (ZAR-DATA-003؛ `DROP-LOCAL-USER-ACTOR-EVIDENCE-2026-11-24.md`)
 - [x] createdAt immutability on upsert updates (ZAR-DATA-003؛ `CREATED-AT-IMMUTABLE-EVIDENCE-2026-11-24.md`)
 - [x] terminal field freeze on posted deals/settlements (ZAR-DATA-008؛ `TERMINAL-FIELD-FREEZE-EVIDENCE-2026-11-24.md`) — remaining: period lock + reversal-only correction
 - [x] conflict reload UX snackbar (ZAR-DATA-002؛ `CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`)
