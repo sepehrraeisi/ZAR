@@ -90,7 +90,7 @@ def _parse_conflict(payload: Any) -> dict[str, Any]:
     return details
 
 
-def _person_data(person_id: str, note: str) -> dict[str, Any]:
+def _person_data(person_id: str, note: str, actor_id: str) -> dict[str, Any]:
     return {
         "id": person_id,
         "displayName": "Soak Person",
@@ -99,7 +99,7 @@ def _person_data(person_id: str, note: str) -> dict[str, Any]:
         "archived": False,
         "createdAt": "2026-11-23T00:00:00.000Z",
         "updatedAt": "2026-11-23T00:00:00.000Z",
-        "createdBy": "soak",
+        "createdBy": actor_id,
     }
 
 
@@ -203,7 +203,7 @@ def run(pocketbase: Path) -> None:
                 email = f"soak-{secrets.token_hex(4)}@example.test"
                 password = f"Soak-{secrets.token_hex(4)}-Aa1!"
                 admin_token = auth_superuser(base_url, super_password)
-                _, token_a = provision_member(
+                user_id, token_a = provision_member(
                     base_url,
                     admin_token=admin_token,
                     email=email,
@@ -236,7 +236,7 @@ def run(pocketbase: Path) -> None:
                     "workspaceId": workspace_id,
                     "expectedRevision": 0,
                     "idempotencyKey": secrets.token_hex(16),
-                    "data": _person_data(person_id, "seed"),
+                    "data": _person_data(person_id, "seed", user_id),
                 }
                 status, created = _request(
                     base_url,
@@ -255,7 +255,7 @@ def run(pocketbase: Path) -> None:
                     "workspaceId": workspace_id,
                     "expectedRevision": 1,
                     "idempotencyKey": secrets.token_hex(16),
-                    "data": _person_data(person_id, "device-a"),
+                    "data": _person_data(person_id, "device-a", user_id),
                 }
                 right_body = {
                     "collection": "zar_people",
@@ -263,7 +263,7 @@ def run(pocketbase: Path) -> None:
                     "workspaceId": workspace_id,
                     "expectedRevision": 1,
                     "idempotencyKey": secrets.token_hex(16),
-                    "data": _person_data(person_id, "device-b"),
+                    "data": _person_data(person_id, "device-b", user_id),
                 }
                 left, right = _race_two(
                     "person upsert race",
@@ -326,7 +326,10 @@ def run(pocketbase: Path) -> None:
                             "hasTime": False,
                             "createdAt": "2026-11-23T00:00:00.000Z",
                             "updatedAt": "2026-11-23T00:00:00.000Z",
-                            "createdBy": "soak",
+                            "dealId": None,
+                            "completedAt": None,
+                            "note": None,
+                            "createdBy": user_id,
                         },
                     },
                     token=token_a,

@@ -6,6 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-24 — Deep upsert amount/pricing parity (ZAR-DATA-003 remainder) on branch `feature/domain-upsert-amount-pricing`: shared `zar_domain_validate.js` wired into `/api/zar/write/upsert`; `createdBy` immutable on update. Evidence: `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`.
 - 2026-11-23 — Domain write invariants + terminal lifecycle lock on upsert (ZAR-DATA-003 / §008 slice) merged (PR #37 → `dbea600`) and deployed after backup `zar-20261123T160955Z`: enum/id/person checks + 409 `lifecycle_locked`. Evidence: `DOMAIN-WRITE-INVARIANTS-EVIDENCE-2026-11-23.md`.
 - 2026-11-23 — Consistent snapshot read (ZAR-DATA-006) merged (PR #35 → `2ce0611`) and deployed after backup `zar-20261123T154347Z`: workspace `epoch` + `GET /api/zar/read/snapshot`; client `loadCompleteSnapshot` uses the route. Evidence: `SNAPSHOT-CONSISTENCY-EVIDENCE-2026-11-23.md`.
 - 2026-11-23 — Public signup closed (§10.4): migration `1793604702` merged (PR #32 → `19e1a57`) and deployed after backup `zar-20261123T143904Z`; anonymous create → 403. Evidence: `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`. Concurrent two-device CAS soak suite added (`pocketbase_multi_device_cas_soak_test.py`) as the engineering gate before advertising multi-device.

@@ -112,8 +112,11 @@ deployed (`1793604698`, evidence
 `ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md`). Atomic workspace bootstrap
 deployed (`1793604699`, evidence
 `WORKSPACE-BOOTSTRAP-EVIDENCE-2026-11-23.md`). Cash append CAS deployed
-(`1793604701`, evidence `CASH-APPEND-CAS-EVIDENCE-2026-11-23.md`). Open:
-signup launch policy + abuse tests; multi-device soak before advertising.
+(`1793604701`, evidence `CASH-APPEND-CAS-EVIDENCE-2026-11-23.md`). Upsert
+amount/pricing parity via `zar_domain_validate.js` (evidence
+`DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`). Open: signup launch
+policy + abuse tests; multi-device soak before advertising; create-time actor
+stamp; restore validator share.
 
 ## 4. Production server (owner's VPS)
 

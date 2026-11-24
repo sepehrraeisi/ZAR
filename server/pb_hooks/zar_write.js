@@ -188,10 +188,16 @@ function zarWriteRequirePerson(txApp, workspaceId, personId, field) {
   }
 }
 
-/// Structural domain checks for ordinary upserts (ZAR-DATA-003 slice).
-/// Full amount/pricing parity stays with restore validation; this blocks
-/// forged enums, id mismatch, and missing required scalars via the API.
-function zarWriteValidateUpsertData(txApp, collection, workspaceId, id, data, existing) {
+/// Structural + amount/pricing domain checks for ordinary upserts (ZAR-DATA-003).
+function zarWriteValidateUpsertData(
+  txApp,
+  collection,
+  workspaceId,
+  id,
+  data,
+  existing,
+  actorId,
+) {
   if (!zarWriteIsObject(data)) {
     throw new BadRequestError('Record data is required.');
   }
@@ -199,15 +205,23 @@ function zarWriteValidateUpsertData(txApp, collection, workspaceId, id, data, ex
     throw new BadRequestError('Record id mismatch.');
   }
   zarWriteEnforceTerminalLifecycle(collection, existing, data);
+  const domain = require(`${__hooks}/zar_domain_validate.js`);
+  let existingCreatedBy = null;
+  if (existing) {
+    const previous = zarWritePlainData(existing.get('data'));
+    if (zarWriteIsObject(previous) && typeof previous.createdBy === 'string') {
+      existingCreatedBy = previous.createdBy;
+    }
+  }
 
   if (collection === 'zar_people') {
     zarWriteRequiredString(data.displayName, 'person displayName');
-    zarWriteRequiredString(data.createdBy, 'person createdBy');
     zarWriteNullableString(data.phone, 'person phone');
     zarWriteNullableString(data.note, 'person note');
     zarWriteRequireBoolean(data.archived, 'person archived');
     zarWriteRequireIsoDate(data.createdAt, 'person createdAt');
     zarWriteRequireIsoDate(data.updatedAt, 'person updatedAt');
+    domain.validatePersonPayload(data, actorId, existingCreatedBy);
     return;
   }
 
@@ -215,14 +229,17 @@ function zarWriteValidateUpsertData(txApp, collection, workspaceId, id, data, ex
     zarWriteEnum(data.type, ['buy', 'sell'], 'deal type');
     zarWriteEnum(data.status, ['active', 'completed', 'cancelled'], 'deal status');
     zarWriteRequirePerson(txApp, workspaceId, data.personId, 'deal personId');
-    if (!zarWriteIsObject(data.amount)) {
-      throw new BadRequestError('deal amount is invalid.');
-    }
     zarWriteRequireIsoDate(data.dealAt, 'deal dealAt');
-    zarWriteRequiredString(data.createdBy, 'deal createdBy');
     zarWriteNullableString(data.note, 'deal note');
     zarWriteRequireIsoDate(data.createdAt, 'deal createdAt');
     zarWriteRequireIsoDate(data.updatedAt, 'deal updatedAt');
+    domain.validateDealPayload(
+      txApp,
+      workspaceId,
+      data,
+      actorId,
+      existingCreatedBy,
+    );
     return;
   }
 
@@ -236,9 +253,6 @@ function zarWriteValidateUpsertData(txApp, collection, workspaceId, id, data, ex
     zarWriteRequirePerson(txApp, workspaceId, data.personId, 'settlement personId');
     if (data.dealId !== null && data.dealId !== undefined) {
       zarWriteRequiredString(data.dealId, 'settlement dealId');
-      if (!ZAR_WRITE_ID_PATTERN.test(data.dealId)) {
-        throw new BadRequestError('settlement dealId is invalid.');
-      }
     }
     zarWriteRequireBoolean(data.hasTime, 'settlement hasTime');
     const completedAt =
@@ -248,14 +262,17 @@ function zarWriteValidateUpsertData(txApp, collection, workspaceId, id, data, ex
     if ((data.status === 'completed') !== (completedAt !== null)) {
       throw new BadRequestError('settlement completion is inconsistent.');
     }
-    if (!zarWriteIsObject(data.amount)) {
-      throw new BadRequestError('settlement amount is invalid.');
-    }
     zarWriteRequireIsoDate(data.scheduledAt, 'settlement scheduledAt');
-    zarWriteRequiredString(data.createdBy, 'settlement createdBy');
     zarWriteNullableString(data.note, 'settlement note');
     zarWriteRequireIsoDate(data.createdAt, 'settlement createdAt');
     zarWriteRequireIsoDate(data.updatedAt, 'settlement updatedAt');
+    domain.validateSettlementPayload(
+      txApp,
+      workspaceId,
+      data,
+      actorId,
+      existingCreatedBy,
+    );
     return;
   }
 
@@ -409,6 +426,7 @@ function zarWriteUpsert(e) {
       id,
       body.data,
       existing,
+      actorId,
     );
 
     const nextRevision = currentRevision + 1;
