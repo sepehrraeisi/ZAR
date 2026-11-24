@@ -22,6 +22,15 @@
 - Public `/api/realtime` streams a `PB_CONNECT` event without long delay
 - Admin/management routes remain `404`; health `200`
 
-## Production deploy
+## Production deploy (2026-11-24)
 
-(filled after merge + reload)
+- PR #58 merged (`a3ed85c`); required CI checks green.
+- Fresh atomic backup `zar-20261124T152929Z` + off-site under
+  `Documents\ZAR-OffsiteBackups\zar-20261124T152929Z`.
+- Rollback copy: `/var/tmp/zar-caddy-sse-flush-rollback-20261124T1525Z/Caddyfile`.
+- Installed versioned `server/deploy/Caddyfile` → `/etc/caddy/Caddyfile`;
+  `caddy validate` ok; `systemctl reload caddy`.
+- Postflight: `caddy` active; PocketBase health `200`; public `/_/` and
+  `/api/settings` → **404**; `flush_interval -1` present.
+- Public SSE smoke: `GET https://app.titangold.ir/api/realtime` streamed
+  `event:PB_CONNECT` with a `clientId` (curl idle timeout expected).

@@ -6,7 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
-- 2026-11-24 — Caddy SSE flush (ZAR-DATA-002) — branch `feature/caddy-sse-flush-interval`: `flush_interval -1` on reverse_proxy so PocketBase realtime is not buffered. Evidence: `CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`.
+- 2026-11-24 — Caddy SSE flush (ZAR-DATA-002) merged (PR #58 → `a3ed85c`) and reloaded after backup `zar-20261124T152929Z`: `flush_interval -1`; public `/api/realtime` streams `PB_CONNECT`. Evidence: `CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Workspace epoch SSE realtime (ZAR-DATA-002) merged (PR #57 → `96f5854`): PocketBase `/api/realtime` subscribe on workspace + poll fallback (client-only; next APK). Evidence: `WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Workspace epoch remote watch (ZAR-DATA-002) merged (PR #56 → `aae650a`): cloud shell polls workspace epoch + reloads on advance/resume (client-only; next APK). Evidence: `WORKSPACE-EPOCH-REMOTE-WATCH-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Restore deal-pricing structural share (ZAR-DATA-003) merged (PR #54 → `7202dd3`) and deployed after backup `zar-20261124T144850Z`: restore gates through `zar_domain_validate.validateDealPricing` with purity-unknown parity; canary pins updated. Evidence: `RESTORE-DOMAIN-PRICING-SHARE-EVIDENCE-2026-11-24.md`.
