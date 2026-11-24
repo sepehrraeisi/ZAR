@@ -43,7 +43,8 @@
 - [x] terminal field freeze on posted deals/settlements (ZAR-DATA-008؛ `TERMINAL-FIELD-FREEZE-EVIDENCE-2026-11-24.md`) — remaining: period lock + reversal-only correction
 - [x] conflict reload UX snackbar (ZAR-DATA-002؛ `CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`)
 - [x] workspace epoch remote watch (ZAR-DATA-002؛ `WORKSPACE-EPOCH-REMOTE-WATCH-EVIDENCE-2026-11-24.md`)
-- [x] workspace epoch SSE realtime + poll fallback (ZAR-DATA-002؛ `WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`) — remaining: physical device soak
+- [x] workspace epoch SSE realtime + poll fallback (ZAR-DATA-002؛ `WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`)
+- [x] Caddy SSE flush for `/api/realtime` (ZAR-DATA-002؛ `CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`) — remaining: physical device soak
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
 

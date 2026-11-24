@@ -11,6 +11,9 @@ app.titangold.ir, zar.185-126-202-104.sslip.io {
 		respond @pb_privileged_collections 404
 
 		reverse_proxy 127.0.0.1:8090 {
+			# Disable response buffering so PocketBase SSE (/api/realtime) reaches
+			# clients immediately for multi-device epoch watch (ZAR-DATA-002).
+			flush_interval -1
 			# Always replace any client-supplied value. PocketBase trusts this private
 			# header only because its listener is restricted to loopback behind Caddy.
 			header_up X-Zar-Client-IP {remote_host}
