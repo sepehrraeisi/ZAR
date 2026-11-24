@@ -6,7 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
-- 2026-11-24 — Restore amount structural share (ZAR-DATA-003) on branch `feature/restore-domain-amount-share`: restore gates through `zar_domain_validate.parseAssetAmount`; canary pins updated. Evidence: `RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`.
+- 2026-11-24 — Restore amount structural share (ZAR-DATA-003) merged (PR #52 → `ca1e452`) and deployed after backup `zar-20261124T142824Z`: restore gates through `zar_domain_validate.parseAssetAmount`; canary pins updated. Evidence: `RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Editor-sheet conflict reload (ZAR-DATA-002) merged (PR #50 → `33c3b01`): person/record/quick-add sheets expose **تازه‌سازی از سرور** (client-only; next APK). Evidence: `CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — createdAt immutability on upsert updates (ZAR-DATA-003) merged (PR #48 → `b645be0`) and deployed after backup `zar-20261124T130837Z`. Evidence: `CREATED-AT-IMMUTABLE-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Conflict reload UX (ZAR-DATA-002) merged (PR #46 → `1a8352d`): snackbar **تازه‌سازی** reloads snapshot after stale/terminal conflicts (client-only; next APK). Evidence: `CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`.
