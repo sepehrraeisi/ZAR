@@ -16,7 +16,10 @@
 ## Client
 
 - `ZarCloudWriteConflictException.needsReload`
-- `repository_phase_a2_app_v2.dart` `_runWrite` / `_reloadAfterConflict`
+- `repository_phase_a2_app_v2.dart` `_runWrite` / `_reloadAfterConflict` /
+  `_refreshFromServer`
+- Confirmed person/record editors + quick-add sheets expose
+  **تازه‌سازی از سرور** when the conflict needs a reload
 - Tests: `test/zar_cloud_write_conflict_test.dart`
 
 ## Acceptance

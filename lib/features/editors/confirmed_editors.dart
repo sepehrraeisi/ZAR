@@ -16,10 +16,13 @@ class ConfirmedPersonEditorSheet extends StatefulWidget {
     super.key,
     this.existing,
     required this.onSave,
+    this.onReload,
   });
 
   final AppPerson? existing;
   final Future<void> Function(AppPerson person) onSave;
+  /// Reloads the cloud snapshot after a conflict that needs a fresh copy.
+  final Future<void> Function()? onReload;
 
   @override
   State<ConfirmedPersonEditorSheet> createState() =>
@@ -39,7 +42,9 @@ class _ConfirmedPersonEditorSheetState
   );
 
   bool _saving = false;
+  bool _reloading = false;
   String? _error;
+  bool _needsReload = false;
 
   @override
   void dispose() {
@@ -70,11 +75,35 @@ class _ConfirmedPersonEditorSheetState
       if (mounted) Navigator.of(context).pop(person);
     } catch (error) {
       if (!mounted) return;
+      final conflict = error is ZarCloudWriteConflictException ? error : null;
       setState(() {
         _saving = false;
-        _error = error is ZarCloudWriteConflictException
-            ? error.message
-            : 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
+        _error = conflict?.message ?? 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
+        _needsReload = conflict?.needsReload == true && widget.onReload != null;
+      });
+    }
+  }
+
+  Future<void> _reload() async {
+    final reload = widget.onReload;
+    if (reload == null || _reloading || _saving) return;
+    setState(() {
+      _reloading = true;
+      _error = null;
+    });
+    try {
+      await reload();
+      if (!mounted) return;
+      setState(() {
+        _reloading = false;
+        _needsReload = false;
+        _error = 'اطلاعات از سرور تازه شد. دوباره ذخیره کنید.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _reloading = false;
+        _error = 'تازه‌سازی ناموفق بود. اتصال را بررسی کنید.';
       });
     }
   }
@@ -83,9 +112,10 @@ class _ConfirmedPersonEditorSheetState
   Widget build(BuildContext context) {
     return _ConfirmedSheetFrame(
       title: widget.existing == null ? 'افزودن شخص' : 'ویرایش شخص',
-      saving: _saving,
+      saving: _saving || _reloading,
       error: _error,
       onSave: _save,
+      onReload: _needsReload ? _reload : null,
       child: Column(
         children: [
           TextField(
@@ -126,12 +156,14 @@ class ConfirmedRecordEditorSheet extends StatefulWidget {
     required this.record,
     required this.personName,
     required this.onSave,
+    this.onReload,
     this.currencies = const [],
   });
 
   final AppRecord record;
   final String personName;
   final Future<void> Function(AppRecord record) onSave;
+  final Future<void> Function()? onReload;
   final List<ZarCurrencyType> currencies;
 
   @override
@@ -152,7 +184,9 @@ class _ConfirmedRecordEditorSheetState
       (widget.record.assetLabel == 'ارز' ? 'USD' : null);
 
   bool _saving = false;
+  bool _reloading = false;
   String? _error;
+  bool _needsReload = false;
 
   CurrencyOption? get _selectedCurrency {
     final code = _currencyCode;
@@ -199,15 +233,40 @@ class _ConfirmedRecordEditorSheetState
       if (!mounted) return;
       setState(() {
         _saving = false;
+        _needsReload = false;
         _error = 'مقدار واردشده معتبر نیست.';
       });
     } catch (error) {
       if (!mounted) return;
+      final conflict = error is ZarCloudWriteConflictException ? error : null;
       setState(() {
         _saving = false;
-        _error = error is ZarCloudWriteConflictException
-            ? error.message
-            : 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
+        _error = conflict?.message ?? 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
+        _needsReload = conflict?.needsReload == true && widget.onReload != null;
+      });
+    }
+  }
+
+  Future<void> _reload() async {
+    final reload = widget.onReload;
+    if (reload == null || _reloading || _saving) return;
+    setState(() {
+      _reloading = true;
+      _error = null;
+    });
+    try {
+      await reload();
+      if (!mounted) return;
+      setState(() {
+        _reloading = false;
+        _needsReload = false;
+        _error = 'اطلاعات از سرور تازه شد. دوباره ذخیره کنید.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _reloading = false;
+        _error = 'تازه‌سازی ناموفق بود. اتصال را بررسی کنید.';
       });
     }
   }
@@ -216,9 +275,10 @@ class _ConfirmedRecordEditorSheetState
   Widget build(BuildContext context) {
     return _ConfirmedSheetFrame(
       title: 'ویرایش تعهد',
-      saving: _saving,
+      saving: _saving || _reloading,
       error: _error,
       onSave: _save,
+      onReload: _needsReload ? _reload : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -293,6 +353,7 @@ class _ConfirmedSheetFrame extends StatelessWidget {
     required this.saving,
     required this.error,
     required this.onSave,
+    this.onReload,
   });
 
   final String title;
@@ -300,6 +361,7 @@ class _ConfirmedSheetFrame extends StatelessWidget {
   final bool saving;
   final String? error;
   final VoidCallback onSave;
+  final VoidCallback? onReload;
 
   @override
   Widget build(BuildContext context) {
@@ -351,6 +413,16 @@ class _ConfirmedSheetFrame extends StatelessWidget {
                       : const Text('ذخیره'),
                 ),
               ),
+              if (onReload != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: saving ? null : onReload,
+                    child: const Text('تازه‌سازی از سرور'),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
