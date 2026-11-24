@@ -484,6 +484,17 @@ function zarRestoreValidateCurrencyCatalog(rows) {
   }
 }
 
+function zarRestoreDomainRethrow(error) {
+  const message =
+    error && typeof error.message === 'string'
+      ? error.message.replace(/\.$/, '')
+      : '';
+  if (message && message.indexOf('Restore ') !== 0) {
+    throw new BadRequestError('Restore ' + message);
+  }
+  throw error;
+}
+
 function zarRestoreDomainAmountGate(rawAmount, coinTypes, field) {
   // Shared structural gate with ordinary upsert (ZAR-DATA-003). Restore still
   // builds accounting quantities below; this keeps currency/gold/coin shape
@@ -492,14 +503,24 @@ function zarRestoreDomainAmountGate(rawAmount, coinTypes, field) {
   try {
     domain.parseAssetAmount(rawAmount, coinTypes, field);
   } catch (error) {
-    const message =
-      error && typeof error.message === 'string'
-        ? error.message.replace(/\.$/, '')
-        : '';
-    if (message && message.indexOf('Restore ') !== 0) {
-      throw new BadRequestError('Restore ' + message);
-    }
-    throw error;
+    zarRestoreDomainRethrow(error);
+  }
+}
+
+function zarRestoreDomainPricingGate(raw, amount, field) {
+  // Shared deal-pricing shape with ordinary upsert (ZAR-DATA-003), including
+  // the purity-unknown allowance. Restore still owns string totals and the
+  // perGram coin metadata checks below.
+  const domain = require(`${__hooks}/zar_domain_validate.js`);
+  const view = {
+    assetType: amount.assetType,
+    purity: amount.purity,
+    lineIds: amount.lineIds || null,
+  };
+  try {
+    domain.validateDealPricing(raw, view, field);
+  } catch (error) {
+    zarRestoreDomainRethrow(error);
   }
 }
 
@@ -691,18 +712,16 @@ function zarRestoreValidateLinePricing(rawLines, amount, field, requireAllLines)
 }
 
 function zarRestoreValidateDealPricing(raw, amount, field) {
+  zarRestoreDomainPricingGate(raw, amount, field);
   if (raw === null || raw === undefined) {
-    if (amount.assetType === 'coin') {
-      throw new BadRequestError('Restore ' + field + ' coin pricing is required.');
-    }
     return null;
   }
-  if (!zarRestoreIsObject(raw) || raw.kind !== amount.assetType) {
-    throw new BadRequestError('Restore ' + field + ' pricing type is invalid.');
-  }
+  // Domain gate already enforced kind/shape/purity; restore extracts the
+  // accounting total and applies perGram coin metadata that upsert skips.
   const total = zarRestorePricingTotal(raw, field);
   if (raw.kind === 'gold') {
-    const fineness = zarRestoreValidateFineness(raw.fineness, field + ' fineness');
+    // Re-walk gold fields for unsigned-decimal / integer accounting shape.
+    zarRestoreValidateFineness(raw.fineness, field + ' fineness');
     zarRestoreValidateFineness(
       raw.priceReferenceFineness,
       field + ' reference fineness',
@@ -717,9 +736,6 @@ function zarRestoreValidateDealPricing(raw, amount, field) {
       raw.pricePerUnitToman.wholeTomans,
       field + ' unit price',
     );
-    if (amount.purity !== fineness) {
-      throw new BadRequestError('Restore ' + field + ' gold purity is inconsistent.');
-    }
   } else if (raw.kind === 'currency') {
     zarRestoreUnsignedDecimal(raw.tomanPerUnit, field + ' currency rate', false);
   } else {

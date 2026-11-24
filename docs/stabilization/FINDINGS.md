@@ -83,8 +83,9 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Progress (2026-11-24): deep amount/pricing on upsert via `zar_domain_validate.js` (currency/gold/coin + deal pricing); `createdBy` immutable on update; evidence `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`.
 - Progress (2026-11-24): create-time `createdBy` must match auth actor; cloud shell stamps PocketBase uid (`CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): `createdAt` immutable on upsert updates (`CREATED-AT-IMMUTABLE-EVIDENCE-2026-11-24.md`).
-- Progress (2026-11-24): restore amount structural gate shares `zar_domain_validate.parseAssetAmount` (`RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`). Remaining: full pricing consolidation, period lock, audit trail.
-- Status: **mostly contained** on write CAS routes; restore pricing share still open.
+- Progress (2026-11-24): restore amount structural gate shares `zar_domain_validate.parseAssetAmount` (`RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`).
+- Progress (2026-11-24): restore deal-pricing structural gate shares `zar_domain_validate.validateDealPricing` + purity-unknown parity (`RESTORE-DOMAIN-PRICING-SHARE-EVIDENCE-2026-11-24.md`). Remaining: period lock, audit trail.
+- Status: **mostly contained** on write CAS routes; restore↔upsert amount/pricing share closed.
 
 ### ZAR-DATA-004 — historical records are deletable and audit evidence is absent
 

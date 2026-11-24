@@ -322,4 +322,5 @@ module.exports = {
   validateSettlementPayload: zarDomainValidateSettlementPayload,
   validatePersonPayload: zarDomainValidatePersonPayload,
   parseAssetAmount: zarDomainParseAssetAmount,
+  validateDealPricing: zarDomainValidateDealPricing,
 };
