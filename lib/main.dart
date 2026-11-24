@@ -54,6 +54,7 @@ Future<void> main() async {
           repository: ZarLocalRepository(ZarLocalDatabase.defaults()),
           account: ZarAccountSection(
             email: fbAuth.currentUser?.email ?? '',
+            userId: fbAuth.currentUser?.uid,
             onSignOut: fbAuth.signOut,
           ),
         ),

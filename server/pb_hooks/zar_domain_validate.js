@@ -263,17 +263,24 @@ function zarDomainRequireDeal(app, workspaceId, dealId, field) {
   }
 }
 
-/// createdBy must stay non-empty. The shipping client still stamps
-/// "local-user" on create, so auth-id matching is deferred. On update the
-/// original author stamp is immutable.
-function zarDomainEnforceActor(data, existingCreatedBy, _actorId, fieldPrefix) {
+/// createdBy must match the authenticated actor on create, and stay
+/// immutable on update. Legacy cloud rows stamped "local-user" remain
+/// editable with that same stamp (immutability only).
+function zarDomainEnforceActor(data, existingCreatedBy, actorId, fieldPrefix) {
   zarDomainRequiredString(data.createdBy, fieldPrefix + ' createdBy');
   if (
     typeof existingCreatedBy === 'string' &&
-    existingCreatedBy.length > 0 &&
-    data.createdBy !== existingCreatedBy
+    existingCreatedBy.length > 0
   ) {
-    throw new BadRequestError(fieldPrefix + ' createdBy is immutable.');
+    if (data.createdBy !== existingCreatedBy) {
+      throw new BadRequestError(fieldPrefix + ' createdBy is immutable.');
+    }
+    return;
+  }
+  if (data.createdBy !== actorId) {
+    throw new BadRequestError(
+      fieldPrefix + ' createdBy must match the authenticated user.',
+    );
   }
 }
 

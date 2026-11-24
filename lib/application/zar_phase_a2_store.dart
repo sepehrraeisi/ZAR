@@ -36,6 +36,8 @@ class ZarPhaseA2Store extends ChangeNotifier {
 
   bool get loading => _loading;
   Object? get lastError => _lastError;
+  /// Authenticated (or local preview) actor stamped onto new domain rows.
+  String get actorId => _bridge.userId;
   List<ZarPerson> get domainPeople => List.unmodifiable(_domainPeople.values);
   List<ZarSettlement> get settlements =>
       List.unmodifiable(_domainSettlements.values);
@@ -484,7 +486,7 @@ class ZarPhaseA2Store extends ChangeNotifier {
           ? source.completedAt ?? now
           : null,
       completedBy: status == ZarSettlementStatus.completed
-          ? source.completedBy ?? 'local-user'
+          ? source.completedBy ?? _bridge.userId
           : null,
       note: record.note,
       createdBy: source.createdBy,

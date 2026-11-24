@@ -634,8 +634,8 @@ class _CashEntrySheetState extends State<_CashEntrySheet> {
           personId: _person!, dealId: widget.financialDeal?.id, direction: direction, amount: amount,
           scheduledAt: _future ? _at.toUtc() : now, hasTime: true,
           status: _future ? ZarSettlementStatus.open : ZarSettlementStatus.completed,
-          completedAt: _future ? null : now, completedBy: _future ? null : 'local-user',
-          note: _reason.text.trim(), createdBy: 'local-user', createdAt: now, updatedAt: now);
+          completedAt: _future ? null : now, completedBy: _future ? null : widget.store.actorId,
+          note: _reason.text.trim(), createdBy: widget.store.actorId, createdAt: now, updatedAt: now);
       } else {
         final kind = switch (widget.operation) {
           'opening' => ZarCashEntryKind.opening, 'count' => ZarCashEntryKind.adjustment,

@@ -69,6 +69,7 @@ class _ZarCloudShellState extends State<ZarCloudShell> {
               account: ZarAccountSection(
                 email: user.email ?? '',
                 serverUrl: widget.client.baseUrl,
+                userId: user.uid,
                 onSignOut: widget.auth.signOut,
               ),
             );

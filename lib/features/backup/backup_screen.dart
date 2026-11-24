@@ -14,10 +14,14 @@ class ZarAccountSection {
     required this.email,
     required this.onSignOut,
     this.serverUrl,
+    this.userId,
   });
 
   final String email;
   final String? serverUrl;
+  /// Authenticated actor id used for `createdBy` / `completedBy` stamps.
+  /// Cloud shells pass the PocketBase user id; local preview may omit it.
+  final String? userId;
   final Future<void> Function() onSignOut;
 }
 

@@ -110,7 +110,9 @@ class _RepositoryPhaseA2ShellV2 extends StatefulWidget {
 class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
   late final _bridge = ZarLegacyPresentationBridge(
     businessId: widget.businessId,
-    userId: 'local-user',
+    userId: widget.account?.userId?.trim().isNotEmpty == true
+        ? widget.account!.userId!.trim()
+        : 'local-user',
   );
 
   late final ZarPhaseA2Store _store = ZarPhaseA2Store(
@@ -517,7 +519,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             reminderPlan: reminderPlanToDomain(runtimePlan),
             coinValuation: draft.coinSettlementValuation,
             note: draft.note.isEmpty ? null : draft.note,
-            createdBy: 'local-user',
+            createdBy: _bridge.userId,
             createdAt: now,
             updatedAt: now,
           ),
@@ -535,7 +537,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             pricing: draft.coinDealPricing,
             dealAt: eventAt,
             note: draft.note.isEmpty ? null : draft.note,
-            createdBy: 'local-user',
+            createdBy: _bridge.userId,
             createdAt: now,
             updatedAt: now,
           ),

@@ -233,6 +233,25 @@ def run(pocketbase: Path) -> None:
                 )
                 _expect("person id mismatch denied", status, 400)
 
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_people",
+                        "id": person_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": 0,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": {
+                            **_person(person_id, user_id),
+                            "createdBy": "forged-actor",
+                        },
+                    },
+                    token=token,
+                )
+                _expect("person forged createdBy denied", status, 400)
+
                 status, created_person = _request(
                     base_url,
                     "POST",
