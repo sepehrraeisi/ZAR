@@ -252,19 +252,58 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     final message = conflict is ZarCloudWriteConflictException
         ? conflict.message
         : 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
+    final SnackBarAction? snackAction;
+    if (result.canRetry) {
+      snackAction = SnackBarAction(
+        label: 'تلاش دوباره',
+        onPressed: () => unawaited(_retryLastWrite()),
+      );
+    } else if (conflict is ZarCloudWriteConflictException &&
+        conflict.needsReload) {
+      snackAction = SnackBarAction(
+        label: 'تازه‌سازی',
+        onPressed: () => unawaited(_reloadAfterConflict()),
+      );
+    } else {
+      snackAction = null;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         duration: const Duration(seconds: 6),
-        action: result.canRetry
-            ? SnackBarAction(
-                label: 'تلاش دوباره',
-                onPressed: () => unawaited(_retryLastWrite()),
-              )
-            : null,
+        action: snackAction,
       ),
     );
     return false;
+  }
+
+  Future<void> _reloadAfterConflict() async {
+    if (!mounted || _writing) return;
+    setState(() => _writing = true);
+    try {
+      await _store.refresh();
+      try {
+        await _persistedReminders.reconcileAll(records);
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('اطلاعات از سرور تازه شد. دوباره ثبت کنید.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تازه‌سازی ناموفق بود. اتصال را بررسی کنید.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _writing = false);
+    }
   }
 
   Future<bool> _retryLastWrite() async {

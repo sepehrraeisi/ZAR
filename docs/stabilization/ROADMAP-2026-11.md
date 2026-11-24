@@ -38,6 +38,7 @@
 - [x] deep upsert amount/pricing parity (ZAR-DATA-003؛ `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`) — remaining: restore share
 - [x] create-time actor stamp (ZAR-DATA-003؛ `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`)
 - [x] terminal field freeze on posted deals/settlements (ZAR-DATA-008؛ `TERMINAL-FIELD-FREEZE-EVIDENCE-2026-11-24.md`) — remaining: period lock + reversal-only correction
+- [x] conflict reload UX snackbar (ZAR-DATA-002؛ `CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`) — remaining: realtime subscribe + device soak
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
 
