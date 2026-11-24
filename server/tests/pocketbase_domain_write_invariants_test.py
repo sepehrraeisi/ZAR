@@ -450,6 +450,47 @@ def run(pocketbase: Path) -> None:
                 )
                 _expect("deal pricing kind mismatch denied", status, 400)
 
+                unknown_purity_deal = "dealunkn01xxxx"
+                status, unknown_ok = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_deals",
+                        "id": unknown_purity_deal,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": 0,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": _deal(
+                            unknown_purity_deal,
+                            person_id,
+                            user_id,
+                            amount={
+                                "assetType": "gold",
+                                "gold": {
+                                    "decimal": "2",
+                                    "unit": "gram",
+                                    "purity": None,
+                                },
+                            },
+                            pricing={
+                                "kind": "gold",
+                                "fineness": "750",
+                                "priceReferenceFineness": "750",
+                                "inputWeight": "2",
+                                "inputWeightUnit": "gram",
+                                "priceUnit": "gram",
+                                "pricePerUnitToman": {"wholeTomans": 500},
+                                "totalToman": {"wholeTomans": 1000},
+                            },
+                        ),
+                    },
+                    token=token,
+                )
+                _expect("deal unknown gold purity accepted", status, 200)
+                if int(unknown_ok.get("revision", -1)) < 1:
+                    raise AssertionError("unknown purity deal missing revision")
+
                 status, _ = _request(
                     base_url,
                     "POST",
