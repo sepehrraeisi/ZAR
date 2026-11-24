@@ -202,6 +202,18 @@ class ZarPocketBaseRepository
             recordId: id,
           );
         }
+        if (code == 'lifecycle_locked') {
+          throw ZarCloudWriteConflictException.lifecycleLocked(
+            collection: collection,
+            recordId: id,
+          );
+        }
+        if (code == 'terminal_field_locked') {
+          throw ZarCloudWriteConflictException.terminalFieldLocked(
+            collection: collection,
+            recordId: id,
+          );
+        }
         throw ZarCloudWriteConflictException.staleRevision(
           collection: collection,
           recordId: id,

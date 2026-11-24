@@ -116,7 +116,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 
 - Client mappings and server update rules permit previously completed records to be reopened/cancelled or rewritten.
 - Required: approved lifecycle transition matrix, period lock and reversal-only correction for posted history.
-- Progress (2026-11-23): terminal deal/settlement statuses cannot leave `completed`/`cancelled` via upsert (409 `lifecycle_locked`). Evidence shared with `DOMAIN-WRITE-INVARIANTS-EVIDENCE-2026-11-23.md`. Remaining: period lock, reversal-only posted correction, field-level rewrite policy on terminal rows.
+- Progress (2026-11-23): terminal deal/settlement statuses cannot leave `completed`/`cancelled` via upsert (409 `lifecycle_locked`). Evidence shared with `DOMAIN-WRITE-INVARIANTS-EVIDENCE-2026-11-23.md`.
+- Progress (2026-11-24): field-level freeze on terminal rows — only `note`/`updatedAt` mutable; rewrite → 409 `terminal_field_locked` (`TERMINAL-FIELD-FREEZE-EVIDENCE-2026-11-24.md`). Remaining: period lock, reversal-only posted correction.
 
 ### ZAR-MOB-001 — session token and local financial data protection are insufficient
 
