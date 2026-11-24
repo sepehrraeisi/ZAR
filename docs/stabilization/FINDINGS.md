@@ -71,8 +71,9 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Progress (2026-11-24): conflict snackbar offers **تازه‌سازی** (reload snapshot) for stale/lifecycle/terminal/idempotency conflicts — no blind retry (`CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): confirmed person/record/quick-add sheets also offer **تازه‌سازی از سرور** on reload-needed conflicts.
 - Progress (2026-11-24): workspace epoch remote watch — poll + resume reload when another device advances epoch (`WORKSPACE-EPOCH-REMOTE-WATCH-EVIDENCE-2026-11-24.md`).
-- Progress (2026-11-24): PocketBase SSE subscribe on `zar_workspaces/{id}` with poll fallback (`WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`). Remaining: physical multi-device soak (+ Caddy SSE flush if buffered).
-- Status: **write-path contained in production**; epoch poll+SSE ship with next APK.
+- Progress (2026-11-24): PocketBase SSE subscribe on `zar_workspaces/{id}` with poll fallback (`WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`).
+- Progress (2026-11-24): Caddy `flush_interval -1` so `/api/realtime` is not TLS-buffered (`CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`). Remaining: physical multi-device soak.
+- Status: **write-path contained in production**; epoch poll+SSE (+ Caddy flush) ship with next APK.
 
 ### ZAR-DATA-003 — server does not enforce critical domain invariants
 
