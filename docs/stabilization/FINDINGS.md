@@ -86,6 +86,7 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Progress (2026-11-23): upsert path validates id match, enums, required scalars, person references; cash append already validates kind/direction; evidence `DOMAIN-WRITE-INVARIANTS-EVIDENCE-2026-11-23.md`.
 - Progress (2026-11-24): deep amount/pricing on upsert via `zar_domain_validate.js` (currency/gold/coin + deal pricing); `createdBy` immutable on update; evidence `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`.
 - Progress (2026-11-24): create-time `createdBy` must match auth actor; cloud shell stamps PocketBase uid (`CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`).
+- Progress (2026-11-24): transitional `local-user` create allowance removed after APK 20083 (`DROP-LOCAL-USER-ACTOR-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): `createdAt` immutable on upsert updates (`CREATED-AT-IMMUTABLE-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): restore amount structural gate shares `zar_domain_validate.parseAssetAmount` (`RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): restore deal-pricing structural gate shares `zar_domain_validate.validateDealPricing` + purity-unknown parity (`RESTORE-DOMAIN-PRICING-SHARE-EVIDENCE-2026-11-24.md`). Remaining: period lock, audit trail.

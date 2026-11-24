@@ -263,9 +263,9 @@ function zarDomainRequireDeal(app, workspaceId, dealId, field) {
   }
 }
 
-/// createdBy must match the authenticated actor on create (or the
-/// transitional shipping stamp "local-user" until the next APK rolls out),
-/// and stay immutable on update.
+/// createdBy must match the authenticated actor on create, and stay
+/// immutable on update. The transitional `local-user` create allowance was
+/// removed after Device QA APK 20083 (actor stamp) shipped to the owner phone.
 function zarDomainEnforceActor(data, existingCreatedBy, actorId, fieldPrefix) {
   zarDomainRequiredString(data.createdBy, fieldPrefix + ' createdBy');
   if (
@@ -277,7 +277,7 @@ function zarDomainEnforceActor(data, existingCreatedBy, actorId, fieldPrefix) {
     }
     return;
   }
-  if (data.createdBy === actorId || data.createdBy === 'local-user') {
+  if (data.createdBy === actorId) {
     return;
   }
   throw new BadRequestError(
