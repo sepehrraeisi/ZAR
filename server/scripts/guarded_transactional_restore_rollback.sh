@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
-readonly pinned_expected_manifest_sha=ac1c4e156cce8507ce6f8b9bd6e0714c91e034135d3596a1ec741df57ae276fa
+readonly pinned_expected_manifest_sha=cc58cfd3129050163c50cb47a03624418366a78c79868b919cefccfdf88a09af
 
 # Pre-receipt rollback only. Any receipt or known ambiguous client result makes
 # migration down forbidden; use forward-only containment instead.

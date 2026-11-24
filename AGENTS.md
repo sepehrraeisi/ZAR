@@ -115,9 +115,10 @@ deployed (`1793604699`, evidence
 (`1793604701`, evidence `CASH-APPEND-CAS-EVIDENCE-2026-11-23.md`). Upsert
 amount/pricing parity via `zar_domain_validate.js` (evidence
 `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`). Create-time actor
-stamp (evidence `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`). Open:
-signup launch policy + abuse tests; multi-device soak before advertising;
-restore validator share.
+stamp (evidence `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`). Restore
+amount structural share (evidence `RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`).
+Open: signup launch policy + abuse tests; multi-device soak before advertising;
+restore pricing consolidation.
 
 ## 4. Production server (owner's VPS)
 
