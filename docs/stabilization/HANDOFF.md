@@ -6,7 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
-- 2026-11-24 — createdAt immutability on upsert updates (ZAR-DATA-003) on branch `feature/created-at-immutable`. Evidence: `CREATED-AT-IMMUTABLE-EVIDENCE-2026-11-24.md`.
+- 2026-11-24 — createdAt immutability on upsert updates (ZAR-DATA-003) merged (PR #48 → `b645be0`) and deployed after backup `zar-20261124T130837Z`. Evidence: `CREATED-AT-IMMUTABLE-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Conflict reload UX (ZAR-DATA-002) merged (PR #46 → `1a8352d`): snackbar **تازه‌سازی** reloads snapshot after stale/terminal conflicts (client-only; next APK). Evidence: `CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Create-time actor stamp (ZAR-DATA-003) merged (PR #43 → `7647a1b`) + transitional `local-user` allow hotfix (PR #44) deployed after backup `zar-20261124T103605Z`. Cloud shell stamps auth uid; forged create rejected; older APK still works until next release. Evidence: `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Terminal field freeze (ZAR-DATA-008 remainder) merged (PR #41 → `c4317da`) and deployed after backup `zar-20261124T101555Z`: posted deals/settlements lock financial fields (`terminal_field_locked`); client conflict UX distinguishes lifecycle vs field freeze. Evidence: `TERMINAL-FIELD-FREEZE-EVIDENCE-2026-11-24.md`.
