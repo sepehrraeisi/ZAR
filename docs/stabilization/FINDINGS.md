@@ -70,7 +70,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Progress (2026-11-23): people/deals/settlements/coin/currency use `/api/zar/write/upsert` with revision CAS + receipts; allocation replace + cash append CAS; concurrent soak suite; typed 409 UX. Evidence docs under `CLOUD-WRITE-CAS*`, `ALLOCATION-REPLACE-CAS*`, `CASH-APPEND-CAS*`, `MULTI-DEVICE-CAS-SOAK*`.
 - Progress (2026-11-24): conflict snackbar offers **تازه‌سازی** (reload snapshot) for stale/lifecycle/terminal/idempotency conflicts — no blind retry (`CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): confirmed person/record/quick-add sheets also offer **تازه‌سازی از سرور** on reload-needed conflicts.
-- Status: **write-path contained in production**. Remaining: PocketBase realtime subscription + physical multi-device soak before advertising multi-device.
+- Progress (2026-11-24): workspace epoch remote watch — poll + resume reload when another device advances epoch (`WORKSPACE-EPOCH-REMOTE-WATCH-EVIDENCE-2026-11-24.md`). Remaining: PocketBase SSE `/api/realtime` + physical multi-device soak before advertising multi-device.
+- Status: **write-path contained in production**; epoch poll ships with next APK.
 
 ### ZAR-DATA-003 — server does not enforce critical domain invariants
 

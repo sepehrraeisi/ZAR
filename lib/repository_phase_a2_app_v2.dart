@@ -15,6 +15,7 @@ import 'application/zar_backup_manager.dart';
 import 'application/zar_legacy_presentation_bridge.dart';
 import 'application/zar_cash_projector.dart';
 import 'application/zar_phase_a2_store.dart';
+import 'application/zar_workspace_epoch_watcher.dart';
 import 'application/zar_write_coordinator.dart';
 import 'data/zar_domain_repository.dart';
 import 'domain/zar_amount_formatter.dart';
@@ -107,7 +108,8 @@ class _RepositoryPhaseA2ShellV2 extends StatefulWidget {
       _RepositoryPhaseA2ShellV2State();
 }
 
-class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
+class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2>
+    with WidgetsBindingObserver {
   late final _bridge = ZarLegacyPresentationBridge(
     businessId: widget.businessId,
     userId: widget.account?.userId?.trim().isNotEmpty == true
@@ -134,6 +136,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     reconcileRemindersAfterRestore: () =>
         _persistedReminders.reconcileAfterReplacement(records),
   );
+  ZarWorkspaceEpochWatcher? _epochWatcher;
 
   late ZarNotificationPreferences _notificationPreferences;
   int _index = 0;
@@ -151,6 +154,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _notificationPreferences =
         ZarNativeNotificationRuntime.instance.preferences;
     unawaited(_load());
@@ -158,8 +162,17 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _epochWatcher?.dispose();
     ZarNativeNotificationRuntime.instance.setRecordTapHandler(null);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_epochWatcher?.checkNow());
+    }
   }
 
   List<AppRecord> get records => _store.records;
@@ -185,6 +198,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
         _ready = true;
         _loadError = null;
       });
+      _startEpochWatcher();
       unawaited(_runAutoBackup());
       ZarNativeNotificationRuntime.instance.setRecordTapHandler(
         _handleNativeRecordTap,
@@ -197,6 +211,33 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
       }
     } catch (error) {
       if (mounted) setState(() => _loadError = error);
+    }
+  }
+
+  void _startEpochWatcher() {
+    final repository = widget.repository;
+    if (repository is! ZarWorkspaceEpochSource) return;
+    _epochWatcher?.dispose();
+    _epochWatcher = ZarWorkspaceEpochWatcher(
+      source: repository as ZarWorkspaceEpochSource,
+      isPaused: () => !_ready || _writing || !mounted,
+      onRemoteChange: _onRemoteEpochChange,
+    )..start();
+  }
+
+  Future<void> _onRemoteEpochChange() async {
+    if (!mounted || _writing) return;
+    try {
+      await _refreshFromServer();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('اطلاعات از سرور تازه شد (تغییر از دستگاه دیگر).'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } catch (_) {
+      // Best-effort; the next poll or an explicit conflict reload can retry.
     }
   }
 

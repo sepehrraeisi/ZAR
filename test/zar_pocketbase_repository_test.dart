@@ -136,6 +136,24 @@ void main() {
     expect(snapshot.people.first.id, 'p1');
     expect(snapshot.people.first.displayName, 'مشتری یک');
     expect(snapshot.deals, isEmpty);
+    expect(repository.lastKnownEpoch, 1);
+  });
+
+  test('peekRemoteEpoch reads workspace record epoch', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'GET');
+      expect(
+        request.url.path,
+        '/api/collections/zar_workspaces/records/w1',
+      );
+      return _json({'id': 'w1', 'epoch': 7});
+    });
+    final repository = ZarPocketBaseRepository(
+      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+      workspaceId: 'w1',
+      businessId: 'w1',
+    );
+    expect(await repository.peekRemoteEpoch(), 7);
   });
 
   test(

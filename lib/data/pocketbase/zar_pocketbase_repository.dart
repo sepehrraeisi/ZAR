@@ -20,6 +20,7 @@ import 'zar_pocketbase_client.dart';
 class ZarPocketBaseRepository
     implements
         ZarDomainRepository,
+        ZarWorkspaceEpochSource,
         ZarCoinCatalogRepository,
         ZarCurrencyCatalogRepository,
         ZarPaymentAllocationRepository,
@@ -41,6 +42,11 @@ class ZarPocketBaseRepository
   /// Server-issued revisions for people/deals/settlements CAS upserts.
   /// Keyed as `collection:id`. Missing means create (`expectedRevision=0`).
   final Map<String, int> _revisions = <String, int>{};
+
+  int? _lastKnownEpoch;
+
+  @override
+  int? get lastKnownEpoch => _lastKnownEpoch;
 
   static const _people = 'zar_people';
   static const _deals = 'zar_deals';
@@ -225,6 +231,30 @@ class ZarPocketBaseRepository
   }
 
   @override
+  Future<int?> peekRemoteEpoch() async {
+    final row = await _client.getRecord(
+      'zar_workspaces',
+      id: _workspaceId,
+    );
+    return _parseEpoch(row['epoch']);
+  }
+
+  static int? _parseEpoch(Object? raw) {
+    if (raw == null) return 0;
+    if (raw is int) return raw < 0 ? 0 : raw;
+    if (raw is num) {
+      final value = raw.toInt();
+      return value < 0 ? 0 : value;
+    }
+    if (raw is String && raw.trim().isNotEmpty) {
+      final value = int.tryParse(raw.trim());
+      if (value == null || value < 0) return 0;
+      return value;
+    }
+    return 0;
+  }
+
+  @override
   Future<ZarDomainSnapshot> loadCompleteSnapshot() async {
     // Single epoch-fenced route so concurrent writes cannot mix collections
     // across seven independent list GETs (ZAR-DATA-006).
@@ -234,6 +264,7 @@ class ZarPocketBaseRepository
         'Snapshot workspace does not match the selected workspace.',
       );
     }
+    _lastKnownEpoch = _parseEpoch(payload['epoch']);
     List<Map<String, Object?>> rows(String key) {
       final raw = payload[key];
       if (raw is! List) {
