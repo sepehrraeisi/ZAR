@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 import 'package:flutter_app/app_core.dart';
+import 'package:flutter_app/data/zar_domain_repository.dart';
 import 'package:flutter_app/features/editors/confirmed_editors.dart';
 
 void main() {
@@ -60,6 +61,39 @@ void main() {
 
     expect(saved, isTrue);
     expect(find.text('افزودن شخص'), findsNothing);
+  });
+
+  testWidgets('person editor offers server reload after stale conflict', (
+    tester,
+  ) async {
+    var reloads = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ConfirmedPersonEditorSheet(
+            onSave: (_) async => throw const ZarCloudWriteConflictException
+                .staleRevision(
+              collection: 'zar_people',
+              recordId: 'p1',
+              currentRevision: 2,
+            ),
+            onReload: () async {
+              reloads += 1;
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField).first, 'سارا احمدی');
+    await tester.tap(find.text('ذخیره'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('تازه‌سازی از سرور'), findsOneWidget);
+    await tester.tap(find.text('تازه‌سازی از سرور'));
+    await tester.pumpAndSettle();
+    expect(reloads, 1);
+    expect(find.textContaining('تازه شد'), findsOneWidget);
   });
 
   testWidgets('record editor keeps record sheet available after failed save', (

@@ -16,6 +16,7 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
     super.key,
     required this.people,
     required this.onSave,
+    this.onReload,
     this.coinTypes = const [],
     this.currencies = const [],
     this.initialReminder = '۱۵ دقیقه',
@@ -33,6 +34,7 @@ class ConfirmedQuickAddSheet extends StatefulWidget {
   });
   final List<AppPerson> people;
   final Future<void> Function(QuickAddDraft draft) onSave;
+  final Future<void> Function()? onReload;
   final List<ZarCoinType> coinTypes;
   final List<ZarCurrencyType> currencies;
   final String initialReminder;
@@ -75,6 +77,8 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
   DateTime? _customReminderAt;
   late String _reminder = widget.initialReminder;
   String? _error;
+  bool _needsReload = false;
+  bool _reloading = false;
   final List<_CoinDraftRow> _coinRows = [];
   late final QuickEntryPreferenceStore _preferenceStore;
   String? _preferredCoinTypeId;
@@ -542,17 +546,47 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
         Navigator.pop(context, draft);
       }
     } on FormatException {
-      if (mounted) setState(() => _error = 'مقادیر واردشده معتبر نیستند.');
-    } catch (error) {
       if (mounted) {
         setState(() {
-          _error = error is ZarCloudWriteConflictException
-              ? error.message
-              : 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
+          _error = 'مقادیر واردشده معتبر نیستند.';
+          _needsReload = false;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        final conflict = error is ZarCloudWriteConflictException ? error : null;
+        setState(() {
+          _error = conflict?.message ?? 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
+          _needsReload =
+              conflict?.needsReload == true && widget.onReload != null;
         });
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _reloadFromServer() async {
+    final reload = widget.onReload;
+    if (reload == null || _reloading || _saving) return;
+    setState(() {
+      _reloading = true;
+      _error = null;
+    });
+    try {
+      await reload();
+      if (!mounted) return;
+      setState(() {
+        _reloading = false;
+        _needsReload = false;
+        _error = 'اطلاعات از سرور تازه شد. دوباره ثبت کنید.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _reloading = false;
+        _error = 'تازه‌سازی ناموفق بود. اتصال را بررسی کنید.';
+      });
     }
   }
 
@@ -711,6 +745,16 @@ class _ConfirmedQuickAddSheetState extends State<ConfirmedQuickAddSheet> {
         if (_error != null) ...[
           const SizedBox(height: 8),
           _fieldError(_error!),
+          if (_needsReload) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: (_saving || _reloading) ? null : _reloadFromServer,
+                child: Text(_reloading ? 'در حال تازه‌سازی…' : 'تازه‌سازی از سرور'),
+              ),
+            ),
+          ],
         ],
       ],
     ],

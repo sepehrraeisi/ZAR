@@ -277,16 +277,20 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
     return false;
   }
 
+  Future<void> _refreshFromServer() async {
+    await _store.refresh();
+    try {
+      await _persistedReminders.reconcileAll(records);
+    } catch (_) {}
+    if (mounted) setState(() {});
+  }
+
   Future<void> _reloadAfterConflict() async {
     if (!mounted || _writing) return;
     setState(() => _writing = true);
     try {
-      await _store.refresh();
-      try {
-        await _persistedReminders.reconcileAll(records);
-      } catch (_) {}
+      await _refreshFromServer();
       if (!mounted) return;
-      setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('اطلاعات از سرور تازه شد. دوباره ثبت کنید.'),
@@ -678,6 +682,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
           draft,
           onSaved: (id) => savedRecordId = id,
         ),
+        onReload: _refreshFromServer,
         initialReminder: reminderPresetLabel(
           _notificationPreferences.defaultReminderMinutes,
         ),
@@ -931,6 +936,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
               personName: _store.personName(record.personId),
               currencies: _store.currencyTypes,
               onSave: (updated) => _saveRecordOrThrow(updated),
+              onReload: _refreshFromServer,
             ),
           );
         },
@@ -1056,6 +1062,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             builder: (_) => ConfirmedPersonEditorSheet(
               existing: target,
               onSave: _savePersonOrThrow,
+              onReload: _refreshFromServer,
             ),
           );
         },
@@ -1359,8 +1366,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2> {
             context: context,
             isScrollControlled: true,
             useSafeArea: true,
-            builder: (_) =>
-                ConfirmedPersonEditorSheet(onSave: _savePersonOrThrow),
+            builder: (_) => ConfirmedPersonEditorSheet(
+              onSave: _savePersonOrThrow,
+              onReload: _refreshFromServer,
+            ),
           );
         },
         onOpenPerson: (person) => Navigator.of(
