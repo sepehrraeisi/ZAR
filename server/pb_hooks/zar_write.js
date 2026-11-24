@@ -283,6 +283,20 @@ function zarWriteRequirePerson(txApp, workspaceId, personId, field) {
   }
 }
 
+/// createdAt is an identity stamp — never rewritten via upsert.
+function zarWriteEnforceCreatedAtImmutable(existing, data, fieldPrefix) {
+  if (!existing) return;
+  const previous = zarWritePlainData(existing.get('data'));
+  if (!zarWriteIsObject(previous)) return;
+  if (
+    typeof previous.createdAt === 'string' &&
+    previous.createdAt.length > 0 &&
+    data.createdAt !== previous.createdAt
+  ) {
+    throw new BadRequestError(fieldPrefix + ' createdAt is immutable.');
+  }
+}
+
 /// Structural + amount/pricing domain checks for ordinary upserts (ZAR-DATA-003).
 function zarWriteValidateUpsertData(
   txApp,
@@ -301,6 +315,7 @@ function zarWriteValidateUpsertData(
   }
   zarWriteEnforceTerminalLifecycle(collection, existing, data);
   zarWriteEnforceTerminalFieldFreeze(collection, existing, data);
+  zarWriteEnforceCreatedAtImmutable(existing, data, collection);
   const domain = require(`${__hooks}/zar_domain_validate.js`);
   let existingCreatedBy = null;
   if (existing) {

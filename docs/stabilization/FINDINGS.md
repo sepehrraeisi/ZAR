@@ -80,7 +80,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Required remediation: versioned server command/API boundary with schema validation, invariant checks and atomic transactions; shared parity suite across local and cloud repositories.
 - Progress (2026-11-23): upsert path validates id match, enums, required scalars, person references; cash append already validates kind/direction; evidence `DOMAIN-WRITE-INVARIANTS-EVIDENCE-2026-11-23.md`.
 - Progress (2026-11-24): deep amount/pricing on upsert via `zar_domain_validate.js` (currency/gold/coin + deal pricing); `createdBy` immutable on update; evidence `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`.
-- Progress (2026-11-24): create-time `createdBy` must match auth actor; cloud shell stamps PocketBase uid (`CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`). Remaining: restore-module share/consolidation, period lock, audit trail.
+- Progress (2026-11-24): create-time `createdBy` must match auth actor; cloud shell stamps PocketBase uid (`CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`).
+- Progress (2026-11-24): `createdAt` immutable on upsert updates (`CREATED-AT-IMMUTABLE-EVIDENCE-2026-11-24.md`). Remaining: restore-module share/consolidation, period lock, audit trail.
 - Status: **mostly contained** on write CAS routes; restore share still open.
 
 ### ZAR-DATA-004 — historical records are deletable and audit evidence is absent
