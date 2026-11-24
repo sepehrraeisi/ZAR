@@ -117,8 +117,8 @@ amount/pricing parity via `zar_domain_validate.js` (evidence
 `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`). Create-time actor
 stamp (evidence `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`). Restore
 amount structural share (evidence `RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`).
-Open: signup launch policy + abuse tests; multi-device soak + SSE realtime
-before advertising; period lock + reversal-only correction (accountant).
+Open: signup launch policy + abuse tests; physical multi-device soak before
+advertising; period lock + reversal-only correction (accountant).
 
 ## 4. Production server (owner's VPS)
 

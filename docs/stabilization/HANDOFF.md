@@ -6,7 +6,8 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
-- 2026-11-24 — Workspace epoch remote watch (ZAR-DATA-002) — branch `feature/workspace-epoch-remote-watch`: cloud shell polls workspace epoch + reloads on advance/resume (client-only; next APK). Evidence: `WORKSPACE-EPOCH-REMOTE-WATCH-EVIDENCE-2026-11-24.md`.
+- 2026-11-24 — Workspace epoch SSE realtime (ZAR-DATA-002) — branch `feature/workspace-epoch-sse-realtime`: PocketBase `/api/realtime` subscribe on workspace + poll fallback (client-only; next APK). Evidence: `WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`.
+- 2026-11-24 — Workspace epoch remote watch (ZAR-DATA-002) merged (PR #56 → `aae650a`): cloud shell polls workspace epoch + reloads on advance/resume (client-only; next APK). Evidence: `WORKSPACE-EPOCH-REMOTE-WATCH-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Restore deal-pricing structural share (ZAR-DATA-003) merged (PR #54 → `7202dd3`) and deployed after backup `zar-20261124T144850Z`: restore gates through `zar_domain_validate.validateDealPricing` with purity-unknown parity; canary pins updated. Evidence: `RESTORE-DOMAIN-PRICING-SHARE-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Restore amount structural share (ZAR-DATA-003) merged (PR #52 → `ca1e452`) and deployed after backup `zar-20261124T142824Z`: restore gates through `zar_domain_validate.parseAssetAmount`; canary pins updated. Evidence: `RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Editor-sheet conflict reload (ZAR-DATA-002) merged (PR #50 → `33c3b01`): person/record/quick-add sheets expose **تازه‌سازی از سرور** (client-only; next APK). Evidence: `CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`.

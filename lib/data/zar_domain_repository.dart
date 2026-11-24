@@ -1,7 +1,9 @@
+import 'dart:async';
+import 'dart:convert';
+
 import '../domain/zar_domain_models.dart';
 import '../domain/zar_payment_allocation.dart';
 import '../domain/zar_cash_entry.dart';
-import 'dart:convert';
 import '../application/zar_cash_projector.dart';
 
 class ZarDomainSnapshot {
@@ -181,6 +183,13 @@ abstract interface class ZarWorkspaceEpochSource {
 
   /// Cheap probe of the current server epoch without loading collections.
   Future<int?> peekRemoteEpoch();
+
+  /// Starts optional push notifications (PocketBase SSE). Returns null when
+  /// unsupported; poll remains the resilience path either way.
+  Stream<void>? openRemoteChangeSignals();
+
+  /// Stops push notifications started by [openRemoteChangeSignals].
+  void closeRemoteChangeSignals();
 }
 
 abstract interface class ZarPaymentAllocationRepository {
