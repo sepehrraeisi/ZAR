@@ -8,9 +8,10 @@
 - Cloud shell stamps PocketBase `user.uid` onto new people/deals/settlements
   (`createdBy` / `completedBy`) via `ZarAccountSection.userId` → bridge →
   store `actorId`.
-- Server upsert rejects create payloads whose `createdBy` ≠ authenticated
-  actor (`400`). Update immutability unchanged; legacy `local-user` rows keep
-  that stamp.
+- Server upsert rejects forged create `createdBy` values (`400`). During APK
+  rollout, create still accepts authenticated actor **or** transitional
+  stamp `local-user` so older installs keep working. Update immutability
+  unchanged; legacy rows keep their stamp.
 - Local preview without account still uses `local-user` (Drift only).
 
 ## Files
