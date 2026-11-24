@@ -27,9 +27,10 @@
 
 ## Install
 
-- Target: owner Samsung (`SM_N986U`) previously on versionCode **18082**.
-- `adb install -r` status: **pending reconnect** at evidence write time
-  (device dropped from `adb devices` after build). Re-run:
-  `adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`
-- After install: confirm `dumpsys package` shows versionCode **20083**, then
-  follow `MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`.
+- Target: owner Samsung (`SM_N986U` / `R5CN70SG2BF`), previously versionCode
+  **18082**.
+- `adb install -r` → **Success** at 2026-11-24 19:42 +03:30.
+- Installed: versionCode **20083**, versionName `1.0.0`,
+  `lastUpdateTime=2026-11-24 19:42:22`.
+- Next: follow `MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md` (needs a second
+  session/device for the advertising gate).
