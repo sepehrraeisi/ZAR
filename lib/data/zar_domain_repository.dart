@@ -156,6 +156,13 @@ class ZarCloudWriteConflictException implements Exception {
   final int? currentRevision;
   final String message;
 
+  /// True when the local working copy must be refreshed before another edit.
+  bool get needsReload =>
+      code == 'stale_revision' ||
+      code == 'lifecycle_locked' ||
+      code == 'terminal_field_locked' ||
+      code == 'idempotency_payload_mismatch';
+
   @override
   String toString() => message;
 }
