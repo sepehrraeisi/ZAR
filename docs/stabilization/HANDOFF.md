@@ -6,7 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
-- 2026-11-24 — Terminal field freeze (ZAR-DATA-008 remainder) on branch `feature/terminal-field-freeze`: posted deals/settlements lock financial fields (`terminal_field_locked`); client conflict UX distinguishes lifecycle vs field freeze. Evidence: `TERMINAL-FIELD-FREEZE-EVIDENCE-2026-11-24.md`.
+- 2026-11-24 — Terminal field freeze (ZAR-DATA-008 remainder) merged (PR #41 → `c4317da`) and deployed after backup `zar-20261124T101555Z`: posted deals/settlements lock financial fields (`terminal_field_locked`); client conflict UX distinguishes lifecycle vs field freeze. Evidence: `TERMINAL-FIELD-FREEZE-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Deep upsert amount/pricing parity (ZAR-DATA-003 remainder) merged (PR #39 → `385ad1f`) and deployed after backup `zar-20261124T095802Z`: shared `zar_domain_validate.js` on upsert; `createdBy` immutable on update. Evidence: `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`.
 - 2026-11-23 — Domain write invariants + terminal lifecycle lock on upsert (ZAR-DATA-003 / §008 slice) merged (PR #37 → `dbea600`) and deployed after backup `zar-20261123T160955Z`: enum/id/person checks + 409 `lifecycle_locked`. Evidence: `DOMAIN-WRITE-INVARIANTS-EVIDENCE-2026-11-23.md`.
 - 2026-11-23 — Consistent snapshot read (ZAR-DATA-006) merged (PR #35 → `2ce0611`) and deployed after backup `zar-20261123T154347Z`: workspace `epoch` + `GET /api/zar/read/snapshot`; client `loadCompleteSnapshot` uses the route. Evidence: `SNAPSHOT-CONSISTENCY-EVIDENCE-2026-11-23.md`.
