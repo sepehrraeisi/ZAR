@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -7,6 +8,7 @@ import '../../domain/zar_cash_entry.dart';
 import '../zar_domain_backup_codec.dart';
 import '../zar_domain_repository.dart';
 import 'zar_pocketbase_client.dart';
+import 'zar_pocketbase_sse.dart';
 
 /// PocketBase-backed repository implementing the same boundary the local
 /// Drift repository satisfies, so the live shell can run against a cheap
@@ -44,9 +46,27 @@ class ZarPocketBaseRepository
   final Map<String, int> _revisions = <String, int>{};
 
   int? _lastKnownEpoch;
+  ZarPocketBaseWorkspaceRealtime? _realtime;
 
   @override
   int? get lastKnownEpoch => _lastKnownEpoch;
+
+  @override
+  Stream<void>? openRemoteChangeSignals() {
+    _realtime ??= ZarPocketBaseWorkspaceRealtime(
+      client: _client,
+      workspaceId: _workspaceId,
+    );
+    unawaited(_realtime!.start());
+    return _realtime!.signals;
+  }
+
+  @override
+  void closeRemoteChangeSignals() {
+    final realtime = _realtime;
+    _realtime = null;
+    unawaited(realtime?.dispose());
+  }
 
   static const _people = 'zar_people';
   static const _deals = 'zar_deals';

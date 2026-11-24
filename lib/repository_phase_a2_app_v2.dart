@@ -217,9 +217,11 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2>
   void _startEpochWatcher() {
     final repository = widget.repository;
     if (repository is! ZarWorkspaceEpochSource) return;
+    final source = repository as ZarWorkspaceEpochSource;
     _epochWatcher?.dispose();
     _epochWatcher = ZarWorkspaceEpochWatcher(
-      source: repository as ZarWorkspaceEpochSource,
+      source: source,
+      pushSignals: source.openRemoteChangeSignals(),
       isPaused: () => !_ready || _writing || !mounted,
       onRemoteChange: _onRemoteEpochChange,
     )..start();

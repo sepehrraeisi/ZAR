@@ -17,6 +17,9 @@ class ZarPocketBaseClient {
   String get baseUrl => _baseUrl;
   final http.Client _client;
 
+  /// Shared HTTP client for short REST calls and long-lived SSE streams.
+  http.Client get httpClient => _client;
+
   String? authToken;
 
   Uri _uri(String path, [Map<String, String>? query]) {
