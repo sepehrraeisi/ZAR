@@ -484,7 +484,27 @@ function zarRestoreValidateCurrencyCatalog(rows) {
   }
 }
 
+function zarRestoreDomainAmountGate(rawAmount, coinTypes, field) {
+  // Shared structural gate with ordinary upsert (ZAR-DATA-003). Restore still
+  // builds accounting quantities below; this keeps currency/gold/coin shape
+  // checks from drifting between the two write paths.
+  const domain = require(`${__hooks}/zar_domain_validate.js`);
+  try {
+    domain.parseAssetAmount(rawAmount, coinTypes, field);
+  } catch (error) {
+    const message =
+      error && typeof error.message === 'string'
+        ? error.message.replace(/\.$/, '')
+        : '';
+    if (message && message.indexOf('Restore ') !== 0) {
+      throw new BadRequestError('Restore ' + message);
+    }
+    throw error;
+  }
+}
+
 function zarRestoreParseAssetAmount(rawAmount, coinTypes, field) {
+  zarRestoreDomainAmountGate(rawAmount, coinTypes, field);
   if (!zarRestoreIsObject(rawAmount)) {
     throw new BadRequestError('Restore ' + field + ' amount is invalid.');
   }
