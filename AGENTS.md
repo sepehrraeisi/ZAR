@@ -143,8 +143,10 @@ advertising; period lock + reversal-only correction (accountant).
 
 ## 5. Current project state (as of 2026-11-22)
 
-- **v1.0.0** tagged + published as a GitHub release (post RC1 soak). Client
-  versionCode **18082** (build-number 16082). Soak log: `SOAK-RC1.md`.
+- **v1.0.0** tagged + published as a GitHub release (post RC1 soak). Device QA
+  APK **20083** built 2026-11-24 (build-number 18083; +2000 offset) — install/
+  physical soak: `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`. Prior ship
+  versionCode **18082**. Soak log: `SOAK-RC1.md`.
 - Phase 0/1/2 of `docs/stabilization/ROADMAP-2026-11.md` are complete
   (integrity locks, rate limiting 13 rules, monitoring, off-site backup,
   transactional restore, Keystore token storage, supply-chain CI).

@@ -44,7 +44,8 @@
 - [x] conflict reload UX snackbar (ZAR-DATA-002؛ `CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`)
 - [x] workspace epoch remote watch (ZAR-DATA-002؛ `WORKSPACE-EPOCH-REMOTE-WATCH-EVIDENCE-2026-11-24.md`)
 - [x] workspace epoch SSE realtime + poll fallback (ZAR-DATA-002؛ `WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`)
-- [x] Caddy SSE flush for `/api/realtime` (ZAR-DATA-002؛ `CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`) — remaining: physical device soak
+- [x] Caddy SSE flush for `/api/realtime` (ZAR-DATA-002؛ `CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`)
+- [x] Device QA APK 20083 built (actor/epoch/SSE؛ `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`) — remaining: adb install + physical soak (`MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`)
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
 

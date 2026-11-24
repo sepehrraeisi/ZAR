@@ -73,7 +73,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Progress (2026-11-24): workspace epoch remote watch — poll + resume reload when another device advances epoch (`WORKSPACE-EPOCH-REMOTE-WATCH-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): PocketBase SSE subscribe on `zar_workspaces/{id}` with poll fallback (`WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): Caddy `flush_interval -1` so `/api/realtime` is not TLS-buffered (`CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`). Remaining: physical multi-device soak.
-- Status: **write-path contained in production**; epoch poll+SSE (+ Caddy flush) ship with next APK.
+- Progress (2026-11-24): Device QA APK **20083** built with actor stamp + epoch poll/SSE (`DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`). Remaining: adb install + physical multi-device soak checklist.
+- Status: **write-path contained in production**; epoch poll+SSE (+ Caddy flush) in APK 20083.
 
 ### ZAR-DATA-003 — server does not enforce critical domain invariants
 

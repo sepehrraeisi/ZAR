@@ -6,6 +6,8 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-24 — Device QA APK **20083** built from master (`db57bf1`): release-signed (`d19ad112…2667`), SHA-256 `117e117a…d337`; includes actor stamp + conflict reload + epoch poll/SSE. Install pending adb reconnect; soak checklist: `MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`. Evidence: `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`.
+- 2026-11-24 — Device QA APK **20083** built from master (`db57bf1`): release-signed (`d19ad112…2667`), SHA-256 `117e117a…d337`; includes actor stamp + conflict reload + epoch poll/SSE. Install pending adb reconnect; soak checklist: `MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`. Evidence: `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Caddy SSE flush (ZAR-DATA-002) merged (PR #58 → `a3ed85c`) and reloaded after backup `zar-20261124T152929Z`: `flush_interval -1`; public `/api/realtime` streams `PB_CONNECT`. Evidence: `CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Workspace epoch SSE realtime (ZAR-DATA-002) merged (PR #57 → `96f5854`): PocketBase `/api/realtime` subscribe on workspace + poll fallback (client-only; next APK). Evidence: `WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Workspace epoch remote watch (ZAR-DATA-002) merged (PR #56 → `aae650a`): cloud shell polls workspace epoch + reloads on advance/resume (client-only; next APK). Evidence: `WORKSPACE-EPOCH-REMOTE-WATCH-EVIDENCE-2026-11-24.md`.
