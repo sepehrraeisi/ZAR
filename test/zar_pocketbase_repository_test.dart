@@ -256,6 +256,71 @@ void main() {
     expect(sentBody!['expectedRevision'], 3);
   });
 
+  test('saveDeal surfaces terminal_field_locked distinctly from stale', () async {
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/zar/read/snapshot') {
+        return _json({
+          ..._emptySnapshot(),
+          'deals': [
+            {
+              'id': 'd1',
+              'revision': 1,
+              'data': {
+                'id': 'd1',
+                'type': 'buy',
+                'personId': 'p1',
+                'amount': {
+                  'assetType': 'currency',
+                  'currency': {
+                    'code': 'TOMAN',
+                    'minorUnits': 1000,
+                    'minorUnitScale': 0,
+                  },
+                },
+                'pricing': null,
+                'dealAt': '2026-11-23T00:00:00.000Z',
+                'status': 'completed',
+                'note': null,
+                'createdBy': 'u1',
+                'createdAt': '2026-11-23T00:00:00.000Z',
+                'updatedAt': '2026-11-23T00:00:00.000Z',
+              },
+            },
+          ],
+        });
+      }
+      if (request.url.path == '/api/zar/write/upsert') {
+        return _json({
+          'message': jsonEncode({
+            'code': 'terminal_field_locked',
+            'collection': 'zar_deals',
+            'recordId': 'd1',
+            'field': 'amount',
+          }),
+        }, 409);
+      }
+      return _json({'message': 'unexpected'}, 500);
+    });
+    final repository = ZarPocketBaseRepository(
+      client: ZarPocketBaseClient(baseUrl: 'http://pb.local', client: client),
+      workspaceId: 'w1',
+      businessId: 'w1',
+    );
+    final snapshot = await repository.loadCompleteSnapshot();
+    await expectLater(
+      repository.saveDeal(snapshot.deals.single),
+      throwsA(
+        isA<ZarCloudWriteConflictException>()
+            .having((error) => error.code, 'code', 'terminal_field_locked')
+            .having(
+              (error) => error.message.contains('قفل'),
+              'persian lock message',
+              isTrue,
+            ),
+      ),
+    );
+  });
+
   test(
     'replaceCompleteSnapshot validates allocations before touching server',
     () async {

@@ -131,6 +131,43 @@ function zarWriteExistingStatus(existing) {
   return typeof data.status === 'string' ? data.status : null;
 }
 
+function zarWriteCanonicalJson(value) {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    const parts = [];
+    for (let i = 0; i < value.length; i++) {
+      parts.push(zarWriteCanonicalJson(value[i]));
+    }
+    return '[' + parts.join(',') + ']';
+  }
+  const keys = Object.keys(value).sort();
+  const parts = [];
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    parts.push(JSON.stringify(key) + ':' + zarWriteCanonicalJson(value[key]));
+  }
+  return '{' + parts.join(',') + '}';
+}
+
+function zarWriteJsonEqual(left, right) {
+  return zarWriteCanonicalJson(left) === zarWriteCanonicalJson(right);
+}
+
+function zarWriteThrowTerminalFieldLocked(collection, existing, field) {
+  throw new ApiError(
+    409,
+    JSON.stringify({
+      code: 'terminal_field_locked',
+      collection: collection,
+      recordId: existing.getString('id'),
+      field: field,
+      currentStatus: zarWriteExistingStatus(existing),
+    }),
+  );
+}
+
 /// Terminal deal/settlement statuses cannot be reopened (ZAR-DATA-008 slice).
 function zarWriteEnforceTerminalLifecycle(collection, existing, data) {
   const previous = zarWriteExistingStatus(existing);
@@ -172,6 +209,64 @@ function zarWriteEnforceTerminalLifecycle(collection, existing, data) {
   }
 }
 
+/// Posted/cancelled deals and settlements freeze financial identity fields.
+/// Only note + updatedAt may change after terminal status (ZAR-DATA-008).
+function zarWriteEnforceTerminalFieldFreeze(collection, existing, data) {
+  const previousStatus = zarWriteExistingStatus(existing);
+  if (
+    previousStatus !== 'completed' &&
+    previousStatus !== 'cancelled'
+  ) {
+    return;
+  }
+  if (collection !== 'zar_deals' && collection !== 'zar_settlements') {
+    return;
+  }
+  const previous = zarWritePlainData(existing.get('data'));
+  if (!zarWriteIsObject(previous)) {
+    throw new BadRequestError('Existing record data is invalid.');
+  }
+
+  const dealKeys = [
+    'type',
+    'personId',
+    'amount',
+    'pricing',
+    'dealAt',
+    'status',
+    'createdBy',
+    'createdAt',
+  ];
+  const settlementKeys = [
+    'personId',
+    'dealId',
+    'direction',
+    'amount',
+    'scheduledAt',
+    'hasTime',
+    'status',
+    'reminderPlan',
+    'coinValuation',
+    'completedAt',
+    'completedBy',
+    'createdBy',
+    'createdAt',
+  ];
+  const keys = collection === 'zar_deals' ? dealKeys : settlementKeys;
+  for (let i = 0; i < keys.length; i++) {
+    const field = keys[i];
+    const before = Object.prototype.hasOwnProperty.call(previous, field)
+      ? previous[field]
+      : null;
+    const after = Object.prototype.hasOwnProperty.call(data, field)
+      ? data[field]
+      : null;
+    if (!zarWriteJsonEqual(before, after)) {
+      zarWriteThrowTerminalFieldLocked(collection, existing, field);
+    }
+  }
+}
+
 function zarWriteRequirePerson(txApp, workspaceId, personId, field) {
   zarWriteRequiredString(personId, field);
   if (!ZAR_WRITE_ID_PATTERN.test(personId)) {
@@ -205,6 +300,7 @@ function zarWriteValidateUpsertData(
     throw new BadRequestError('Record id mismatch.');
   }
   zarWriteEnforceTerminalLifecycle(collection, existing, data);
+  zarWriteEnforceTerminalFieldFreeze(collection, existing, data);
   const domain = require(`${__hooks}/zar_domain_validate.js`);
   let existingCreatedBy = null;
   if (existing) {

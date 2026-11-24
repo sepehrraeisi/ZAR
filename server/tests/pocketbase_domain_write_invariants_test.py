@@ -476,6 +476,60 @@ def run(pocketbase: Path) -> None:
                     raise AssertionError(f"expected lifecycle_locked: {locked}")
                 print("PASS deal terminal lifecycle locked")
 
+                rewritten_deal = _deal(
+                    deal_id, person_id, user_id, status="completed"
+                )
+                rewritten_deal["amount"] = {
+                    "assetType": "currency",
+                    "currency": {
+                        "code": "TOMAN",
+                        "minorUnits": 9999,
+                        "minorUnitScale": 0,
+                    },
+                }
+                status, field_locked = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_deals",
+                        "id": deal_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": int(created_deal["revision"]),
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": rewritten_deal,
+                    },
+                    token=token,
+                )
+                _expect("deal terminal amount rewrite denied", status, 409)
+                if _conflict_code(field_locked) != "terminal_field_locked":
+                    raise AssertionError(
+                        f"expected terminal_field_locked: {field_locked}"
+                    )
+                print("PASS deal terminal field freeze")
+
+                note_only = _deal(
+                    deal_id, person_id, user_id, status="completed"
+                )
+                note_only["note"] = "posted note ok"
+                note_only["updatedAt"] = "2026-11-24T12:00:00.000Z"
+                status, note_ok = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_deals",
+                        "id": deal_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": int(created_deal["revision"]),
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": note_only,
+                    },
+                    token=token,
+                )
+                _expect("deal terminal note update", status, 200)
+                created_deal = note_ok
+
                 settlement_id = "stlm" + secrets.token_hex(4)
                 status, _ = _request(
                     base_url,
@@ -569,6 +623,35 @@ def run(pocketbase: Path) -> None:
                 if _conflict_code(st_locked) != "lifecycle_locked":
                     raise AssertionError(f"expected lifecycle_locked: {st_locked}")
                 print("PASS settlement terminal lifecycle locked")
+
+                rewritten_st = _settlement(
+                    settlement_id,
+                    person_id,
+                    user_id,
+                    status="completed",
+                    completed_at="2026-11-23T01:00:00.000Z",
+                )
+                rewritten_st["direction"] = "deliver"
+                status, st_field = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_settlements",
+                        "id": settlement_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": int(created_st["revision"]),
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": rewritten_st,
+                    },
+                    token=token,
+                )
+                _expect("settlement terminal direction rewrite denied", status, 409)
+                if _conflict_code(st_field) != "terminal_field_locked":
+                    raise AssertionError(
+                        f"expected terminal_field_locked: {st_field}"
+                    )
+                print("PASS settlement terminal field freeze")
                 print("PASS amount/pricing/actor upsert parity")
             finally:
                 process.terminate()

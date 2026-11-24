@@ -126,6 +126,30 @@ class ZarCloudWriteConflictException implements Exception {
              'صفحه را تازه کنید و دوباره ثبت کنید.',
        );
 
+  const ZarCloudWriteConflictException.lifecycleLocked({
+    String? collection,
+    String? recordId,
+  }) : this(
+         code: 'lifecycle_locked',
+         collection: collection,
+         recordId: recordId,
+         message:
+             'این معامله یا تسویه در وضعیت نهایی است و نمی‌توان آن را '
+             'دوباره باز کرد. هیچ تغییری ذخیره نشد.',
+       );
+
+  const ZarCloudWriteConflictException.terminalFieldLocked({
+    String? collection,
+    String? recordId,
+  }) : this(
+         code: 'terminal_field_locked',
+         collection: collection,
+         recordId: recordId,
+         message:
+             'مقادیر مالی این ردیف نهایی قفل شده‌اند. فقط یادداشت قابل '
+             'ویرایش است و هیچ مقدار دیگری ذخیره نشد.',
+       );
+
   final String code;
   final String? collection;
   final String? recordId;
