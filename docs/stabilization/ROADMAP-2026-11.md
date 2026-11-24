@@ -41,7 +41,8 @@
 - [x] create-time actor stamp (ZAR-DATA-003؛ `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`)
 - [x] createdAt immutability on upsert updates (ZAR-DATA-003؛ `CREATED-AT-IMMUTABLE-EVIDENCE-2026-11-24.md`)
 - [x] terminal field freeze on posted deals/settlements (ZAR-DATA-008؛ `TERMINAL-FIELD-FREEZE-EVIDENCE-2026-11-24.md`) — remaining: period lock + reversal-only correction
-- [x] conflict reload UX snackbar (ZAR-DATA-002؛ `CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`) — remaining: realtime subscribe + device soak
+- [x] conflict reload UX snackbar (ZAR-DATA-002؛ `CONFLICT-RELOAD-UX-EVIDENCE-2026-11-24.md`)
+- [x] workspace epoch remote watch (ZAR-DATA-002؛ `WORKSPACE-EPOCH-REMOTE-WATCH-EVIDENCE-2026-11-24.md`) — remaining: SSE realtime + physical device soak
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
 

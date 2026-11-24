@@ -171,6 +171,18 @@ abstract interface class ZarCashRepository {
   Future<void> appendCashEntry(ZarCashEntry entry);
 }
 
+/// Optional cloud capability: observe workspace mutation epoch so another
+/// device's writes can trigger a snapshot reload (ZAR-DATA-002).
+///
+/// Local/preview repositories do not implement this; the shell no-ops.
+abstract interface class ZarWorkspaceEpochSource {
+  /// Epoch captured from the last successful snapshot (null before first load).
+  int? get lastKnownEpoch;
+
+  /// Cheap probe of the current server epoch without loading collections.
+  Future<int?> peekRemoteEpoch();
+}
+
 abstract interface class ZarPaymentAllocationRepository {
   /// Replaces the explicit destinations for one movement atomically.
   Future<void> savePaymentAllocations(
