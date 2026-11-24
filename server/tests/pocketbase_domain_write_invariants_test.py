@@ -252,6 +252,23 @@ def run(pocketbase: Path) -> None:
                 )
                 _expect("person forged createdBy denied", status, 400)
 
+                legacy_person_id = "p" + secrets.token_hex(6)
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_people",
+                        "id": legacy_person_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": 0,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": _person(legacy_person_id, "local-user"),
+                    },
+                    token=token,
+                )
+                _expect("person legacy local-user create allowed", status, 200)
+
                 status, created_person = _request(
                     base_url,
                     "POST",

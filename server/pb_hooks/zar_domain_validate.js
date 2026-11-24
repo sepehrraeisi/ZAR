@@ -263,9 +263,9 @@ function zarDomainRequireDeal(app, workspaceId, dealId, field) {
   }
 }
 
-/// createdBy must match the authenticated actor on create, and stay
-/// immutable on update. Legacy cloud rows stamped "local-user" remain
-/// editable with that same stamp (immutability only).
+/// createdBy must match the authenticated actor on create (or the
+/// transitional shipping stamp "local-user" until the next APK rolls out),
+/// and stay immutable on update.
 function zarDomainEnforceActor(data, existingCreatedBy, actorId, fieldPrefix) {
   zarDomainRequiredString(data.createdBy, fieldPrefix + ' createdBy');
   if (
@@ -277,11 +277,12 @@ function zarDomainEnforceActor(data, existingCreatedBy, actorId, fieldPrefix) {
     }
     return;
   }
-  if (data.createdBy !== actorId) {
-    throw new BadRequestError(
-      fieldPrefix + ' createdBy must match the authenticated user.',
-    );
+  if (data.createdBy === actorId || data.createdBy === 'local-user') {
+    return;
   }
+  throw new BadRequestError(
+    fieldPrefix + ' createdBy must match the authenticated user.',
+  );
 }
 
 function zarDomainValidateDealPayload(app, workspaceId, data, actorId, existingCreatedBy) {
