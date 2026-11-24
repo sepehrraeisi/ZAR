@@ -55,3 +55,6 @@ android/release-key.jks
 
 .cc-bridge-out/
 design_ref/
+
+# Local PocketBase binary downloads (CI fetches its own)
+.tools/

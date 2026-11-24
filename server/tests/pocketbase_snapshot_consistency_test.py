@@ -72,7 +72,7 @@ def _migrate(pocketbase: Path, data_dir: Path, migrations_dir: Path) -> None:
         )
 
 
-def _person_data(person_id: str, note: str) -> dict[str, Any]:
+def _person_data(person_id: str, note: str, actor_id: str) -> dict[str, Any]:
     return {
         "id": person_id,
         "displayName": "Snapshot Person",
@@ -81,7 +81,7 @@ def _person_data(person_id: str, note: str) -> dict[str, Any]:
         "archived": False,
         "createdAt": "2026-11-23T00:00:00.000Z",
         "updatedAt": "2026-11-23T00:00:00.000Z",
-        "createdBy": "snap",
+        "createdBy": actor_id,
     }
 
 
@@ -126,7 +126,7 @@ def run(pocketbase: Path) -> None:
                 email = f"snap-{secrets.token_hex(4)}@example.test"
                 password = f"Snap-{secrets.token_hex(4)}-Aa1!"
                 admin_token = auth_superuser(base_url, super_password)
-                _, token = provision_member(
+                user_id, token = provision_member(
                     base_url,
                     admin_token=admin_token,
                     email=email,
@@ -153,7 +153,7 @@ def run(pocketbase: Path) -> None:
                         "workspaceId": workspace_id,
                         "expectedRevision": 0,
                         "idempotencyKey": secrets.token_hex(16),
-                        "data": _person_data(person_id, "before"),
+                        "data": _person_data(person_id, "before", user_id),
                     },
                     token=token,
                 )
@@ -238,7 +238,7 @@ def run(pocketbase: Path) -> None:
                                 "workspaceId": workspace_id,
                                 "expectedRevision": 1,
                                 "idempotencyKey": secrets.token_hex(16),
-                                "data": _person_data(person_id, "after"),
+                                "data": _person_data(person_id, "after", user_id),
                             },
                             token=token,
                         )
@@ -259,7 +259,9 @@ def run(pocketbase: Path) -> None:
                                     "workspaceId": workspace_id,
                                     "expectedRevision": 1,
                                     "idempotencyKey": secrets.token_hex(16),
-                                    "data": _person_data(person_id, "stale-race"),
+                                    "data": _person_data(
+                                        person_id, "stale-race", user_id
+                                    ),
                                 },
                                 token=token,
                             )

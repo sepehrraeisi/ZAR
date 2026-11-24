@@ -71,7 +71,7 @@ def _migrate(pocketbase: Path, data_dir: Path, migrations_dir: Path) -> None:
         )
 
 
-def _person(person_id: str) -> dict[str, Any]:
+def _person(person_id: str, actor_id: str) -> dict[str, Any]:
     return {
         "id": person_id,
         "displayName": "Invariant Person",
@@ -80,16 +80,25 @@ def _person(person_id: str) -> dict[str, Any]:
         "archived": False,
         "createdAt": "2026-11-23T00:00:00.000Z",
         "updatedAt": "2026-11-23T00:00:00.000Z",
-        "createdBy": "inv",
+        "createdBy": actor_id,
     }
 
 
-def _deal(deal_id: str, person_id: str, status: str = "active") -> dict[str, Any]:
+def _deal(
+    deal_id: str,
+    person_id: str,
+    actor_id: str,
+    status: str = "active",
+    *,
+    amount: dict[str, Any] | None = None,
+    pricing: Any = None,
+) -> dict[str, Any]:
     return {
         "id": deal_id,
         "type": "buy",
         "personId": person_id,
-        "amount": {
+        "amount": amount
+        or {
             "assetType": "currency",
             "currency": {
                 "code": "TOMAN",
@@ -97,11 +106,11 @@ def _deal(deal_id: str, person_id: str, status: str = "active") -> dict[str, Any
                 "minorUnitScale": 0,
             },
         },
-        "pricing": None,
+        "pricing": pricing,
         "dealAt": "2026-11-23T00:00:00.000Z",
         "status": status,
         "note": None,
-        "createdBy": "inv",
+        "createdBy": actor_id,
         "createdAt": "2026-11-23T00:00:00.000Z",
         "updatedAt": "2026-11-23T00:00:00.000Z",
     }
@@ -110,9 +119,11 @@ def _deal(deal_id: str, person_id: str, status: str = "active") -> dict[str, Any
 def _settlement(
     settlement_id: str,
     person_id: str,
+    actor_id: str,
     *,
     status: str = "open",
     completed_at: str | None = None,
+    amount: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "id": settlement_id,
@@ -120,7 +131,8 @@ def _settlement(
         "dealId": None,
         "direction": "receive",
         "status": status,
-        "amount": {
+        "amount": amount
+        or {
             "assetType": "currency",
             "currency": {
                 "code": "TOMAN",
@@ -131,7 +143,7 @@ def _settlement(
         "scheduledAt": "2026-11-23T00:00:00.000Z",
         "hasTime": False,
         "completedAt": completed_at,
-        "createdBy": "inv",
+        "createdBy": actor_id,
         "createdAt": "2026-11-23T00:00:00.000Z",
         "updatedAt": "2026-11-23T00:00:00.000Z",
     }
@@ -185,7 +197,7 @@ def run(pocketbase: Path) -> None:
                 email = f"inv-{secrets.token_hex(4)}@example.test"
                 password = f"Inv-{secrets.token_hex(4)}-Aa1!"
                 admin_token = auth_superuser(base_url, super_password)
-                _, token = provision_member(
+                user_id, token = provision_member(
                     base_url,
                     admin_token=admin_token,
                     email=email,
@@ -213,7 +225,7 @@ def run(pocketbase: Path) -> None:
                         "expectedRevision": 0,
                         "idempotencyKey": secrets.token_hex(16),
                         "data": {
-                            **_person(person_id),
+                            **_person(person_id, user_id),
                             "id": "other-id",
                         },
                     },
@@ -221,7 +233,7 @@ def run(pocketbase: Path) -> None:
                 )
                 _expect("person id mismatch denied", status, 400)
 
-                status, _ = _request(
+                status, created_person = _request(
                     base_url,
                     "POST",
                     "/api/zar/write/upsert",
@@ -231,11 +243,31 @@ def run(pocketbase: Path) -> None:
                         "workspaceId": workspace_id,
                         "expectedRevision": 0,
                         "idempotencyKey": secrets.token_hex(16),
-                        "data": _person(person_id),
+                        "data": _person(person_id, user_id),
                     },
                     token=token,
                 )
                 _expect("person create", status, 200)
+
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_people",
+                        "id": person_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": int(created_person["revision"]),
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": {
+                            **_person(person_id, user_id),
+                            "createdBy": "rewritten-actor",
+                            "note": "mutated",
+                        },
+                    },
+                    token=token,
+                )
+                _expect("person createdBy rewrite denied", status, 400)
 
                 deal_id = "d" + secrets.token_hex(6)
                 status, _ = _request(
@@ -248,7 +280,10 @@ def run(pocketbase: Path) -> None:
                         "workspaceId": workspace_id,
                         "expectedRevision": 0,
                         "idempotencyKey": secrets.token_hex(16),
-                        "data": {**_deal(deal_id, person_id), "type": "purchase"},
+                        "data": {
+                            **_deal(deal_id, person_id, user_id),
+                            "type": "purchase",
+                        },
                     },
                     token=token,
                 )
@@ -264,11 +299,143 @@ def run(pocketbase: Path) -> None:
                         "workspaceId": workspace_id,
                         "expectedRevision": 0,
                         "idempotencyKey": secrets.token_hex(16),
-                        "data": _deal(deal_id, "missing-person"),
+                        "data": _deal(deal_id, "missing-person", user_id),
                     },
                     token=token,
                 )
                 _expect("deal missing person denied", status, 400)
+
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_deals",
+                        "id": deal_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": 0,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": _deal(
+                            deal_id,
+                            person_id,
+                            user_id,
+                            amount={
+                                "assetType": "currency",
+                                "currency": {
+                                    "code": "usd",
+                                    "minorUnits": 1000,
+                                    "minorUnitScale": 2,
+                                },
+                            },
+                        ),
+                    },
+                    token=token,
+                )
+                _expect("deal lowercase currency code denied", status, 400)
+
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_deals",
+                        "id": deal_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": 0,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": _deal(
+                            deal_id,
+                            person_id,
+                            user_id,
+                            amount={
+                                "assetType": "currency",
+                                "currency": {
+                                    "code": "USD",
+                                    "minorUnits": -5,
+                                    "minorUnitScale": 2,
+                                },
+                            },
+                        ),
+                    },
+                    token=token,
+                )
+                _expect("deal negative currency minor units denied", status, 400)
+
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_deals",
+                        "id": deal_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": 0,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": _deal(
+                            deal_id,
+                            person_id,
+                            user_id,
+                            amount={
+                                "assetType": "gold",
+                                "gold": {
+                                    "decimal": "1.5",
+                                    "unit": "gram",
+                                    "purity": "750",
+                                },
+                            },
+                            pricing={
+                                "kind": "currency",
+                                "totalToman": {"wholeTomans": 1000},
+                                "tomanPerUnit": "1",
+                            },
+                        ),
+                    },
+                    token=token,
+                )
+                _expect("deal pricing kind mismatch denied", status, 400)
+
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_deals",
+                        "id": deal_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": 0,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": _deal(
+                            deal_id,
+                            person_id,
+                            user_id,
+                            amount={
+                                "assetType": "coin",
+                                "coinLines": [
+                                    {
+                                        "id": "line1",
+                                        "coinTypeId": "missing-coin",
+                                        "coinTypeNameSnapshot": "Ghost",
+                                        "quantity": 1,
+                                    }
+                                ],
+                            },
+                            pricing={
+                                "kind": "coin",
+                                "totalToman": {"wholeTomans": 100},
+                                "lines": [
+                                    {
+                                        "lineId": "line1",
+                                        "method": "perPiece",
+                                        "unitPriceToman": {"wholeTomans": 100},
+                                        "rowTotalToman": {"wholeTomans": 100},
+                                    }
+                                ],
+                            },
+                        ),
+                    },
+                    token=token,
+                )
+                _expect("deal missing coin type denied", status, 400)
 
                 status, created_deal = _request(
                     base_url,
@@ -280,7 +447,9 @@ def run(pocketbase: Path) -> None:
                         "workspaceId": workspace_id,
                         "expectedRevision": 0,
                         "idempotencyKey": secrets.token_hex(16),
-                        "data": _deal(deal_id, person_id, status="completed"),
+                        "data": _deal(
+                            deal_id, person_id, user_id, status="completed"
+                        ),
                     },
                     token=token,
                 )
@@ -296,7 +465,9 @@ def run(pocketbase: Path) -> None:
                         "workspaceId": workspace_id,
                         "expectedRevision": int(created_deal["revision"]),
                         "idempotencyKey": secrets.token_hex(16),
-                        "data": _deal(deal_id, person_id, status="active"),
+                        "data": _deal(
+                            deal_id, person_id, user_id, status="active"
+                        ),
                     },
                     token=token,
                 )
@@ -319,6 +490,7 @@ def run(pocketbase: Path) -> None:
                         "data": _settlement(
                             settlement_id,
                             person_id,
+                            user_id,
                             status="completed",
                             completed_at=None,
                         ),
@@ -326,6 +498,34 @@ def run(pocketbase: Path) -> None:
                     token=token,
                 )
                 _expect("settlement completed without completedAt denied", status, 400)
+
+                status, _ = _request(
+                    base_url,
+                    "POST",
+                    "/api/zar/write/upsert",
+                    body={
+                        "collection": "zar_settlements",
+                        "id": settlement_id,
+                        "workspaceId": workspace_id,
+                        "expectedRevision": 0,
+                        "idempotencyKey": secrets.token_hex(16),
+                        "data": _settlement(
+                            settlement_id,
+                            person_id,
+                            user_id,
+                            amount={
+                                "assetType": "gold",
+                                "gold": {
+                                    "decimal": "bad",
+                                    "unit": "gram",
+                                    "purity": None,
+                                },
+                            },
+                        ),
+                    },
+                    token=token,
+                )
+                _expect("settlement bad gold decimal denied", status, 400)
 
                 status, created_st = _request(
                     base_url,
@@ -340,6 +540,7 @@ def run(pocketbase: Path) -> None:
                         "data": _settlement(
                             settlement_id,
                             person_id,
+                            user_id,
                             status="completed",
                             completed_at="2026-11-23T01:00:00.000Z",
                         ),
@@ -358,7 +559,9 @@ def run(pocketbase: Path) -> None:
                         "workspaceId": workspace_id,
                         "expectedRevision": int(created_st["revision"]),
                         "idempotencyKey": secrets.token_hex(16),
-                        "data": _settlement(settlement_id, person_id, status="open"),
+                        "data": _settlement(
+                            settlement_id, person_id, user_id, status="open"
+                        ),
                     },
                     token=token,
                 )
@@ -366,6 +569,7 @@ def run(pocketbase: Path) -> None:
                 if _conflict_code(st_locked) != "lifecycle_locked":
                     raise AssertionError(f"expected lifecycle_locked: {st_locked}")
                 print("PASS settlement terminal lifecycle locked")
+                print("PASS amount/pricing/actor upsert parity")
             finally:
                 process.terminate()
                 try:
