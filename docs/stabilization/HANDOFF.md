@@ -6,6 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-25 — External probe deep checks: TLS expiry (>14d client view) + off-site backup age (<50h) in `zar_external_probe.ps1`; deployed to `ZAR-Ops`. Evidence: `EXTERNAL-PROBE-DEEP-CHECKS-EVIDENCE-2026-11-25.md`.
 - 2026-11-25 — Phase-3 launch packets: signup reopen packet (no deploy), period-lock ADR, operators drill tracker, RC2 soak start, sign-off checklist.
 - 2026-11-25 — Single-device preflight APK 20084 partial (versionCode + cold-start launch verified; interactive UI blocked by lock/AOD). Evidence: `SINGLE-DEVICE-PREFLIGHT-20084-EVIDENCE-2026-11-25.md`.
 - 2026-11-25 — Incident second-operator drill checklist + local DB encryption ADR (owner decision pending; recommend SQLCipher). Docs: `INCIDENT-RUNBOOK.md`, `LOCAL-DB-ENCRYPTION-ADR-2026-11-25.md`.

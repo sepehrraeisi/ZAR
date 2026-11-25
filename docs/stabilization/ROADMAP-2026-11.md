@@ -25,7 +25,8 @@
 
 ## فاز ۲ — عملیات قابل اتکا (هفته ۳-۴)
 
-- [x] مانیتورینگ: on-VPS `zar-health-check.timer` + owner-PC `zar_external_probe.ps1` (`MONITORING-EVIDENCE-2026-11-06.md`) — TLS/backup-age deep probes still optional hardening
+- [x] مانیتورینگ: on-VPS `zar-health-check.timer` + owner-PC `zar_external_probe.ps1` (`MONITORING-EVIDENCE-2026-11-06.md`)
+- [x] پروب بیرونی deep: TLS expiry (>14d) + عمر بکاپ آف‌سایت (<50h) (`EXTERNAL-PROBE-DEEP-CHECKS-EVIDENCE-2026-11-25.md`)
 - [x] انتقال توکن اندروید به Keystore-backed storage (`ZarSecureTokenStore` / `flutter_secure_storage`)
 - [x] Android backup/data-extraction deny (`allowBackup=false` + XML rules؛ `ANDROID-BACKUP-DENY-EVIDENCE-2026-11-25.md`) — مانده: local DB encryption
 - [x] enforce HTTPS در release + timeout صریح REST (`RELEASE-HTTPS-CLIENT-TIMEOUT-EVIDENCE-2026-11-25.md`)
