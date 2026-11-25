@@ -21,7 +21,12 @@
 ## لایه ۲ — پروب بیرونی از PC مالک (best-effort)
 
 - اسکریپت: `server/tools/zar_external_probe.ps1` → مستقر `C:\Users\simin\ZAR-Ops\zar_external_probe.ps1`
-- Task Scheduler: `ZAR External Probe` هر ۱۵ دقیقه → `https://app.titangold.ir/api/health` (انتظار 200 + بدنه healthy)
+- Task Scheduler: `ZAR External Probe` هر ۱۵ دقیقه
+- چک‌ها (2026-11-25 deep hardening؛ evidence
+  `EXTERNAL-PROBE-DEEP-CHECKS-EVIDENCE-2026-11-25.md`):
+  1. `https://app.titangold.ir/api/health` → 200 + بدنه healthy
+  2. TLS leaf `app.titangold.ir` از دید کلاینت → بیش از ۱۴ روز اعتبار
+  3. تازه‌ترین snapshot محلی در `Documents\ZAR-OffsiteBackups` → عمر کمتر از ۵۰ ساعت
 - شکست: log `ZAR-Ops\external-probe.log` + پنجره‌ی هشدار ویندوز
 - محدودیت: PC همیشه روشن نیست؛ این لایه مکمل چکر ایمیل VPS است، جایگزین آن نیست
 
