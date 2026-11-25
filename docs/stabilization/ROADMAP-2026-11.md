@@ -54,7 +54,7 @@
 - [ ] تکمیل runbooks (release, incident, backup) و اجرای دوباره توسط اپراتور دوم
 - [ ] Release Candidate + soak ۷-۱۴ روزه بدون P0/P1
 - [x] سیاست ثبت‌نام: بسته تا لانچ (§10.4؛ `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23)
-- [ ] تصمیم باز کردن ثبت‌نام + ضد-abuse در لانچ (bootstrap اتمیک آماده است)
+- [x] ضد-abuse/rate-limit evidence برای لانچ (`SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md`؛ suite `pocketbase_signup_launch_abuse_test.py`) — مانده: تصمیم مالک + migration رو به جلو برای reopen
 - [ ] sign-off: مالک محصول، امنیت، عملیات
 
 ## فاز ۴ — حالت «فقط آپدیت» (دائمی)
