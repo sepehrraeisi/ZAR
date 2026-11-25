@@ -149,9 +149,10 @@ Transitional `local-user` cloud create allowance removed after APK 20083.
 ## 5. Current project state (as of 2026-11-22)
 
 - **v1.0.0** tagged + published as a GitHub release (post RC1 soak). Device QA
-  APK **20083** built 2026-11-24 (build-number 18083; +2000 offset) — install/
-  physical soak: `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`. Prior ship
-  versionCode **18082**. Soak log: `SOAK-RC1.md`.
+  APK **20084** built + installed 2026-11-25 (build-number 18084; +2000
+  offset) — backup deny + release HTTPS/timeout:
+  `DEVICE-QA-APK-20084-EVIDENCE-2026-11-25.md`. Prior **20083** (epoch/SSE):
+  `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`. Soak log: `SOAK-RC1.md`.
 - Phase 0/1/2 of `docs/stabilization/ROADMAP-2026-11.md` are complete
   (integrity locks, rate limiting 13 rules, monitoring, off-site backup,
   transactional restore, Keystore token storage, supply-chain CI).
