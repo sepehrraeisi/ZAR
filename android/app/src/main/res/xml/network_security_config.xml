@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release/default: block cleartext to the shop server. Debug overlay may
+     re-enable cleartext for disposable local PocketBase. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

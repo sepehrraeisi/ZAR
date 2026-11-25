@@ -18,7 +18,9 @@
         android:allowBackup="false"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        tools:replace="android:allowBackup">
+        android:usesCleartextTraffic="false"
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:replace="android:allowBackup,android:usesCleartextTraffic">
         <activity
             android:name=".MainActivity"
             android:exported="true"

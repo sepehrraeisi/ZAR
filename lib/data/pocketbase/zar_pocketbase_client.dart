@@ -1,21 +1,70 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
+/// Default bound for ordinary REST calls (not long-lived SSE).
+const Duration kZarPocketBaseRequestTimeout = Duration(seconds: 30);
+
+/// Validates [baseUrl] for the PocketBase client.
+///
+/// Release builds pass [requireHttps] = true so a mis-built APK cannot talk
+/// cleartext to a shop server. Tests and local disposable PB keep HTTP.
+void validateZarPocketBaseBaseUrl(
+  String baseUrl, {
+  required bool requireHttps,
+}) {
+  final uri = Uri.tryParse(baseUrl);
+  if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+    throw ArgumentError.value(
+      baseUrl,
+      'baseUrl',
+      'must be an absolute URL with a host',
+    );
+  }
+  if (uri.scheme != 'https' && uri.scheme != 'http') {
+    throw ArgumentError.value(
+      baseUrl,
+      'baseUrl',
+      'must use http or https',
+    );
+  }
+  if (requireHttps && uri.scheme != 'https') {
+    throw ArgumentError.value(
+      baseUrl,
+      'baseUrl',
+      'release builds require https://',
+    );
+  }
+}
 
 /// Minimal PocketBase REST client — only what ZAR+ needs (auth + record CRUD
 /// + batch). Kept dependency-light on purpose; the official SDK adds more
 /// than this app uses and was unavailable offline when this landed.
 class ZarPocketBaseClient {
-  ZarPocketBaseClient({required String baseUrl, http.Client? client})
-    : _baseUrl = baseUrl.endsWith('/')
-          ? baseUrl.substring(0, baseUrl.length - 1)
-          : baseUrl,
-      _client = client ?? http.Client();
+  ZarPocketBaseClient({
+    required String baseUrl,
+    http.Client? client,
+    bool? requireHttps,
+    this.timeout = kZarPocketBaseRequestTimeout,
+  }) : _baseUrl = baseUrl.endsWith('/')
+           ? baseUrl.substring(0, baseUrl.length - 1)
+           : baseUrl,
+       _client = client ?? http.Client() {
+    validateZarPocketBaseBaseUrl(
+      _baseUrl,
+      requireHttps: requireHttps ?? kReleaseMode,
+    );
+  }
 
   final String _baseUrl;
 
   String get baseUrl => _baseUrl;
   final http.Client _client;
+
+  /// Bound applied to each REST send + body read. SSE uses [httpClient] directly.
+  final Duration timeout;
 
   /// Shared HTTP client for short REST calls and long-lived SSE streams.
   http.Client get httpClient => _client;
@@ -44,8 +93,10 @@ class ZarPocketBaseClient {
     late http.StreamedResponse response;
     late String rawBody;
     try {
-      response = await _client.send(request);
-      rawBody = await response.stream.bytesToString();
+      response = await _client.send(request).timeout(timeout);
+      rawBody = await response.stream.bytesToString().timeout(timeout);
+    } on TimeoutException catch (error) {
+      throw ZarPocketBaseTransportException(error);
     } catch (error) {
       throw ZarPocketBaseTransportException(error);
     }
