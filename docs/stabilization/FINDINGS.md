@@ -48,7 +48,7 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Production: **contained on 2026-10-30**; `deleteRule=NULL` verified after migration and restart.
 - Local remediation: `server/pb_migrations/1793260800_lock_workspace_deletion.js` sets the rule to `null` in both migration directions.
 - Regression evidence: anonymous delete `403`, member delete `403`, member view/update remain `200`, record survives.
-- Status: **fixed in production and tested**. The Git branch still requires remote publication/review.
+- Status: **fixed in production and tested** (merged long since; workspace delete locked).
 - Production gate: verified full backup/restore point, migration checksum, maintenance plan, health/auth test and rollback procedure.
 
 ### ZAR-DATA-001 — cloud reads/restores were not scoped to the selected workspace
@@ -58,7 +58,7 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Impact: a user who is a member of multiple workspaces could load a mixed snapshot; restoring one workspace could delete records visible from another.
 - Local remediation: every cloud snapshot read and restore-discovery query now uses `workspace='<selected id>'`.
 - Regression evidence: `test/zar_pocketbase_repository_test.dart` proves all 14 load/restore discovery requests are scoped to `w1`.
-- Status: **fixed in Draft PR #3; targeted tests and analyzer pass; not yet merged or released**.
+- Status: **fixed in production** (PR #3 era; workspace-scoped reads + restore discovery).
 
 ### ZAR-DATA-002 — multi-device last-write-wins can silently lose changes
 
@@ -74,8 +74,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Progress (2026-11-24): PocketBase SSE subscribe on `zar_workspaces/{id}` with poll fallback (`WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): Caddy `flush_interval -1` so `/api/realtime` is not TLS-buffered (`CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`). Remaining: physical multi-device soak.
 - Progress (2026-11-24): Device QA APK **20083** built and installed on owner Samsung with actor stamp + epoch poll/SSE (`DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`; audit `APK-AUDIT-20083-EVIDENCE-2026-11-25.md`).
-- Progress (2026-11-25): concurrent soak asserts cross-session epoch + snapshot parity (client peek path). Remaining: physical multi-device soak checklist.
-- Status: **write-path contained in production**; epoch poll+SSE (+ Caddy flush) in APK 20083.
+- Progress (2026-11-25): concurrent soak asserts cross-session epoch + snapshot parity (client peek path). Remaining: physical multi-device soak checklist (`MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`).
+- Status: **write-path contained in production**; epoch poll+SSE (+ Caddy flush) in APK 20083; **physical soak still open**.
 
 ### ZAR-DATA-003 — server does not enforce critical domain invariants
 
@@ -90,8 +90,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Progress (2026-11-24): transitional `local-user` create allowance removed after APK 20083 (`DROP-LOCAL-USER-ACTOR-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): `createdAt` immutable on upsert updates (`CREATED-AT-IMMUTABLE-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): restore amount structural gate shares `zar_domain_validate.parseAssetAmount` (`RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`).
-- Progress (2026-11-24): restore deal-pricing structural gate shares `zar_domain_validate.validateDealPricing` + purity-unknown parity (`RESTORE-DOMAIN-PRICING-SHARE-EVIDENCE-2026-11-24.md`). Remaining: period lock, audit trail.
-- Status: **mostly contained** on write CAS routes; restore↔upsert amount/pricing share closed.
+- Progress (2026-11-24): restore deal-pricing structural gate shares `zar_domain_validate.validateDealPricing` + purity-unknown parity (`RESTORE-DOMAIN-PRICING-SHARE-EVIDENCE-2026-11-24.md`). Remaining: period lock + reversal-only correction (accountant), richer audit trail.
+- Status: **mostly contained** on write CAS routes; restore↔upsert amount/pricing share closed; create-time actor stamp enforced (no `local-user` create allow).
 
 ### ZAR-DATA-004 — historical records are deletable and audit evidence is absent
 
@@ -100,7 +100,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - `auditAction` parameters in the PocketBase repository are ignored; actor identity is also recorded as `local-user` in cloud presentation paths.
 - Required remediation: deny hard delete for financial/history collections, introduce reversal/tombstone flows, append-only audit events, server time, authenticated actor, reason, request/idempotency ID and before/after linkage.
 - Local containment in commit `87f4a6e`: `1793347200_lock_cash_entry_deletion.js` denies hard deletion in both migration directions. Real API regression proves create `200`, update/delete `403`, original record survival and reversal create `200`.
-- Status: cash-journal update/delete is **contained in production and tested**. Hard delete for other historical collections and the full audit design remain open.
+- Progress: hard-delete denied for people/deals/settlements/coin/currency (`DOMAIN-HARD-DELETE-EVIDENCE-2026-11-06.md`); allocation Record API locked + replace audit in receipts (`1793604698`); cash append-only CAS.
+- Status: **hard-delete contained** for history/catalog collections in production. Remaining: reversal/tombstone UX + richer append-only audit design (period lock / accountant).
 
 ### ZAR-DATA-005 — workspace bootstrap is non-atomic and non-idempotent
 
@@ -129,15 +130,19 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Client mappings and server update rules permit previously completed records to be reopened/cancelled or rewritten.
 - Required: approved lifecycle transition matrix, period lock and reversal-only correction for posted history.
 - Progress (2026-11-23): terminal deal/settlement statuses cannot leave `completed`/`cancelled` via upsert (409 `lifecycle_locked`). Evidence shared with `DOMAIN-WRITE-INVARIANTS-EVIDENCE-2026-11-23.md`.
-- Progress (2026-11-24): field-level freeze on terminal rows — only `note`/`updatedAt` mutable; rewrite → 409 `terminal_field_locked` (`TERMINAL-FIELD-FREEZE-EVIDENCE-2026-11-24.md`). Remaining: period lock, reversal-only posted correction.
+- Progress (2026-11-24): field-level freeze on terminal rows — only `note`/`updatedAt` mutable; rewrite → 409 `terminal_field_locked` (`TERMINAL-FIELD-FREEZE-EVIDENCE-2026-11-24.md`). Remaining: period lock, reversal-only posted correction (**accountant sign-off**).
+- Status: **lifecycle + field freeze contained** on upsert; period lock / reversal-only still open.
 
 ### ZAR-MOB-001 — session token and local financial data protection are insufficient
 
-- PocketBase token is stored in `SharedPreferences` (`zar_pocketbase_auth_service.dart:36-40, 122-137`) rather than platform secure storage.
+- PocketBase token was stored in `SharedPreferences` rather than platform secure storage.
 - Local SQLite is not encrypted.
-- Android manifest has no explicit backup/data-extraction policy, so database/preferences may enter device backup.
+- Android manifest previously had no explicit backup/data-extraction policy.
 - JSON export/share is plaintext and not tamper-evident.
 - Required: Android Keystore-backed token storage, explicit backup rules, data classification, encrypted/authenticated exports where required, and documented recovery trade-offs.
+- Progress: `ZarSecureTokenStore` / `flutter_secure_storage` (EncryptedSharedPreferences + Keystore) — ROADMAP Phase 2 done.
+- Progress (2026-11-25): `android:allowBackup="false"` + `fullBackupContent` / `dataExtractionRules` exclude app data from cloud backup and device transfer (`ANDROID-BACKUP-DENY-EVIDENCE-2026-11-25.md`).
+- Status: **token + backup-deny contained**; remaining: local DB encryption, export authenticity, backup/data-classification policy doc.
 
 ### ZAR-OPS-001 — production service hardening is below baseline
 

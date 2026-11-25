@@ -657,7 +657,10 @@ C:\Users\simin\AppData\Local\Android\Sdk\platform-tools\adb.exe
   expiry، backup age/integrity، auth anomaly و restart loop
 - alert delivery واقعی، owner/on-call، threshold، escalation و runbook آزمایش‌شده
 - انتقال token اندروید از `SharedPreferences` به Keystore-backed storage
-- Android backup/data-extraction policy و تصمیم مستند درباره‌ی local DB encryption
+  (**انجام شد**؛ `ZarSecureTokenStore`)
+- Android backup/data-extraction deny (**انجام شد 2026-11-25**؛
+  `ANDROID-BACKUP-DENY-EVIDENCE-2026-11-25.md`)؛ مانده: local DB encryption +
+  تصمیم مستند recovery
 - signing-key custody و recovery drill
 - branch protection روی `master`، required checks/reviews، pinned toolchain/actions
 - secret/dependency/SAST scans، SBOM، provenance، checksums و signed releases

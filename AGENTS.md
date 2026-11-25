@@ -119,8 +119,9 @@ stamp (evidence `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`). Restore
 amount structural share (evidence `RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`).
 Open: signup reopen at launch (owner + forward migration; abuse suite green —
 `SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md`); physical multi-device soak before
-advertising; period lock + reversal-only correction (accountant). Transitional
-`local-user` cloud create allowance removed after APK 20083.
+advertising; period lock + reversal-only correction (accountant); local DB
+encryption (backup deny shipped — `ANDROID-BACKUP-DENY-EVIDENCE-2026-11-25.md`).
+Transitional `local-user` cloud create allowance removed after APK 20083.
 
 ## 4. Production server (owner's VPS)
 
