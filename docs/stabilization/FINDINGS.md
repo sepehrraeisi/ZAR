@@ -142,7 +142,8 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Required: Android Keystore-backed token storage, explicit backup rules, data classification, encrypted/authenticated exports where required, and documented recovery trade-offs.
 - Progress: `ZarSecureTokenStore` / `flutter_secure_storage` (EncryptedSharedPreferences + Keystore) — ROADMAP Phase 2 done.
 - Progress (2026-11-25): `android:allowBackup="false"` + `fullBackupContent` / `dataExtractionRules` exclude app data from cloud backup and device transfer (`ANDROID-BACKUP-DENY-EVIDENCE-2026-11-25.md`).
-- Status: **token + backup-deny contained**; remaining: local DB encryption, export authenticity, backup/data-classification policy doc.
+- Progress (2026-11-25): local DB encryption ADR proposed (Option A SQLCipher; owner decision) — `LOCAL-DB-ENCRYPTION-ADR-2026-11-25.md`.
+- Status: **token + backup-deny contained**; remaining: owner decision on local DB encryption, export authenticity.
 
 ### ZAR-OPS-001 — production service hardening is below baseline
 

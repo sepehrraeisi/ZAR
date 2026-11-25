@@ -6,6 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-25 — Incident second-operator drill checklist + local DB encryption ADR (owner decision pending; recommend SQLCipher). Docs: `INCIDENT-RUNBOOK.md`, `LOCAL-DB-ENCRYPTION-ADR-2026-11-25.md`.
 - 2026-11-25 — Physical multi-device soak checklist raised to APK ≥ 20084 + optional single-device preflight section (`MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`).
 - 2026-11-25 — PocketBase repository edge coverage (cash append no-op/immutable/409, allocation replace/mismatch/stale, archivePerson CAS) + RELEASE-RUNBOOK second-operator drill checklist. Evidence: `REPO-EDGE-COVERAGE-EVIDENCE-2026-11-25.md`.
 - 2026-11-25 — Backup UI export/account coverage: save/share export, import cancel, sign-out confirm, catalog callbacks, invalid JSON snackbar. Evidence: `BACKUP-UI-EXPORT-COVERAGE-EVIDENCE-2026-11-25.md`.

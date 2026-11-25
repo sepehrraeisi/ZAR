@@ -120,9 +120,8 @@ amount structural share (evidence `RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-
 Open: signup reopen at launch (owner + forward migration; abuse suite green —
 `SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md`); physical multi-device soak before
 advertising; period lock + reversal-only correction (accountant); local DB
-encryption (backup deny + release HTTPS/timeout shipped —
-`ANDROID-BACKUP-DENY-EVIDENCE-2026-11-25.md`,
-`RELEASE-HTTPS-CLIENT-TIMEOUT-EVIDENCE-2026-11-25.md`).
+encryption (backup deny + release HTTPS/timeout shipped; ADR pending owner —
+`LOCAL-DB-ENCRYPTION-ADR-2026-11-25.md`).
 Transitional `local-user` cloud create allowance removed after APK 20083.
 
 ## 4. Production server (owner's VPS)
