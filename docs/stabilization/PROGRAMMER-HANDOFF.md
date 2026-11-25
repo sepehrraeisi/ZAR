@@ -614,7 +614,11 @@ C:\Users\simin\AppData\Local\Android\Sdk\platform-tools\adb.exe
   UI بدون toggle ساخت حساب، suite
   `pocketbase_signup_policy_test.py` (deny/abuse/admin seed)، evidence
   `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md` (**prod deploy**).
-- باز کردن signup = migration رو به جلو + abuse/rate-limit evidence جدا.
+- **انجام شد (2026-11-25):** abuse/rate-limit launch evidence روی disposable
+  instance: `pocketbase_signup_launch_abuse_test.py` (temp-open → burst →
+  `users:create` 5/600 → 429 → re-close)، evidence
+  `SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md` (CI-wired؛ **بدون** تغییر prod).
+- باز کردن signup = migration رو به جلو + تصمیم مالک (abuse evidence آماده است).
 
 #### 10.5 بستن مرزهای یکپارچگی cloud
 
@@ -680,8 +684,9 @@ C:\Users\simin\AppData\Local\Android\Sdk\platform-tools\adb.exe
 - APK و signing — owner: Android/release owner؛ deadline: قبل از هر release؛
   پذیرش: package/version/cert/APK hash، source mapping و signed reproducible build.
 - Public signup — **closed until launch** (2026-11-23؛ evidence
-  `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`)؛ reopen نیاز به migration +
-  abuse/rate-limit evidence.
+  `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`)؛ abuse/rate-limit evidence
+  آماده (`SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md`)؛ reopen = owner +
+  forward migration.
 - Monitoring — owner: operations؛ deadline: قبل از production claim/launch؛
   پذیرش: external probes، alert delivery، escalation و simulated-failure evidence.
 - Transactional restore deployment — owner: product + operations + security؛

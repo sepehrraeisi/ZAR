@@ -117,7 +117,8 @@ amount/pricing parity via `zar_domain_validate.js` (evidence
 `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`). Create-time actor
 stamp (evidence `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`). Restore
 amount structural share (evidence `RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`).
-Open: signup launch policy + abuse tests; physical multi-device soak before
+Open: signup reopen at launch (owner + forward migration; abuse suite green —
+`SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md`); physical multi-device soak before
 advertising; period lock + reversal-only correction (accountant). Transitional
 `local-user` cloud create allowance removed after APK 20083.
 
@@ -152,8 +153,9 @@ advertising; period lock + reversal-only correction (accountant). Transitional
   (integrity locks, rate limiting 13 rules, monitoring, off-site backup,
   transactional restore, Keystore token storage, supply-chain CI).
 - Remaining known work: physical multi-device soak / realtime conflict UI
- before advertising cloud reliability; signup reopen only at launch with
- abuse/rate-limit evidence. §10.5 write CAS + §10.4 closed signup deployed.
+ before advertising cloud reliability; signup reopen only at launch (owner +
+ forward migration; abuse/rate-limit evidence suite ready). §10.5 write CAS +
+ §10.4 closed signup deployed.
  Consistent snapshot read (`1793604703` + `/api/zar/read/snapshot`) closes
  ZAR-DATA-006. Concurrent soak: `pocketbase_multi_device_cas_soak_test.py`.
 - Android phone for device QA: Samsung, build-number ≥ 16082
