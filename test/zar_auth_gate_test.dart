@@ -93,17 +93,14 @@ void main() {
     expect(find.text('shell-reached'), findsOneWidget);
   });
 
-  testWidgets('public signup toggle stays hidden while signup is closed', (
+  testWidgets('public signup toggle is visible when launch signup is wired', (
     tester,
   ) async {
     final auth = _FakeAuthService();
     await tester.pumpWidget(_app(auth));
     await tester.pump();
 
-    // §10.4: onSignUp omitted → LoginScreen hides create-account UI.
-    expect(find.text('حساب ندارید؟ ساخت حساب'), findsNothing);
-    expect(find.text('ساخت حساب'), findsNothing);
-    expect(auth.signUpCalls, 0);
+    expect(find.text('حساب ندارید؟ ساخت حساب'), findsOneWidget);
   });
 
   testWidgets('auth failures show the Persian message and stay on login', (

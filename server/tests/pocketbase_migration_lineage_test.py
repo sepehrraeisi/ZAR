@@ -29,6 +29,7 @@ WORKSPACE_BOOTSTRAP_MIGRATION = "1793604699_atomic_workspace_bootstrap.js"
 CASH_APPEND_CAS_MIGRATION = "1793604701_cash_append_cas.js"
 CLOSE_PUBLIC_SIGNUP_MIGRATION = "1793604702_close_public_signup.js"
 WORKSPACE_EPOCH_MIGRATION = "1793604703_workspace_epoch.js"
+OPEN_PUBLIC_SIGNUP_MIGRATION = "1793604704_open_public_signup.js"
 INFRASTRUCTURE_MIGRATIONS = (
     "1793394000_trust_caddy_client_ip.js",
     "1793437200_enable_rate_limits.js",
