@@ -674,6 +674,8 @@ C:\Users\simin\AppData\Local\Android\Sdk\platform-tools\adb.exe
   security، incident و backup/restore runbooks
 - اجرای runbookها توسط second operator
 - افزایش coverage در PocketBase auth، cloud shell، backup UI و repository
+  — auth slice expanded 2026-11-25 (`AUTH-COVERAGE-RESTORE-RUNBOOK-EVIDENCE-2026-11-25.md`);
+  مانده: cloud shell / backup UI / repository
 - اندازه‌گیری practical restore limits، transaction duration، retry budget و failure behavior
 - enforce HTTPS در release و timeout/cancellation صریح
   (**انجام شد 2026-11-25**؛ `RELEASE-HTTPS-CLIENT-TIMEOUT-EVIDENCE-2026-11-25.md`)
