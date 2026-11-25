@@ -49,6 +49,7 @@
 - [x] workspace epoch SSE realtime + poll fallback (ZAR-DATA-002؛ `WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`)
 - [x] Caddy SSE flush for `/api/realtime` (ZAR-DATA-002؛ `CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`)
 - [x] Device QA APK 20083 built + installed on Samsung (actor/epoch/SSE؛ `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`؛ audit `APK-AUDIT-20083-EVIDENCE-2026-11-25.md`)
+- [x] Device QA APK 20084 built + installed (backup deny + release HTTPS/timeout؛ `DEVICE-QA-APK-20084-EVIDENCE-2026-11-25.md`)
 - [x] multi-device CAS soak + cross-session epoch/snapshot parity (`MULTI-DEVICE-CAS-SOAK-EVIDENCE-2026-11-23.md`) — remaining: physical soak (`MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`)
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
