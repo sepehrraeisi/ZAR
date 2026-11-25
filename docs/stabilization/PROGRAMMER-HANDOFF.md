@@ -676,6 +676,7 @@ C:\Users\simin\AppData\Local\Android\Sdk\platform-tools\adb.exe
 - افزایش coverage در PocketBase auth، cloud shell، backup UI و repository
 - اندازه‌گیری practical restore limits، transaction duration، retry budget و failure behavior
 - enforce HTTPS در release و timeout/cancellation صریح
+  (**انجام شد 2026-11-25**؛ `RELEASE-HTTPS-CLIENT-TIMEOUT-EVIDENCE-2026-11-25.md`)
 - بازبینی currency scale defaults و تمام invariantهای مالی با golden examples
 - release candidate pilot/soak به مدت 7 تا 14 روز بدون P0/P1
 - sign-off مالک محصول، accounting/domain owner، security reviewer و operations owner

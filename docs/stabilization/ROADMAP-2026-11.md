@@ -28,6 +28,7 @@
 - [x] مانیتورینگ: on-VPS `zar-health-check.timer` + owner-PC `zar_external_probe.ps1` (`MONITORING-EVIDENCE-2026-11-06.md`) — TLS/backup-age deep probes still optional hardening
 - [x] انتقال توکن اندروید به Keystore-backed storage (`ZarSecureTokenStore` / `flutter_secure_storage`)
 - [x] Android backup/data-extraction deny (`allowBackup=false` + XML rules؛ `ANDROID-BACKUP-DENY-EVIDENCE-2026-11-25.md`) — مانده: local DB encryption
+- [x] enforce HTTPS در release + timeout صریح REST (`RELEASE-HTTPS-CLIENT-TIMEOUT-EVIDENCE-2026-11-25.md`)
 - [x] supply chain: secret/dependency scanning، SBOM، pinned Actions (`supply_chain.yml` / GitGuardian)
 - [x] cloud invariants: CAS/idempotency برای writeهای حساس people/deals/settlements (اسلایس ۱؛ evidence `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`؛ **production deploy 2026-11-23**)
 - [x] cloud invariants: coin/currency CAS (اسلایس ۲؛ `CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23)

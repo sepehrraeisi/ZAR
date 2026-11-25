@@ -93,6 +93,10 @@ jobs:
           test -f android/app/src/main/res/xml/data_extraction_rules.xml
           grep -q '<exclude domain="database" path="."' android/app/src/main/res/xml/backup_rules.xml
           grep -q '<device-transfer>' android/app/src/main/res/xml/data_extraction_rules.xml
+          grep -q 'android:usesCleartextTraffic="false"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:networkSecurityConfig="@xml/network_security_config"' android/app/src/main/AndroidManifest.xml
+          test -f android/app/src/main/res/xml/network_security_config.xml
+          grep -q 'cleartextTrafficPermitted="false"' android/app/src/main/res/xml/network_security_config.xml
 
       - name: Run tests
         run: flutter test
