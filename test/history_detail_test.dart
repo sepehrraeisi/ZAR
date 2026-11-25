@@ -64,6 +64,53 @@ void main() {
   });
 
   testWidgets(
+    'settlement detail refreshes note without dismiss/reopen',
+    (tester) async {
+      var live = settlement(SettlementStatus.open).copyWith(note: 'قبل');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => Column(
+                children: [
+                  Expanded(
+                    child: RepositorySettlementActionSheet(
+                      record: live,
+                      personName: 'رضا محمدی',
+                      reminderSummary: '۱ ساعت قبل',
+                      onComplete: () {},
+                      onEdit: () {},
+                      onReschedule: () {},
+                      onEditReminders: () {},
+                      onSnooze: () {},
+                      onCancel: () {},
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(
+                      () => live = live.copyWith(note: 'تست توضیحات'),
+                    ),
+                    child: const Text('شبیه‌سازی ذخیره'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('قبل'), findsOneWidget);
+      expect(find.text('تست توضیحات'), findsNothing);
+
+      await tester.tap(find.text('شبیه‌سازی ذخیره'));
+      await tester.pump();
+
+      expect(find.text('قبل'), findsNothing);
+      expect(find.text('تست توضیحات'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'deal detail remains status-free and shows transaction metadata',
     (tester) async {
       final deal = AppRecord(

@@ -906,125 +906,148 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2>
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => RepositorySettlementActionSheet(
-        record: record,
-        personName: _store.personName(record.personId),
-        reminderSummary: _reminderSummary(record),
-        allocationSummary:
-            _store.settlementById(record.id) != null &&
-                zarWholeToman(_store.settlementById(record.id)!.amount) != null
-            ? (_store.paymentAllocations.any(
-                    (row) => row.settlementId == record.id,
-                  )
-                  ? 'تخصیص صریح ثبت شده است'
-                  : '${record.operationDisplayLabel} آزاد — بدون تخصیص')
-            : null,
-        onAllocate:
-            _store.settlementById(record.id) != null &&
-                zarWholeToman(_store.settlementById(record.id)!.amount) !=
-                    null &&
-                record.status != SettlementStatus.cancelled
-            ? () async {
-                Navigator.of(context).pop();
-                await _openAllocation(record);
-              }
-            : null,
-        onComplete: () async {
-          final remaining = _store.remainingSettlementToman(record.id);
-          final original = _store.settlementById(record.id);
-          if (remaining != null &&
-              original != null &&
-              remaining != zarWholeToman(original.amount)) {
-            final confirmed = await showDialog<bool>(
-              context: context,
-              builder: (dialogContext) => AlertDialog(
-                title: const Text('انجام باقی‌مانده تعهد'),
-                content: Text(
-                  'فقط ${ZarAmountFormatter.toman(remaining)} باقی‌مانده ${record.operationDisplayLabel} می‌شود. بخش‌های قبلی دوباره محاسبه نمی‌شوند.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext, false),
-                    child: const Text('بازگشت'),
+      builder: (_) {
+        // Keep a live copy so note/date edits refresh in-sheet without
+        // forcing the user to dismiss and reopen the settlement detail.
+        var current = record;
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            void adopt(AppRecord next) {
+              current = _store.recordById(next.id) ?? next;
+              setSheetState(() {});
+            }
+
+            return RepositorySettlementActionSheet(
+              record: current,
+              personName: _store.personName(current.personId),
+              reminderSummary: _reminderSummary(current),
+              allocationSummary:
+                  _store.settlementById(current.id) != null &&
+                      zarWholeToman(
+                            _store.settlementById(current.id)!.amount,
+                          ) !=
+                          null
+                  ? (_store.paymentAllocations.any(
+                          (row) => row.settlementId == current.id,
+                        )
+                        ? 'تخصیص صریح ثبت شده است'
+                        : '${current.operationDisplayLabel} آزاد — بدون تخصیص')
+                  : null,
+              onAllocate:
+                  _store.settlementById(current.id) != null &&
+                      zarWholeToman(
+                            _store.settlementById(current.id)!.amount,
+                          ) !=
+                          null &&
+                      current.status != SettlementStatus.cancelled
+                  ? () async {
+                      Navigator.of(context).pop();
+                      await _openAllocation(current);
+                    }
+                  : null,
+              onComplete: () async {
+                final remaining = _store.remainingSettlementToman(current.id);
+                final original = _store.settlementById(current.id);
+                if (remaining != null &&
+                    original != null &&
+                    remaining != zarWholeToman(original.amount)) {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('انجام باقی‌مانده تعهد'),
+                      content: Text(
+                        'فقط ${ZarAmountFormatter.toman(remaining)} باقی‌مانده ${current.operationDisplayLabel} می‌شود. بخش‌های قبلی دوباره محاسبه نمی‌شوند.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('بازگشت'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('تأیید انجام باقی‌مانده'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true) return;
+                }
+                final saved = await _updateRecord(
+                  current.copyWith(status: SettlementStatus.completed),
+                  action: 'complete',
+                );
+                if (mounted && saved) Navigator.of(context).pop();
+              },
+              onCancel: () async {
+                final saved = await _updateRecord(
+                  current.copyWith(status: SettlementStatus.cancelled),
+                  action: 'cancel',
+                );
+                if (mounted && saved) Navigator.of(context).pop();
+              },
+              onEdit: () async {
+                final edited = await showModalBottomSheet<AppRecord>(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  builder: (_) => ConfirmedRecordEditorSheet(
+                    record: current,
+                    personName: _store.personName(current.personId),
+                    currencies: _store.currencyTypes,
+                    onSave: (updated) => _saveRecordOrThrow(updated),
+                    onReload: _refreshFromServer,
                   ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(dialogContext, true),
-                    child: const Text('تأیید انجام باقی‌مانده'),
+                );
+                if (!mounted || edited == null) return;
+                adopt(edited);
+              },
+              onReschedule: () async {
+                final date = await pickJalaliDate(context, current.date);
+                if (!mounted || date == null) return;
+                final time = await pickCupertinoTime(context, current.time);
+                if (!mounted) return;
+                final next = current.copyWith(date: date, time: time);
+                final saved = await _updateRecord(next, action: 'reschedule');
+                if (!mounted) return;
+                if (saved) {
+                  adopt(next);
+                  Navigator.of(context).pop();
+                }
+              },
+              onEditReminders: () => unawaited(_openReminderEditor(current)),
+              onSnooze: () async {
+                final value = await showReminderPickerBottomSheet(
+                  context,
+                  initialDate: current.date,
+                  initialTime: current.time,
+                  initialSelection: reminderPresetLabel(
+                    _notificationPreferences.defaultSnoozeMinutes,
                   ),
-                ],
-              ),
+                );
+                if (value == null) return;
+                final until = dueDateTimeFromJalali(value.$1, value.$2);
+                final plan = _store.reminderPlanFor(current.id);
+                final snoozed = plan.copyWith(snoozedUntil: until.toUtc());
+                final saved = await _runWrite(
+                  () => _store.saveReminderPlan(
+                    current.id,
+                    snoozed,
+                    auditAction: 'snooze',
+                  ),
+                );
+                if (!saved) return;
+                final persisted = _store.recordById(current.id);
+                if (persisted != null) {
+                  try {
+                    await _persistedReminders.reconcileRecord(persisted);
+                  } catch (_) {}
+                }
+                if (mounted) Navigator.of(context).pop();
+              },
             );
-            if (confirmed != true) return;
-          }
-          final saved = await _updateRecord(
-            record.copyWith(status: SettlementStatus.completed),
-            action: 'complete',
-          );
-          if (mounted && saved) Navigator.of(context).pop();
-        },
-        onCancel: () async {
-          final saved = await _updateRecord(
-            record.copyWith(status: SettlementStatus.cancelled),
-            action: 'cancel',
-          );
-          if (mounted && saved) Navigator.of(context).pop();
-        },
-        onEdit: () async {
-          await showModalBottomSheet<AppRecord>(
-            context: context,
-            isScrollControlled: true,
-            useSafeArea: true,
-            builder: (_) => ConfirmedRecordEditorSheet(
-              record: record,
-              personName: _store.personName(record.personId),
-              currencies: _store.currencyTypes,
-              onSave: (updated) => _saveRecordOrThrow(updated),
-              onReload: _refreshFromServer,
-            ),
-          );
-        },
-        onReschedule: () async {
-          final date = await pickJalaliDate(context, record.date);
-          if (!mounted || date == null) return;
-          final time = await pickCupertinoTime(context, record.time);
-          if (!mounted) return;
-          final saved = await _updateRecord(
-            record.copyWith(date: date, time: time),
-            action: 'reschedule',
-          );
-          if (mounted && saved) Navigator.of(context).pop();
-        },
-        onEditReminders: () => unawaited(_openReminderEditor(record)),
-        onSnooze: () async {
-          final value = await showReminderPickerBottomSheet(
-            context,
-            initialDate: record.date,
-            initialTime: record.time,
-            initialSelection: reminderPresetLabel(
-              _notificationPreferences.defaultSnoozeMinutes,
-            ),
-          );
-          if (value == null) return;
-          final until = dueDateTimeFromJalali(value.$1, value.$2);
-          final current = _store.reminderPlanFor(record.id);
-          final snoozed = current.copyWith(snoozedUntil: until.toUtc());
-          final saved = await _runWrite(
-            () => _store.saveReminderPlan(
-              record.id,
-              snoozed,
-              auditAction: 'snooze',
-            ),
-          );
-          if (!saved) return;
-          final persisted = _store.recordById(record.id);
-          if (persisted != null) {
-            try {
-              await _persistedReminders.reconcileRecord(persisted);
-            } catch (_) {}
-          }
-          if (mounted) Navigator.of(context).pop();
-        },
-      ),
+          },
+        );
+      },
     );
   }
 
