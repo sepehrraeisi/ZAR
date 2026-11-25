@@ -1,4 +1,4 @@
-"""Helpers to provision users when public signup is closed."""
+"""Helpers to provision users (admin seed and/or public signup)."""
 
 from __future__ import annotations
 
@@ -115,6 +115,36 @@ def provision_member(
     user = create_user_as_admin(
         base_url, admin_token=admin_token, email=email, password=password
     )
+    status, auth = _request(
+        base_url,
+        "POST",
+        "/api/collections/users/auth-with-password",
+        body={"identity": email, "password": password},
+    )
+    if status != 200 or not isinstance(auth, dict) or not auth.get("token"):
+        raise RuntimeError(f"member auth failed: HTTP {status} {auth}")
+    return str(user["id"]), str(auth["token"])
+
+
+def signup_public_member(
+    base_url: str,
+    *,
+    email: str,
+    password: str,
+) -> tuple[str, str]:
+    """Create a member via public signup and return (user_id, member_auth_token)."""
+    status, user = _request(
+        base_url,
+        "POST",
+        "/api/collections/users/records",
+        body={
+            "email": email,
+            "password": password,
+            "passwordConfirm": password,
+        },
+    )
+    if status != 200 or not isinstance(user, dict) or not user.get("id"):
+        raise RuntimeError(f"public signup failed: HTTP {status} {user}")
     status, auth = _request(
         base_url,
         "POST",

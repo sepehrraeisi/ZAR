@@ -719,27 +719,40 @@ def run_commit(
     output_path = _absolute_path(output_path, "output")
     if state_path.resolve() == output_path.resolve():
         raise CanaryError("state and output paths must be different")
-    if not isinstance(admin_token, str) or not admin_token:
-        raise CanaryError("admin_token is required while public signup is closed")
-
     suffix = secrets.token_hex(4)
     identity = f"restore-clone-{suffix}@example.test"
     password = f"ZarClone-{secrets.token_hex(12)}-Aa1!"
-    status, _ = _request(
-        normalized_url,
-        "POST",
-        "/api/collections/users/records",
-        body={"email": identity, "password": password, "passwordConfirm": password},
-    )
-    _expect_status("public signup denied", status, 403)
+    # Launch posture may leave public signup open (createRule ""). Closed
+    # posture (null createRule) still seeds via superuser token.
     status, signup_response = _request(
         normalized_url,
         "POST",
         "/api/collections/users/records",
         body={"email": identity, "password": password, "passwordConfirm": password},
-        token=admin_token,
     )
-    _expect_status("clone user creation", status, 200)
+    if status == 200:
+        pass
+    elif status == 403:
+        if not isinstance(admin_token, str) or not admin_token:
+            raise CanaryError(
+                "admin_token is required while public signup is closed"
+            )
+        status, signup_response = _request(
+            normalized_url,
+            "POST",
+            "/api/collections/users/records",
+            body={
+                "email": identity,
+                "password": password,
+                "passwordConfirm": password,
+            },
+            token=admin_token,
+        )
+        _expect_status("clone user creation", status, 200)
+    else:
+        raise CanaryError(
+            f"public signup probe returned HTTP {status}, expected 200 or 403"
+        )
     signup = _object(signup_response, "user creation")
     signup_user_id = signup.get("id")
     if not isinstance(signup_user_id, str) or not signup_user_id:
@@ -965,7 +978,7 @@ def _parser() -> argparse.ArgumentParser:
             subparser.add_argument(
                 "--admin-token",
                 required=True,
-                help="Superuser token used to seed the clone user while signup is closed",
+                help="Superuser token used to seed the clone user if public signup is closed",
             )
     return parser
 
