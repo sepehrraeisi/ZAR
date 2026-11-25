@@ -6,6 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-25 — PocketBase repository edge coverage (cash append no-op/immutable/409, allocation replace/mismatch/stale, archivePerson CAS) + RELEASE-RUNBOOK second-operator drill checklist. Evidence: `REPO-EDGE-COVERAGE-EVIDENCE-2026-11-25.md`.
 - 2026-11-25 — Backup UI export/account coverage: save/share export, import cancel, sign-out confirm, catalog callbacks, invalid JSON snackbar. Evidence: `BACKUP-UI-EXPORT-COVERAGE-EVIDENCE-2026-11-25.md`.
 - 2026-11-25 — Cloud shell / workspace bootstrap coverage: bootstrapper existing-vs-create paths + shell signed-out/error/loading widget tests. Evidence: `CLOUD-SHELL-COVERAGE-EVIDENCE-2026-11-25.md`.
 - 2026-11-25 — PocketBase auth coverage expansion (sign-in/up/reset mapping, restoreSession 403/503/hydrate, authStateChanges) + RESTORE-RUNBOOK gap hygiene with second-operator drill checklist. Evidence: `AUTH-COVERAGE-RESTORE-RUNBOOK-EVIDENCE-2026-11-25.md`.

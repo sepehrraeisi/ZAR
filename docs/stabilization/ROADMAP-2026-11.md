@@ -54,7 +54,7 @@
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
 
-- [ ] تکمیل runbooks (release, incident, backup) و اجرای دوباره توسط اپراتور دوم — checklist drill در `RESTORE-RUNBOOK.md` به‌روز شد (`AUTH-COVERAGE-RESTORE-RUNBOOK-EVIDENCE-2026-11-25.md`)؛ مانده: اجرای واقعی اپراتور دوم
+- [ ] تکمیل runbooks (release, incident, backup) و اجرای دوباره توسط اپراتور دوم — checklist در `RESTORE-RUNBOOK.md` + `RELEASE-RUNBOOK.md` §۷؛ مانده: اجرای واقعی اپراتور دوم
 - [ ] Release Candidate + soak ۷-۱۴ روزه بدون P0/P1
 - [x] سیاست ثبت‌نام: بسته تا لانچ (§10.4؛ `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23)
 - [x] ضد-abuse/rate-limit evidence برای لانچ (`SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md`؛ suite `pocketbase_signup_launch_abuse_test.py`) — مانده: تصمیم مالک + migration رو به جلو برای reopen

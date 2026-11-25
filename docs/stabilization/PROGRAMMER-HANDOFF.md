@@ -677,7 +677,9 @@ C:\Users\simin\AppData\Local\Android\Sdk\platform-tools\adb.exe
   — auth slice expanded 2026-11-25 (`AUTH-COVERAGE-RESTORE-RUNBOOK-EVIDENCE-2026-11-25.md`);
   — cloud shell / bootstrap slice 2026-11-25 (`CLOUD-SHELL-COVERAGE-EVIDENCE-2026-11-25.md`);
   — backup UI export/account slice 2026-11-25 (`BACKUP-UI-EXPORT-COVERAGE-EVIDENCE-2026-11-25.md`);
-  مانده: repository edge cases
+  — repository edge slice 2026-11-25 (`REPO-EDGE-COVERAGE-EVIDENCE-2026-11-25.md`);
+  P2 coverage slices for auth/cloud-shell/backup-UI/repository: **done**;
+  مانده: اجرای واقعی second-operator drills
 - اندازه‌گیری practical restore limits، transaction duration، retry budget و failure behavior
 - enforce HTTPS در release و timeout/cancellation صریح
   (**انجام شد 2026-11-25**؛ `RELEASE-HTTPS-CLIENT-TIMEOUT-EVIDENCE-2026-11-25.md`)

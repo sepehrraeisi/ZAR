@@ -47,3 +47,15 @@ flutter build apk --release --split-per-abi --target-platform android-arm64 `
 ## ۶. به‌روزرسانی اسناد
 
 - `HANDOFF.md` §0 (post-handoff log) + در صورت تغییر رفتار: evidence doc مربوطه
+
+## ۷. Second-operator release drill (checklist)
+
+اپراتور دوم (ماشین/حساب جدا از build روزانه) قبل از sign-off انتشار:
+
+1. از `master` سبز: `flutter analyze --no-fatal-infos` و `flutter test`
+2. بیلد signed با build-number جدید (آفست +2000) و `ZAR_SERVER_URL=https://app.titangold.ir`
+3. `apksigner verify --print-certs` → گواهی `d19ad112…2667`
+4. `adb install -r` روی دستگاه QA؛ ورود، یک عملیات واقعی، force-stop/reopen
+5. ثبت UTC، versionCode، SHA-256 APK، Pass/Fail در `HANDOFF.md` §0
+
+تا این drill لاگ نشده، «اجرای دوباره توسط اپراتور دوم» در ROADMAP باز می‌ماند.
