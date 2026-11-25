@@ -55,10 +55,12 @@
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
 
 - [ ] تکمیل runbooks (release, incident, backup) و اجرای دوباره توسط اپراتور دوم — checklist در `RESTORE-RUNBOOK.md` + `RELEASE-RUNBOOK.md` §۷ + `INCIDENT-RUNBOOK.md`؛ مانده: اجرای واقعی اپراتور دوم + تصمیم ADR رمزنگاری DB
-- [ ] Release Candidate + soak ۷-۱۴ روزه بدون P0/P1
+- [ ] Release Candidate + soak ۷-۱۴ روزه بدون P0/P1 — پنجره شروع شد (SOAK-RC2-START-2026-11-25.md)
 - [x] سیاست ثبت‌نام: بسته تا لانچ (§10.4؛ `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23)
 - [x] ضد-abuse/rate-limit evidence برای لانچ (`SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md`؛ suite `pocketbase_signup_launch_abuse_test.py`) — مانده: تصمیم مالک + migration رو به جلو برای reopen
-- [ ] sign-off: مالک محصول، امنیت، عملیات
+- [ ] sign-off: مالک محصول، امنیت، عملیات (LAUNCH-SIGNOFF-CHECKLIST-2026-11-25.md)
+- [x] ADR دوره/برگشت پیشنهادی (PERIOD-LOCK-REVERSAL-ADR-2026-11-25.md) — مانده: تأیید حسابدار
+- [x] tracker drill اپراتور دوم (OPERATORS-DRILL-TRACKER-2026-11-25.md)
 
 ## فاز ۴ — حالت «فقط آپدیت» (دائمی)
 
