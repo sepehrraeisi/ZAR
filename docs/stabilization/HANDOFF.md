@@ -6,6 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-25 — ADR device attribution in shared workspace (label per installation; createdBy stays user id). Doc: DEVICE-ACTOR-ATTRIBUTION-ADR-2026-11-25.md.
 - 2026-11-25 — Single-device preflight APK 20084 completed on unlocked Samsung (cold start, person persist `SoakPreA1830`, backup account card); settlement-note step partial; second phone not yet in `adb devices`. Evidence: `SINGLE-DEVICE-PREFLIGHT-20084-EVIDENCE-2026-11-25.md`.
 - 2026-11-25 — External probe deep checks: TLS expiry (>14d client view) + off-site backup age (<50h) in `zar_external_probe.ps1`; deployed to `ZAR-Ops`. Evidence: `EXTERNAL-PROBE-DEEP-CHECKS-EVIDENCE-2026-11-25.md`.
 - 2026-11-25 — Phase-3 launch packets: signup reopen packet (no deploy), period-lock ADR, operators drill tracker, RC2 soak start, sign-off checklist.
