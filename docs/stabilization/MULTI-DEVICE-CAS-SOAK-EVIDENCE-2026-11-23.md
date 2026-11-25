@@ -11,6 +11,9 @@
 - race روی `POST /api/zar/write/allocations/replace` → یک 200 / یک 409 با
   `stale_allocation_set`
 - appendهای cash با idهای متمایز هم‌زمان → هر دو 200 و هر دو ردیف ماندگار
+- Progress (2026-11-25): after seed, device A/B snapshots share the same
+  workspace `epoch` and person row; device B workspace Record peek matches
+  (covers the cheap epoch probe used by the client watcher).
 
 ## Server / tests
 
@@ -19,7 +22,7 @@
 
 ## Out of scope
 
-- دستگاه فیزیکی / UI realtime
+- دستگاه فیزیکی / UI realtime (see `MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`)
 - باز کردن public signup
 - تغییر schema یا hooks production (تست‌only)
 

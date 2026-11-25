@@ -6,6 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-25 — ROADMAP hygiene: mark completed Phase 0/1/2 ops items (master protection, signing, offsite backup, restore deploy, monitoring, Keystore tokens, supply chain) + live APK audit 20083 (`APK-AUDIT-20083-EVIDENCE-2026-11-25.md`); multi-device soak suite gains cross-session epoch/snapshot parity.
 - 2026-11-24 — Drop transitional `local-user` create allowance (ZAR-DATA-003) merged (PR #62 → `a780e0b`) and deployed after backup `zar-20261124T162618Z`: create requires auth uid only. Evidence: `DROP-LOCAL-USER-ACTOR-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Device QA APK **20083** built + installed on owner Samsung (`adb install -r` Success): release-signed (`d19ad112…2667`), SHA-256 `117e117a…d337`; actor stamp + conflict reload + epoch poll/SSE. Physical soak checklist: `MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`. Evidence: `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`.
 - 2026-11-24 — Caddy SSE flush (ZAR-DATA-002) merged (PR #58 → `a3ed85c`) and reloaded after backup `zar-20261124T152929Z`: `flush_interval -1`; public `/api/realtime` streams `PB_CONNECT`. Evidence: `CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`.

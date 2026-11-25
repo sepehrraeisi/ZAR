@@ -249,6 +249,51 @@ def run(pocketbase: Path) -> None:
                 if created.get("revision") != 1:
                     raise AssertionError(f"unexpected seed revision: {created}")
 
+                status, snap_a = _request(
+                    base_url,
+                    "GET",
+                    "/api/zar/read/snapshot",
+                    token=token_a,
+                )
+                _expect("snapshot device A after seed", status, 200)
+                epoch_after_seed = int(snap_a.get("epoch", -1))
+                if epoch_after_seed < 1:
+                    raise AssertionError(
+                        f"epoch should advance on write: {snap_a.get('epoch')}"
+                    )
+                status, snap_b = _request(
+                    base_url,
+                    "GET",
+                    "/api/zar/read/snapshot",
+                    token=token_b,
+                )
+                _expect("snapshot device B sees seed", status, 200)
+                if int(snap_b.get("epoch", -1)) != epoch_after_seed:
+                    raise AssertionError(
+                        f"device B epoch mismatch: a={epoch_after_seed} "
+                        f"b={snap_b.get('epoch')}"
+                    )
+                people_b = snap_b.get("people") or []
+                if len(people_b) != 1 or people_b[0].get("id") != person_id:
+                    raise AssertionError(
+                        f"device B snapshot missing seeded person: {people_b}"
+                    )
+                status, workspace_row = _request(
+                    base_url,
+                    "GET",
+                    f"/api/collections/zar_workspaces/records/{workspace_id}",
+                    token=token_b,
+                )
+                _expect("workspace epoch peek device B", status, 200)
+                if int(workspace_row.get("epoch", -1)) != epoch_after_seed:
+                    raise AssertionError(
+                        f"workspace peek epoch mismatch: {workspace_row}"
+                    )
+                print(
+                    f"PASS cross-session epoch+snapshot parity "
+                    f"epoch={epoch_after_seed}"
+                )
+
                 left_body = {
                     "collection": "zar_people",
                     "id": person_id,
