@@ -8,11 +8,24 @@ Engineering CAS soak (CI) is already green; this checklist is the
 
 - Two devices (or one phone + one emulator) signed in to the **same**
   workspace with distinct sessions.
-- Release APK ≥ versionCode **20083** (epoch poll + SSE + actor stamp +
-  conflict reload). Cert SHA-256 must be `d19ad112…2667`.
+- Release APK ≥ versionCode **20084** (backup deny + release HTTPS/timeout on
+  top of epoch poll + SSE + actor stamp + conflict reload). Cert SHA-256 must
+  be `d19ad112…2667`. Evidence: `DEVICE-QA-APK-20084-EVIDENCE-2026-11-25.md`.
 - Signup remains closed; use seeded UX-campaign / owner accounts only.
 - Caddy `flush_interval -1` deployed (public `/api/realtime` streams
   `PB_CONNECT`).
+
+## Single-device preflight (optional, before the pair)
+
+On the primary Samsung alone, with APK ≥ 20084:
+
+1. Cold start → session restores (Keystore token).
+2. Create a person; force-stop; reopen → person still present.
+3. Edit a settlement note; confirm save OK.
+4. Open backup screen; confirm account email/server URL visible; do **not**
+   need to export in this preflight.
+
+Log as `SINGLE-DEVICE-PREFLIGHT` in Notes if the pair soak is deferred.
 
 ## Script (per pair, ≥ 30 minutes continuous)
 
