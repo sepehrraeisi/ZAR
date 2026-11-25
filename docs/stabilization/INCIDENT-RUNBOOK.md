@@ -34,3 +34,14 @@ sudo -n /usr/local/sbin/zar-health-check; echo $?   # اجرای دستی چکر
 
 - هر رخداد: زمان UTC، هشدار، اقدام، نتیجه → `HANDOFF.md` §0 + یک خط در `FINDINGS.md`
 - پس از پایداری: `zar-health-check` را دستی اجرا کن تا exit 0
+
+## Second-operator incident drill (checklist)
+
+بدون خراب‌کردن production — فقط روی clone یا سناریوی read-only:
+
+1. ایمیل هشدار نمونه / اجرای دستی `sudo -n /usr/local/sbin/zar-health-check` را ببین
+2. طبق ماتریس بالا برای یک هشدار ساختگی (مثلاً `health-endpoint`) مسیر evidence → action را روی کاغذ/لاگ طی کن
+3. `RESTORE-RUNBOOK.md` را باز کن و تأیید کن که مسیر بازیابی را بلدی (بدون اجرا روی prod)
+4. ثبت UTC + Pass/Fail در `HANDOFF.md` §0
+
+تا drill لاگ نشده، «اجرای دوباره توسط اپراتور دوم» برای incident باز است.
