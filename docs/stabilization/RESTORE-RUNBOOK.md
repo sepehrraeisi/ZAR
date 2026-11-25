@@ -222,13 +222,24 @@ guarded scripts.
 
 ## Remaining disaster-recovery gaps
 
-- Backups are still stored only on the production server. The current verified
-  automation retains 30 days with a minimum of seven successful snapshots, but
-  same-host retention does not protect against server/provider loss.
-- Encryption, off-site replication, automated age monitoring and restore alerts are not implemented.
+- On-VPS retention: 30 days / min seven successful snapshots (`zar-backup.timer`).
+  **Off-site pull exists** (`server/tools/pull-offsite-backups.ps1` → owner PC
+  `Documents\ZAR-OffsiteBackups` with SHA verify) — still needs a **second
+  operator** to repeat the pull + clone restore drill independently.
+- Backup-at-rest encryption and restore-alert delivery still need owner decisions.
 - RPO, RTO, legal retention and data-residency requirements need owner decisions.
-- A second operator has not yet repeated the drill.
-- Recovery of the Android signing key and installed APK has not been verified.
+- A second operator has not yet repeated the restore drill end-to-end.
+- Android signing-key recovery drill (keystore backup path) needs a timed
+  verification note (keystore lives under `Documents\ZAR-Signing` + `ZAR-Ops`).
 - File-storage recovery must be added if future PocketBase collections introduce uploaded files.
 
-Until those gaps are closed, this drill proves local recoverability of the captured database set; it does not yet satisfy full disaster recovery.
+### Second-operator restore drill (checklist)
+
+1. Pull latest off-site snapshot and verify `SHA256SUMS` on a machine that is
+   **not** the usual build PC (or a clean worktree).
+2. Run `server/scripts/test_guarded_transactional_restore_clone.sh` (or the
+   Windows-equivalent clone rehearsal) against that snapshot — not production.
+3. Record UTC start/end, snapshot id, SHA-256, pass/fail in `HANDOFF.md` §0.
+4. Do **not** touch production; do **not** `migrate down`.
+
+Until the second-operator drill is logged, disaster-recovery sign-off stays open.

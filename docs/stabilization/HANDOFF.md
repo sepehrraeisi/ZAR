@@ -6,6 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-25 — PocketBase auth coverage expansion (sign-in/up/reset mapping, restoreSession 403/503/hydrate, authStateChanges) + RESTORE-RUNBOOK gap hygiene with second-operator drill checklist. Evidence: `AUTH-COVERAGE-RESTORE-RUNBOOK-EVIDENCE-2026-11-25.md`.
 - 2026-11-25 — Device QA APK **20084** built + installed on owner Samsung (`adb install -r` Success): SHA-256 `6464fa70…d909`, cert `d19ad112…2667`; includes backup deny + release HTTPS/timeout. Evidence: `DEVICE-QA-APK-20084-EVIDENCE-2026-11-25.md`.
 - 2026-11-25 — Release HTTPS + REST timeout: `ZarPocketBaseClient` rejects cleartext when `kReleaseMode`, 30s send/body timeout; Android cleartext denied (debug overlay allows); evidence `RELEASE-HTTPS-CLIENT-TIMEOUT-EVIDENCE-2026-11-25.md` (in APK 20084).
 - 2026-11-25 — Android backup/data-extraction deny (ZAR-MOB-001 slice): `allowBackup=false` + backup/dataExtraction XML excludes; FINDINGS statuses synced for closed DATA gates; evidence `ANDROID-BACKUP-DENY-EVIDENCE-2026-11-25.md` (in APK 20084).
