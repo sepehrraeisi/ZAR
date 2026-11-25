@@ -83,6 +83,17 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
+      - name: Assert Android backup deny (ZAR-MOB-001)
+        run: |
+          set -euo pipefail
+          grep -q 'android:allowBackup="false"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:fullBackupContent="@xml/backup_rules"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:dataExtractionRules="@xml/data_extraction_rules"' android/app/src/main/AndroidManifest.xml
+          test -f android/app/src/main/res/xml/backup_rules.xml
+          test -f android/app/src/main/res/xml/data_extraction_rules.xml
+          grep -q '<exclude domain="database" path="."' android/app/src/main/res/xml/backup_rules.xml
+          grep -q '<device-transfer>' android/app/src/main/res/xml/data_extraction_rules.xml
+
       - name: Run tests
         run: flutter test
 

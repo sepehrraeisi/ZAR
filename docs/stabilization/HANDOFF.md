@@ -6,6 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-25 — Android backup/data-extraction deny (ZAR-MOB-001 slice): `allowBackup=false` + backup/dataExtraction XML excludes; FINDINGS statuses synced for closed DATA gates; evidence `ANDROID-BACKUP-DENY-EVIDENCE-2026-11-25.md` (next APK).
 - 2026-11-25 — Signup launch abuse/rate-limit evidence (disposable PB only): `pocketbase_signup_launch_abuse_test.py` asserts versioned `users:create` 5/600 trips 429 after temp-open burst, then re-closes createRule; CI-wired; evidence `SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md`. Production signup remains closed.
 - 2026-11-25 — ROADMAP hygiene: mark completed Phase 0/1/2 ops items (master protection, signing, offsite backup, restore deploy, monitoring, Keystore tokens, supply chain) + live APK audit 20083 (`APK-AUDIT-20083-EVIDENCE-2026-11-25.md`); multi-device soak suite gains cross-session epoch/snapshot parity.
 - 2026-11-24 — Drop transitional `local-user` create allowance (ZAR-DATA-003) merged (PR #62 → `a780e0b`) and deployed after backup `zar-20261124T162618Z`: create requires auth uid only. Evidence: `DROP-LOCAL-USER-ACTOR-EVIDENCE-2026-11-24.md`.
