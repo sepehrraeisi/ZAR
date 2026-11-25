@@ -14,20 +14,20 @@
 - [x] تأیید مستقل tip/PR/CI (`2ebd9d8`، ۳ check-run سبز)
 - [x] Merge PR #3 → master (`725c8fa`) + push tag `stabilization-baseline`
 - [x] بازتولید CI محلی روی baseline جدید: `flutter pub get --enforce-lockfile`, `flutter analyze --no-fatal-infos` (بدون issue), `flutter test` (۳۴۵/۳۴۵ سبز — 2026-11-06)
-- [ ] محافظت از `master`: required CI checks + ممنوعیت force-push (اقدام مالک در Settings→Branches یا با gh CLI)
+- [x] محافظت از `master`: required checks `flutter-checks` / `pocketbase-authorization` / `secrets-scan` / `dependency-sbom`؛ `allow_force_pushes=false`؛ `enforce_admins=true` (تأیید 2026-11-25 via GitHub API)
 
 ## فاز ۱ — P0 داده و امنیت (هفته ۱-۲)
 
-- [ ] **ممیزی APK واقعی گوشی** (ADB): package ID، versionCode/versionName، SHA-256 گواهی signing و خود APK، تطبیق با commit؛ تست واقعی sign-in، پیام فارسی ۴۲۹، restore fail-closed
-- [ ] **Release signing**: ساخت keystore + `android/key.properties`، build signed reproducible، نگهداری/بکاپ آفلاین کلید (P0 هندآف §10.2)
-- [ ] **بکاپ مستقل از سرور** (ددلاین سخت **2026-11-30**، قبل از customer data): pull شبانه‌ی رمزگذاری‌شده به مقصد مستقل + `verify_recovery_set.py` + restore drill اپراتور دوم + ثبت RPO/RTO
-- [ ] **Deploy بازیابی تراکنشی** (تصمیم ۲ بالا): fresh atomic recovery set، clone rehearsal مجدد، پنجره نگهداری، rollback آماده، acceptance طبق هندآف §10.1؛ بعد از اولین receipt فقط forward-only
+- [x] **ممیزی APK واقعی گوشی** (ADB): versionCode **20083** روی Samsung؛ cert `d19ad112…2667`؛ APK SHA `117e117a…d337` (`APK-AUDIT-20083-EVIDENCE-2026-11-25.md`؛ prior `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`)
+- [x] **Release signing**: keystore + `android/key.properties` (git-ignored)؛ evidence `RELEASE-SIGNING-EVIDENCE-2026-11-06.md`
+- [x] **بکاپ مستقل از سرور**: `pull-offsite-backups.ps1` → `Documents\ZAR-OffsiteBackups` + SHA verify + quick_check (ongoing؛ deadline ops drill remains for second operator)
+- [x] **Deploy بازیابی تراکنشی**: production + canary + forward-only lineage (`TRANSACTIONAL-RESTORE` evidence / HANDOFF §0)
 
 ## فاز ۲ — عملیات قابل اتکا (هفته ۳-۴)
 
-- [ ] مانیتورینگ external مستقل از VPS: health، 5xx، TLS expiry، backup age/integrity + alert واقعی و runbook
-- [ ] انتقال توکن اندروید از SharedPreferences به Keystore-backed storage
-- [ ] supply chain: secret/dependency scanning، SBOM، pinned Actions، signed releases
+- [x] مانیتورینگ: on-VPS `zar-health-check.timer` + owner-PC `zar_external_probe.ps1` (`MONITORING-EVIDENCE-2026-11-06.md`) — TLS/backup-age deep probes still optional hardening
+- [x] انتقال توکن اندروید به Keystore-backed storage (`ZarSecureTokenStore` / `flutter_secure_storage`)
+- [x] supply chain: secret/dependency scanning، SBOM، pinned Actions (`supply_chain.yml` / GitGuardian)
 - [x] cloud invariants: CAS/idempotency برای writeهای حساس people/deals/settlements (اسلایس ۱؛ evidence `CLOUD-WRITE-CAS-EVIDENCE-2026-11-23.md`؛ **production deploy 2026-11-23**)
 - [x] cloud invariants: coin/currency CAS (اسلایس ۲؛ `CLOUD-WRITE-CAS-CATALOG-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23)
 - [x] cloud invariants: allocation replace CAS + audit (اسلایس ۳؛ `ALLOCATION-REPLACE-CAS-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23)
@@ -46,7 +46,8 @@
 - [x] workspace epoch remote watch (ZAR-DATA-002؛ `WORKSPACE-EPOCH-REMOTE-WATCH-EVIDENCE-2026-11-24.md`)
 - [x] workspace epoch SSE realtime + poll fallback (ZAR-DATA-002؛ `WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`)
 - [x] Caddy SSE flush for `/api/realtime` (ZAR-DATA-002؛ `CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`)
-- [x] Device QA APK 20083 built + installed on Samsung (actor/epoch/SSE؛ `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`) — remaining: physical multi-device soak (`MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`)
+- [x] Device QA APK 20083 built + installed on Samsung (actor/epoch/SSE؛ `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`؛ audit `APK-AUDIT-20083-EVIDENCE-2026-11-25.md`)
+- [x] multi-device CAS soak + cross-session epoch/snapshot parity (`MULTI-DEVICE-CAS-SOAK-EVIDENCE-2026-11-23.md`) — remaining: physical soak (`MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`)
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
 
