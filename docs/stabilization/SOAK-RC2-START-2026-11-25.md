@@ -6,8 +6,8 @@
 ## Build under soak
 
 - Started on APK versionCode **20084** (SHA-256 `6464fa70…d909`, cert
-  `d19ad112…2667`); upgraded mid-window to **20085** then **20086**
-  (conflict/allocation/epoch UX; `DEVICE-QA-APK-20086-EVIDENCE-2026-11-27.md`)
+  `d19ad112…2667`); upgraded mid-window through **20087** (catalog conflict
+  UX; `DEVICE-QA-APK-20087-EVIDENCE-2026-11-28.md`)
 - Master tip at soak start: after PR #75 (`77d8520` era; confirm at close)
 - Server: signup still **closed**; CAS + epoch/SSE + Caddy flush already in prod
 

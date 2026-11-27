@@ -53,6 +53,7 @@
 - [x] Device QA APK 20084 built + installed (backup deny + release HTTPS/timeout؛ `DEVICE-QA-APK-20084-EVIDENCE-2026-11-25.md`)
 - [x] Device QA APK 20085 built + installed both phones (settlement note in-sheet refresh؛ `DEVICE-QA-APK-20085-EVIDENCE-2026-11-27.md`)
 - [x] Device QA APK 20086 built + installed both phones (conflict copy + allocation reload + epoch fail snackbar؛ `DEVICE-QA-APK-20086-EVIDENCE-2026-11-27.md`)
+- [x] Device QA APK 20087 built + installed both phones (catalog CAS conflict reload؛ `DEVICE-QA-APK-20087-EVIDENCE-2026-11-28.md`)
 - [x] multi-device CAS soak + cross-session epoch/snapshot parity (`MULTI-DEVICE-CAS-SOAK-EVIDENCE-2026-11-23.md`)
 - [x] physical multi-device soak sync/lifecycle/airplane (`MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`) — remaining for advertise: device-attribution ADR #80 owner decision
 
