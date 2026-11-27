@@ -1248,23 +1248,31 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2>
     if (mounted) setState(() {});
   }
 
+  Future<void> _catalogWrite(Future<void> Function() action) async {
+    if (_writing) throw StateError('Write already in progress.');
+    setState(() => _writing = true);
+    try {
+      final result = await _writes.run(action);
+      if (!result.succeeded) {
+        throw result.error ?? StateError('Catalog write failed.');
+      }
+      if (mounted) setState(() {});
+    } finally {
+      if (mounted) setState(() => _writing = false);
+    }
+  }
+
   Future<void> _openCoinCatalog() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CoinCatalogScreen(
           types: _store.coinTypes,
-          onSave: (value) async {
-            await _store.saveCoinType(value);
-            if (mounted) setState(() {});
-          },
-          onArchive: (value) async {
-            await _store.archiveCoinType(value);
-            if (mounted) setState(() {});
-          },
-          onRestore: (value) async {
-            await _store.restoreCoinType(value);
-            if (mounted) setState(() {});
-          },
+          onSave: (value) => _catalogWrite(() => _store.saveCoinType(value)),
+          onArchive: (value) =>
+              _catalogWrite(() => _store.archiveCoinType(value)),
+          onRestore: (value) =>
+              _catalogWrite(() => _store.restoreCoinType(value)),
+          onReload: _refreshFromServer,
         ),
       ),
     );
@@ -1275,18 +1283,13 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2>
       MaterialPageRoute(
         builder: (_) => CurrencyCatalogScreen(
           types: _store.currencyTypes,
-          onSave: (value) async {
-            await _store.saveCurrencyType(value);
-            if (mounted) setState(() {});
-          },
-          onArchive: (value) async {
-            await _store.archiveCurrencyType(value);
-            if (mounted) setState(() {});
-          },
-          onRestore: (value) async {
-            await _store.restoreCurrencyType(value);
-            if (mounted) setState(() {});
-          },
+          onSave: (value) =>
+              _catalogWrite(() => _store.saveCurrencyType(value)),
+          onArchive: (value) =>
+              _catalogWrite(() => _store.archiveCurrencyType(value)),
+          onRestore: (value) =>
+              _catalogWrite(() => _store.restoreCurrencyType(value)),
+          onReload: _refreshFromServer,
         ),
       ),
     );

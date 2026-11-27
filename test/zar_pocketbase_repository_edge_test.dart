@@ -306,4 +306,41 @@ void main() {
       expect((body!['data']! as Map)['archived'], isTrue);
     });
   });
+
+  group('saveCoinType / saveCurrencyType', () {
+    test('maps catalog upsert 409 to staleRevision', () async {
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/zar/read/snapshot') {
+          return _json(_emptySnapshot());
+        }
+        expect(request.url.path, '/api/zar/write/upsert');
+        return _json({
+          'message': jsonEncode({
+            'code': 'stale_revision',
+            'collection': 'zar_coin_types',
+            'recordId': 'coin-1',
+            'currentRevision': 4,
+          }),
+        }, 409);
+      });
+
+      await expectLater(
+        _repo(client).saveCoinType(
+          ZarCoinType(
+            id: 'coin-1',
+            name: 'سکه',
+            category: ZarCoinCategory.official,
+            defaultPricingMethod: ZarCoinPricingMethod.perPiece,
+            createdAt: DateTime.utc(2026, 9, 1),
+            updatedAt: DateTime.utc(2026, 9, 1),
+          ),
+        ),
+        throwsA(
+          isA<ZarCloudWriteConflictException>()
+              .having((e) => e.code, 'code', 'stale_revision')
+              .having((e) => e.needsReload, 'needsReload', isTrue),
+        ),
+      );
+    });
+  });
 }
