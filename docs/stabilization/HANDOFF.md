@@ -6,7 +6,10 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
-- 2026-11-27 — Stale-revision conflict copy hints at same-account multi-device session (client message only; ships next APK after 20085).
+- 2026-11-27 — Device QA APK **20086** on Samsung + moto e13 (conflict copy + allocation reload + epoch fail snackbar). Evidence: `DEVICE-QA-APK-20086-EVIDENCE-2026-11-27.md`.
+- 2026-11-27 — Record-editor conflict coverage + epoch refresh failure snackbar (#86).
+- 2026-11-27 — Payment allocation typed CAS conflict + `stale_allocation_set` needsReload (#85).
+- 2026-11-27 — Stale-revision conflict copy hints at same-account multi-device session (#84; in APK 20086).
 - 2026-11-27 — Physical dual-USB soak evidence merged (#83): sync/terminal/cancel/airplane/resume Pass; conflict attribution Partial. Doc: `MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`.
 - 2026-11-27 — Device attribution ADR merged as Proposed (#80). Implementation waits owner answers (label default / installationId in backup / priority).
 - 2026-11-27 — Device QA APK **20085** on Samsung + moto e13: settlement note in-sheet refresh verified. Evidence: `DEVICE-QA-APK-20085-EVIDENCE-2026-11-27.md` (#82).
