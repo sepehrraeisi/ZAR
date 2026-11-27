@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../data/zar_domain_repository.dart';
 import '../../domain/zar_domain_models.dart';
 import '../../domain/zar_id_generator.dart';
 import '../../app_core.dart' show toPersianDigits;
@@ -12,12 +15,14 @@ class CurrencyCatalogScreen extends StatefulWidget {
     required this.onSave,
     required this.onArchive,
     required this.onRestore,
+    this.onReload,
   });
 
   final List<ZarCurrencyType> types;
   final Future<void> Function(ZarCurrencyType) onSave;
   final Future<void> Function(ZarCurrencyType) onArchive;
   final Future<void> Function(ZarCurrencyType) onRestore;
+  final Future<void> Function()? onReload;
 
   @override
   State<CurrencyCatalogScreen> createState() => _CurrencyCatalogScreenState();
@@ -86,23 +91,68 @@ class _CurrencyCatalogScreenState extends State<CurrencyCatalogScreen> {
     );
   }
 
+  Future<void> _showWriteFailure(Object error) async {
+    if (!mounted) return;
+    final conflict = error is ZarCloudWriteConflictException ? error : null;
+    final reload = widget.onReload;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          conflict?.message ?? 'اطلاعات ثبت نشد. دوباره تلاش کنید.',
+        ),
+        duration: const Duration(seconds: 6),
+        action: conflict?.needsReload == true && reload != null
+            ? SnackBarAction(
+                label: 'تازه‌سازی',
+                onPressed: () => unawaited(_reloadAfterConflict(reload)),
+              )
+            : null,
+      ),
+    );
+  }
+
+  Future<void> _reloadAfterConflict(Future<void> Function() reload) async {
+    try {
+      await reload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('اطلاعات از سرور تازه شد. دوباره ذخیره کنید.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تازه‌سازی ناموفق بود. اتصال را بررسی کنید.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
   Future<void> _openArchived(BuildContext context) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => _ArchivedCurrencyTypesScreen(
           types: _archived,
           onRestore: (item) async {
-            await widget.onRestore(item);
-            if (!mounted) return;
-            setState(() {
-              final index = _types.indexWhere((row) => row.id == item.id);
-              if (index >= 0) {
-                _types[index] = item.copyWith(
-                  archived: false,
-                  updatedAt: DateTime.now().toUtc(),
-                );
-              }
-            });
+            try {
+              await widget.onRestore(item);
+              if (!mounted) return;
+              setState(() {
+                final index = _types.indexWhere((row) => row.id == item.id);
+                if (index >= 0) {
+                  _types[index] = item.copyWith(
+                    archived: false,
+                    updatedAt: DateTime.now().toUtc(),
+                  );
+                }
+              });
+            } catch (error) {
+              await _showWriteFailure(error);
+            }
           },
         ),
       ),
@@ -138,17 +188,21 @@ class _CurrencyCatalogScreenState extends State<CurrencyCatalogScreen> {
         ),
       );
       if (confirmed != true) return;
-      await widget.onArchive(existing);
-      if (!mounted) return;
-      setState(() {
-        final index = _types.indexWhere((row) => row.id == existing.id);
-        if (index >= 0) {
-          _types[index] = existing.copyWith(
-            archived: true,
-            updatedAt: DateTime.now().toUtc(),
-          );
-        }
-      });
+      try {
+        await widget.onArchive(existing);
+        if (!mounted) return;
+        setState(() {
+          final index = _types.indexWhere((row) => row.id == existing.id);
+          if (index >= 0) {
+            _types[index] = existing.copyWith(
+              archived: true,
+              updatedAt: DateTime.now().toUtc(),
+            );
+          }
+        });
+      } catch (error) {
+        await _showWriteFailure(error);
+      }
       return;
     }
     try {
@@ -177,6 +231,8 @@ class _CurrencyCatalogScreenState extends State<CurrencyCatalogScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(_currencyError(error))));
       }
+    } catch (error) {
+      await _showWriteFailure(error);
     }
   }
 

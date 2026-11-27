@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app_core.dart';
+import '../../data/zar_domain_repository.dart';
 import '../../domain/zar_domain_models.dart';
 import '../../domain/zar_id_generator.dart';
 import '../editors/persian_numeric_input_formatter.dart';
@@ -12,12 +15,14 @@ class CoinCatalogScreen extends StatefulWidget {
     required this.onSave,
     required this.onArchive,
     required this.onRestore,
+    this.onReload,
   });
 
   final List<ZarCoinType> types;
   final Future<void> Function(ZarCoinType) onSave;
   final Future<void> Function(ZarCoinType) onArchive;
   final Future<void> Function(ZarCoinType) onRestore;
+  final Future<void> Function()? onReload;
 
   @override
   State<CoinCatalogScreen> createState() => _CoinCatalogScreenState();
@@ -83,23 +88,68 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
     );
   }
 
+  Future<void> _showWriteFailure(Object error) async {
+    if (!mounted) return;
+    final conflict = error is ZarCloudWriteConflictException ? error : null;
+    final reload = widget.onReload;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          conflict?.message ?? 'اطلاعات ثبت نشد. دوباره تلاش کنید.',
+        ),
+        duration: const Duration(seconds: 6),
+        action: conflict?.needsReload == true && reload != null
+            ? SnackBarAction(
+                label: 'تازه‌سازی',
+                onPressed: () => unawaited(_reloadAfterConflict(reload)),
+              )
+            : null,
+      ),
+    );
+  }
+
+  Future<void> _reloadAfterConflict(Future<void> Function() reload) async {
+    try {
+      await reload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('اطلاعات از سرور تازه شد. دوباره ذخیره کنید.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تازه‌سازی ناموفق بود. اتصال را بررسی کنید.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
   Future<void> _openArchived(BuildContext context) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => _ArchivedCoinTypesScreen(
           types: _archived,
           onRestore: (item) async {
-            await widget.onRestore(item);
-            if (!mounted) return;
-            setState(() {
-              final index = _types.indexWhere((row) => row.id == item.id);
-              if (index >= 0) {
-                _types[index] = item.copyWith(
-                  archived: false,
-                  updatedAt: DateTime.now().toUtc(),
-                );
-              }
-            });
+            try {
+              await widget.onRestore(item);
+              if (!mounted) return;
+              setState(() {
+                final index = _types.indexWhere((row) => row.id == item.id);
+                if (index >= 0) {
+                  _types[index] = item.copyWith(
+                    archived: false,
+                    updatedAt: DateTime.now().toUtc(),
+                  );
+                }
+              });
+            } catch (error) {
+              await _showWriteFailure(error);
+            }
           },
         ),
       ),
@@ -135,17 +185,21 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
         ),
       );
       if (confirmed != true) return;
-      await widget.onArchive(existing);
-      if (!mounted) return;
-      setState(() {
-        final index = _types.indexWhere((row) => row.id == existing.id);
-        if (index >= 0) {
-          _types[index] = existing.copyWith(
-            archived: true,
-            updatedAt: DateTime.now().toUtc(),
-          );
-        }
-      });
+      try {
+        await widget.onArchive(existing);
+        if (!mounted) return;
+        setState(() {
+          final index = _types.indexWhere((row) => row.id == existing.id);
+          if (index >= 0) {
+            _types[index] = existing.copyWith(
+              archived: true,
+              updatedAt: DateTime.now().toUtc(),
+            );
+          }
+        });
+      } catch (error) {
+        await _showWriteFailure(error);
+      }
       return;
     }
     try {
@@ -166,6 +220,8 @@ class _CoinCatalogScreenState extends State<CoinCatalogScreen> {
           const SnackBar(content: Text('اطلاعات نوع سکه معتبر نیست.')),
         );
       }
+    } catch (error) {
+      await _showWriteFailure(error);
     }
   }
 }
