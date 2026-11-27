@@ -32,6 +32,14 @@ void main() {
       ).needsReload,
       isTrue,
     );
+    expect(
+      const ZarCloudWriteConflictException(
+        code: 'stale_allocation_set',
+        collection: 'zar_allocations',
+        recordId: 's1',
+      ).needsReload,
+      isTrue,
+    );
   });
 
   test('generic cash conflicts do not advertise reload by default', () {

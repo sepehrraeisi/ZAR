@@ -162,6 +162,7 @@ class ZarCloudWriteConflictException implements Exception {
   /// True when the local working copy must be refreshed before another edit.
   bool get needsReload =>
       code == 'stale_revision' ||
+      code == 'stale_allocation_set' ||
       code == 'lifecycle_locked' ||
       code == 'terminal_field_locked' ||
       code == 'idempotency_payload_mismatch';

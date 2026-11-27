@@ -38,3 +38,6 @@
   on the **same account** may have written (`ZarCloudWriteConflictException`
   default message). Still does not name which device — that waits ADR #80.
   Unit: `test/zar_cloud_write_conflict_test.dart`.
+- `stale_allocation_set` marked `needsReload`. `PaymentAllocationSheet` surfaces
+  typed conflict copy + **تازه‌سازی از سرور** (no longer masks with the amount
+  validation string). Widget: `test/payment_allocation_sheet_test.dart`.
