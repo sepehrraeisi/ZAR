@@ -863,11 +863,22 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2>
               : '${item.operationDisplayLabel} ${item.assetLabel} — ${formatJalaliDate(item.date)}';
         },
         onSave: (rows) async {
-          final saved = await _runWrite(
-            () => _store.savePaymentAllocations(record.id, rows),
-          );
-          if (!saved) throw StateError('Allocation was not persisted.');
+          if (_writing) throw StateError('Write already in progress.');
+          setState(() => _writing = true);
+          try {
+            final result = await _writes.run(
+              () => _store.savePaymentAllocations(record.id, rows),
+            );
+            if (!result.succeeded) {
+              throw result.error ??
+                  StateError('Allocation was not persisted.');
+            }
+            if (mounted) setState(() {});
+          } finally {
+            if (mounted) setState(() => _writing = false);
+          }
         },
+        onReload: _refreshFromServer,
       ),
     );
     if (mounted) setState(() {});
