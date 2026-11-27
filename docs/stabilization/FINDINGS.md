@@ -74,8 +74,9 @@ The green baseline is valuable but does not prove production safety. Existing te
 - Progress (2026-11-24): PocketBase SSE subscribe on `zar_workspaces/{id}` with poll fallback (`WORKSPACE-EPOCH-SSE-EVIDENCE-2026-11-24.md`).
 - Progress (2026-11-24): Caddy `flush_interval -1` so `/api/realtime` is not TLS-buffered (`CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`). Remaining: physical multi-device soak.
 - Progress (2026-11-24): Device QA APK **20083** built and installed on owner Samsung with actor stamp + epoch poll/SSE (`DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`; audit `APK-AUDIT-20083-EVIDENCE-2026-11-25.md`).
-- Progress (2026-11-25): concurrent soak asserts cross-session epoch + snapshot parity (client peek path). Remaining: physical multi-device soak checklist (`MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`).
-- Status: **write-path contained in production**; epoch poll+SSE (+ Caddy flush) in APK 20083; **physical soak still open**.
+- Progress (2026-11-25): concurrent soak asserts cross-session epoch + snapshot parity (client peek path).
+- Progress (2026-11-27): physical dual-USB soak sync/lifecycle/airplane/resume **Pass** on APK 20085 (`MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`). Advertise still waits on device-attribution owner answers (ADR #80).
+- Status: **write-path contained in production**; epoch poll+SSE (+ Caddy flush) in APK 20083+; physical soak Pass; advertise gated on ADR #80.
 
 ### ZAR-DATA-003 — server does not enforce critical domain invariants
 

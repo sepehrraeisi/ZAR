@@ -239,7 +239,13 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2>
         ),
       );
     } catch (_) {
-      // Best-effort; the next poll or an explicit conflict reload can retry.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تازه‌سازی ناموفق بود. اتصال را بررسی کنید.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
     }
   }
 

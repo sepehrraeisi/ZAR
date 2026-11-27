@@ -34,3 +34,8 @@
 - Client-only; no server hook/migration deploy required (uses existing
   workspace viewRule + epoch field from ZAR-DATA-006).
 - Ships with the next signed APK.
+
+## Follow-up 2026-11-27
+
+- Failed remote refresh after epoch advance shows the same Persian snackbar as
+  conflict reload failure («تازه‌سازی ناموفق بود…») instead of failing silent.
