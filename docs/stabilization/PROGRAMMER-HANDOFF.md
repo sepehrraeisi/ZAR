@@ -702,8 +702,10 @@ C:\Users\simin\AppData\Local\Android\Sdk\platform-tools\adb.exe
 - Transactional restore deployment — owner: product + operations + security؛
   deadline: فقط پس از تصمیم قابلیت؛ پذیرش: fresh recovery set و کامل‌شدن gate 10.1.
 - Cloud invariants/concurrency/audit — CAS stack + concurrent two-device soak
-  suite در CI (`MULTI-DEVICE-CAS-SOAK-EVIDENCE-2026-11-23.md`)؛ تبلیغ
-  multi-device هنوز تا device soak/UI realtime بسته است.
+  suite در CI (`MULTI-DEVICE-CAS-SOAK-EVIDENCE-2026-11-23.md`)؛ physical
+  sync/lifecycle soak Pass روی APK 20085
+  (`MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`)؛ تبلیغ multi-device
+  هنوز تا پاسخ مالک به ADR attribution (#80) بسته است.
 - Supply chain — owner: repository/release؛ deadline: پیش از release candidate؛
   پذیرش: protected `master`، required reviews/checks، SHA-pinned Actions، scans،
   SBOM، provenance و signed artifacts.

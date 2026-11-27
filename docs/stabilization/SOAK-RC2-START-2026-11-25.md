@@ -5,7 +5,9 @@
 
 ## Build under soak
 
-- APK versionCode **20084** (SHA-256 `6464fa70…d909`, cert `d19ad112…2667`)
+- Started on APK versionCode **20084** (SHA-256 `6464fa70…d909`, cert
+  `d19ad112…2667`); upgraded mid-window to **20085** (note-refresh;
+  `DEVICE-QA-APK-20085-EVIDENCE-2026-11-27.md`)
 - Master tip at soak start: after PR #75 (`77d8520` era; confirm at close)
 - Server: signup still **closed**; CAS + epoch/SSE + Caddy flush already in prod
 
@@ -17,7 +19,9 @@
 
 ## Gates still outside this soak
 
-- Physical **two-device** soak (separate checklist)
+- Physical **two-device** soak — **Pass** 2026-11-27
+  (`MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`); advertise still waits
+  on device-attribution owner answers (ADR #80)
 - Signup reopen (owner)
 - Period lock (accountant)
 - Local DB encryption (owner ADR)

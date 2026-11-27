@@ -31,3 +31,10 @@
 ## Production
 
 - Client-only; no server deploy. Ships with the next signed APK.
+
+## Follow-up 2026-11-27
+
+- Default `stale_revision` Persian copy now hints that another phone/session
+  on the **same account** may have written (`ZarCloudWriteConflictException`
+  default message). Still does not name which device — that waits ADR #80.
+  Unit: `test/zar_cloud_write_conflict_test.dart`.

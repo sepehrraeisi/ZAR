@@ -1,11 +1,16 @@
 ﻿# ZAR+ Stabilization Handoff
 
-Last updated: 2026-11-23 (Asia/Tehran)
-Status: **v1.0.0 shipped. Production containment + transactional restore + §10.5 write CAS deployed; public signup closed (§10.4). Next gate: multi-device soak before advertising cloud reliability.**
+Last updated: 2026-11-27 (Asia/Tehran)
+Status: **v1.0.0 shipped. Physical dual-USB soak Pass on APK 20085; advertise cloud multi-device still waits on device-attribution owner answers (ADR #80). Public signup closed (§10.4). RC2 calendar soak in progress.**
 Change freeze for feature work remains; release/update loop follows `RELEASE-RUNBOOK.md`.
 
 ## 0. Post-handoff action log
 
+- 2026-11-27 — Stale-revision conflict copy hints at same-account multi-device session (client message only; ships next APK after 20085).
+- 2026-11-27 — Physical dual-USB soak evidence merged (#83): sync/terminal/cancel/airplane/resume Pass; conflict attribution Partial. Doc: `MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`.
+- 2026-11-27 — Device attribution ADR merged as Proposed (#80). Implementation waits owner answers (label default / installationId in backup / priority).
+- 2026-11-27 — Device QA APK **20085** on Samsung + moto e13: settlement note in-sheet refresh verified. Evidence: `DEVICE-QA-APK-20085-EVIDENCE-2026-11-27.md` (#82).
+- 2026-11-27 — Settlement detail note refresh merged (#81) then APK 20085.
 - 2026-11-25 — ADR device attribution in shared workspace (label per installation; createdBy stays user id). Doc: DEVICE-ACTOR-ATTRIBUTION-ADR-2026-11-25.md.
 - 2026-11-25 — Single-device preflight APK 20084 completed on unlocked Samsung (cold start, person persist `SoakPreA1830`, backup account card); settlement-note step partial; second phone not yet in `adb devices`. Evidence: `SINGLE-DEVICE-PREFLIGHT-20084-EVIDENCE-2026-11-25.md`.
 - 2026-11-25 — External probe deep checks: TLS expiry (>14d client view) + off-site backup age (<50h) in `zar_external_probe.ps1`; deployed to `ZAR-Ops`. Evidence: `EXTERNAL-PROBE-DEEP-CHECKS-EVIDENCE-2026-11-25.md`.

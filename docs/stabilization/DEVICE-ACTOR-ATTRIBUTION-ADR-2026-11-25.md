@@ -60,3 +60,20 @@
 1. برچسب پیش‌فرض: مدل خام اندروید یا نام آزاد («ویترین» / «انبار»)?
 2. آیا `installationId` در بکاپ JSON مشتری بیاید یا فقط hash کوتاه؟
 3. اولویت نسبت به period-lock / signup reopen؟
+
+## Recommended defaults (engineering, 2026-11-27)
+
+If the owner wants a one-shot «approve defaults» rather than debating each
+question, use:
+
+1. **Default label** = Android `Build.model` (e.g. `moto e13`), editable later
+   in تنظیمات as a free Persian/ASCII string («ویترین»).
+2. **Backup** carries `installationId` as a **short opaque hash** (truncated /
+   keyed hash of the Keystore id), not the raw UUID — enough to group writes,
+   useless as a hardware fingerprint.
+3. **Priority** = after physical soak (done 2026-11-27) and **before**
+   advertising multi-device; can run in parallel with signup reopen packet;
+   still behind accountant period-lock sign-off for accounting features.
+
+Implementation remains blocked until the owner explicitly accepts Option B +
+these defaults (or substitutes).
