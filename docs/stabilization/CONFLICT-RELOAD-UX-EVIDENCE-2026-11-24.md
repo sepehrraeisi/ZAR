@@ -20,7 +20,8 @@
   `_refreshFromServer`
 - Confirmed person/record editors + quick-add sheets expose
   **تازه‌سازی از سرور** when the conflict needs a reload
-- Tests: `test/zar_cloud_write_conflict_test.dart`
+- Tests: `test/zar_cloud_write_conflict_test.dart`,
+  `test/confirmed_editors_test.dart` (person + record reload)
 
 ## Acceptance
 
