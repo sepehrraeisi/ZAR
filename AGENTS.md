@@ -151,10 +151,10 @@ Transitional `local-user` cloud create allowance removed after APK 20083.
 ## 5. Current project state (as of 2026-11-27)
 
 - **v1.0.0** tagged + published as a GitHub release (post RC1 soak). Device QA
-  APK **20086** on Samsung + moto e13 (build-number 18086) — conflict copy +
-  allocation reload + epoch fail snackbar:
-  `DEVICE-QA-APK-20086-EVIDENCE-2026-11-27.md`. Prior **20085** (note refresh):
-  `DEVICE-QA-APK-20085-EVIDENCE-2026-11-27.md`. RC2 soak window started
+  APK **20087** on Samsung + moto e13 (build-number 18087) — catalog CAS
+  conflict reload: `DEVICE-QA-APK-20087-EVIDENCE-2026-11-28.md`. Prior
+  **20086** (conflict/allocation/epoch UX):
+  `DEVICE-QA-APK-20086-EVIDENCE-2026-11-27.md`. RC2 soak window started
   2026-11-25 (`SOAK-RC2-START-2026-11-25.md`).
 - Phase 0/1/2 of `docs/stabilization/ROADMAP-2026-11.md` are complete
   (integrity locks, rate limiting 13 rules, monitoring, off-site backup,
@@ -167,7 +167,7 @@ Transitional `local-user` cloud create allowance removed after APK 20083.
   (owner); second-operator drills; RC2 calendar soak; launch sign-off.
   §10.5 write CAS + §10.4 closed signup deployed. Consistent snapshot read
   (`1793604703` + `/api/zar/read/snapshot`) closes ZAR-DATA-006.
-- Android phone for device QA: Samsung + moto e13, versionCode ≥ **20086**
+- Android phone for device QA: Samsung + moto e13, versionCode ≥ **20087**
   (installed versionCode = build-number + 2000), release-signed with the
   owner's keystore (cert pinned in `RELEASE-SIGNING-EVIDENCE`). adb notes:
   `input text` cannot type Persian; screencap+Read for verification;

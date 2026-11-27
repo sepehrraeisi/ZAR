@@ -6,6 +6,8 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-28 — Device QA APK **20087** on Samsung + moto e13 (catalog CAS conflict reload). Evidence: `DEVICE-QA-APK-20087-EVIDENCE-2026-11-28.md`.
+- 2026-11-27 — Catalog CAS conflict UX merged (#88); coin/currency screens surface typed conflicts + تازه‌سازی.
 - 2026-11-27 — Device QA APK **20086** on Samsung + moto e13 (conflict copy + allocation reload + epoch fail snackbar). Evidence: `DEVICE-QA-APK-20086-EVIDENCE-2026-11-27.md`.
 - 2026-11-27 — Record-editor conflict coverage + epoch refresh failure snackbar (#86).
 - 2026-11-27 — Payment allocation typed CAS conflict + `stale_allocation_set` needsReload (#85).
