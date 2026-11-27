@@ -102,6 +102,7 @@ class ZarCloudWriteConflictException implements Exception {
     this.currentRevision,
     this.message =
         'اطلاعات روی سرور از آخرین نسخهٔ این دستگاه جلوتر است. '
+        'ممکن است از همین حساب روی گوشی یا نشست دیگری ثبت شده باشد. '
         'هیچ تغییری ذخیره نشد. صفحه را تازه کنید و دوباره ثبت کنید.',
   });
 

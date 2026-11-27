@@ -44,4 +44,14 @@ void main() {
       isFalse,
     );
   });
+
+  test('stale revision message hints at same-account multi-device', () {
+    const conflict = ZarCloudWriteConflictException.staleRevision(
+      collection: 'zar_settlements',
+      recordId: 's1',
+      currentRevision: 4,
+    );
+    expect(conflict.message, contains('همین حساب'));
+    expect(conflict.message, contains('تازه کنید'));
+  });
 }
