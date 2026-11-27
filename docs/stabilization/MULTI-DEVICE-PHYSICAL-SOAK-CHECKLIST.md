@@ -8,9 +8,10 @@ Engineering CAS soak (CI) is already green; this checklist is the
 
 - Two devices (or one phone + one emulator) signed in to the **same**
   workspace with distinct sessions.
-- Release APK ≥ versionCode **20084** (backup deny + release HTTPS/timeout on
-  top of epoch poll + SSE + actor stamp + conflict reload). Cert SHA-256 must
-  be `d19ad112…2667`. Evidence: `DEVICE-QA-APK-20084-EVIDENCE-2026-11-25.md`.
+- Release APK ≥ versionCode **20085** (note-refresh UI + prior 20084 backup
+  deny / HTTPS timeout / epoch+SSE). Cert SHA-256 must be `d19ad112…2667`.
+  Evidence: `DEVICE-QA-APK-20085-EVIDENCE-2026-11-27.md` (prior 20084 OK for
+  sync-only steps).
 - Signup remains closed; use seeded UX-campaign / owner accounts only.
 - Caddy `flush_interval -1` deployed (public `/api/realtime` streams
   `PB_CONNECT`).
@@ -66,3 +67,9 @@ Observer:
 Pass/Fail:
 Notes:
 ```
+
+## Latest run
+
+- 2026-11-27 dual-USB Samsung + moto e13: sync / terminal / cancel / airplane /
+  resume **Pass**; conflict device-attribution **Partial** (ADR #80).
+  Evidence: `MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`.
