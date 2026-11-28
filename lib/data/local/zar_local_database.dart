@@ -2,6 +2,8 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import '../../domain/zar_domain_models.dart';
+import 'zar_local_db_encryption.dart';
+import 'zar_local_db_key_store.dart';
 
 part 'zar_local_database.g.dart';
 
@@ -204,7 +206,21 @@ class ZarPaymentAllocations extends Table {
 class ZarLocalDatabase extends _$ZarLocalDatabase {
   ZarLocalDatabase(super.executor);
 
+  /// Plaintext local DB (tests, debug, non-Android). Prefer [openForDevice]
+  /// for production Android release builds.
   ZarLocalDatabase.defaults() : super(driftDatabase(name: 'zar_plus_local'));
+
+  /// Device opener: encrypted on Android release (ADR Option A), else plaintext.
+  static Future<ZarLocalDatabase> openForDevice({
+    ZarLocalDbKeyStore? keyStore,
+    bool forcePlaintext = false,
+  }) async {
+    final executor = await openZarLocalQueryExecutor(
+      keyStore: keyStore,
+      forcePlaintext: forcePlaintext,
+    );
+    return ZarLocalDatabase(executor);
+  }
 
   static const currentSchemaVersion = 9;
 

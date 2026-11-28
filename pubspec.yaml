@@ -28,6 +28,7 @@ dependencies:
   share_plus: ^12.0.1
   drift: ^2.34.0
   drift_flutter: ^0.3.1
+  sqlite3: ^3.5.2
   path_provider: ^2.1.5
   file_saver: 0.4.0
 
@@ -37,6 +38,13 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   build_runner: ^2.10.4
   drift_dev: ^2.34.0
+
+# Bundle SQLite3MultipleCiphers for at-rest local DB encryption (ADR Option A).
+# See https://drift.simonbinder.eu/platforms/encryption/
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
 
 flutter:
   uses-material-design: true
