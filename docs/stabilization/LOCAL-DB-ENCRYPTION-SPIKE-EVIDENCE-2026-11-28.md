@@ -43,8 +43,15 @@ read on this host (cipher available after hooks).
 ## Files
 
 - `lib/data/local/zar_local_db_key_store.dart`
-- `lib/data/local/zar_local_db_encryption.dart`
+- `lib/data/local/zar_local_db_encryption.dart` (conditional export)
+- `lib/data/local/zar_local_db_encryption_io.dart` / `_stub.dart` (web-safe)
 - `lib/data/local/zar_local_database.dart` (`openForDevice`)
 - `lib/main.dart`
 - `pubspec.yaml` (`sqlite3` + hooks)
 - `test/zar_local_db_encryption_test.dart`
+
+## CI note
+
+First `flutter-checks` failed on `flutter build web` because the encryption
+module imported FFI `sqlite3`. Fixed with `dart.library.io` conditional export
+so web preview stays on the plaintext stub.
