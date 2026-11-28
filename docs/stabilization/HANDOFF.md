@@ -6,6 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-28 — Owner decisions: ADR device attribution **Accepted** (Option B + defaults); local DB encryption **Accepted** (Option A, post-attribution spike); signup reopen **authorized** for launch (PR #77 path + guarded deploy).
 - 2026-11-28 — Device QA APK **20088** on Samsung + moto e13 (cashbox CAS conflict reload). Evidence: `DEVICE-QA-APK-20088-EVIDENCE-2026-11-28.md`.
 - 2026-11-28 — Cashbox conflict UX + FINDINGS hygiene merged (#90).
 - 2026-11-28 — Device QA APK **20087** on Samsung + moto e13 (catalog CAS conflict reload). Evidence: `DEVICE-QA-APK-20087-EVIDENCE-2026-11-28.md`.

@@ -303,11 +303,12 @@ Stabilization of security, recovery and current data integrity can continue with
 
 ## Next implementation order
 
-1. Owner answers for device-attribution ADR #80 (before advertising
-   multi-device). Recommended defaults are in the ADR.
-2. Signup reopen only at launch (owner + forward migration; draft PR #77).
-3. Period lock + reversal-only correction (accountant sign-off).
-4. Local DB encryption ADR (owner).
-5. Second-operator runbook drills (human).
+1. Implement device attribution (ADR #80 **Accepted** 2026-11-28) then
+   advertise multi-device only after APK+evidence.
+2. Signup reopen: owner **authorized** 2026-11-28 — merge draft PR #77 after
+   rebase/CI, guarded production migrate per packet.
+3. Period lock + reversal-only correction (still **accountant** sign-off).
+4. Local DB encryption spike (ADR **Accepted** Option A; after attribution).
+5. Second-operator runbook drills (human / separate machine).
 6. Finish RC2 calendar soak (7–14d) then launch sign-off checklist.
 

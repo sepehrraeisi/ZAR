@@ -1,7 +1,7 @@
 # ADR — Local SQLite encryption (ZAR-MOB-001 remainder)
 
 تاریخ: 2026-11-25  
-وضعیت: **Proposed — needs owner decision** (no code change in this doc)
+وضعیت: **Accepted** (مالک، 2026-11-28 — Option A SQLCipher / Keystore-derived)
 
 ## Context
 
@@ -31,18 +31,22 @@ Prefer **A** after owner accepts:
 4. Export JSON stays plaintext-by-design until a separate tamper-evident export
    policy is approved (out of scope here).
 
-## Decision needed from owner
+## Owner decision (2026-11-28)
 
-- Approve Option A (or explicitly keep B until after launch)?
-- Accept one forced local re-sync / cold-start risk for existing installs?
-- Timeline: before advertising cloud reliability, or post-launch hardening?
+- **Option A** approved (SQLCipher / encrypted Drift; Keystore-derived key;
+  no passphrase UI).
+- Accept one-time on-device plaintext → encrypted migration and possible
+  cold-start / re-sync for existing installs.
+- Timeline: **post-launch hardening after device-attribution ships**; not a
+  blocker for advertising multi-device once ADR #80 is implemented. Keep
+  current backup-deny + HTTPS posture until the encryption spike lands.
 
 ## Non-goals
 
 - Encrypting cloud PocketBase data-at-rest on VPS (separate ops track)
 - Changing backup JSON format in the same change
 
-## Next engineering step (after approval)
+## Next engineering step
 
 Spike branch: Drift + SQLCipher (or `sqflite_sqlcipher`) on Android-only,
 migration test with fixture DB, evidence doc, then device QA APK.
