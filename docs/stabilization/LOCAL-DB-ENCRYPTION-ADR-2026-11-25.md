@@ -48,5 +48,7 @@ Prefer **A** after owner accepts:
 
 ## Next engineering step
 
-Spike branch: Drift + SQLCipher (or `sqflite_sqlcipher`) on Android-only,
-migration test with fixture DB, evidence doc, then device QA APK.
+- [x] Spike branch: Drift + SQLite3MultipleCiphers hooks, Keystore passphrase,
+  plaintext→encrypted migration test — evidence
+  `LOCAL-DB-ENCRYPTION-SPIKE-EVIDENCE-2026-11-28.md`.
+- [ ] Merge spike → device QA release APK proving on-device encrypted file.

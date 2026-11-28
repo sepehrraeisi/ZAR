@@ -47,11 +47,12 @@ Future<void> main() async {
   if (useFirebase) {
     await Firebase.initializeApp();
     final fbAuth = FirebaseAuthService();
+    final localDb = await ZarLocalDatabase.openForDevice();
     runApp(
       ZarAuthGate(
         auth: fbAuth,
         child: RepositoryZarPlusAppV2(
-          repository: ZarLocalRepository(ZarLocalDatabase.defaults()),
+          repository: ZarLocalRepository(localDb),
           account: ZarAccountSection(
             email: fbAuth.currentUser?.email ?? '',
             userId: fbAuth.currentUser?.uid,
@@ -63,7 +64,8 @@ Future<void> main() async {
     return;
   }
 
-  final repository = ZarLocalRepository(ZarLocalDatabase.defaults());
+  final localDb = await ZarLocalDatabase.openForDevice();
+  final repository = ZarLocalRepository(localDb);
   await repository.ensureReady();
   runApp(RepositoryZarPlusAppV2(repository: repository));
 }
