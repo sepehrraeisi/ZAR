@@ -45,6 +45,7 @@ Command: `python server/tests/pocketbase_signup_launch_abuse_test.py --pocketbas
 
 ## Remaining for launch reopen
 
-- [ ] owner decision + forward migration
-- [ ] post-deploy anonymous create smoke + rate-limit spot check
-- [ ] UI signup toggle restore only after server open
+- [x] owner decision + forward migration (`1793604704`, PR #77)
+- [x] post-deploy anonymous create smoke + rate-limit spot check
+      (`SIGNUP-REOPEN-DEPLOY-EVIDENCE-2026-11-28.md`)
+- [ ] UI/device QA on APK ≥ 20089 after server open

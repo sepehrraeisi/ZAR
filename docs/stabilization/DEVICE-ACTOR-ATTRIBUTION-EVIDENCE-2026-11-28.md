@@ -28,5 +28,10 @@
 
 ## Deploy
 
-- Hook-only server change (no collection migration). Guarded deploy when
-  shipping with an APK that stamps devices.
+- Hook-only server change (no collection migration) co-deployed with signup
+  reopen on 2026-11-28 after backup `zar-20261128T142753Z` + off-site verify.
+- Installed `zar_domain_validate.js` (`3d34501b…aa0ff`) + `zar_write.js`
+  (`04d9bf90…cf1818`); rollback
+  `/var/tmp/zar-signup-attr-rollback-20261128T1437Z`.
+- Postflight shared with `SIGNUP-REOPEN-DEPLOY-EVIDENCE-2026-11-28.md`.
+- Client APK ≥ **20089** still required before advertising multi-device.
