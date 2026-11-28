@@ -207,6 +207,10 @@ class ZarDomainBackupCodec {
     'createdAt': person.createdAt.toUtc().toIso8601String(),
     'updatedAt': person.updatedAt.toUtc().toIso8601String(),
     'createdBy': person.createdBy,
+    if (person.createdFromDevice != null)
+      'createdFromDevice': person.createdFromDevice!.toMap(),
+    if (person.updatedFromDevice != null)
+      'updatedFromDevice': person.updatedFromDevice!.toMap(),
   };
 
   ZarPerson _personFromMap(Map<String, Object?> map) => ZarPerson(
@@ -218,6 +222,8 @@ class ZarDomainBackupCodec {
     createdAt: _date(map['createdAt'], 'person.createdAt'),
     updatedAt: _date(map['updatedAt'], 'person.updatedAt'),
     createdBy: _requiredString(map['createdBy'], 'person.createdBy'),
+    createdFromDevice: _optionalDevice(map['createdFromDevice'], 'person'),
+    updatedFromDevice: _optionalDevice(map['updatedFromDevice'], 'person'),
   );
 
   Map<String, Object?> _dealToMap(ZarDeal deal) => {
@@ -232,6 +238,10 @@ class ZarDomainBackupCodec {
     'createdBy': deal.createdBy,
     'createdAt': deal.createdAt.toUtc().toIso8601String(),
     'updatedAt': deal.updatedAt.toUtc().toIso8601String(),
+    if (deal.createdFromDevice != null)
+      'createdFromDevice': deal.createdFromDevice!.toMap(),
+    if (deal.updatedFromDevice != null)
+      'updatedFromDevice': deal.updatedFromDevice!.toMap(),
   };
 
   ZarDeal _dealFromMap(Map<String, Object?> map, String businessId) {
@@ -288,6 +298,8 @@ class ZarDomainBackupCodec {
       createdBy: _requiredString(map['createdBy'], 'deal.createdBy'),
       createdAt: _date(map['createdAt'], 'deal.createdAt'),
       updatedAt: _date(map['updatedAt'], 'deal.updatedAt'),
+      createdFromDevice: _optionalDevice(map['createdFromDevice'], 'deal'),
+      updatedFromDevice: _optionalDevice(map['updatedFromDevice'], 'deal'),
     );
   }
 
@@ -308,6 +320,10 @@ class ZarDomainBackupCodec {
     'createdBy': settlement.createdBy,
     'createdAt': settlement.createdAt.toUtc().toIso8601String(),
     'updatedAt': settlement.updatedAt.toUtc().toIso8601String(),
+    if (settlement.createdFromDevice != null)
+      'createdFromDevice': settlement.createdFromDevice!.toMap(),
+    if (settlement.updatedFromDevice != null)
+      'updatedFromDevice': settlement.updatedFromDevice!.toMap(),
   };
 
   ZarSettlement _settlementFromMap(
@@ -347,7 +363,17 @@ class ZarDomainBackupCodec {
     createdBy: _requiredString(map['createdBy'], 'settlement.createdBy'),
     createdAt: _date(map['createdAt'], 'settlement.createdAt'),
     updatedAt: _date(map['updatedAt'], 'settlement.updatedAt'),
+    createdFromDevice: _optionalDevice(map['createdFromDevice'], 'settlement'),
+    updatedFromDevice: _optionalDevice(map['updatedFromDevice'], 'settlement'),
   );
+
+  ZarDeviceRef? _optionalDevice(Object? raw, String prefix) {
+    if (raw == null) return null;
+    if (raw is! Map) {
+      throw FormatException('$prefix device ref must be an object.');
+    }
+    return ZarDeviceRef.fromMap(Map<String, Object?>.from(raw));
+  }
 
   void _validateReferences({
     required List<ZarPerson> people,

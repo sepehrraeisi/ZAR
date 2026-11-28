@@ -11,7 +11,7 @@ import 'package:flutter_app/domain/zar_reminder_plan.dart';
 
 void main() {
   final now = DateTime.utc(2026, 8, 28, 12);
-  const bridge = ZarLegacyPresentationBridge(businessId: 'b1', userId: 'u1');
+  final bridge = ZarLegacyPresentationBridge(businessId: 'b1', userId: 'u1');
 
   ZarDomainSnapshot completeSnapshot() {
     final person = ZarPerson(

@@ -236,6 +236,7 @@ function zarWriteEnforceTerminalFieldFreeze(collection, existing, data) {
     'status',
     'createdBy',
     'createdAt',
+    'createdFromDevice',
   ];
   const settlementKeys = [
     'personId',
@@ -251,6 +252,7 @@ function zarWriteEnforceTerminalFieldFreeze(collection, existing, data) {
     'completedBy',
     'createdBy',
     'createdAt',
+    'createdFromDevice',
   ];
   const keys = collection === 'zar_deals' ? dealKeys : settlementKeys;
   for (let i = 0; i < keys.length; i++) {
@@ -318,10 +320,14 @@ function zarWriteValidateUpsertData(
   zarWriteEnforceCreatedAtImmutable(existing, data, collection);
   const domain = require(`${__hooks}/zar_domain_validate.js`);
   let existingCreatedBy = null;
+  let existingData = null;
   if (existing) {
     const previous = zarWritePlainData(existing.get('data'));
-    if (zarWriteIsObject(previous) && typeof previous.createdBy === 'string') {
-      existingCreatedBy = previous.createdBy;
+    if (zarWriteIsObject(previous)) {
+      existingData = previous;
+      if (typeof previous.createdBy === 'string') {
+        existingCreatedBy = previous.createdBy;
+      }
     }
   }
 
@@ -332,7 +338,12 @@ function zarWriteValidateUpsertData(
     zarWriteRequireBoolean(data.archived, 'person archived');
     zarWriteRequireIsoDate(data.createdAt, 'person createdAt');
     zarWriteRequireIsoDate(data.updatedAt, 'person updatedAt');
-    domain.validatePersonPayload(data, actorId, existingCreatedBy);
+    domain.validatePersonPayload(
+      data,
+      actorId,
+      existingCreatedBy,
+      existingData,
+    );
     return;
   }
 
@@ -350,6 +361,7 @@ function zarWriteValidateUpsertData(
       data,
       actorId,
       existingCreatedBy,
+      existingData,
     );
     return;
   }
@@ -383,6 +395,7 @@ function zarWriteValidateUpsertData(
       data,
       actorId,
       existingCreatedBy,
+      existingData,
     );
     return;
   }

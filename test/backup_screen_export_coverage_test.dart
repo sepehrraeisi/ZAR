@@ -19,7 +19,7 @@ void main() {
       repository: repository,
       store: ZarPhaseA2Store(
         repository: repository,
-        bridge: const ZarLegacyPresentationBridge(
+        bridge: ZarLegacyPresentationBridge(
           businessId: 'w1',
           userId: 'test',
         ),

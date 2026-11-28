@@ -7,7 +7,7 @@ import 'package:flutter_app/application/zar_legacy_presentation_bridge.dart';
 import 'package:flutter_app/domain/zar_domain_models.dart';
 
 void main() {
-  const bridge = ZarLegacyPresentationBridge(businessId: 'b1', userId: 'u1');
+  final bridge = ZarLegacyPresentationBridge(businessId: 'b1', userId: 'u1');
   final now = DateTime.utc(2026, 8, 27, 10);
 
   test('currency settlement round-trips without losing exact cents', () {

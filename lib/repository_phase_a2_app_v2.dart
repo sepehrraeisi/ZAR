@@ -26,6 +26,7 @@ import 'domain/zar_payment_allocation.dart';
 import 'application/customer_operational_balance_projector.dart';
 import 'features/settlements/payment_allocation_sheet.dart';
 import 'features/editors/confirmed_editors.dart';
+import 'features/auth/zar_device_attribution_store.dart';
 import 'features/backup/backup_screen.dart';
 import 'features/coins/coin_catalog_screen.dart';
 import 'features/currencies/currency_catalog_screen.dart';
@@ -139,6 +140,8 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2>
   ZarWorkspaceEpochWatcher? _epochWatcher;
 
   late ZarNotificationPreferences _notificationPreferences;
+  final ZarDeviceAttributionStore _deviceAttribution =
+      ZarDeviceAttributionStore();
   int _index = 0;
   final ValueNotifier<int> _cashboxTab = ValueNotifier<int>(0);
   bool _ready = false;
@@ -192,6 +195,14 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2>
 
   Future<void> _load() async {
     try {
+      try {
+        // Secure storage can hang under widget tests (no platform channel).
+        _bridge.deviceRef = await _deviceAttribution
+            .current()
+            .timeout(const Duration(milliseconds: 250));
+      } catch (_) {
+        // Attribution is best-effort; writes still succeed without a stamp.
+      }
       await _store.refresh();
       if (!mounted) return;
       setState(() {

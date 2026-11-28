@@ -276,7 +276,7 @@ void main() {
   });
 
   test('presentation keeps a multi-line coin deal as one history record', () {
-    const bridge = ZarLegacyPresentationBridge(
+    final bridge = ZarLegacyPresentationBridge(
       businessId: 'business',
       userId: 'test',
     );
@@ -332,7 +332,7 @@ void main() {
       );
       final store = ZarPhaseA2Store(
         repository: repo,
-        bridge: const ZarLegacyPresentationBridge(
+        bridge: ZarLegacyPresentationBridge(
           businessId: 'business',
           userId: 'test',
         ),

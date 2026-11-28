@@ -15,7 +15,7 @@ import 'package:flutter_app/features/reminders/reminder_scheduler.dart';
 
 void main() {
   final now = DateTime.utc(2026, 8, 27, 10);
-  const bridge = ZarLegacyPresentationBridge(businessId: 'b1', userId: 'u1');
+  final bridge = ZarLegacyPresentationBridge(businessId: 'b1', userId: 'u1');
 
   ZarPerson person() => ZarPerson(
         id: 'p1',

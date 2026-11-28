@@ -38,6 +38,8 @@ class ZarPhaseA2Store extends ChangeNotifier {
   Object? get lastError => _lastError;
   /// Authenticated (or local preview) actor stamped onto new domain rows.
   String get actorId => _bridge.userId;
+
+  ZarDeviceRef? get deviceRef => _bridge.deviceRef;
   List<ZarPerson> get domainPeople => List.unmodifiable(_domainPeople.values);
   List<ZarSettlement> get settlements =>
       List.unmodifiable(_domainSettlements.values);

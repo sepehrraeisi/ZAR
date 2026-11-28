@@ -17,7 +17,7 @@ void main() {
     repository: repository,
     store: ZarPhaseA2Store(
       repository: repository,
-      bridge: const ZarLegacyPresentationBridge(
+      bridge: ZarLegacyPresentationBridge(
         businessId: 'test-business',
         userId: 'test-user',
       ),
@@ -108,7 +108,7 @@ void main() {
       repository: _FailingRepository(),
       store: ZarPhaseA2Store(
         repository: repository,
-        bridge: const ZarLegacyPresentationBridge(
+        bridge: ZarLegacyPresentationBridge(
         businessId: 'test-business',
         userId: 'test-user',
       ),

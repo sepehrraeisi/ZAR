@@ -11,7 +11,7 @@ import 'package:flutter_app/domain/zar_reminder_plan.dart';
 
 void main() {
   final now = DateTime.utc(2026, 8, 27, 10);
-  const bridge = ZarLegacyPresentationBridge(businessId: 'b1', userId: 'u1');
+  final bridge = ZarLegacyPresentationBridge(businessId: 'b1', userId: 'u1');
 
   ZarPerson person(String id, {bool archived = false}) => ZarPerson(
         id: id,
