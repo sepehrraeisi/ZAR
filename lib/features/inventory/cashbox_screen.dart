@@ -4,6 +4,7 @@ import '../../app_core.dart'
 import 'package:shamsi_date/shamsi_date.dart';
 import '../../application/zar_cash_projector.dart';
 import '../../application/zar_phase_a2_store.dart';
+import '../../data/zar_domain_repository.dart';
 import '../../domain/zar_cash_entry.dart';
 import '../../domain/zar_domain_models.dart';
 import '../../domain/zar_id_generator.dart';
@@ -14,7 +15,8 @@ import '../theme/zar_theme.dart';
 class CashboxScreen extends StatefulWidget {
   const CashboxScreen({super.key, required this.store, required this.businessId,
     required this.onOpenRecord, required this.onChanged, this.onOpenDailyReport,
-    this.onOpenDailyReportForDate, this.initialTab, this.tabNotifier});
+    this.onOpenDailyReportForDate, this.initialTab, this.tabNotifier,
+    this.onReload});
   final ZarPhaseA2Store store;
   final String businessId;
   final ValueChanged<String> onOpenRecord;
@@ -23,6 +25,7 @@ class CashboxScreen extends StatefulWidget {
   final ValueChanged<Jalali>? onOpenDailyReportForDate;
   final int? initialTab;
   final ValueNotifier<int>? tabNotifier;
+  final Future<void> Function()? onReload;
   @override
   State<CashboxScreen> createState() => _CashboxScreenState();
 }
@@ -448,20 +451,22 @@ class _CashboxScreenState extends State<CashboxScreen>
     final saved = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, useSafeArea: true,
       builder: (_) => _CashEntrySheet(store: store, businessId: widget.businessId, operation: operation,
         initialAsset: asset, expected: expected, deliveryDeal: deliveryDeal, financialDeal: financialDeal,
-        maximum: maximum, reversal: reversal));
+        maximum: maximum, reversal: reversal, onReload: widget.onReload));
     if (saved == true) widget.onChanged();
   }
 }
 
 class _CashEntrySheet extends StatefulWidget {
   const _CashEntrySheet({required this.store, required this.businessId, required this.operation,
-    this.initialAsset, this.expected, this.deliveryDeal, this.financialDeal, this.maximum, this.reversal});
+    this.initialAsset, this.expected, this.deliveryDeal, this.financialDeal, this.maximum, this.reversal,
+    this.onReload});
   final ZarPhaseA2Store store;
   final String businessId, operation;
   final ZarAssetAmount? initialAsset;
   final String? expected, maximum;
   final ZarDeal? deliveryDeal, financialDeal;
   final ZarCashEntry? reversal;
+  final Future<void> Function()? onReload;
   @override
   State<_CashEntrySheet> createState() => _CashEntrySheetState();
 }
@@ -475,7 +480,7 @@ class _CashEntrySheetState extends State<_CashEntrySheet> {
   String _type = 'cash', _currency = 'USD';
   ZarCoinType? _coin;
   String? _person, _error;
-  bool _saving = false, _future = false;
+  bool _saving = false, _reloading = false, _needsReload = false, _future = false;
   DateTime _at = DateTime.now();
   bool get customer => widget.operation == 'receive' || widget.operation == 'pay';
   String number(String value) => toPersianNumberText(value);
@@ -560,8 +565,16 @@ class _CashEntrySheetState extends State<_CashEntrySheet> {
           if (widget.operation == 'opening') const Text('از زمان این ثبت، گردش‌های قبل از آن در مانده این دارایی منظور نمی‌شوند؛ سوابق حفظ می‌شوند. برای مانده صفر نیازی به ثبت آغازین نیست.'),
           if (_error != null) Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
           const SizedBox(height: 16),
-          FilledButton(key: const ValueKey('cash-save'), onPressed: _saving ? null : _save,
-            child: Text(_saving ? 'در حال ثبت…' : 'ثبت و تأیید')),
+          FilledButton(key: const ValueKey('cash-save'), onPressed: (_saving || _reloading) ? null : _save,
+            child: Text(_saving || _reloading ? 'در حال ثبت…' : 'ثبت و تأیید')),
+          if (_needsReload) ...[
+            const SizedBox(height: 10),
+            OutlinedButton(
+              key: const ValueKey('cash-reload'),
+              onPressed: (_saving || _reloading) ? null : _reload,
+              child: const Text('تازه‌سازی از سرور'),
+            ),
+          ],
         ],
       )),
     )),
@@ -575,9 +588,33 @@ class _CashEntrySheetState extends State<_CashEntrySheet> {
     if (time != null && mounted) setState(() => _at = DateTime(g.year, g.month, g.day, time.hour, time.minute));
   }
 
+  Future<void> _reload() async {
+    final reload = widget.onReload;
+    if (reload == null || _reloading || _saving) return;
+    setState(() {
+      _reloading = true;
+      _error = null;
+    });
+    try {
+      await reload();
+      if (!mounted) return;
+      setState(() {
+        _reloading = false;
+        _needsReload = false;
+        _error = 'اطلاعات از سرور تازه شد. دوباره ذخیره کنید.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _reloading = false;
+        _error = 'تازه‌سازی ناموفق بود. اتصال را بررسی کنید.';
+      });
+    }
+  }
+
   Future<void> _save() async {
     if (_saving) return;
-    setState(() { _saving = true; _error = null; });
+    setState(() { _saving = true; _error = null; _needsReload = false; });
     try {
       if (_pendingEntry != null || _pendingSettlement != null) {
         await _persistPending();
@@ -654,8 +691,19 @@ class _CashEntrySheetState extends State<_CashEntrySheet> {
     } on FormatException catch (e) {
       _pendingEntry = null; _pendingSettlement = null;
       if (mounted) setState(() => _error = 'ثبت انجام نشد: ${e.message}');
-    } catch (_) {
-      if (mounted) setState(() => _error = 'تأیید ثبت دریافت نشد؛ تلاش دوباره همان سند را ارسال می‌کند.');
+    } catch (error) {
+      if (!mounted) return;
+      final conflict = error is ZarCloudWriteConflictException ? error : null;
+      if (conflict?.needsReload == true) {
+        _pendingEntry = null;
+        _pendingSettlement = null;
+      }
+      setState(() {
+        _error = conflict?.message ??
+            'تأیید ثبت دریافت نشد؛ تلاش دوباره همان سند را ارسال می‌کند.';
+        _needsReload =
+            conflict?.needsReload == true && widget.onReload != null;
+      });
     } finally { if (mounted) setState(() => _saving = false); }
   }
 

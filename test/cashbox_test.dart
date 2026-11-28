@@ -133,4 +133,57 @@ void main() {
     expect(find.text('موجودی آغازین'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('cashbox shows typed conflict and reload after idempotency mismatch', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(720, 1544);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final repo = _ConflictCashRepository();
+    final store = ZarPhaseA2Store(
+      repository: repo,
+      bridge: const ZarLegacyPresentationBridge(businessId: 'b', userId: 'u'),
+    );
+    await store.refresh();
+    var reloads = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CashboxScreen(
+          store: store,
+          businessId: 'b',
+          onOpenRecord: (_) {},
+          onChanged: () {},
+          onReload: () async {
+            reloads += 1;
+          },
+        ),
+      ),
+    );
+    await tester.tap(find.text('سایر عملیات'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('موجودی آغازین').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('cash-quantity')), '100');
+    await tester.ensureVisible(find.byKey(const ValueKey('cash-save')));
+    await tester.tap(find.byKey(const ValueKey('cash-save')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('درخواست تکراری'), findsOneWidget);
+    expect(find.byKey(const ValueKey('cash-reload')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('cash-reload')));
+    await tester.pumpAndSettle();
+    expect(reloads, 1);
+    expect(find.textContaining('اطلاعات از سرور تازه شد'), findsOneWidget);
+  });
+}
+
+class _ConflictCashRepository extends InMemoryZarDomainRepository {
+  @override
+  Future<void> appendCashEntry(ZarCashEntry entry) async {
+    throw const ZarCloudWriteConflictException.idempotencyMismatch(
+      collection: 'zar_cash_entries',
+      recordId: 'cash-1',
+    );
+  }
 }
