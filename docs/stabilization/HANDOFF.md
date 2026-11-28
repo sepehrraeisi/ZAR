@@ -6,6 +6,7 @@ Change freeze for feature work remains; release/update loop follows `RELEASE-RUN
 
 ## 0. Post-handoff action log
 
+- 2026-11-28 — Device QA APK **20089** built (attribution + signup UI); installed on moto e13; Samsung USB not attached. Evidence: `DEVICE-QA-APK-20089-EVIDENCE-2026-11-28.md`.
 - 2026-11-28 — Production deploy: signup reopen `1793604704` + attribution hooks after backup `zar-20261128T142753Z` + off-site verify. Burst smoke 200×5 / 429. Evidence: `SIGNUP-REOPEN-DEPLOY-EVIDENCE-2026-11-28.md`.
 - 2026-11-28 — Device attribution Option B merged (#93 → `c22b832`).
 - 2026-11-28 — Signup reopen PR #77 merged (migration + auth gate); owner-authorized launch path.
