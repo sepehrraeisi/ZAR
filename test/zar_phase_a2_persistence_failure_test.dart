@@ -6,7 +6,7 @@ import 'package:flutter_app/data/zar_domain_repository.dart';
 import 'package:flutter_app/domain/zar_domain_models.dart';
 
 void main() {
-  const bridge = ZarLegacyPresentationBridge(businessId: 'b1', userId: 'u1');
+  final bridge = ZarLegacyPresentationBridge(businessId: 'b1', userId: 'u1');
 
   test('failed settlement save does not mutate presentation state', () async {
     final now = DateTime.utc(2026, 8, 27, 12);
