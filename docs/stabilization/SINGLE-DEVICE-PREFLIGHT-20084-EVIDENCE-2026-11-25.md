@@ -1,34 +1,35 @@
-# Single-device preflight — APK 20084 (partial)
+# Single-device preflight — APK 20084
 
 تاریخ: 2026-11-25  
 مرجع: `MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md` (optional single-device section)
 
 ## Device / build
 
-- Samsung `SM_N986U` / `R5CN70SG2BF`
+- Samsung `SM_N986U` / `R5CN70SG2BF` (unlocked for this session)
 - Installed: versionCode **20084**, versionName `1.0.0`
-- `lastUpdateTime=2026-11-25 15:47:39` (from Device QA install)
+- Workspace session: `shahab@zarplus.cloud` → `https://app.titangold.ir`
+  (account card on backup screen)
 
-## Steps executed (adb)
+## Checklist
 
-1. `dumpsys package` confirmed **20084**
-2. `am force-stop com.zarplus.app`
-3. `am start -n com.zarplus.app/.MainActivity` → started / later
-   «intent delivered to currently running top-most instance»
+| Step | Result |
+|------|--------|
+| 1. Cold start → session restores | **Pass** — force-stop + `am start` landed on home for «گالری طلای مهر» without login |
+| 2. Create person; force-stop; reopen | **Pass** — created `SoakPreA1830`; after force-stop/reopen, search shows the person (count «همه ۲») |
+| 3. Edit a settlement note; save OK | **Partial** — existing CleanAli receive is **completed** (view-only banner; note `soakQA` not editable). Quick-add cash receive (1000) reached confirm dialog but did not persist (cashbox still ۲۵۰٬۰۰۰); abandoned to avoid polluting workspace while keyboard/confirm loop blocked automation |
+| 4. Backup screen: email + server URL | **Pass** — «پشتیبان‌گیری و داده‌ها» shows `shahab@zarplus.cloud` and `https://app.titangold.ir`; no export performed |
 
-## Blocked
+## Multi-device gate
 
-- Device was on AOD/charging lock UI (`78%` / «until full»); interactive
-  people/settlement/backup steps were **not** completed in this session.
-- Full optional preflight (create person, force-stop reopen, backup account
-  card) needs an unlocked screen and owner taps (Persian `adb input text`
-  limitation remains).
+- At evidence time `adb devices` still listed **only** `R5CN70SG2BF`.
+- Second physical phone was reported connected by the owner but did **not**
+  appear as an ADB device (likely USB debugging not authorized / charging-only
+  mode). Pair soak remains blocked until device B shows `device` in `adb devices -l`.
 
 ## Result
 
-- **Partial pass**: build identity + cold-start launch path verified.
+- **Pass with note** on optional single-device preflight (steps 1, 2, 4 solid;
+  step 3 partial due to no open editable settlement + quick-add automation miss).
 - **Not a substitute** for the two-device physical soak gate.
-- Next: unlock + finish checklist steps 1–4, or attach second device/emulator
-  for the pair soak.
 
-Observer: agent (adb-only). Pass/Fail: **Partial**.
+Observer: agent (adb + uiautomator). Pass/Fail: **Pass (partial step 3)**.

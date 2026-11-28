@@ -1,12 +1,28 @@
 ﻿# ZAR+ Stabilization Handoff
 
-Last updated: 2026-11-23 (Asia/Tehran)
-Status: **v1.0.0 shipped. Production containment + transactional restore + §10.5 write CAS deployed; public signup closed (§10.4). Next gate: multi-device soak before advertising cloud reliability.**
+Last updated: 2026-11-27 (Asia/Tehran)
+Status: **v1.0.0 shipped. Physical dual-USB soak Pass on APK 20085; advertise cloud multi-device still waits on device-attribution owner answers (ADR #80). Public signup closed (§10.4). RC2 calendar soak in progress.**
 Change freeze for feature work remains; release/update loop follows `RELEASE-RUNBOOK.md`.
 
 ## 0. Post-handoff action log
 
-- 2026-11-25 — Single-device preflight APK 20084 partial (versionCode + cold-start launch verified; interactive UI blocked by lock/AOD). Evidence: `SINGLE-DEVICE-PREFLIGHT-20084-EVIDENCE-2026-11-25.md`.
+- 2026-11-28 — Owner decisions: ADR device attribution **Accepted** (Option B + defaults); local DB encryption **Accepted** (Option A, post-attribution spike); signup reopen **authorized** for launch (PR #77 path + guarded deploy).
+- 2026-11-28 — Device QA APK **20088** on Samsung + moto e13 (cashbox CAS conflict reload). Evidence: `DEVICE-QA-APK-20088-EVIDENCE-2026-11-28.md`.
+- 2026-11-28 — Cashbox conflict UX + FINDINGS hygiene merged (#90).
+- 2026-11-28 — Device QA APK **20087** on Samsung + moto e13 (catalog CAS conflict reload). Evidence: `DEVICE-QA-APK-20087-EVIDENCE-2026-11-28.md`.
+- 2026-11-27 — Catalog CAS conflict UX merged (#88); coin/currency screens surface typed conflicts + تازه‌سازی.
+- 2026-11-27 — Device QA APK **20086** on Samsung + moto e13 (conflict copy + allocation reload + epoch fail snackbar). Evidence: `DEVICE-QA-APK-20086-EVIDENCE-2026-11-27.md`.
+- 2026-11-27 — Record-editor conflict coverage + epoch refresh failure snackbar (#86).
+- 2026-11-27 — Payment allocation typed CAS conflict + `stale_allocation_set` needsReload (#85).
+- 2026-11-27 — Stale-revision conflict copy hints at same-account multi-device session (#84; in APK 20086).
+- 2026-11-27 — Physical dual-USB soak evidence merged (#83): sync/terminal/cancel/airplane/resume Pass; conflict attribution Partial. Doc: `MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`.
+- 2026-11-27 — Device attribution ADR merged as Proposed (#80). Implementation waits owner answers (label default / installationId in backup / priority).
+- 2026-11-27 — Device QA APK **20085** on Samsung + moto e13: settlement note in-sheet refresh verified. Evidence: `DEVICE-QA-APK-20085-EVIDENCE-2026-11-27.md` (#82).
+- 2026-11-27 — Settlement detail note refresh merged (#81) then APK 20085.
+- 2026-11-25 — ADR device attribution in shared workspace (label per installation; createdBy stays user id). Doc: DEVICE-ACTOR-ATTRIBUTION-ADR-2026-11-25.md.
+- 2026-11-25 — Single-device preflight APK 20084 completed on unlocked Samsung (cold start, person persist `SoakPreA1830`, backup account card); settlement-note step partial; second phone not yet in `adb devices`. Evidence: `SINGLE-DEVICE-PREFLIGHT-20084-EVIDENCE-2026-11-25.md`.
+- 2026-11-25 — External probe deep checks: TLS expiry (>14d client view) + off-site backup age (<50h) in `zar_external_probe.ps1`; deployed to `ZAR-Ops`. Evidence: `EXTERNAL-PROBE-DEEP-CHECKS-EVIDENCE-2026-11-25.md`.
+- 2026-11-25 — Phase-3 launch packets: signup reopen packet (no deploy), period-lock ADR, operators drill tracker, RC2 soak start, sign-off checklist.
 - 2026-11-25 — Incident second-operator drill checklist + local DB encryption ADR (owner decision pending; recommend SQLCipher). Docs: `INCIDENT-RUNBOOK.md`, `LOCAL-DB-ENCRYPTION-ADR-2026-11-25.md`.
 - 2026-11-25 — Physical multi-device soak checklist raised to APK ≥ 20084 + optional single-device preflight section (`MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`).
 - 2026-11-25 — PocketBase repository edge coverage (cash append no-op/immutable/409, allocation replace/mismatch/stale, archivePerson CAS) + RELEASE-RUNBOOK second-operator drill checklist. Evidence: `REPO-EDGE-COVERAGE-EVIDENCE-2026-11-25.md`.

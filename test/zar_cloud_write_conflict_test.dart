@@ -32,6 +32,14 @@ void main() {
       ).needsReload,
       isTrue,
     );
+    expect(
+      const ZarCloudWriteConflictException(
+        code: 'stale_allocation_set',
+        collection: 'zar_allocations',
+        recordId: 's1',
+      ).needsReload,
+      isTrue,
+    );
   });
 
   test('generic cash conflicts do not advertise reload by default', () {
@@ -43,5 +51,15 @@ void main() {
       ).needsReload,
       isFalse,
     );
+  });
+
+  test('stale revision message hints at same-account multi-device', () {
+    const conflict = ZarCloudWriteConflictException.staleRevision(
+      collection: 'zar_settlements',
+      recordId: 's1',
+      currentRevision: 4,
+    );
+    expect(conflict.message, contains('همین حساب'));
+    expect(conflict.message, contains('تازه کنید'));
   });
 }

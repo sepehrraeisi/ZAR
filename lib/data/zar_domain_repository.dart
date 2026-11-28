@@ -102,6 +102,7 @@ class ZarCloudWriteConflictException implements Exception {
     this.currentRevision,
     this.message =
         'اطلاعات روی سرور از آخرین نسخهٔ این دستگاه جلوتر است. '
+        'ممکن است از همین حساب روی گوشی یا نشست دیگری ثبت شده باشد. '
         'هیچ تغییری ذخیره نشد. صفحه را تازه کنید و دوباره ثبت کنید.',
   });
 
@@ -161,6 +162,7 @@ class ZarCloudWriteConflictException implements Exception {
   /// True when the local working copy must be refreshed before another edit.
   bool get needsReload =>
       code == 'stale_revision' ||
+      code == 'stale_allocation_set' ||
       code == 'lifecycle_locked' ||
       code == 'terminal_field_locked' ||
       code == 'idempotency_payload_mismatch';

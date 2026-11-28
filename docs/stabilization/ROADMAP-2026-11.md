@@ -25,7 +25,8 @@
 
 ## فاز ۲ — عملیات قابل اتکا (هفته ۳-۴)
 
-- [x] مانیتورینگ: on-VPS `zar-health-check.timer` + owner-PC `zar_external_probe.ps1` (`MONITORING-EVIDENCE-2026-11-06.md`) — TLS/backup-age deep probes still optional hardening
+- [x] مانیتورینگ: on-VPS `zar-health-check.timer` + owner-PC `zar_external_probe.ps1` (`MONITORING-EVIDENCE-2026-11-06.md`)
+- [x] پروب بیرونی deep: TLS expiry (>14d) + عمر بکاپ آف‌سایت (<50h) (`EXTERNAL-PROBE-DEEP-CHECKS-EVIDENCE-2026-11-25.md`)
 - [x] انتقال توکن اندروید به Keystore-backed storage (`ZarSecureTokenStore` / `flutter_secure_storage`)
 - [x] Android backup/data-extraction deny (`allowBackup=false` + XML rules؛ `ANDROID-BACKUP-DENY-EVIDENCE-2026-11-25.md`) — مانده: local DB encryption
 - [x] enforce HTTPS در release + timeout صریح REST (`RELEASE-HTTPS-CLIENT-TIMEOUT-EVIDENCE-2026-11-25.md`)
@@ -50,15 +51,22 @@
 - [x] Caddy SSE flush for `/api/realtime` (ZAR-DATA-002؛ `CADDY-SSE-FLUSH-EVIDENCE-2026-11-24.md`)
 - [x] Device QA APK 20083 built + installed on Samsung (actor/epoch/SSE؛ `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`؛ audit `APK-AUDIT-20083-EVIDENCE-2026-11-25.md`)
 - [x] Device QA APK 20084 built + installed (backup deny + release HTTPS/timeout؛ `DEVICE-QA-APK-20084-EVIDENCE-2026-11-25.md`)
-- [x] multi-device CAS soak + cross-session epoch/snapshot parity (`MULTI-DEVICE-CAS-SOAK-EVIDENCE-2026-11-23.md`) — remaining: physical soak (`MULTI-DEVICE-PHYSICAL-SOAK-CHECKLIST.md`)
+- [x] Device QA APK 20085 built + installed both phones (settlement note in-sheet refresh؛ `DEVICE-QA-APK-20085-EVIDENCE-2026-11-27.md`)
+- [x] Device QA APK 20086 built + installed both phones (conflict copy + allocation reload + epoch fail snackbar؛ `DEVICE-QA-APK-20086-EVIDENCE-2026-11-27.md`)
+- [x] Device QA APK 20087 built + installed both phones (catalog CAS conflict reload؛ `DEVICE-QA-APK-20087-EVIDENCE-2026-11-28.md`)
+- [x] Device QA APK 20088 built + installed both phones (cashbox CAS conflict reload؛ `DEVICE-QA-APK-20088-EVIDENCE-2026-11-28.md`)
+- [x] multi-device CAS soak + cross-session epoch/snapshot parity (`MULTI-DEVICE-CAS-SOAK-EVIDENCE-2026-11-23.md`)
+- [x] physical multi-device soak sync/lifecycle/airplane (`MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`) — remaining for advertise: device-attribution ADR #80 owner decision
 
 ## فاز ۳ — آمادگی انتشار (هفته ۵-۶)
 
 - [ ] تکمیل runbooks (release, incident, backup) و اجرای دوباره توسط اپراتور دوم — checklist در `RESTORE-RUNBOOK.md` + `RELEASE-RUNBOOK.md` §۷ + `INCIDENT-RUNBOOK.md`؛ مانده: اجرای واقعی اپراتور دوم + تصمیم ADR رمزنگاری DB
-- [ ] Release Candidate + soak ۷-۱۴ روزه بدون P0/P1
+- [ ] Release Candidate + soak ۷-۱۴ روزه بدون P0/P1 — پنجره شروع شد (SOAK-RC2-START-2026-11-25.md)
 - [x] سیاست ثبت‌نام: بسته تا لانچ (§10.4؛ `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`؛ prod 2026-11-23)
 - [x] ضد-abuse/rate-limit evidence برای لانچ (`SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md`؛ suite `pocketbase_signup_launch_abuse_test.py`) — مانده: تصمیم مالک + migration رو به جلو برای reopen
-- [ ] sign-off: مالک محصول، امنیت، عملیات
+- [ ] sign-off: مالک محصول، امنیت، عملیات (LAUNCH-SIGNOFF-CHECKLIST-2026-11-25.md)
+- [x] ADR دوره/برگشت پیشنهادی (PERIOD-LOCK-REVERSAL-ADR-2026-11-25.md) — مانده: تأیید حسابدار
+- [x] tracker drill اپراتور دوم (OPERATORS-DRILL-TRACKER-2026-11-25.md)
 
 ## فاز ۴ — حالت «فقط آپدیت» (دائمی)
 

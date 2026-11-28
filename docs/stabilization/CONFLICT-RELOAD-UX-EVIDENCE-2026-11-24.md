@@ -20,7 +20,8 @@
   `_refreshFromServer`
 - Confirmed person/record editors + quick-add sheets expose
   **تازه‌سازی از سرور** when the conflict needs a reload
-- Tests: `test/zar_cloud_write_conflict_test.dart`
+- Tests: `test/zar_cloud_write_conflict_test.dart`,
+  `test/confirmed_editors_test.dart` (person + record reload)
 
 ## Acceptance
 
@@ -31,3 +32,13 @@
 ## Production
 
 - Client-only; no server deploy. Ships with the next signed APK.
+
+## Follow-up 2026-11-27
+
+- Default `stale_revision` Persian copy now hints that another phone/session
+  on the **same account** may have written (`ZarCloudWriteConflictException`
+  default message). Still does not name which device — that waits ADR #80.
+  Unit: `test/zar_cloud_write_conflict_test.dart`.
+- `stale_allocation_set` marked `needsReload`. `PaymentAllocationSheet` surfaces
+  typed conflict copy + **تازه‌سازی از سرور** (no longer masks with the amount
+  validation string). Widget: `test/payment_allocation_sheet_test.dart`.

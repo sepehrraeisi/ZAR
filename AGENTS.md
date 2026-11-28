@@ -117,11 +117,14 @@ amount/pricing parity via `zar_domain_validate.js` (evidence
 `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`). Create-time actor
 stamp (evidence `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`). Restore
 amount structural share (evidence `RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`).
-Open: signup reopen at launch (owner + forward migration; abuse suite green —
-`SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md`); physical multi-device soak before
-advertising; period lock + reversal-only correction (accountant); local DB
-encryption (backup deny + release HTTPS/timeout shipped; ADR pending owner —
-`LOCAL-DB-ENCRYPTION-ADR-2026-11-25.md`).
+Open: signup reopen **owner-authorized** 2026-11-28 (forward migration + draft
+PR #77 → merge/deploy with backup discipline;
+`SIGNUP-REOPEN-LAUNCH-PACKET-2026-11-25.md`); device-attribution ADR #80
+**Accepted** (Option B + defaults) — implement before advertising multi-device
+(`DEVICE-ACTOR-ATTRIBUTION-ADR-2026-11-25.md`); period lock + reversal-only
+correction (accountant); local DB encryption ADR **Accepted** Option A
+(post-attribution spike — `LOCAL-DB-ENCRYPTION-ADR-2026-11-25.md`). Physical
+sync/lifecycle soak Pass (`MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`).
 Transitional `local-user` cloud create allowance removed after APK 20083.
 
 ## 4. Production server (owner's VPS)
@@ -145,23 +148,25 @@ Transitional `local-user` cloud create allowance removed after APK 20083.
   the original `test@zarplus.cloud`. A stray Persian-email user
   (`سپهر@zarplus.cloud`) is pending cleanup.
 
-## 5. Current project state (as of 2026-11-22)
+## 5. Current project state (as of 2026-11-27)
 
 - **v1.0.0** tagged + published as a GitHub release (post RC1 soak). Device QA
-  APK **20084** built + installed 2026-11-25 (build-number 18084; +2000
-  offset) — backup deny + release HTTPS/timeout:
-  `DEVICE-QA-APK-20084-EVIDENCE-2026-11-25.md`. Prior **20083** (epoch/SSE):
-  `DEVICE-QA-APK-20083-EVIDENCE-2026-11-24.md`. Soak log: `SOAK-RC1.md`.
+  APK **20088** on Samsung + moto e13 (build-number 18088) — cashbox CAS
+  conflict reload: `DEVICE-QA-APK-20088-EVIDENCE-2026-11-28.md`. Prior
+  **20087** (catalog conflict): `DEVICE-QA-APK-20087-EVIDENCE-2026-11-28.md`.
+  RC2 soak window started 2026-11-25 (`SOAK-RC2-START-2026-11-25.md`).
 - Phase 0/1/2 of `docs/stabilization/ROADMAP-2026-11.md` are complete
   (integrity locks, rate limiting 13 rules, monitoring, off-site backup,
   transactional restore, Keystore token storage, supply-chain CI).
-- Remaining known work: physical multi-device soak / realtime conflict UI
- before advertising cloud reliability; signup reopen only at launch (owner +
- forward migration; abuse/rate-limit evidence suite ready). §10.5 write CAS +
- §10.4 closed signup deployed.
- Consistent snapshot read (`1793604703` + `/api/zar/read/snapshot`) closes
- ZAR-DATA-006. Concurrent soak: `pocketbase_multi_device_cas_soak_test.py`.
-- Android phone for device QA: Samsung, build-number ≥ 16082
+- Physical dual-USB soak sync/terminal/cancel/airplane/resume **Pass**
+  (`MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`); advertising still
+  waits on device-attribution owner answers (ADR #80).
+- Remaining known work: signup reopen only at launch (owner + forward
+  migration; draft #77); period lock (accountant); local DB encryption
+  (owner); second-operator drills; RC2 calendar soak; launch sign-off.
+  §10.5 write CAS + §10.4 closed signup deployed. Consistent snapshot read
+  (`1793604703` + `/api/zar/read/snapshot`) closes ZAR-DATA-006.
+- Android phone for device QA: Samsung + moto e13, versionCode ≥ **20088**
   (installed versionCode = build-number + 2000), release-signed with the
   owner's keystore (cert pinned in `RELEASE-SIGNING-EVIDENCE`). adb notes:
   `input text` cannot type Persian; screencap+Read for verification;

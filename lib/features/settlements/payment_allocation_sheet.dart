@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../application/customer_operational_balance_projector.dart';
+import '../../data/zar_domain_repository.dart';
 import '../../domain/zar_domain_models.dart';
 import '../../domain/zar_payment_allocation.dart';
 import '../../domain/zar_amount_formatter.dart';
@@ -13,12 +14,14 @@ class PaymentAllocationSheet extends StatefulWidget {
     required this.initial,
     required this.targetLabel,
     required this.onSave,
+    this.onReload,
   });
   final ZarSettlement source;
   final List<ZarCustomerTomanObligation> targets;
   final List<ZarPaymentAllocation> initial;
   final String Function(ZarCustomerTomanObligation) targetLabel;
   final Future<void> Function(List<ZarPaymentAllocation>) onSave;
+  final Future<void> Function()? onReload;
   @override
   State<PaymentAllocationSheet> createState() => _PaymentAllocationSheetState();
 }
@@ -26,6 +29,8 @@ class PaymentAllocationSheet extends StatefulWidget {
 class _PaymentAllocationSheetState extends State<PaymentAllocationSheet> {
   final Map<String, TextEditingController> _amounts = {};
   bool _saving = false;
+  bool _reloading = false;
+  bool _needsReload = false;
   String? _error;
   String _key(ZarCustomerTomanObligation target) =>
       '${target.targetType.name}:${target.targetId}';
@@ -82,10 +87,11 @@ class _PaymentAllocationSheetState extends State<PaymentAllocationSheet> {
       setState(() {
         _saving = true;
         _error = null;
+        _needsReload = false;
       });
       await widget.onSave(rows);
       if (mounted) Navigator.of(context).pop(true);
-    } catch (_) {
+    } on FormatException {
       if (mounted) {
         setState(() {
           _saving = false;
@@ -93,83 +99,126 @@ class _PaymentAllocationSheetState extends State<PaymentAllocationSheet> {
               'تخصیص ذخیره نشد. مبلغ باید مثبت و حداکثر برابر مبلغ ثبت و مانده مقصد باشد. دوباره بررسی کنید.';
         });
       }
+    } catch (error) {
+      if (!mounted) return;
+      final conflict = error is ZarCloudWriteConflictException ? error : null;
+      setState(() {
+        _saving = false;
+        _error = conflict?.message ?? 'اطلاعات ثبت نشد. دوباره تلاش کنید.';
+        _needsReload =
+            conflict?.needsReload == true && widget.onReload != null;
+      });
+    }
+  }
+
+  Future<void> _reload() async {
+    final reload = widget.onReload;
+    if (reload == null || _reloading || _saving) return;
+    setState(() {
+      _reloading = true;
+      _error = null;
+    });
+    try {
+      await reload();
+      if (!mounted) return;
+      setState(() {
+        _reloading = false;
+        _needsReload = false;
+        _error = 'اطلاعات از سرور تازه شد. دوباره ذخیره کنید.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _reloading = false;
+        _error = 'تازه‌سازی ناموفق بود. اتصال را بررسی کنید.';
+      });
     }
   }
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    child: SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        20,
-        20,
-        20 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'تخصیص دریافت / پرداخت',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'مبلغ ثبت: ${ZarAmountFormatter.toman(zarWholeToman(widget.source.amount)!)}',
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'تخصیص فقط رابطه این دریافت/پرداخت با یک تعهد را ثبت می‌کند. بدون تخصیص، ثبت آزاد می‌ماند اما در مانده همان دارایی اثر دارد.',
-          ),
-          if (widget.source.isOpen)
-            const Text(
-              'کاهش مانده فقط پس از انجام دریافت/پرداخت اعمال می‌شود.',
+  Widget build(BuildContext context) {
+    final busy = _saving || _reloading;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          20 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'تخصیص دریافت / پرداخت',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-          for (final target in widget.targets)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: TextField(
-                enabled: !_saving,
-                controller: _amounts[_key(target)],
-                keyboardType: TextInputType.number,
-                textDirection: TextDirection.ltr,
-                inputFormatters: const [
-                  PersianNumericInputFormatter(decimal: false),
-                ],
-                decoration: InputDecoration(
-                  labelText: widget.targetLabel(target),
-                  helperText:
-                      'مانده: ${ZarAmountFormatter.toman(target.remainingToman)} — تومان تخصیص‌یافته',
+            const SizedBox(height: 10),
+            Text(
+              'مبلغ ثبت: ${ZarAmountFormatter.toman(zarWholeToman(widget.source.amount)!)}',
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'تخصیص فقط رابطه این دریافت/پرداخت با یک تعهد را ثبت می‌کند. بدون تخصیص، ثبت آزاد می‌ماند اما در مانده همان دارایی اثر دارد.',
+            ),
+            if (widget.source.isOpen)
+              const Text(
+                'کاهش مانده فقط پس از انجام دریافت/پرداخت اعمال می‌شود.',
+              ),
+            for (final target in widget.targets)
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: TextField(
+                  enabled: !busy,
+                  controller: _amounts[_key(target)],
+                  keyboardType: TextInputType.number,
+                  textDirection: TextDirection.ltr,
+                  inputFormatters: const [
+                    PersianNumericInputFormatter(decimal: false),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: widget.targetLabel(target),
+                    helperText:
+                        'مانده: ${ZarAmountFormatter.toman(target.remainingToman)} — تومان تخصیص‌یافته',
+                  ),
                 ),
               ),
+            if (widget.targets.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('تعهد تومانی قابل تخصیص وجود ندارد.'),
+              ),
+            TextButton(
+              onPressed: busy
+                  ? null
+                  : () => setState(() {
+                      for (final controller in _amounts.values) {
+                        controller.clear();
+                      }
+                    }),
+              child: const Text('بدون تخصیص — دریافت/پرداخت آزاد'),
             ),
-          if (widget.targets.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('تعهد تومانی قابل تخصیص وجود ندارد.'),
+            if (_error != null)
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: busy ? null : _save,
+              child: Text(busy ? 'در حال ذخیره…' : 'تأیید و ذخیره تخصیص'),
             ),
-          TextButton(
-            onPressed: _saving
-                ? null
-                : () => setState(() {
-                    for (final controller in _amounts.values) {
-                      controller.clear();
-                    }
-                  }),
-            child: const Text('بدون تخصیص — دریافت/پرداخت آزاد'),
-          ),
-          if (_error != null)
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? 'در حال ذخیره…' : 'تأیید و ذخیره تخصیص'),
-          ),
-        ],
+            if (_needsReload) ...[
+              const SizedBox(height: 10),
+              OutlinedButton(
+                onPressed: busy ? null : _reload,
+                child: const Text('تازه‌سازی از سرور'),
+              ),
+            ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
