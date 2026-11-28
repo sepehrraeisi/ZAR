@@ -116,7 +116,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final repo = InMemoryZarDomainRepository();
-    final store = ZarPhaseA2Store(repository: repo, bridge: const ZarLegacyPresentationBridge(businessId: 'b', userId: 'u'));
+    final store = ZarPhaseA2Store(repository: repo, bridge: ZarLegacyPresentationBridge(businessId: 'b', userId: 'u'));
     await store.refresh();
     await tester.pumpWidget(MaterialApp(home: CashboxScreen(store: store, businessId: 'b', onOpenRecord: (_) {}, onChanged: () {})));
     await tester.tap(find.text('سایر عملیات'));
@@ -144,7 +144,7 @@ void main() {
     final repo = _ConflictCashRepository();
     final store = ZarPhaseA2Store(
       repository: repo,
-      bridge: const ZarLegacyPresentationBridge(businessId: 'b', userId: 'u'),
+      bridge: ZarLegacyPresentationBridge(businessId: 'b', userId: 'u'),
     );
     await store.refresh();
     var reloads = 0;

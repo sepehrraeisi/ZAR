@@ -285,11 +285,58 @@ function zarDomainEnforceActor(data, existingCreatedBy, actorId, fieldPrefix) {
   );
 }
 
-function zarDomainValidateDealPayload(app, workspaceId, data, actorId, existingCreatedBy) {
+/// Optional ADR Option B device stamp: { installationId, label }.
+function zarDomainOptionalDeviceRef(value, field) {
+  if (value === null || value === undefined) {
+    return;
+  }
+  if (!zarDomainIsObject(value)) {
+    throw new BadRequestError(field + ' must be an object.');
+  }
+  zarDomainRequiredString(value.installationId, field + ' installationId');
+  zarDomainRequiredString(value.label, field + ' label');
+  if (
+    value.installationId.length > 64 ||
+    value.label.length > 80
+  ) {
+    throw new BadRequestError(field + ' fields are too long.');
+  }
+}
+
+function zarDomainEnforceCreatedFromDevice(data, existingData, fieldPrefix) {
+  zarDomainOptionalDeviceRef(
+    data.createdFromDevice,
+    fieldPrefix + ' createdFromDevice',
+  );
+  zarDomainOptionalDeviceRef(
+    data.updatedFromDevice,
+    fieldPrefix + ' updatedFromDevice',
+  );
+  if (!zarDomainIsObject(existingData)) {
+    return;
+  }
+  const previous = existingData.createdFromDevice;
+  if (previous === null || previous === undefined) {
+    return;
+  }
+  const next = data.createdFromDevice;
+  if (
+    !zarDomainIsObject(next) ||
+    next.installationId !== previous.installationId ||
+    next.label !== previous.label
+  ) {
+    throw new BadRequestError(
+      fieldPrefix + ' createdFromDevice is immutable.',
+    );
+  }
+}
+
+function zarDomainValidateDealPayload(app, workspaceId, data, actorId, existingCreatedBy, existingData) {
   const coinTypes = zarDomainLoadCoinTypeIds(app, workspaceId);
   const amount = zarDomainParseAssetAmount(data.amount, coinTypes, 'deal');
   zarDomainValidateDealPricing(data.pricing, amount, 'deal');
   zarDomainEnforceActor(data, existingCreatedBy, actorId, 'deal');
+  zarDomainEnforceCreatedFromDevice(data, existingData, 'deal');
 }
 
 function zarDomainValidateSettlementPayload(
@@ -298,6 +345,7 @@ function zarDomainValidateSettlementPayload(
   data,
   actorId,
   existingCreatedBy,
+  existingData,
 ) {
   const coinTypes = zarDomainLoadCoinTypeIds(app, workspaceId);
   zarDomainParseAssetAmount(data.amount, coinTypes, 'settlement');
@@ -311,10 +359,12 @@ function zarDomainValidateSettlementPayload(
     }
   }
   zarDomainEnforceActor(data, existingCreatedBy, actorId, 'settlement');
+  zarDomainEnforceCreatedFromDevice(data, existingData, 'settlement');
 }
 
-function zarDomainValidatePersonPayload(data, actorId, existingCreatedBy) {
+function zarDomainValidatePersonPayload(data, actorId, existingCreatedBy, existingData) {
   zarDomainEnforceActor(data, existingCreatedBy, actorId, 'person');
+  zarDomainEnforceCreatedFromDevice(data, existingData, 'person');
 }
 
 module.exports = {

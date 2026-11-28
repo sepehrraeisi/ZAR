@@ -18,6 +18,42 @@ enum ZarCoinPricingMethod { perPiece, perGram }
 
 const String zarGramsPerMesghal = '4.6083';
 
+/// Opaque device stamp carried on domain creates/updates (ADR Option B).
+/// [installationId] is a short hash suitable for backup JSON — never a raw
+/// hardware identifier.
+class ZarDeviceRef {
+  const ZarDeviceRef({required this.installationId, required this.label});
+
+  final String installationId;
+  final String label;
+
+  Map<String, Object?> toMap() => {
+    'installationId': installationId,
+    'label': label,
+  };
+
+  factory ZarDeviceRef.fromMap(Map<String, Object?> map) {
+    final id = (map['installationId'] as String?)?.trim() ?? '';
+    final label = (map['label'] as String?)?.trim() ?? '';
+    if (id.isEmpty || label.isEmpty) {
+      throw const FormatException('Device ref requires installationId and label.');
+    }
+    if (id.length > 64 || label.length > 80) {
+      throw const FormatException('Device ref fields are too long.');
+    }
+    return ZarDeviceRef(installationId: id, label: label);
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is ZarDeviceRef &&
+      other.installationId == installationId &&
+      other.label == label;
+
+  @override
+  int get hashCode => Object.hash(installationId, label);
+}
+
 /// Exact decimal arithmetic used by Iranian gold-market calculations.
 /// Values are represented as normalized decimal strings and all operations use
 /// integers internally; binary floating point is never involved.
@@ -969,6 +1005,8 @@ class ZarPerson {
     required this.createdAt,
     required this.updatedAt,
     required this.createdBy,
+    this.createdFromDevice,
+    this.updatedFromDevice,
   }) : phone = _trimOrNull(phone),
        note = _trimOrNull(note) {
     if (displayName.trim().isEmpty) {
@@ -984,6 +1022,8 @@ class ZarPerson {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String createdBy;
+  final ZarDeviceRef? createdFromDevice;
+  final ZarDeviceRef? updatedFromDevice;
 }
 
 class ZarDeal {
@@ -1000,6 +1040,8 @@ class ZarDeal {
     required this.createdBy,
     required this.createdAt,
     required this.updatedAt,
+    this.createdFromDevice,
+    this.updatedFromDevice,
   }) : note = _trimOrNull(note) {
     _validateTimestamp(dealAt, 'dealAt');
     final dealPricing = pricing;
@@ -1050,6 +1092,8 @@ class ZarDeal {
   final String createdBy;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final ZarDeviceRef? createdFromDevice;
+  final ZarDeviceRef? updatedFromDevice;
 }
 
 class ZarSettlement {
@@ -1071,6 +1115,8 @@ class ZarSettlement {
     required this.createdBy,
     required this.createdAt,
     required this.updatedAt,
+    this.createdFromDevice,
+    this.updatedFromDevice,
   }) : dealId = _trimOrNull(dealId),
        completedBy = _trimOrNull(completedBy),
        note = _trimOrNull(note) {
@@ -1119,6 +1165,8 @@ class ZarSettlement {
   final String createdBy;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final ZarDeviceRef? createdFromDevice;
+  final ZarDeviceRef? updatedFromDevice;
 
   bool get isOpen => status == ZarSettlementStatus.open;
 }

@@ -14,13 +14,17 @@ import '../domain/zar_reminder_plan.dart';
 /// keeps the current UI functional without making Firestore understand legacy
 /// display strings.
 class ZarLegacyPresentationBridge {
-  const ZarLegacyPresentationBridge({
+  ZarLegacyPresentationBridge({
     required this.businessId,
     required this.userId,
+    this.deviceRef,
   });
 
   final String businessId;
   final String userId;
+
+  /// Current installation stamp (ADR Option B). Mutated after Keystore load.
+  ZarDeviceRef? deviceRef;
 
   AppPerson personToUi(ZarPerson person) => AppPerson(
     id: person.id,
@@ -45,6 +49,8 @@ class ZarLegacyPresentationBridge {
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp,
       createdBy: existing?.createdBy ?? userId,
+      createdFromDevice: existing?.createdFromDevice ?? deviceRef,
+      updatedFromDevice: deviceRef,
     );
   }
 
@@ -116,6 +122,8 @@ class ZarLegacyPresentationBridge {
       createdBy: existing?.createdBy ?? userId,
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp,
+      createdFromDevice: existing?.createdFromDevice ?? deviceRef,
+      updatedFromDevice: deviceRef,
     );
   }
 
@@ -199,6 +207,8 @@ class ZarLegacyPresentationBridge {
       createdBy: existing?.createdBy ?? userId,
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp,
+      createdFromDevice: existing?.createdFromDevice ?? deviceRef,
+      updatedFromDevice: deviceRef,
     );
   }
 

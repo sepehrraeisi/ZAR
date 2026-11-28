@@ -332,7 +332,7 @@ void main() {
       );
       final store = ZarPhaseA2Store(
         repository: repo,
-        bridge: const ZarLegacyPresentationBridge(
+        bridge: ZarLegacyPresentationBridge(
           businessId: 'business',
           userId: 'test',
         ),
