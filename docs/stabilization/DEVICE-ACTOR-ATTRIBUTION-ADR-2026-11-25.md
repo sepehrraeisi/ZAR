@@ -1,7 +1,7 @@
 # ADR — Device attribution inside a shared workspace
 
 تاریخ: 2026-11-25  
-وضعیت: **Proposed** (نیاز به تصمیم مالک قبل از migration/UI)  
+وضعیت: **Accepted** (مالک، 2026-11-28 — Option B + recommended defaults)  
 محرک: soak فیزیکی دو دستگاه روی `shahab@zarplus.cloud` / گالری طلای مهر —
 چند دستگاه با یک حساب؛ رزومه/تاریخچه امروز فقط `createdBy = userId` را
 می‌بیند، نه «کدام گوشی».
@@ -75,5 +75,14 @@ question, use:
    advertising multi-device; can run in parallel with signup reopen packet;
    still behind accountant period-lock sign-off for accounting features.
 
-Implementation remains blocked until the owner explicitly accepts Option B +
-these defaults (or substitutes).
+## Owner decision (2026-11-28)
+
+Accepted Option B with the recommended defaults above:
+
+1. Default label = Android `Build.model`, editable in تنظیمات later.
+2. Backup carries short opaque hash of installation id (not raw UUID).
+3. Priority = implement now (post physical soak, before advertising
+   multi-device); parallel with signup reopen; still behind accountant
+   period-lock.
+
+Implementation may proceed on `master` via normal PR → CI → merge.

@@ -1,6 +1,6 @@
 # Signup reopen — launch packet (§10.4)
 
-وضعیت: **آماده برای تصمیم مالک — هنوز deploy / merge کد بازکننده نشده**
+وضعیت: **مالک تأیید کرد (2026-11-28) — merge/deploy مجاز با discipline بکاپ**
 
 پیش‌نیازهای evidence: `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`،
 `SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md` (suite سبز در CI).
@@ -53,4 +53,10 @@ APK جدید با build-number صعودی.
 3. start → anonymous create smoke + 429 after 5 creates  
 4. evidence doc + HANDOFF §0
 
-**تا دستور صریح مالک این migration را روی production اجرا نکن.**
+**مالک ۲۰۲۶-۱۱-۲۸ دستور صریح داد: reopen در لانچ مجاز است.**  
+هنوز هم deploy فقط با fresh `zar-backup` + off-site verify + postflight.
+
+## Owner authorization log
+
+- 2026-11-28 — Owner (via agent session): accept launch signup reopen;
+  proceed with PR #77 merge after rebase/CI, then guarded production migrate.
