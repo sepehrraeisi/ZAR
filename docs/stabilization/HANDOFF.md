@@ -1,11 +1,15 @@
 ﻿# ZAR+ Stabilization Handoff
 
-Last updated: 2026-11-27 (Asia/Tehran)
-Status: **v1.0.0 shipped. Physical dual-USB soak Pass on APK 20085; advertise cloud multi-device still waits on device-attribution owner answers (ADR #80). Public signup closed (§10.4). RC2 calendar soak in progress.**
+Last updated: 2026-11-28 (Asia/Tehran)
+Status: **v1.0.0 shipped. Public signup open on production (`1793604704`). Device attribution Option B hooks deployed; advertise multi-device waits APK ≥20089 + device QA. Physical dual-USB soak Pass on APK 20085. RC2 calendar soak in progress.**
 Change freeze for feature work remains; release/update loop follows `RELEASE-RUNBOOK.md`.
 
 ## 0. Post-handoff action log
 
+- 2026-11-28 — Device QA APK **20089** built (attribution + signup UI); installed on moto e13; Samsung USB not attached. Evidence: `DEVICE-QA-APK-20089-EVIDENCE-2026-11-28.md`.
+- 2026-11-28 — Production deploy: signup reopen `1793604704` + attribution hooks after backup `zar-20261128T142753Z` + off-site verify. Burst smoke 200×5 / 429. Evidence: `SIGNUP-REOPEN-DEPLOY-EVIDENCE-2026-11-28.md`.
+- 2026-11-28 — Device attribution Option B merged (#93 → `c22b832`).
+- 2026-11-28 — Signup reopen PR #77 merged (migration + auth gate); owner-authorized launch path.
 - 2026-11-28 — Owner decisions: ADR device attribution **Accepted** (Option B + defaults); local DB encryption **Accepted** (Option A, post-attribution spike); signup reopen **authorized** for launch (PR #77 path + guarded deploy).
 - 2026-11-28 — Device QA APK **20088** on Samsung + moto e13 (cashbox CAS conflict reload). Evidence: `DEVICE-QA-APK-20088-EVIDENCE-2026-11-28.md`.
 - 2026-11-28 — Cashbox conflict UX + FINDINGS hygiene merged (#90).

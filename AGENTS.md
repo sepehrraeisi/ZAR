@@ -117,12 +117,11 @@ amount/pricing parity via `zar_domain_validate.js` (evidence
 `DOMAIN-UPSERT-AMOUNT-PRICING-EVIDENCE-2026-11-24.md`). Create-time actor
 stamp (evidence `CREATE-TIME-ACTOR-STAMP-EVIDENCE-2026-11-24.md`). Restore
 amount structural share (evidence `RESTORE-DOMAIN-AMOUNT-SHARE-EVIDENCE-2026-11-24.md`).
-Open: signup reopen **owner-authorized** 2026-11-28 (forward migration + draft
-PR #77 → merge/deploy with backup discipline;
-`SIGNUP-REOPEN-LAUNCH-PACKET-2026-11-25.md`); device-attribution ADR #80
-**Accepted** (Option B + defaults) — implement before advertising multi-device
-(`DEVICE-ACTOR-ATTRIBUTION-ADR-2026-11-25.md`); period lock + reversal-only
-correction (accountant); local DB encryption ADR **Accepted** Option A
+Signup reopen **deployed** (`1793604704`; evidence
+`SIGNUP-REOPEN-DEPLOY-EVIDENCE-2026-11-28.md`). Device-attribution ADR #80
+**Accepted** + Option B hooks deployed (PR #93); advertise multi-device waits
+APK ≥20089 + device QA. Open: period lock + reversal-only correction
+(accountant); local DB encryption ADR **Accepted** Option A
 (post-attribution spike — `LOCAL-DB-ENCRYPTION-ADR-2026-11-25.md`). Physical
 sync/lifecycle soak Pass (`MULTI-DEVICE-PHYSICAL-SOAK-EVIDENCE-2026-11-27.md`).
 Transitional `local-user` cloud create allowance removed after APK 20083.

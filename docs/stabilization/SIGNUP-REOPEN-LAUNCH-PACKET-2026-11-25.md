@@ -1,6 +1,7 @@
 # Signup reopen — launch packet (§10.4)
 
-وضعیت: **مالک تأیید کرد (2026-11-28) — merge/deploy مجاز با discipline بکاپ**
+وضعیت: **deployed to production 2026-11-28** — evidence
+`SIGNUP-REOPEN-DEPLOY-EVIDENCE-2026-11-28.md` (مالک تأیید + guarded migrate)
 
 پیش‌نیازهای evidence: `SIGNUP-POLICY-CLOSED-EVIDENCE-2026-11-23.md`،
 `SIGNUP-LAUNCH-ABUSE-EVIDENCE-2026-11-25.md` (suite سبز در CI).
