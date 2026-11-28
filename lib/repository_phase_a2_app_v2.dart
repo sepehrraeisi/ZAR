@@ -196,7 +196,10 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2>
   Future<void> _load() async {
     try {
       try {
-        _bridge.deviceRef = await _deviceAttribution.current();
+        // Secure storage can hang under widget tests (no platform channel).
+        _bridge.deviceRef = await _deviceAttribution
+            .current()
+            .timeout(const Duration(milliseconds: 250));
       } catch (_) {
         // Attribution is best-effort; writes still succeed without a stamp.
       }
