@@ -29,6 +29,7 @@ WORKSPACE_BOOTSTRAP_MIGRATION = "1793604699_atomic_workspace_bootstrap.js"
 CASH_APPEND_CAS_MIGRATION = "1793604701_cash_append_cas.js"
 CLOSE_PUBLIC_SIGNUP_MIGRATION = "1793604702_close_public_signup.js"
 WORKSPACE_EPOCH_MIGRATION = "1793604703_workspace_epoch.js"
+OPEN_PUBLIC_SIGNUP_MIGRATION = "1793604704_open_public_signup.js"
 INFRASTRUCTURE_MIGRATIONS = (
     "1793394000_trust_caddy_client_ip.js",
     "1793437200_enable_rate_limits.js",
@@ -40,6 +41,7 @@ INFRASTRUCTURE_MIGRATIONS = (
     CASH_APPEND_CAS_MIGRATION,
     CLOSE_PUBLIC_SIGNUP_MIGRATION,
     WORKSPACE_EPOCH_MIGRATION,
+    OPEN_PUBLIC_SIGNUP_MIGRATION,
     "1793604800_transactional_restore.js",
 )
 LOCKED_MEMBER_UPDATE_RULE = (
@@ -163,6 +165,14 @@ def _assert_final_state(data_dir: Path) -> None:
             or rate_limits.get("rules") != EXPECTED_RATE_RULES
         ):
             raise AssertionError("transactional restore rate policy is not exact")
+        users_create_rule = connection.execute(
+            "SELECT createRule FROM _collections WHERE name = 'users'"
+        ).fetchone()
+        if users_create_rule is None or users_create_rule[0] != "":
+            raise AssertionError(
+                "public signup createRule is not open "
+                f"(expected '', got {None if users_create_rule is None else users_create_rule[0]!r})"
+            )
         options_row = connection.execute(
             "SELECT options FROM _collections WHERE name = 'users'"
         ).fetchone()

@@ -140,16 +140,20 @@ def run(pocketbase: Path) -> None:
                     )
                 print("PASS users:create rate rule present (5 / 600s)")
 
-                status, denied = _request(
+                status, probe = _request(
                     base_url,
                     "POST",
                     "/api/collections/users/records",
                     body=_signup_body(
-                        f"still-closed-{secrets.token_hex(3)}@example.test",
-                        f"Closed-{secrets.token_hex(4)}-Aa1!",
+                        f"probe-{secrets.token_hex(3)}@example.test",
+                        f"Probe-{secrets.token_hex(4)}-Aa1!",
                     ),
                 )
-                _expect("signup still closed before temporary open", status, 403)
+                if status not in (200, 403):
+                    raise AssertionError(
+                        f"pre-burst signup probe: expected 200 or 403, got {status}"
+                    )
+                print(f"PASS pre-burst signup probe: HTTP {status}")
 
                 status, users_col = _request(
                     base_url,
@@ -158,26 +162,31 @@ def run(pocketbase: Path) -> None:
                     token=admin_token,
                 )
                 _expect("users collection read", status, 200)
-                if users_col.get("createRule") is not None:
+                # Launch migration may already leave createRule public ("").
+                # Otherwise temp-open for the burst, then always re-close.
+                if users_col.get("createRule") not in (None, ""):
                     raise AssertionError(
-                        "users.createRule must start closed (null), "
-                        f"got {users_col.get('createRule')!r}"
+                        "users.createRule unexpected start value "
+                        f"{users_col.get('createRule')!r}"
                     )
-                # Empty createRule = public signup (launch posture). Prod stays null.
-                status, opened = _request(
-                    base_url,
-                    "PATCH",
-                    "/api/collections/users",
-                    body={"createRule": ""},
-                    token=admin_token,
-                )
-                _expect("temporary open users.createRule", status, 200)
-                if opened.get("createRule") != "":
-                    raise AssertionError(
-                        f"createRule not opened to public '': "
-                        f"{opened.get('createRule')!r}"
+                if users_col.get("createRule") != "":
+                    status, opened = _request(
+                        base_url,
+                        "PATCH",
+                        "/api/collections/users",
+                        body={"createRule": ""},
+                        token=admin_token,
                     )
-                print("PASS temporary open createRule on disposable instance")
+                    _expect("temporary open users.createRule", status, 200)
+                    if opened.get("createRule") != "":
+                        raise AssertionError(
+                            f"createRule not opened to public '': "
+                            f"{opened.get('createRule')!r}"
+                        )
+                    print("PASS temporary open createRule on disposable instance")
+                else:
+                    print("PASS createRule already open (launch migration)")
+                    opened = users_col
 
                 password = f"Abuse-{secrets.token_hex(4)}-Aa1!"
                 statuses: list[int] = []

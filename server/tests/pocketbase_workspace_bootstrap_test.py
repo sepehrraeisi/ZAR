@@ -15,7 +15,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from pocketbase_test_users import auth_superuser, ensure_superuser, provision_member
+from pocketbase_test_users import ensure_superuser, signup_public_member
 
 
 def _free_port() -> int:
@@ -109,7 +109,7 @@ def run(pocketbase: Path) -> None:
         shutil.copytree(repo / "server" / "pb_hooks", hooks_dir)
         _migrate(pocketbase, data_dir, migrations_dir)
         print("PASS migration up")
-        super_password = ensure_superuser(pocketbase, data_dir)
+        ensure_superuser(pocketbase, data_dir)
 
         with log_path.open("w", encoding="utf-8") as log_file:
             process = subprocess.Popen(
@@ -131,25 +131,12 @@ def run(pocketbase: Path) -> None:
                 _wait_for_health(base_url, process)
                 email = f"boot-{secrets.token_hex(4)}@example.test"
                 password = f"Boot-{secrets.token_hex(4)}-Aa1!"
-                status, _ = _request(
+                user_id, token = signup_public_member(
                     base_url,
-                    "POST",
-                    "/api/collections/users/records",
-                    body={
-                        "email": email,
-                        "password": password,
-                        "passwordConfirm": password,
-                    },
-                )
-                _expect("signup denied", status, 403)
-                admin_token = auth_superuser(base_url, super_password)
-                user_id, token = provision_member(
-                    base_url,
-                    admin_token=admin_token,
                     email=email,
                     password=password,
                 )
-                print("PASS auth: HTTP 200")
+                print("PASS public signup + auth: HTTP 200")
 
                 status, _ = _request(
                     base_url,

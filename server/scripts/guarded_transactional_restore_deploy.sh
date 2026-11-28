@@ -6,7 +6,7 @@ set -Eeuo pipefail
 # exact service/filesystem boundary; failpoints are clone-only.
 
 umask 077
-readonly pinned_expected_manifest_sha=e2b0c7ea27b380bafb106966b8f746748cc3b86e126fb9497e1a064c4318bb9d
+readonly pinned_expected_manifest_sha=9cad987e076d80ff9ca4f1bddf93ee6ddf1360752ee3cd4e5eb5e333053710ea
 
 data_dir=
 migrations_dir=

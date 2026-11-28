@@ -22,7 +22,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from pocketbase_test_users import auth_superuser, ensure_superuser, provision_member
+from pocketbase_test_users import ensure_superuser, signup_public_member
 
 
 def _free_port() -> int:
@@ -103,23 +103,14 @@ def _migrate(pocketbase: Path, data_dir: Path, migrations_dir: Path) -> None:
         raise RuntimeError(f"PocketBase migration failed:\n{result.stdout}{result.stderr}")
 
 
-def _signup(
-    base_url: str, label: str, *, admin_token: str
-) -> tuple[str, str, str]:
+def _signup(base_url: str, label: str) -> tuple[str, str, str]:
     suffix = secrets.token_hex(8)
     email = f"restore-{label}-{suffix}@example.test"
     password = f"Restore-{suffix}-Aa1!"
-    status, _ = _request(
-        base_url,
-        "POST",
-        "/api/collections/users/records",
-        body={"email": email, "password": password, "passwordConfirm": password},
+    user_id, token = signup_public_member(
+        base_url, email=email, password=password
     )
-    _expect(f"{label} public signup denied", status, 403)
-    user_id, token = provision_member(
-        base_url, admin_token=admin_token, email=email, password=password
-    )
-    print(f"PASS {label} signup/auth: HTTP 200")
+    print(f"PASS {label} public signup/auth: HTTP 200")
     return user_id, token, password
 
 
@@ -428,7 +419,7 @@ def run(pocketbase: Path) -> None:
         shutil.copytree(repository_root / "server" / "pb_migrations", migrations_dir)
         shutil.copytree(repository_root / "server" / "pb_hooks", hooks_dir)
         _migrate(pocketbase, data_dir, migrations_dir)
-        super_password = ensure_superuser(pocketbase, data_dir)
+        ensure_superuser(pocketbase, data_dir)
 
         with log_path.open("w", encoding="utf-8") as log:
             process = subprocess.Popen(
@@ -448,14 +439,10 @@ def run(pocketbase: Path) -> None:
             )
             try:
                 _wait_for_health(base_url, process)
-                admin_token = auth_superuser(base_url, super_password)
-
                 status, _ = _request(base_url, "GET", "/api/zar/restore/state")
                 _expect("anonymous restore state denied", status, 401)
 
-                user1, token1, password1 = _signup(
-                    base_url, "owner-one", admin_token=admin_token
-                )
+                user1, token1, password1 = _signup(base_url, "owner-one")
                 workspace1 = _workspace(base_url, "owner-one", user1, token1)
                 _create_person(base_url, token1, workspace1, "person-old", "Old")
 
@@ -628,9 +615,7 @@ def run(pocketbase: Path) -> None:
                 _create_person(
                     base_url, token1, workspace1, "zz-collision", "Other owner"
                 )
-                user2, token2, password2 = _signup(
-                    base_url, "owner-two", admin_token=admin_token
-                )
+                user2, token2, password2 = _signup(base_url, "owner-two")
                 workspace2 = _workspace(base_url, "owner-two", user2, token2)
                 _create_person(base_url, token2, workspace2, "person-two-old", "Old two")
                 status, state2 = _request(

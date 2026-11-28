@@ -1,4 +1,4 @@
-"""Public signup policy: closed until launch (allow/deny + admin seed)."""
+"""Public signup policy: open at launch (allow + rate-limit + admin seed)."""
 
 from __future__ import annotations
 
@@ -106,8 +106,8 @@ def run(pocketbase: Path) -> None:
             try:
                 _wait_for_health(base_url, process)
 
-                email = f"closed-{secrets.token_hex(4)}@example.test"
-                password = f"Closed-{secrets.token_hex(4)}-Aa1!"
+                email = f"open-{secrets.token_hex(4)}@example.test"
+                password = f"Open-{secrets.token_hex(4)}-Aa1!"
                 status, _ = _request(
                     base_url,
                     "POST",
@@ -118,32 +118,37 @@ def run(pocketbase: Path) -> None:
                         "passwordConfirm": password,
                     },
                 )
-                _expect("public signup denied", status, 403)
+                _expect("public signup allowed", status, 200)
+                print("PASS public signup create")
 
-                # Abuse: repeated anonymous creates stay denied (not opened).
-                for index in range(3):
+                # Additional creates may succeed or trip users:create 429.
+                statuses = []
+                for index in range(6):
                     status, _ = _request(
                         base_url,
                         "POST",
                         "/api/collections/users/records",
                         body={
-                            "email": f"abuse-{index}-{secrets.token_hex(3)}@example.test",
+                            "email": f"open-{index}-{secrets.token_hex(3)}@example.test",
                             "password": password,
                             "passwordConfirm": password,
                         },
                     )
-                    if status not in (403, 429):
+                    statuses.append(status)
+                    if status not in (200, 429):
                         raise AssertionError(
-                            f"abuse attempt {index}: expected 403/429, got {status}"
+                            f"post-open create {index}: expected 200/429, got {status}"
                         )
-                print("PASS public signup abuse stays denied")
+                print(f"PASS public signup open burst statuses={statuses}")
 
                 admin_token = auth_superuser(base_url, super_password)
+                seed_email = f"seed-{secrets.token_hex(4)}@example.test"
+                seed_password = f"Seed-{secrets.token_hex(4)}-Aa1!"
                 user = create_user_as_admin(
                     base_url,
                     admin_token=admin_token,
-                    email=email,
-                    password=password,
+                    email=seed_email,
+                    password=seed_password,
                 )
                 print("PASS admin seed create")
 
@@ -151,7 +156,7 @@ def run(pocketbase: Path) -> None:
                     base_url,
                     "POST",
                     "/api/collections/users/auth-with-password",
-                    body={"identity": email, "password": password},
+                    body={"identity": seed_email, "password": seed_password},
                 )
                 _expect("seeded user auth", status, 200)
                 if str(auth.get("record", {}).get("id")) != str(user["id"]):
