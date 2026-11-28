@@ -1,10 +1,13 @@
 # ZAR+ Stabilization Findings Register
 
-Updated: 2026-11-05 (Asia/Tehran)
+Updated: 2026-11-28 (Asia/Tehran)
 Baseline source: `e60d68dda3c1876dc5af99e36c1f455b76fd8a50`  
-Working branch: `codex/stabilization-baseline`
+Working branch historically `codex/stabilization-baseline`; current shipping tip
+is `master` (APK **20087** / physical soak Pass).
 
-This register is evidence-driven. “Locally fixed” means code and tests exist only in the local branch; it does **not** mean production has changed.
+This register is evidence-driven. Historical “Locally fixed” lines below mean
+code existed only on a branch at the time of writing; many items have since
+shipped to production — see Status lines and `HANDOFF.md` §0.
 
 ## Verified quality baseline
 
@@ -267,23 +270,27 @@ The green baseline is valuable but does not prove production safety. Existing te
 
 ### ZAR-CI-001 — release/supply-chain controls are incomplete
 
-- `master` is unprotected; baseline commit is unsigned; no releases exist.
-- CI previously used floating Flutter stable and `pub get` without lock enforcement; the local change now adds `--enforce-lockfile` and a checksum-verified PocketBase authorization job.
-- Actions remain tag-pinned rather than commit-SHA-pinned; no SAST, secret scan, dependency vulnerability scan, SBOM or provenance exists.
-- Required: protected branch, required reviews/checks, pinned toolchain/actions, SBOM, secret/dependency scans, signed release artifacts and provenance.
+- Status (2026-11-28): **largely closed on `master`**. Branch protection +
+  required checks (`flutter-checks`, `pocketbase-authorization`,
+  `secrets-scan`, `dependency-sbom`); Actions SHA-pinned; GitGuardian +
+  gitleaks; SBOM job; `--enforce-lockfile`; v1.0.0 GitHub release published;
+  release APK signing cert pinned in `RELEASE-SIGNING-EVIDENCE` /
+  DEVICE-QA APK evidence (SHA-256 `d19ad112…2667`).
+- Remaining polish: signed commit policy / provenance attestation if desired;
+  not a launch blocker.
 
 ## Medium findings and constraints
 
-- PocketBase client accepts non-HTTPS server URLs; release builds should reject cleartext except explicit local development.
+- Release HTTPS + REST timeout shipped (APK 20084+;
+  `RELEASE-HTTPS-CLIENT-TIMEOUT-EVIDENCE-2026-11-25.md`). Cleartext rejected in
+  release; debug overlay may still allow loopback.
 - The local transactional-restore candidate replaces the former 500-operation
   client batch ceiling with explicit 8 MiB, 5,000-per-collection and
   10,000-total limits. Practical maximum size, transaction duration and failure
   behavior still require clone evidence before release.
 - UI defaults most non-Toman currencies to scale 2 even though the domain model supports scales 0–6.
-- HTTP operations lack explicit request timeouts/cancellation and a documented retry budget.
-- The two formerly production-only Persian email-template migrations are now
-  byte-identical in Draft PR #3; merge/release remains pending.
-- No APK hash/signing-certificate fingerprint from the installed phone has been captured; signing-key possession remains unverified.
+- Device QA APK hashes + signing cert captured through APK **20087**
+  (`DEVICE-QA-APK-20087-EVIDENCE-2026-11-28.md` and priors).
 
 ## Scope decision required
 
@@ -296,19 +303,11 @@ Stabilization of security, recovery and current data integrity can continue with
 
 ## Next implementation order
 
-1. Deliver `PROGRAMMER-HANDOFF.md`, verify the current Draft PR head and keep
-   Draft PR #3 unmerged until an explicit review/merge decision. Exact-head CI
-   for implementation/evidence checkpoint `e9ee6e0` is green.
-2. If the owner later authorizes production deployment, create a fresh recovery
-   set and run the prewritten guarded change window; do not treat the passing
-   clone as deployment authorization.
-3. Inspect the installed Android APK and prove package/version/signature,
-   sign-in/startup behavior and the Persian 429 message before client release.
-4. Decide and enforce the intended public-signup policy.
-5. Add external monitoring and replace the temporary off-site recovery
-   exception before customer data or 2026-11-30.
-6. Define the full reversal/tombstone and append-only audit model for the
-   remaining historical collections.
-7. Address token storage, Android backup policy, concurrency/idempotency and
-   server-side invariant enforcement in small reviewed changes.
+1. Owner answers for device-attribution ADR #80 (before advertising
+   multi-device). Recommended defaults are in the ADR.
+2. Signup reopen only at launch (owner + forward migration; draft PR #77).
+3. Period lock + reversal-only correction (accountant sign-off).
+4. Local DB encryption ADR (owner).
+5. Second-operator runbook drills (human).
+6. Finish RC2 calendar soak (7–14d) then launch sign-off checklist.
 

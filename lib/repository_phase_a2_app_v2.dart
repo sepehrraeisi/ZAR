@@ -1429,6 +1429,7 @@ class _RepositoryPhaseA2ShellV2State extends State<_RepositoryPhaseA2ShellV2>
         },
         onOpenDailyReport: _openDailyReport,
         tabNotifier: _cashboxTab,
+        onReload: _refreshFromServer,
         onChanged: () {
           if (mounted) setState(() {});
           unawaited(_persistedReminders.reconcileAll(records));

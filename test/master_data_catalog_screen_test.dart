@@ -120,4 +120,50 @@ void main() {
     expect(reloads, 1);
     expect(find.textContaining('اطلاعات از سرور تازه شد'), findsOneWidget);
   });
+
+  testWidgets('currency catalog surfaces stale conflict with reload action', (
+    tester,
+  ) async {
+    final usd = ZarCurrencyType(
+      id: 'currency-usd',
+      name: 'دلار آمریکا',
+      code: 'usd',
+      createdAt: now,
+      updatedAt: now,
+    );
+    var reloads = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: CurrencyCatalogScreen(
+            types: [usd],
+            onSave: (_) async =>
+                throw const ZarCloudWriteConflictException.staleRevision(
+                  collection: 'zar_currency_types',
+                  recordId: 'currency-usd',
+                  currentRevision: 3,
+                ),
+            onArchive: (_) async {},
+            onRestore: (_) async {},
+            onReload: () async {
+              reloads += 1;
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('دلار آمریکا'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ذخیره'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('همین حساب'), findsOneWidget);
+    expect(find.text('تازه‌سازی'), findsOneWidget);
+    await tester.tap(find.text('تازه‌سازی'));
+    await tester.pumpAndSettle();
+    expect(reloads, 1);
+    expect(find.textContaining('اطلاعات از سرور تازه شد'), findsOneWidget);
+  });
 }
